@@ -15,4 +15,6 @@ Library
   Exposed-Modules: Biegunka
                    Biegunka.Repository
                    Biegunka.Repository.Git
+                   Biegunka.Script
+                   Biegunka.Script.DryRun
   Extensions: UnicodeSyntax

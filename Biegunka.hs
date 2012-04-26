@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Biegunka
   ( (-->), bzdury
+  , Biegunka(..)
   ) where
 
 import Control.Monad (unless)
