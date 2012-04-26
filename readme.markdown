@@ -12,7 +12,7 @@ All this issues should be addressed by this framework.
 The main idea is to have something like current _state_ of installed stuff:
 
 ```haskell
-install ∷ IO BiegunkaResponse
+install ∷ IO Wymioty
 install = bzdury
   [ git "one repo" "this clone here" --> installOne
   , hg "another one" "that clone here" --> installAnother
@@ -22,9 +22,9 @@ install = bzdury
 Then you can save this state somewhere and when the time comes
 
 ```haskell
-removeRepo ∷ Repository α ⇒ BiegunkaResponse → α → IO BiegunkaResponse
+removeRepo ∷ Repository α ⇒ Wymioty → α → IO Wymioty
 --or even
-wipe ∷ BiegunkaResponse → IO BiegunkaResponse
+wipe ∷ Wymioty → IO Wymioty
 ```
 
 Install scripts themselves become easier

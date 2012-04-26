@@ -11,24 +11,25 @@ import Control.Monad.Writer (WriterT(..), execWriterT)
 import Data.Functor ((<$>))
 import Data.Map (Map)
 import Data.Monoid ((<>), mconcat)
+import qualified Data.Map as M
 
 import Biegunka.Repository
 
 newtype Biegunka a =
-  Biegunka { runBiegunka ∷ WriterT BiegunkaState
+  Biegunka { runBiegunka ∷ WriterT [FilePath]
                              (ReaderT FilePath IO) a
            } deriving (Monad, MonadIO)
 
-type BiegunkaState = Map String [FilePath]
+type Wymioty = Map FilePath [FilePath]
 
-(-->) ∷ Repository a ⇒ a → Biegunka () → IO BiegunkaState
+(-->) ∷ Repository a ⇒ a → Biegunka () → IO Wymioty
 src --> script = do
   cloned ← clone src
   unless cloned $ do
     updated ← update src
     unless updated $
       (error $ "Biegunka: Repo directory " <> path src <> " does exist, but there is some crap!")
-  runReaderT (execWriterT (runBiegunka script)) (path src)
+  M.singleton (path src) <$> runReaderT (execWriterT (runBiegunka script)) (path src)
 
-bzdury ∷ [IO BiegunkaState] → IO BiegunkaState
+bzdury ∷ [IO Wymioty] → IO Wymioty
 bzdury xs = mconcat <$> sequence xs
