@@ -34,7 +34,7 @@ installRepoAsLink ∷ Biegunka ()
 installRepoAsLink = repoTo Home "path/from/home/directory"
 --or
 installRepoFilesAsLinks ∷ Biegunka ()
-installRepoFilesAsLinks src = do
+installRepoFilesAsLinks = do
   fromRepoTo Root ("path/from/repo/root", "path/from/system/root")
   fromRepoTo Home ("path/from/repo/root", "path/from/home/directory")
 ```
