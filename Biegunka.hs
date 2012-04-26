@@ -5,28 +5,24 @@ module Biegunka
   ( (-->), bzdury
   ) where
 
-import Control.Monad.State (StateT(..), MonadIO, execStateT, liftIO, put)
+import Control.Monad.Trans (MonadIO)
+import Control.Monad.Reader (ReaderT(..), runReaderT)
+import Control.Monad.Writer (WriterT(..), execWriterT)
+import Data.Functor ((<$>))
 import Data.Map (Map)
-import Data.Monoid (Monoid(..), mconcat)
-import qualified Data.Map as M
+import Data.Monoid (mconcat)
 
 import Biegunka.Repository
 
 newtype Biegunka a =
-  Biegunka { runBiegunka ∷ StateT BiegunkaState IO a
+  Biegunka { runBiegunka ∷ WriterT BiegunkaState
+                             (ReaderT FilePath IO) a
            } deriving (Monad, MonadIO)
 
 type BiegunkaState = Map String [FilePath]
 
-(-->) ∷ Repository a ⇒ a → (a → Biegunka ()) → Biegunka ()
-(-->) = flip ($)
+(-->) ∷ Repository a ⇒ a → Biegunka () → IO BiegunkaState
+src --> script = runReaderT (execWriterT (runBiegunka script)) (hash src)
 
-instance Monoid (Biegunka ()) where
-  mempty = return ()
-  mappend a b = Biegunka $ do
-    s ← liftIO $ execStateT (runBiegunka a) M.empty
-    t ← liftIO $ execStateT (runBiegunka b) M.empty
-    put (s `M.union` t)
-
-bzdury ∷ [Biegunka ()] → Biegunka ()
-bzdury = mconcat
+bzdury ∷ [IO BiegunkaState] → IO BiegunkaState
+bzdury xs = mconcat <$> sequence xs
