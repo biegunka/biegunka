@@ -11,7 +11,7 @@ Cabal-Version: >= 1.6
 Build-Type: Simple
 
 Library
-  Build-Depends: base >= 3 && < 5, containers, mtl, directory, process
+  Build-Depends: base >= 3 && < 5, containers, mtl, directory, process, filepath
   Exposed-Modules: Biegunka
                    Biegunka.Repository
                    Biegunka.Repository.Git
