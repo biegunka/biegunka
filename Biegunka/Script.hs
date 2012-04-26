@@ -4,8 +4,8 @@ import Biegunka
 
 data Host = Root | Home
 
-repoTo ∷ Host → FilePath → Biegunka ()
+repoTo ∷ Host → FilePath → Script ()
 repoTo = undefined
 
-fromRepoTo ∷ Host → (FilePath, FilePath) → Biegunka ()
+fromRepoTo ∷ Host → (FilePath, FilePath) → Script ()
 fromRepoTo = undefined

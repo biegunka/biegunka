@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Biegunka
   ( (-->), bzdury
-  , Biegunka(..)
+  , Script(..)
   ) where
 
 import Control.Monad (unless)
@@ -15,21 +15,21 @@ import qualified Data.Map as M
 
 import Biegunka.Repository
 
-newtype Biegunka a =
-  Biegunka { runBiegunka ∷ WriterT [FilePath]
-                             (ReaderT FilePath IO) a
-           } deriving (Monad, MonadIO)
+newtype Script a =
+  Script { runScript ∷ WriterT [FilePath]
+                         (ReaderT FilePath IO) a
+         } deriving (Monad, MonadIO)
 
-type Wymioty = Map FilePath [FilePath]
+type Biegunka = Map FilePath [FilePath]
 
-(-->) ∷ Repository a ⇒ a → Biegunka () → IO Wymioty
-src --> script = do
-  cloned ← clone src
+(-->) ∷ Repository a ⇒ a → Script () → IO Biegunka
+r --> s = do
+  cloned ← clone r
   unless cloned $ do
-    updated ← update src
+    updated ← update r
     unless updated $
-      (error $ "Biegunka: Repo directory " <> path src <> " does exist, but there is some crap!")
-  M.singleton (path src) <$> runReaderT (execWriterT (runBiegunka script)) (path src)
+      (error $ "Biegunka: Repo directory " <> path r <> " does exist, but there is some crap!")
+  M.singleton (path r) <$> runReaderT (execWriterT $ runScript s) (path r)
 
-bzdury ∷ [IO Wymioty] → IO Wymioty
+bzdury ∷ [IO Biegunka] → IO Biegunka
 bzdury xs = mconcat <$> sequence xs
