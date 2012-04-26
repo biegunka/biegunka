@@ -4,6 +4,6 @@ module Biegunka.Repository
   ) where
 
 class Repository a where
-  clone ∷ a → IO a
-  update ∷ a → IO a
-  hash ∷ a → String
+  clone ∷ a → IO Bool
+  update ∷ a → IO Bool
+  path ∷ a → String
