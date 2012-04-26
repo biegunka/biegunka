@@ -5,7 +5,7 @@ module Biegunka.Repository.Git
 
 import Control.Applicative ((<$>), (<*>))
 import System.Cmd (rawSystem)
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, setCurrentDirectory)
 import System.Exit (ExitCode(ExitSuccess))
 
 import Biegunka.Repository (Repository(..))
@@ -29,8 +29,9 @@ gitClone (Git u r) = do
     else (== ExitSuccess) <$> rawSystem "git" ["clone", u, r]
 
 gitPull ∷ Git → IO Bool
-gitPull = undefined
---gitPull _ = (== ExitSuccess) <$> rawSystem "git" ["pull", "origin", "master"]
+gitPull (Git _ r) = do
+  setCurrentDirectory r
+  (== ExitSuccess) <$> rawSystem "git" ["pull", "origin", "master"]
 
 gitPath ∷ Git → String
 gitPath = repo
