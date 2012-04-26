@@ -1,4 +1,3 @@
-{-# LANGUAGE UnicodeSyntax #-}
 module Biegunka.Repository.Git
   ( git
   ) where

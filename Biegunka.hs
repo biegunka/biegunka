@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE UnicodeSyntax #-}
 module Biegunka
   ( (-->), bzdury
   ) where

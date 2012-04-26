@@ -1,4 +1,3 @@
-{-# LANGUAGE UnicodeSyntax #-}
 module Biegunka.Repository
   ( Repository(..)
   ) where
