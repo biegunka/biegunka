@@ -3,8 +3,7 @@ module Biegunka.Repository.Git
   ( git
   ) where
 
-import Control.Applicative ((<$>))
-import Control.Monad (liftM2)
+import Control.Applicative ((<$>), (<*>))
 import System.Cmd (rawSystem)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(ExitSuccess))
@@ -23,11 +22,11 @@ instance Repository Git where
   path = gitPath
 
 gitClone ∷ Git → IO Bool
-gitClone r = do
-  exists <- liftM2 (||) (doesDirectoryExist (repo r)) (doesFileExist (repo r))
+gitClone (Git u r) = do
+  exists ← (||) <$> (doesDirectoryExist r) <*> (doesFileExist r)
   if exists
     then return False
-    else (== ExitSuccess) <$> rawSystem "git" ["clone", url r, repo r]
+    else (== ExitSuccess) <$> rawSystem "git" ["clone", u, r]
 
 gitPull ∷ Git → IO Bool
 gitPull = undefined
