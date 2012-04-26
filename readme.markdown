@@ -13,16 +13,16 @@ The main idea is to have something like current _state_ of installed stuff:
 
 ```haskell
 install ∷ InstallationState ()
-install = mconcat
-  [ Git "one repo" --> Path "this clone here" --> Install OneScript
-  , Hg "another one" --> Path "that clone here" --> Install AnotherScript
+install = merge
+  [ git "one repo" "this clone here" --> InstallOne
+  , hg "another one" "that clone here" --> InstallAnother
   ]
 ```
 
 Then you can save this state somewhere and when the time comes
 
 ```haskell
-removeRepo ∷ InstallationState () → Repository → InstallationState ()
+removeRepo ∷ Repository a ⇒ InstallationState () → a → InstallationState ()
 --or even
 wipe ∷ InstallationState () → InstallationState ()
 ```
