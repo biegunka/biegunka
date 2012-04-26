@@ -14,7 +14,6 @@ Library
   Build-Depends: base >= 3 && < 5, containers, mtl, directory, process, filepath
   Exposed-Modules: Biegunka
                    Biegunka.Repository
-                   Biegunka.Repository.Git
                    Biegunka.Script
                    Biegunka.Script.DryRun
   Extensions: UnicodeSyntax

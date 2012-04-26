@@ -2,6 +2,7 @@
 module Biegunka
   ( (-->), bzdury
   , Script(..)
+  , module Biegunka.Repository
   ) where
 
 import Control.Monad (unless)
