@@ -12,8 +12,8 @@ All this issues should be addressed by this framework.
 The main idea is to have something like current _state_ of installed stuff:
 
 ```haskell
-install ∷ InstallationState ()
-install = merge
+install ∷ Biegunka ()
+install = bzdury
   [ git "one repo" "this clone here" --> InstallOne
   , hg "another one" "that clone here" --> InstallAnother
   ]
@@ -22,7 +22,7 @@ install = merge
 Then you can save this state somewhere and when the time comes
 
 ```haskell
-removeRepo ∷ Repository a ⇒ InstallationState () → a → InstallationState ()
+removeRepo ∷ Repository a ⇒ Biegunka () → a → Biegunka ()
 --or even
-wipe ∷ InstallationState () → InstallationState ()
+wipe ∷ Biegunka () → Biegunka ()
 ```

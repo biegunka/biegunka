@@ -1,0 +1,17 @@
+Name:		Biegunka
+Version:	0.1.0.0
+Description:	Config/Utility scripts framework
+License:	MIT
+License-file:	LICENSE
+Author:		Matvey Aksenov
+Maintainer:	Matvey Aksenov <matvey.aksenov@gmail.com>
+Category:	System
+Synopsis:	Config/Utility scripts framework
+Cabal-Version:	>= 1.6
+Build-Type:	Simple
+
+Library
+  Build-Depends:	base >= 3 && < 5, containers, mtl
+  Exposed-Modules: Biegunka
+                   Biegunka.Repository
+                   Biegunka.Repository.Git
