@@ -12,6 +12,7 @@ Build-Type: Simple
 
 Library
   Build-Depends: base >= 3 && < 5, containers, mtl, directory, process, filepath
+  HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Repository
                    Biegunka.Script
