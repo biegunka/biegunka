@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 import Biegunka
 import Biegunka.Script.DryRun
-import Control.Applicative ((<*))
 import System.FilePath ((<.>))
 import System.Directory (renameFile)
 
@@ -15,15 +13,11 @@ link_two = bzdury
   where neco_ghc = link_repo_itself ".vim/bundle/neco-ghc"
         neocomplicache = link_repo_itself ".vim/bundle/neocomplcache"
 
-hidden :: FilePath -> IO a -> IO a
-hidden fp x = renameFile fp (fp <.> "old") >> x <* renameFile (fp <.> "old") fp
+hidden :: FilePath -> IO a -> IO ()
+hidden fp x = renameFile fp (fp <.> "old") >> x >> renameFile (fp <.> "old") fp
 
 step :: IO Biegunka -> IO ()
-step link = do
-  db <- link
-  save db
-  !result <- readFile "/home/maksenov/.biegunka.db"
-  print result
+step link = link >>= save >> readFile "/home/maksenov/.biegunka.db" >>= print
 
 main :: IO ()
 main = hidden "/home/maksenov/.biegunka.db" $ step link_one >> step link_two
