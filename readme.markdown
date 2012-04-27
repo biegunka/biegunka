@@ -14,7 +14,7 @@ The main idea is to have something like current _state_ of installed stuff:
 ```haskell
 install ∷ IO Biegunka
 install = bzdury
-  [ git "one repo" "this clone here" --> installOne
+  [ git "one repo" "this clone here" --> one
   , hg "another one" "that clone here" --> installAnother
   ]
 ```
@@ -30,11 +30,11 @@ wipe ∷ Biegunka → IO Biegunka
 Install scripts themselves become easier
 
 ```haskell
-installRepoAsLink ∷ Script ()
-installRepoAsLink = repoTo Home "path/from/home/directory"
+one ∷ Script ()
+one = link_repo_inself "path/from/home/directory"
 --or
-installRepoFilesAsLinks ∷ Script ()
-installRepoFilesAsLinks = do
-  fromRepoTo Root ("path/from/repo/root", "path/from/system/root")
-  fromRepoTo Home ("path/from/repo/root", "path/from/home/directory")
+another ∷ Script ()
+another = do
+  link_repo_file "path/from/repo/root" "path/from/home/directory"
+  link_repo_file "path/from/repo/root" "path/from/home/directory"
 ```
