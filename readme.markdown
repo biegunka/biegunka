@@ -15,7 +15,7 @@ The main idea is to have something like current _state_ of installed stuff:
 install ∷ IO Biegunka
 install = bzdury
   [ git "one repo" "this clone here" --> one
-  , hg "another one" "that clone here" --> installAnother
+  , hg "another one" "that clone here" --> another
   ]
 ```
 
