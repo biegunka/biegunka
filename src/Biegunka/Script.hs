@@ -2,13 +2,11 @@ module Biegunka.Script where
 
 import Biegunka
 
-data Host = Root | Home
+link_repo_itself ∷ FilePath → Script ()
+link_repo_itself = undefined
 
-repoTo ∷ Host → FilePath → Script ()
-repoTo = undefined
-
-fromRepoTo ∷ Host → (FilePath, FilePath) → Script ()
-fromRepoTo = undefined
+link_repo_file ∷ FilePath → FilePath → Script ()
+link_repo_file = undefined
 
 message ∷ String → Script ()
 message = undefined
