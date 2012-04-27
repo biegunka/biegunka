@@ -7,18 +7,8 @@ import System.FilePath ((</>))
 
 import Biegunka
 
-data Host = Root | Home
+link_repo_itself ∷ FilePath → Script ()
+link_repo_itself fp = Script $ liftIO getHomeDirectory >>= \d → tell ([d </> fp])
 
-dir ∷ Host → IO FilePath
-dir Root = return ""
-dir Home = getHomeDirectory
-
-repoTo ∷ Host → FilePath → Script ()
-repoTo h fp = Script $ do
-  d <- liftIO (dir h)
-  tell ([d </> fp])
-
-fromRepoTo ∷ Host → (FilePath, FilePath) → Script ()
-fromRepoTo h (_, fp) = Script $ do
-  d <- liftIO (dir h)
-  tell ([d </> fp])
+link_repo_file ∷ FilePath → FilePath → Script ()
+link_repo_file _ dst = Script $ liftIO getHomeDirectory >>= \d → tell ([d </> dst])
