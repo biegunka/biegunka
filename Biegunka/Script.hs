@@ -9,3 +9,6 @@ repoTo = undefined
 
 fromRepoTo ∷ Host → (FilePath, FilePath) → Script ()
 fromRepoTo = undefined
+
+message ∷ String → Script ()
+message = undefined

@@ -1,4 +1,4 @@
-#Biegunka - Utility scripts and configs management framework
+#Biegunka - .dotfiles framework
 
 ##Motivation
 
