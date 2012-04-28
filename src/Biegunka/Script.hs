@@ -1,6 +1,6 @@
 module Biegunka.Script where
 
-import Biegunka
+import Biegunka.Core
 
 link_repo_itself ∷ FilePath → Script ()
 link_repo_itself = undefined

@@ -5,7 +5,7 @@ import Control.Monad.Writer (tell)
 import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
 
-import Biegunka
+import Biegunka.Core
 
 link_repo_itself ∷ FilePath → Script ()
 link_repo_itself fp = Script $ liftIO getHomeDirectory >>= \d → tell ([d </> fp])

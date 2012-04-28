@@ -1,6 +1,5 @@
 module Biegunka.Repository
-  ( Repository(..)
-  , git
+  ( git
   ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -8,15 +7,11 @@ import System.Cmd (rawSystem)
 import System.Directory (doesDirectoryExist, doesFileExist, setCurrentDirectory)
 import System.Exit (ExitCode(ExitSuccess))
 
-class Repository a where
-  clone ∷ a → IO Bool
-  update ∷ a → IO Bool
-  path ∷ a → String
+import Biegunka.Core
 
-type UrlPath = String
-data Git = Git { url ∷ String, repo ∷ FilePath }
+data Git = Git { url ∷ FilePath, repo ∷ FilePath }
 
-git ∷ UrlPath → FilePath → Git
+git ∷ FilePath → FilePath → Git
 git = Git
 
 instance Repository Git where
