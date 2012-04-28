@@ -17,7 +17,7 @@ dir Laptop = "laptop"
 dir Work = "work"
 
 utils ∷ [Set] → Script ()
-utils xs = mapM_ installSet xs
+utils = mapM_ installSet
 
 installSet ∷ Set → Script ()
 installSet s = do message $ "Installing " ++ show s ++ " configs..."

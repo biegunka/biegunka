@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Biegunka.Core
   ( (-->), bzdury
-  , Biegunka, Script(..), Repository(..)
+  , Biegunka, Script(..), ScriptI(..), Repository(..)
   , save, load
   ) where
 
@@ -16,19 +16,24 @@ import System.Directory (getHomeDirectory, doesFileExist)
 import System.FilePath ((</>))
 import qualified Data.Map as M
 
-class Repository a where
-  clone ∷ a → IO Bool
-  update ∷ a → IO Bool
-  path ∷ a → String
+class Repository ρ where
+  clone ∷ ρ → IO Bool
+  update ∷ ρ → IO Bool
+  path ∷ ρ → String
 
-newtype Script a =
+class ScriptI μ where
+  message ∷ String → μ ()
+  link_repo_itself ∷ FilePath → μ ()
+  link_repo_file ∷ FilePath → FilePath → μ ()
+
+newtype Script α =
   Script { runScript ∷ WriterT [FilePath]
-                         (ReaderT FilePath IO) a
+                         (ReaderT FilePath IO) α
          } deriving (Monad, MonadIO)
 
 type Biegunka = Map FilePath [FilePath]
 
-(-->) ∷ Repository a ⇒ IO a → Script () → IO Biegunka
+(-->) ∷ Repository ρ ⇒ IO ρ → Script () → IO Biegunka
 mr --> s = mr >>= \r → M.singleton (path r) <$> runReaderT (execWriterT $ runScript s) (path r)
 
 bzdury ∷ [IO Biegunka] → IO Biegunka
