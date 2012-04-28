@@ -38,3 +38,5 @@ another = do
   link_repo_file "path/from/repo/root" "path/from/home/directory"
   link_repo_file "path/from/repo/root" "path/from/home/directory"
 ```
+
+There is ability to test your scripts before doing actual work, just import `Biegunka.DryRun` instead of `Biegunka` and you'll get all debug information.
