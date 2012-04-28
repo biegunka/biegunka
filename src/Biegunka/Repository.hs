@@ -18,7 +18,7 @@ git u p = clone r >>= flip unless (update r >>= flip unless (error "Biegunka: So
 
 instance Repository Git where
   clone (Git u r) = do
-    exists ← (||) <$> (doesDirectoryExist r) <*> (doesFileExist r)
+    exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
     if exists
       then return False
       else (== ExitSuccess) <$> rawSystem "git" ["clone", u, r]
