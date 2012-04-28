@@ -6,7 +6,6 @@ module Biegunka.Core
   , save, load
   ) where
 
-import Control.Monad (unless)
 import Control.Monad.Trans (MonadIO)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Writer (WriterT(..), execWriterT)
@@ -29,14 +28,8 @@ newtype Script a =
 
 type Biegunka = Map FilePath [FilePath]
 
-(-->) ∷ Repository a ⇒ a → Script () → IO Biegunka
-r --> s = do
-  cloned ← clone r
-  unless cloned $ do
-    updated ← update r
-    unless updated $
-      (error $ "Biegunka: Repo directory " <> path r <> " does exist, but there is some crap!")
-  M.singleton (path r) <$> runReaderT (execWriterT $ runScript s) (path r)
+(-->) ∷ Repository a ⇒ IO a → Script () → IO Biegunka
+mr --> s = mr >>= \r → M.singleton (path r) <$> runReaderT (execWriterT $ runScript s) (path r)
 
 bzdury ∷ [IO Biegunka] → IO Biegunka
 bzdury xs = mconcat <$> sequence xs
@@ -49,8 +42,7 @@ save new = do
 
 load ∷ IO Biegunka
 load = do
-  hd ← getHomeDirectory
-  let db = (hd </> ".biegunka.db")
+  db ← (</> ".biegunka.db") <$> getHomeDirectory
   exists ← doesFileExist db
   if exists
     then read <$> readFile db
