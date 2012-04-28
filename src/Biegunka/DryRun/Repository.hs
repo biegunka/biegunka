@@ -1,4 +1,4 @@
-module Biegunka.Repository.DryRun
+module Biegunka.DryRun.Repository
   ( module Biegunka.Repository
   ) where
 

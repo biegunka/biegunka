@@ -3,5 +3,5 @@ module Biegunka.DryRun
   ) where
 
 import Biegunka.Core as B
-import Biegunka.Repository.DryRun as B
-import Biegunka.Script.DryRun as B
+import Biegunka.DryRun.Repository as B
+import Biegunka.DryRun.Script as B

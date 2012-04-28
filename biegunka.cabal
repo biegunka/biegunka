@@ -14,10 +14,10 @@ Library
   Build-Depends: base >= 3 && < 5, containers, mtl, directory, process, filepath
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
-                   Biegunka.DryRun
-                   Biegunka.Core
                    Biegunka.Repository
-                   Biegunka.Repository.DryRun
                    Biegunka.Script
-                   Biegunka.Script.DryRun
+                   Biegunka.DryRun
+                   Biegunka.DryRun.Repository
+                   Biegunka.DryRun.Script
+                   Biegunka.Core
   Extensions: UnicodeSyntax

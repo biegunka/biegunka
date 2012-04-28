@@ -1,4 +1,4 @@
-module Biegunka.Script.DryRun where
+module Biegunka.DryRun.Script where
 
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Writer (tell)
