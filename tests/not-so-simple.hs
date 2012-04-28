@@ -1,5 +1,4 @@
-import Biegunka
-import Biegunka.Script.DryRun
+import Biegunka.DryRun
 import Control.Arrow (first)
 import Control.Monad (forM_)
 import System.FilePath ((</>))
