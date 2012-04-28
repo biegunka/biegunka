@@ -1,5 +1,4 @@
-import Biegunka
-import Biegunka.Script.DryRun
+import Biegunka.DryRun
 import System.FilePath ((<.>))
 import System.Directory (renameFile)
 

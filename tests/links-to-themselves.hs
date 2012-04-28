@@ -1,5 +1,4 @@
-import Biegunka
-import Biegunka.Script.DryRun
+import Biegunka.DryRun
 
 links = bzdury
   [ git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" --> neco_ghc
