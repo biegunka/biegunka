@@ -25,6 +25,7 @@ class ScriptI μ where
   message ∷ String → μ ()
   link_repo_itself ∷ FilePath → μ ()
   link_repo_file ∷ FilePath → FilePath → μ ()
+  copy_repo_file ∷ FilePath → FilePath → μ ()
 
 newtype Script α =
   Script { runScript ∷ WriterT [FilePath]
