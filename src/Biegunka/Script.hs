@@ -20,29 +20,26 @@ instance ScriptI Script where
 link_repo_itself_ ∷ FilePath → Script ()
 link_repo_itself_ fp = Script $ do
   s ← ask
-  hd ← liftIO getHomeDirectory
-  let d = hd </> fp
-  liftIO $ do
-    exists ← fileExist d
-    when (exists) $ do
-      putStrLn $ "Warning: file " <> d <> " does exist!"
-      removeLink d
-    createSymbolicLink s d
+  d ← (</> fp) <$> getHomeDirectory'
+  overWriteWith createSymbolicLink s d
   tell [d]
 
 link_repo_file_ ∷ FilePath → FilePath → Script ()
 link_repo_file_ sfp dfp = Script $ do
-  rd ← ask
-  hd ← liftIO getHomeDirectory
-  let s = rd </> sfp
-  let d = hd </> dfp
-  liftIO $ do
-    exists ← fileExist d
-    when (exists) $ do
-      putStrLn $ "Warning: file " <> d <> " does exist!"
-      removeLink d
-    createSymbolicLink s d
+  s ← (</> sfp) <$> ask
+  d ← (</> dfp) <$> getHomeDirectory'
+  overWriteWith createSymbolicLink s d
   tell [d]
 
+getHomeDirectory' = liftIO getHomeDirectory
+
+overWriteWith f s d = liftIO $ do
+  exists ← fileExist d
+  when exists $ do
+    putStrLn $ "Warning: file " <> d <> " does exist!"
+    removeLink d
+  f s d
+
 message_ ∷ String → Script ()
-message_ = Script . liftIO . putStrLn
+message_ = Script . putStrLn'
+  where putStrLn' = liftIO . putStrLn
