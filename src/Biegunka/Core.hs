@@ -3,16 +3,18 @@
 module Biegunka.Core
   ( (-->), bzdury
   , Biegunka, Script(..), ScriptI(..), Repository(..)
-  , save, load
+  , save, load, delete
   ) where
 
+import Control.Monad (when)
 import Control.Monad.Trans (MonadIO)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Writer (WriterT(..), execWriterT)
 import Data.Functor ((<$>))
 import Data.Map (Map)
+import Data.Maybe (fromJust, isJust)
 import Data.Monoid ((<>), mconcat)
-import System.Directory (getHomeDirectory, doesFileExist)
+import System.Directory (getHomeDirectory, doesFileExist, removeFile)
 import System.FilePath ((</>))
 import qualified Data.Map as M
 
@@ -53,3 +55,9 @@ load = do
   if exists
     then read <$> readFile db
     else return M.empty
+
+delete ∷ Biegunka → FilePath → IO Biegunka
+delete db fp = do
+  let r = M.lookup fp db
+  when (isJust r) $ mapM_ removeFile (fromJust r)
+  return $ M.delete fp db
