@@ -31,7 +31,7 @@ save new = do
   hd ← getHomeDirectory
   writeFile (hd </> ".biegunka.db") (show $ old <> new)
 
-merge = undefined
+merge = M.unionWith (<>)
 
 delete db fp = do
   let r = M.lookup fp db
