@@ -1,21 +1,15 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Biegunka.Core
   ( (-->), bzdury
   , Biegunka, Script(..), ScriptI(..), Repository(..)
-  , save, load, delete
   ) where
 
-import Control.Monad (when)
 import Control.Monad.Trans (MonadIO)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Writer (WriterT(..), execWriterT)
 import Data.Functor ((<$>))
 import Data.Map (Map)
-import Data.Maybe (fromJust, isJust)
-import Data.Monoid ((<>), mconcat)
-import System.Directory (getHomeDirectory, doesFileExist, removeFile)
-import System.FilePath ((</>))
+import Data.Monoid (mconcat)
 import qualified Data.Map as M
 
 class Repository ρ where
@@ -41,23 +35,3 @@ mr --> s = mr >>= \r → M.singleton (path r) <$> runReaderT (execWriterT $ runS
 
 bzdury ∷ [IO Biegunka] → IO Biegunka
 bzdury xs = mconcat <$> sequence xs
-
-save ∷ Biegunka → IO ()
-save new = do
-  !old ← load
-  hd ← getHomeDirectory
-  writeFile (hd </> ".biegunka.db") (show $ old <> new)
-
-load ∷ IO Biegunka
-load = do
-  db ← (</> ".biegunka.db") <$> getHomeDirectory
-  exists ← doesFileExist db
-  if exists
-    then read <$> readFile db
-    else return M.empty
-
-delete ∷ Biegunka → FilePath → IO Biegunka
-delete db fp = do
-  let r = M.lookup fp db
-  when (isJust r) $ mapM_ removeFile (fromJust r)
-  return $ M.delete fp db

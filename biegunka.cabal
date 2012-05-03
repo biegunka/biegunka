@@ -14,6 +14,7 @@ Library
   Build-Depends: base >= 3 && < 5, containers, mtl, directory, process, filepath, unix, bytestring
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
+                   Biegunka.DB
                    Biegunka.Repository
                    Biegunka.Script
                    Biegunka.DryRun
