@@ -15,7 +15,7 @@ import Biegunka.Core
 
 load ∷ IO Biegunka
 save ∷ Biegunka → IO ()
-merge ∷ Biegunka → FilePath → IO Biegunka
+merge ∷ Biegunka → Biegunka → Biegunka
 delete ∷ Biegunka → FilePath → IO Biegunka
 wipe ∷ Biegunka → IO ()
 
