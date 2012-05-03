@@ -10,7 +10,7 @@ All this issues should be addressed by this framework.
 ##Details
 
 ###Main functionality
-The main idea is to have something like current _state_ of installed stuff:
+The main idea is to have something like current state of installed stuff:
 ```haskell
 install ∷ IO Biegunka
 install = bzdury
@@ -27,15 +27,13 @@ main = do
   let γ = merge α β
   save γ
 ```
-and when the time comes you can do this
+and when the time comes you can uninstall stuff:
 ```haskell
-remove_one ∷ Biegunka → IO Biegunka
-remove_one α = delete α "one repo"
-```
-or even that
-```haskell
-remove_everything ∷ Biegunka → IO ()
-remove_everything = wipe
+main ∷ IO ()
+main = do
+  α ← load
+  delete α "one repo" -- just one repo
+  wipe α -- everything
 ```
 
 ###Scripting
@@ -45,7 +43,7 @@ one ∷ Script ()
 one = link_repo_inself "path/from/home/directory"
 ```
 or:
-```
+```haskell
 another ∷ Script ()
 another = do
   link_repo_file "path/from/repo/root" "path/from/home/directory"
