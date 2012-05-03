@@ -9,6 +9,7 @@ module Biegunka.DB
 
 import Data.Functor ((<$>))
 import Control.Monad (when)
+import Data.List (nub)
 import Data.Map (Map)
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (Monoid, (<>), mconcat)
@@ -35,14 +36,13 @@ load = do
   exists ← doesFileExist db
   if exists
     then (Biegunka . read) <$> readFile db
-    else (return . Biegunka) M.empty
+    else return $ Biegunka M.empty
 
-save (φ → α) = do
-  (φ → !β) ← load
+save (φ → !α) = do
   hd ← getHomeDirectory
-  writeFile (hd </> ".biegunka.db") (show $ α <> β)
+  writeFile (hd </> ".biegunka.db") (show α)
 
-merge (φ → α) (φ → β) = Biegunka $ M.unionWith (<>) α β
+merge (φ → α) (φ → β) = Biegunka $ M.unionWith (\γ δ → nub $ γ <> δ) α β
 
 delete (φ → db) fp = do
   let r = M.lookup fp db
