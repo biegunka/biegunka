@@ -38,4 +38,4 @@ delete db fp = do
   when (isJust r) $ mapM_ removeFile (fromJust r)
   return $ M.delete fp db
 
-wipe = undefined
+wipe db = mapM_ removeFile (M.toList db >>= snd)
