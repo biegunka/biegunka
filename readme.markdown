@@ -9,8 +9,8 @@ All this issues should be addressed by this framework.
 
 ##Details
 
+###Main functionality
 The main idea is to have something like current _state_ of installed stuff:
-
 ```haskell
 install ∷ IO Biegunka
 install = bzdury
@@ -18,25 +18,39 @@ install = bzdury
   , hg "another one" "that clone here" --> another
   ]
 ```
-
-Then you can save this state somewhere and when the time comes
-
+Then you can save this state somewhere
 ```haskell
-removeRepo ∷ Repository α ⇒ Biegunka → α → IO Biegunka
---or even
-wipe ∷ Biegunka → IO Biegunka
+main ∷ IO ()
+main = do
+  α ← install
+  β ← load
+  let γ = merge α β
+  save γ
+```
+and when the time comes you can do this
+```haskell
+remove_one ∷ Biegunka → IO Biegunka
+remove_one α = delete α "one repo"
+```
+or even that
+```haskell
+remove_everything ∷ Biegunka → IO ()
+remove_everything = wipe
 ```
 
-Install scripts themselves become easier
-
+###Scripting
+Installation scripts themselves become easier, for example:
 ```haskell
 one ∷ Script ()
 one = link_repo_inself "path/from/home/directory"
---or
+```
+or:
+```
 another ∷ Script ()
 another = do
   link_repo_file "path/from/repo/root" "path/from/home/directory"
   link_repo_file "path/from/repo/root" "path/from/home/directory"
 ```
 
+###Minor
 There is ability to test your scripts before doing actual work, just import `Biegunka.DryRun` instead of `Biegunka` and you'll get all debug information.
