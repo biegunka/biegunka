@@ -18,7 +18,10 @@ instance Repository Git where
   clone (Git r) = do
     exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
     if exists
-      then putStrLn ("Something does exist at " ++ r) >> return False
-      else putStrLn ("Clone from git to " ++ r) >> return True
-  update (Git r) = putStrLn ("Pull from git (check that repo in " ++ r ++ " has remote origin with master branch!)") >> return True
+      then putStrLn $ concat ["Something does exist at ", r]
+      else putStrLn $ concat ["Clone from git to ",  r]
+    return $ not exists
+  update (Git r) = do
+    putStrLn $ concat ["Pull from git (check that repo in ", r, " has remote origin with master branch!)"]
+    return True
   path (Git r) = r
