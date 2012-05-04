@@ -17,11 +17,21 @@ main = do
 install = bzdury
   [ git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" --> neco_ghc
   , git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" --> neocomplicache
+  , git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" --> completions
   , git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" --> dotfiles [C, E, L]
+  , git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" --> cabal_completion
   , git "git@budueba.com:tools" "/home/maksenov/git/tools" --> utils
   ]
-  where neco_ghc = link_repo_itself ".vim/bundle/neco-ghc"
-        neocomplicache = link_repo_itself ".vim/bundle/neocomplcache"
+  where neco_ghc = do
+          message "Installing neco-ghc"
+          link_repo_itself ".vim/bundle/neco-ghc"
+        neocomplicache = do
+          message "Installing neocomplcache"
+          link_repo_itself ".vim/bundle/neocomplcache"
+        cabal_completion =
+          message "Installing zsh cabal completion"
+        completions =
+          message "Installing zsh completions"
 
 {-
  - .dotfiles
@@ -104,7 +114,10 @@ utils = do
           , ("trayicon/mpd.py", "bin/trayicon-mpd")
           , ("trayicon/icons/mpd-pause.png", ".icons/mpd-pause.png")
           , ("trayicon/icons/mpd-playing.png", ".icons/mpd-playing.png")
+          , ("battery.rb", "bin/vaio-battery")
           ]
         execs =
           [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
+          , ("audio.hs", "bin/vaio-audio")
+          , ("shutdown-gui.hs", "bin/shutdown-gui")
           ]
