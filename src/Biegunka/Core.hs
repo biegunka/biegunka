@@ -29,4 +29,4 @@ newtype Script α =
          } deriving (Monad, MonadIO)
 
 (-->) ∷ Repository ρ ⇒ IO ρ → Script () → IO Biegunka
-mr --> s = mr >>= \r → (create (path r)) <$> runReaderT (execWriterT $ runScript s) (path r)
+mr --> s = mr >>= \r → create (path r) <$> runReaderT (execWriterT $ runScript s) (path r)

@@ -1,12 +1,13 @@
 module Biegunka.DryRun.Script where
 
+import Control.Applicative ((<$>))
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Reader (ask)
 import Control.Monad.Writer (tell)
-import Data.Monoid ((<>))
 import Data.Set (singleton)
 import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
+import Text.Printf (printf)
 
 import Biegunka.Core
 
@@ -17,30 +18,22 @@ instance ScriptI Script where
   copy_repo_file = copy_repo_file_
 
 link_repo_itself_ ∷ FilePath → Script ()
-link_repo_itself_ fp = Script $ do
-  s ← ask
-  hd ← liftIO getHomeDirectory
-  let d = hd </> fp
-  liftIO . putStrLn $ "Link " <> s <> " to " <> d
-  tell (singleton d)
+link_repo_itself_ fp = doWithFiles id (</> fp) "Link %s to %s"
 
 link_repo_file_ ∷ FilePath → FilePath → Script ()
-link_repo_file_ sfp dfp = Script $ do
-  rd ← ask
-  hd ← liftIO getHomeDirectory
-  let s = rd </> sfp
-  let d = hd </> dfp
-  liftIO . putStrLn $ "Link " <> s <> " to " <> d
-  tell (singleton d)
+link_repo_file_ sfp dfp = doWithFiles (</> sfp) (</> dfp) "Link %s to %s"
 
 copy_repo_file_ ∷ FilePath → FilePath → Script ()
-copy_repo_file_ sfp dfp = Script $ do
-  rd ← ask
-  hd ← liftIO getHomeDirectory
-  let s = rd </> sfp
-  let d = hd </> dfp
-  liftIO . putStrLn $ "Copy " <> s <> " to " <> d
+copy_repo_file_ sfp dfp = doWithFiles (</> sfp) (</> dfp) "Copy %s to %s"
+
+doWithFiles ∷ (FilePath → FilePath) → (FilePath → FilePath) → String → Script ()
+doWithFiles sf df p = Script $ do
+  s ← sf <$> ask
+  d ← df <$> getHomeDirectory'
   tell (singleton d)
+  putStrLn' $ printf p s d
+  where getHomeDirectory' = liftIO getHomeDirectory
+        putStrLn' = liftIO . putStrLn
 
 message_ ∷ String → Script ()
 message_ _ = return ()
