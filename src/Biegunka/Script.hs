@@ -3,11 +3,10 @@ module Biegunka.Script where
 
 import Control.Applicative ((<$>))
 import Control.Monad (void, when)
-import Control.Monad.Trans (liftIO)
-import Control.Monad.Reader (ask)
-import Control.Monad.Writer (tell)
-import Data.Monoid ((<>))
-import Data.Set (singleton)
+import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.Reader (ReaderT, ask)
+import Control.Monad.Writer (WriterT, tell)
+import Data.Set (Set, singleton)
 import System.Directory (getHomeDirectory)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
 import System.FilePath ((</>))
@@ -30,13 +29,18 @@ link_repo_file_ sfp dfp = doWithFiles (overWriteWith createSymbolicLink) (</> sf
 copy_repo_file_ ∷ FilePath → FilePath → Script ()
 copy_repo_file_ sfp dfp = doWithFiles (overWriteWith copyFile) (</> sfp) (</> dfp)
 
+overWriteWith ∷ MonadIO m ⇒ (FilePath → FilePath → IO a) → FilePath → FilePath → m a
 overWriteWith f s d = liftIO $ do
   exists ← fileExist d
   when exists $ do
-    putStrLn $ "Warning: file " <> d <> " does exist!"
+    putStrLn $ concat ["Warning: file ", d, " does exist!"]
     removeLink d
   f s d
 
+doWithFiles ∷ (FilePath → FilePath → WriterT (Set FilePath) (ReaderT FilePath IO) a)
+            → (FilePath → FilePath)
+            → (FilePath → FilePath)
+            → Script ()
 doWithFiles f sf df = Script $ do
   s ← sf <$> ask
   d ← df <$> getHomeDirectory'

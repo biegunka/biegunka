@@ -21,4 +21,5 @@ Library
                    Biegunka.DryRun.Repository
                    Biegunka.DryRun.Script
                    Biegunka.Core
+  GHC-Options: -Wall
   Extensions: UnicodeSyntax
