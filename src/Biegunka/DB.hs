@@ -9,18 +9,20 @@ module Biegunka.DB
 
 import Data.Functor ((<$>))
 import Control.Monad (when)
-import Data.List (nub)
+import Data.List (foldl1', nub)
 import Data.Map (Map)
 import Data.Maybe (fromJust, isJust)
-import Data.Monoid (Monoid, (<>), mconcat)
+import Data.Monoid (Monoid, (<>), mconcat, mempty)
+import Data.Set (Set)
 import System.Directory (getHomeDirectory, doesFileExist, removeFile)
 import System.FilePath ((</>))
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 newtype Biegunka =
   Biegunka { φ ∷ Map FilePath
-                       [FilePath]
-           } deriving Monoid
+                       (Set FilePath)
+           } deriving (Monoid, Show)
 
 create ∷ FilePath → [FilePath] → Biegunka
 load ∷ IO Biegunka
@@ -29,27 +31,27 @@ merge ∷ Biegunka → Biegunka → Biegunka
 delete ∷ Biegunka → FilePath → IO Biegunka
 wipe ∷ Biegunka → IO ()
 
-create fp = Biegunka . M.singleton fp
+create fp = Biegunka . M.singleton fp . S.fromList
 
 load = do
   db ← (</> ".biegunka.db") <$> getHomeDirectory
   exists ← doesFileExist db
   if exists
-    then (Biegunka . read) <$> readFile db
-    else return $ Biegunka M.empty
+    then Biegunka . read <$> readFile db
+    else return mempty
 
 save (φ → !α) = do
   hd ← getHomeDirectory
   writeFile (hd </> ".biegunka.db") (show α)
 
-merge (φ → α) (φ → β) = Biegunka $ M.unionWith (\γ δ → nub $ γ <> δ) α β
+merge (φ → α) (φ → β) = Biegunka $ M.unionWith (<>) α β
 
 delete (φ → db) fp = do
-  let r = M.lookup fp db
+  let r = S.toList <$> M.lookup fp db
   when (isJust r) $ mapM_ removeFile (fromJust r)
   return . Biegunka $ M.delete fp db
 
-wipe (φ → db) = mapM_ removeFile (M.toList db >>= snd)
+wipe (φ → db) = mapM_ removeFile . S.toList $ M.foldl (<>) S.empty db
 
 bzdury ∷ [IO Biegunka] → IO Biegunka
 bzdury xs = mconcat <$> sequence xs
