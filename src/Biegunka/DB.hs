@@ -9,7 +9,6 @@ module Biegunka.DB
 
 import Data.Functor ((<$>))
 import Control.Monad (when)
-import Data.List (foldl1', nub)
 import Data.Map (Map)
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (Monoid, (<>), mconcat, mempty)
