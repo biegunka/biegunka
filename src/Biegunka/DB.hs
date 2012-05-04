@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.DB
   ( Biegunka
-  , create, load, save, merge, delete, wipe
+  , create, load, save, merge, delete, purge, wipe
   , bzdury
   ) where
 
@@ -27,7 +27,8 @@ create ∷ FilePath → Set FilePath → Biegunka
 load ∷ IO Biegunka
 save ∷ Biegunka → IO ()
 merge ∷ Biegunka → Biegunka → Biegunka
-delete ∷ Biegunka → FilePath → IO Biegunka
+delete ∷ Biegunka → FilePath → FilePath → IO Biegunka
+purge ∷ Biegunka → FilePath → IO Biegunka
 wipe ∷ Biegunka → IO ()
 
 create fp = Biegunka . M.singleton fp
@@ -45,7 +46,12 @@ save (φ → !α) = do
 
 merge (φ → α) (φ → β) = Biegunka $ M.unionWith (<>) α β
 
-delete (φ → db) fp = do
+delete (φ → o) rp fp = do
+  let n = M.adjust (S.delete fp) rp o
+  when (n /= o) $ removeFile fp
+  return $ Biegunka n
+
+purge (φ → db) fp = do
   let r = S.toList <$> M.lookup fp db
   when (isJust r) $ mapM_ removeFile (fromJust r)
   return . Biegunka $ M.delete fp db
