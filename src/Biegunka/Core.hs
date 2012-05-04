@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Biegunka.Core
   ( (-->)
-  , Biegunka, Script(..), ScriptI(..), Repository(..)
+  , Biegunka, Script(..), Compiler(..), ScriptI(..), Repository(..)
   ) where
 
 import Control.Monad.Trans (MonadIO)
@@ -22,6 +22,9 @@ class ScriptI μ where
   link_repo_itself ∷ FilePath → μ ()
   link_repo_file ∷ FilePath → FilePath → μ ()
   copy_repo_file ∷ FilePath → FilePath → μ ()
+  compile_with ∷ Compiler → FilePath → FilePath → μ ()
+
+data Compiler = GHC
 
 newtype Script α =
   Script { runScript ∷ WriterT (Set FilePath)

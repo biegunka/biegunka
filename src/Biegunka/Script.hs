@@ -8,8 +8,9 @@ import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.Writer (WriterT, tell)
 import Data.Set (Set, singleton)
 import System.Directory (getHomeDirectory)
+import System.FilePath ((</>), splitFileName)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
-import System.FilePath ((</>))
+import System.Process (runProcess, waitForProcess)
 import qualified Data.ByteString as B
 
 import Biegunka.Core
@@ -19,6 +20,11 @@ instance ScriptI Script where
   link_repo_itself = link_repo_itself_
   link_repo_file = link_repo_file_
   copy_repo_file = copy_repo_file_
+  compile_with = compile_with_
+
+message_ ∷ String → Script ()
+message_ = Script . putStrLn'
+  where putStrLn' = liftIO . putStrLn
 
 link_repo_itself_ ∷ FilePath → Script ()
 link_repo_itself_ fp = doWithFiles (overWriteWith createSymbolicLink) id (</> fp)
@@ -46,13 +52,18 @@ doWithFiles f sf df = Script $ do
   d ← df <$> getHomeDirectory'
   void $ f s d
   tell (singleton d)
-  where getHomeDirectory' = liftIO getHomeDirectory
 
 copyFile ∷ FilePath → FilePath → IO ()
 copyFile s d = do
   !contents ← B.readFile s
   B.writeFile d contents
 
-message_ ∷ String → Script ()
-message_ = Script . putStrLn'
-  where putStrLn' = liftIO . putStrLn
+compile_with_ ∷ Compiler → FilePath → FilePath → Script ()
+compile_with_ GHC sf df = Script $ do
+      s ← (</> dir) <$> ask
+      d ← (</> df) <$> getHomeDirectory'
+      void . liftIO $ waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", d] (Just s) Nothing Nothing Nothing Nothing
+  where (dir, file) = splitFileName sf
+
+getHomeDirectory' ∷ WriterT (Set FilePath) (ReaderT FilePath IO) FilePath
+getHomeDirectory' = liftIO getHomeDirectory
