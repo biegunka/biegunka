@@ -4,6 +4,7 @@ import Control.Monad.Trans (liftIO)
 import Control.Monad.Reader (ask)
 import Control.Monad.Writer (tell)
 import Data.Monoid ((<>))
+import Data.Set (singleton)
 import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
 
@@ -21,7 +22,7 @@ link_repo_itself_ fp = Script $ do
   hd ← liftIO getHomeDirectory
   let d = hd </> fp
   liftIO . putStrLn $ "Link " <> s <> " to " <> d
-  tell [d]
+  tell (singleton d)
 
 link_repo_file_ ∷ FilePath → FilePath → Script ()
 link_repo_file_ sfp dfp = Script $ do
@@ -30,7 +31,7 @@ link_repo_file_ sfp dfp = Script $ do
   let s = rd </> sfp
   let d = hd </> dfp
   liftIO . putStrLn $ "Link " <> s <> " to " <> d
-  tell [d]
+  tell (singleton d)
 
 copy_repo_file_ ∷ FilePath → FilePath → Script ()
 copy_repo_file_ sfp dfp = Script $ do
@@ -39,7 +40,7 @@ copy_repo_file_ sfp dfp = Script $ do
   let s = rd </> sfp
   let d = hd </> dfp
   liftIO . putStrLn $ "Copy " <> s <> " to " <> d
-  tell [d]
+  tell (singleton d)
 
 message_ ∷ String → Script ()
 message_ _ = return ()

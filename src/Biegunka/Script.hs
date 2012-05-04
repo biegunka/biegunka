@@ -7,6 +7,7 @@ import Control.Monad.Trans (liftIO)
 import Control.Monad.Reader (ask)
 import Control.Monad.Writer (tell)
 import Data.Monoid ((<>))
+import Data.Set (singleton)
 import System.Directory (getHomeDirectory, removeFile)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
 import System.FilePath ((</>))
@@ -25,21 +26,21 @@ link_repo_itself_ fp = Script $ do
   s ← ask
   d ← (</> fp) <$> getHomeDirectory'
   overWriteWith createSymbolicLink s d
-  tell [d]
+  tell (singleton d)
 
 link_repo_file_ ∷ FilePath → FilePath → Script ()
 link_repo_file_ sfp dfp = Script $ do
   s ← (</> sfp) <$> ask
   d ← (</> dfp) <$> getHomeDirectory'
   overWriteWith createSymbolicLink s d
-  tell [d]
+  tell (singleton d)
 
 copy_repo_file_ ∷ FilePath → FilePath → Script ()
 copy_repo_file_ sfp dfp = Script $ do
   s ← (</> sfp) <$> ask
   d ← (</> dfp) <$> getHomeDirectory'
   overWriteWith copyFile s d
-  tell [d]
+  tell (singleton d)
 
 getHomeDirectory' = liftIO getHomeDirectory
 

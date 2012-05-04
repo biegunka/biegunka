@@ -8,6 +8,7 @@ import Control.Monad.Trans (MonadIO)
 import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Writer (WriterT(..), execWriterT)
 import Data.Functor ((<$>))
+import Data.Set (Set)
 import qualified Data.Map as M
 
 import Biegunka.DB
@@ -24,7 +25,7 @@ class ScriptI μ where
   copy_repo_file ∷ FilePath → FilePath → μ ()
 
 newtype Script α =
-  Script { runScript ∷ WriterT [FilePath]
+  Script { runScript ∷ WriterT (Set FilePath)
                          (ReaderT FilePath IO) α
          } deriving (Monad, MonadIO)
 

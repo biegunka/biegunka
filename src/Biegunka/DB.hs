@@ -23,14 +23,14 @@ newtype Biegunka =
                        (Set FilePath)
            } deriving (Monoid, Show)
 
-create ∷ FilePath → [FilePath] → Biegunka
+create ∷ FilePath → Set FilePath → Biegunka
 load ∷ IO Biegunka
 save ∷ Biegunka → IO ()
 merge ∷ Biegunka → Biegunka → Biegunka
 delete ∷ Biegunka → FilePath → IO Biegunka
 wipe ∷ Biegunka → IO ()
 
-create fp = Biegunka . M.singleton fp . S.fromList
+create fp = Biegunka . M.singleton fp
 
 load = do
   db ← (</> ".biegunka.db") <$> getHomeDirectory
