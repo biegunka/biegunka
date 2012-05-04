@@ -1,5 +1,5 @@
 import Control.Monad (void)
-import Biegunka
+import Biegunka.DryRun
 
 main ∷ IO ()
 main = void $ git "https://github.com/supki/utils" "/home/maksenov/sandbox/utils" --> compile
