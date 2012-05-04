@@ -9,8 +9,7 @@ module Biegunka.DB
 
 import Data.Functor ((<$>))
 import Control.Monad (when)
-import Data.Map (Map)
-import Data.Maybe (fromJust, isJust)
+import Data.Map (Map, (!))
 import Data.Monoid (Monoid, (<>), mconcat, mempty)
 import Data.Set (Set)
 import System.Directory (getHomeDirectory, doesFileExist, removeFile)
@@ -51,10 +50,10 @@ delete (φ → o) rp fp = do
   when (n /= o) $ removeFile fp
   return $ Biegunka n
 
-purge (φ → db) fp = do
-  let r = S.toList <$> M.lookup fp db
-  when (isJust r) $ mapM_ removeFile (fromJust r)
-  return . Biegunka $ M.delete fp db
+purge (φ → o) rp = do
+  let n = M.delete rp o
+  when (n /= o) $ mapM_ removeFile (S.toList $ o ! rp)
+  return $ Biegunka n
 
 wipe (φ → db) = mapM_ removeFile . S.toList $ M.foldl (<>) S.empty db
 
