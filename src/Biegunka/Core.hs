@@ -9,7 +9,6 @@ import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Control.Monad.Writer (WriterT(..), execWriterT)
 import Data.Functor ((<$>))
 import Data.Set (Set)
-import qualified Data.Map as M
 
 import Biegunka.DB
 

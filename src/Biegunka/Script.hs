@@ -1,14 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 module Biegunka.Script where
 
-import Control.Applicative ((<*>), (<$>))
-import Control.Monad (when)
+import Control.Applicative ((<$>))
+import Control.Monad (void, when)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Reader (ask)
 import Control.Monad.Writer (tell)
 import Data.Monoid ((<>))
 import Data.Set (singleton)
-import System.Directory (getHomeDirectory, removeFile)
+import System.Directory (getHomeDirectory)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
 import System.FilePath ((</>))
 import qualified Data.ByteString as B
@@ -22,27 +22,13 @@ instance ScriptI Script where
   copy_repo_file = copy_repo_file_
 
 link_repo_itself_ ∷ FilePath → Script ()
-link_repo_itself_ fp = Script $ do
-  s ← ask
-  d ← (</> fp) <$> getHomeDirectory'
-  overWriteWith createSymbolicLink s d
-  tell (singleton d)
+link_repo_itself_ fp = doWithFiles (overWriteWith createSymbolicLink) id (</> fp)
 
 link_repo_file_ ∷ FilePath → FilePath → Script ()
-link_repo_file_ sfp dfp = Script $ do
-  s ← (</> sfp) <$> ask
-  d ← (</> dfp) <$> getHomeDirectory'
-  overWriteWith createSymbolicLink s d
-  tell (singleton d)
+link_repo_file_ sfp dfp = doWithFiles (overWriteWith createSymbolicLink) (</> sfp) (</> dfp)
 
 copy_repo_file_ ∷ FilePath → FilePath → Script ()
-copy_repo_file_ sfp dfp = Script $ do
-  s ← (</> sfp) <$> ask
-  d ← (</> dfp) <$> getHomeDirectory'
-  overWriteWith copyFile s d
-  tell (singleton d)
-
-getHomeDirectory' = liftIO getHomeDirectory
+copy_repo_file_ sfp dfp = doWithFiles (overWriteWith copyFile) (</> sfp) (</> dfp)
 
 overWriteWith f s d = liftIO $ do
   exists ← fileExist d
@@ -50,6 +36,13 @@ overWriteWith f s d = liftIO $ do
     putStrLn $ "Warning: file " <> d <> " does exist!"
     removeLink d
   f s d
+
+doWithFiles f sf df = Script $ do
+  s ← sf <$> ask
+  d ← df <$> getHomeDirectory'
+  void $ f s d
+  tell (singleton d)
+  where getHomeDirectory' = liftIO getHomeDirectory
 
 copyFile ∷ FilePath → FilePath → IO ()
 copyFile s d = do
