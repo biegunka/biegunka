@@ -32,7 +32,8 @@ and when the time comes you can uninstall stuff:
 main ∷ IO ()
 main = do
   α ← load
-  delete α "one repo" -- just one repo
+  delete α "one repo" "one file" -- just one file from one repo
+  purge α "one repo" -- just one repo
   wipe α -- everything
 ```
 
