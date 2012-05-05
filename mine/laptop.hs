@@ -115,6 +115,9 @@ utils = do
           , ("trayicon/icons/mpd-pause.png", ".icons/mpd-pause.png")
           , ("trayicon/icons/mpd-playing.png", ".icons/mpd-playing.png")
           , ("battery.rb", "bin/vaio-battery")
+          , ("upload/screenshot.sh", "bin/upload-screenshot")
+          , ("upload/budueba.sh", "bin/upload-budueba")
+          , ("upload/pastebin.sh", "bin/upload-pastebin")
           ]
         execs =
           [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
