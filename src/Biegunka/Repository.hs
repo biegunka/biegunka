@@ -5,8 +5,9 @@ module Biegunka.Repository
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
-import System.Cmd (rawSystem)
-import System.Directory (doesDirectoryExist, doesFileExist, setCurrentDirectory)
+import System.IO (IOMode(WriteMode), withFile)
+import System.Process (runProcess, waitForProcess)
+import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(ExitSuccess))
 
 import Biegunka.Core
@@ -21,16 +22,35 @@ data Git = Git FilePath FilePath
 --
 -- 3. Return ADT with specified repository root path.
 git ∷ FilePath → FilePath → IO Git
-git u p = clone r >>= flip unless (update r >>= flip unless (error "Biegunka: Something went wrong! Use Biegunka.DryRun to get more info.")) >> return r
-  where r = Git u p
+git u p = do
+  let r = Git u p
+  cloned ← clone r
+  unless cloned $ update r
+  return r
 
 instance Repository Git where
   clone (Git u r) = do
     exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
     if exists
       then return False
-      else (== ExitSuccess) <$> rawSystem "git" ["clone", u, r]
+      else do
+        putStr $ concat ["Clone git repository from ", u, " to ", r, ".. "]
+        status ← withFile "/dev/null" WriteMode $ \h →
+          waitForProcess =<< runProcess "git" ["clone", u, r] Nothing Nothing Nothing (Just h) (Just h)
+        if status == ExitSuccess
+          then do
+            putStrLn "OK!"
+            return True
+          else do
+            putStrLn "Fail!"
+            error $ concat ["git clone ", u, " ", r, " has failed!"]
   update (Git _ r) = do
-    setCurrentDirectory r
-    (== ExitSuccess) <$> rawSystem "git" ["pull", "origin", "master"]
+    putStr $ concat ["Pulling in ", r, " from origin master.. "]
+    status ← withFile "/dev/null" WriteMode $ \h →
+      waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
+    if status == ExitSuccess
+      then putStrLn "OK!"
+      else do
+        putStrLn "Fail!"
+        error $ concat ["cd ", r, "; git pull origin master has failed!"]
   path (Git _ r) = r

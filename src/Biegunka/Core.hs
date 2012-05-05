@@ -20,7 +20,7 @@ class Repository ρ where
   -- | Clone a repository to the file system
   clone ∷ ρ → IO Bool
   -- | Update an existent repository on the disk
-  update ∷ ρ → IO Bool
+  update ∷ ρ → IO ()
   -- | Get (absolute) path to the repository
   path ∷ ρ → String
 

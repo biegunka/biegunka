@@ -25,5 +25,4 @@ instance Repository Git where
     return $ not exists
   update (Git r) = do
     putStrLn $ concat ["Pull from git (check that repo in ", r, " has remote origin with master branch!)"]
-    return True
   path (Git r) = r

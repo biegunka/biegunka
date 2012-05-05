@@ -38,9 +38,7 @@ copy_repo_file_ sfp dfp = doWithFiles (overWriteWith copyFile) (</> sfp) (</> df
 overWriteWith ∷ MonadIO m ⇒ (FilePath → FilePath → IO a) → FilePath → FilePath → m a
 overWriteWith f s d = liftIO $ do
   exists ← fileExist d
-  when exists $ do
-    putStrLn $ concat ["Warning: file ", d, " does exist!"]
-    removeLink d
+  when exists $ removeLink d
   f s d
 
 doWithFiles ∷ (FilePath → FilePath → WriterT (Set FilePath) (ReaderT FilePath IO) a)
