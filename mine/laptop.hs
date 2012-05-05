@@ -117,7 +117,7 @@ utils = do
           , ("battery.rb", "bin/vaio-battery")
           , ("upload/screenshot.sh", "bin/upload-screenshot")
           , ("upload/budueba.sh", "bin/upload-budueba")
-          , ("upload/pastebin.sh", "bin/upload-pastebin")
+          , ("upload/pastebin.hs", "bin/upload-pastebin")
           ]
         execs =
           [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
