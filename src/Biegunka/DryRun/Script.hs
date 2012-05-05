@@ -1,4 +1,5 @@
-module Biegunka.DryRun.Script where
+-- | Biegunka.DryRun.Script module is debug script engine. It prints what Biegunka.Script will do.
+module Biegunka.DryRun.Script () where
 
 import Control.Applicative ((<$>))
 import Control.Monad.Trans (liftIO)

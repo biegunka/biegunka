@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
-module Biegunka.Script where
+-- | Biegunka.Script module is default script engine. It does actual work.
+module Biegunka.Script () where
 
 import Control.Applicative ((<$>))
 import Control.Monad (void, when)
@@ -23,8 +24,7 @@ instance ScriptI Script where
   compile_with = compile_with_
 
 message_ ∷ String → Script ()
-message_ = Script . putStrLn'
-  where putStrLn' = liftIO . putStrLn
+message_ = Script . liftIO . putStrLn
 
 link_repo_itself_ ∷ FilePath → Script ()
 link_repo_itself_ fp = doWithFiles (overWriteWith createSymbolicLink) id (</> fp)

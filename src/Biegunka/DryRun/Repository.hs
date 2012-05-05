@@ -1,3 +1,4 @@
+-- | Biegunka.Repository module exports a bunch of functions to mimic Biegunka.Repository behaviour and print debug information.
 module Biegunka.DryRun.Repository
   ( git
   ) where
@@ -10,6 +11,7 @@ import Biegunka.Core
 
 data Git = Git FilePath
 
+-- | Mimic 'Biegunka.Repository.git' behaviour
 git ∷ FilePath → FilePath → IO Git
 git _ p = clone r >>= flip unless (void $ update r) >> return r
   where r = Git p

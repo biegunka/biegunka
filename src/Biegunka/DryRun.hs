@@ -1,3 +1,4 @@
+-- | Biegunka.DryRun module exports anything user will need to debug.
 module Biegunka.DryRun
   ( module B
   ) where
@@ -5,4 +6,4 @@ module Biegunka.DryRun
 import Biegunka.Core as B
 import Biegunka.DB as B
 import Biegunka.DryRun.Repository as B
-import Biegunka.DryRun.Script as B
+import Biegunka.DryRun.Script ()
