@@ -5,7 +5,7 @@ module Biegunka.Repository
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
-import System.IO (IOMode(WriteMode), withFile)
+import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(ExitSuccess))
@@ -35,6 +35,7 @@ instance Repository Git where
       then return False
       else do
         putStr $ concat ["Clone git repository from ", u, " to ", r, ".. "]
+        hFlush stdout
         status ← withFile "/dev/null" WriteMode $ \h →
           waitForProcess =<< runProcess "git" ["clone", u, r] Nothing Nothing Nothing (Just h) (Just h)
         if status == ExitSuccess
@@ -46,6 +47,7 @@ instance Repository Git where
             error $ concat ["git clone ", u, " ", r, " has failed!"]
   update (Git _ r) = do
     putStr $ concat ["Pulling in ", r, " from origin master.. "]
+    hFlush stdout
     status ← withFile "/dev/null" WriteMode $ \h →
       waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
     if status == ExitSuccess
