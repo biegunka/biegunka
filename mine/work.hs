@@ -20,7 +20,6 @@ install = bzdury
   , git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" --> completions
   , git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" --> dotfiles
   , git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" --> cabal_completion
-  , git "git@budueba.com:tools" "/home/maksenov/git/tools" --> utils
   ]
   where neco_ghc = do
           message "Installing neco-ghc"
@@ -37,15 +36,15 @@ install = bzdury
  - .dotfiles
  -}
 
-data Set = C | E | L
+data Set = C | E | W
            deriving Show
 
 dir C = "core"
 dir E = "extended"
-dir L = "laptop"
+dir W = "work"
 
 dotfiles ∷ Script ()
-dotfiles = mapM_ installSet [C, E, L]
+dotfiles = mapM_ installSet [C, E, W]
   where installSet s = do
           message $ "Installing " <> show s <> " configs..."
           forM_ (links s) $ uncurry link_repo_file . first (dir s </>)
@@ -84,43 +83,11 @@ dotfiles = mapM_ installSet [C, E, L]
           , ("gtkrc.mine", ".gtkrc.mine")
           , ("xmobar.hs", ".xmobar/xmobar.hs")
           ]
-        links L =
+        links W =
           [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
           , ("mcabberrc", ".mcabberrc")
           , ("ncmpcpp", ".ncmpcpp/config")
           , ("xmobarrc", ".xmobarrc")
           , ("Xdefaults", ".Xdefaults")
           , ("xmodmap", ".xmodmap")
-          ]
-
-{-
- - utils
- -}
-
-utils = do
-  message "Installing tools"
-  forM_ links $ uncurry link_repo_file
-  forM_ execs $ uncurry (compile_with GHC)
-  where links =
-          [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")
-          , ("cue2tracks.sh", "bin/cue2tracks")
-          , ("weather.rb", "bin/ask-weather")
-          , ("mpd/.lastfm.conf", ".lastfm.conf")
-          , ("mpd/lastfm.png", ".icons/lastfm.png")
-          , ("mpd/love.hs", "bin/lastfm-love-current-mpd-track")
-          , ("trayicon/mcabber.py", "bin/trayicon-mcabber")
-          , ("trayicon/icons/mcabber-default.png", ".icons/mcabber-default.png")
-          , ("trayicon/icons/mcabber-unread.png", ".icons/mcabber-unread.png")
-          , ("trayicon/mpd.py", "bin/trayicon-mpd")
-          , ("trayicon/icons/mpd-pause.png", ".icons/mpd-pause.png")
-          , ("trayicon/icons/mpd-playing.png", ".icons/mpd-playing.png")
-          , ("battery.rb", "bin/vaio-battery")
-          , ("upload/screenshot.sh", "bin/upload-screenshot")
-          , ("upload/budueba.sh", "bin/upload-budueba")
-          , ("upload/pastebin.hs", "bin/upload-pastebin")
-          ]
-        execs =
-          [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
-          , ("audio.hs", "bin/vaio-audio")
-          , ("shutdown-gui.hs", "bin/shutdown-gui")
           ]
