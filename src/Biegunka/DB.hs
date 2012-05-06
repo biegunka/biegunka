@@ -5,16 +5,19 @@
 module Biegunka.DB
   ( Biegunka
   , create, load, save, merge, delete, purge, wipe
+  , pretty
   , bzdury
   ) where
 
 import Data.Functor ((<$>))
+import Control.Arrow ((***))
 import Control.Monad (when)
 import Data.Map (Map, (!))
 import Data.Monoid (Monoid, (<>), mconcat, mempty)
 import Data.Set (Set)
 import System.Directory (getHomeDirectory, doesFileExist, removeFile)
 import System.FilePath ((</>))
+import Text.PrettyPrint hiding ((<>))
 import qualified Data.Map as M
 import qualified Data.Set as S
 
@@ -87,3 +90,7 @@ purge (φ → o) rp = do
 -- 2. remove every file in the list
 -- 3. no point to return something: resulting map is merely the Data.Map.empty one
 wipe (φ → db) = mapM_ removeFile . S.toList $ M.foldl (<>) S.empty db
+
+-- | Pretty printer for Biegunka.
+pretty ∷ Biegunka → String
+pretty = render . vcat . map (uncurry ($$) . (text *** vcat . map (nest 2 . text) . S.toList)) . M.toList . φ
