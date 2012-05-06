@@ -8,8 +8,8 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.Writer (WriterT, tell)
 import Data.Set (Set, singleton)
-import System.Directory (getHomeDirectory)
-import System.FilePath ((</>), splitFileName)
+import System.Directory (createDirectoryIfMissing, getHomeDirectory)
+import System.FilePath ((</>), dropFileName, splitFileName)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
 import System.Process (runProcess, waitForProcess)
 import qualified Data.ByteString as B
@@ -48,6 +48,7 @@ doWithFiles ∷ (FilePath → FilePath → WriterT (Set FilePath) (ReaderT FileP
 doWithFiles f sf df = Script $ do
   s ← sf <$> ask
   d ← df <$> getHomeDirectory'
+  liftIO $ createDirectoryIfMissing True (dropFileName d)
   void $ f s d
   tell (singleton d)
 
