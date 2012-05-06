@@ -83,6 +83,7 @@ dotfiles = mapM_ installSet
           , ("vimcolors", ".vim/colors")
           , ("pentadactylrc", ".pentadactylrc")
           , ("gtkrc.mine", ".gtkrc.mine")
+          , ("xmobar.hs", ".xmobar/xmobar.hs")
           ]
         links _ =
           [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
