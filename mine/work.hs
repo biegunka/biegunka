@@ -4,7 +4,7 @@
 import Biegunka
 import Control.Arrow (first)
 import Control.Monad (forM_)
-import Data.Monoid ((<>))
+import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
 
 main ∷ IO ()
@@ -14,13 +14,15 @@ main = do
   let γ = merge α β
   save γ
 
-install = bzdury
-  [ git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" --> neco_ghc
-  , git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" --> neocomplicache
-  , git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" --> completions
-  , git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" --> dotfiles
-  , git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" --> cabal_completion
-  ]
+install = do
+  hd ← getHomeDirectory
+  bzdury
+    [ git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") --> neco_ghc
+    , git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") --> neocomplicache
+    , git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") --> completions
+    , git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") --> dotfiles
+    , git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") --> cabal_completion
+    ]
   where neco_ghc = do
           message "Installing neco-ghc"
           link_repo_itself ".vim/bundle/neco-ghc"
@@ -46,7 +48,7 @@ dir W = "work"
 dotfiles ∷ Script ()
 dotfiles = mapM_ installSet [C, E, W]
   where installSet s = do
-          message $ "Installing " <> show s <> " configs..."
+          message $ "Installing " ++ show s ++ " configs..."
           forM_ (links s) $ uncurry link_repo_file . first (dir s </>)
         links C =
           [ ("xsession", ".xsession")
