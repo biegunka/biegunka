@@ -15,7 +15,7 @@ import Control.Monad (when)
 import Data.Map (Map, (!))
 import Data.Monoid (Monoid, (<>), mconcat, mempty)
 import Data.Set (Set)
-import System.Directory (getHomeDirectory, doesFileExist, removeFile)
+import System.Directory (getHomeDirectory, doesFileExist, removeDirectoryRecursive, removeFile)
 import System.FilePath ((</>))
 import Text.PrettyPrint hiding ((<>))
 import qualified Data.Map as M
@@ -82,14 +82,21 @@ delete (φ → o) rp fp = do
 -- 3. return new map (either it's old one or really adjusted)
 purge (φ → o) rp = do
   let n = M.delete rp o
-  when (n /= o) $ mapM_ removeFile (S.toList $ o ! rp)
+      xs = S.toList $ o ! rp
+  when (n /= o) $
+    do mapM_ removeFile xs
+       removeDirectoryRecursive rp
   return $ Biegunka n
 
 -- Algorithm is as follows:
 -- 1. fold current map to list of files
 -- 2. remove every file in the list
 -- 3. no point to return something: resulting map is merely the Data.Map.empty one
-wipe (φ → db) = mapM_ removeFile . S.toList $ M.foldl (<>) S.empty db
+wipe (φ → db) =
+  do let xs = S.toList $ M.foldl (<>) S.empty db
+         ys = M.keys db
+     mapM_ removeFile xs
+     mapM_ removeDirectoryRecursive ys
 
 -- | Pretty printer for Biegunka.
 pretty ∷ Biegunka → String
