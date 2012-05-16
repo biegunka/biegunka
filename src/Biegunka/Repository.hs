@@ -36,7 +36,7 @@ instance Repository Git where
       else do
         putStr $ concat ["Clone git repository from ", u, " to ", r, ".. "]
         hFlush stdout
-        status ← withFile "/dev/null" WriteMode $ \h →
+        status ← withFile "/tmp/biegunka.errors" WriteMode $ \h →
           waitForProcess =<< runProcess "git" ["clone", u, r] Nothing Nothing Nothing (Just h) (Just h)
         if status == ExitSuccess
           then do
@@ -44,15 +44,17 @@ instance Repository Git where
             return True
           else do
             putStrLn "Fail!"
-            error $ concat ["git clone ", u, " ", r, " has failed!"]
+            errors ← readFile "/tmp/biegunka.errors"
+            error errors
   update (Git _ r) = do
     putStr $ concat ["Pulling in ", r, " from origin master.. "]
     hFlush stdout
-    status ← withFile "/dev/null" WriteMode $ \h →
+    status ← withFile "/tmp/biegunka.errors" WriteMode $ \h →
       waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
     if status == ExitSuccess
       then putStrLn "OK!"
       else do
         putStrLn "Fail!"
-        error $ concat ["cd ", r, "; git pull origin master has failed!"]
+        errors ← redFile "/tmp/biegunka.errors"
+        error errors
   path (Git _ r) = r
