@@ -5,10 +5,10 @@ module Biegunka.Repository
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
-import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
+import System.IO (Handle, IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.Exit (ExitCode(ExitSuccess))
+import System.Exit (ExitCode(..))
 
 import Biegunka.Core
 
@@ -24,37 +24,32 @@ data Git = Git FilePath FilePath
 git ∷ FilePath → FilePath → IO Git
 git u p = do
   let r = Git u p
-  cloned ← clone r
-  unless cloned $ update r
+  update r
   return r
 
 instance Repository Git where
-  clone (Git u r) = do
+  update (Git u r) = do
     exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
-    if exists
-      then return False
-      else do
-        putStr $ concat ["Clone git repository from ", u, " to ", r, ".. "]
-        hFlush stdout
-        status ← withFile "/tmp/biegunka.errors" WriteMode $ \h →
+    unless exists $
+      withProgressString ("Clone git repository from " ++ u ++ " to " ++ r ++ "… ") $
+        withTempFile $ \h →
           waitForProcess =<< runProcess "git" ["clone", u, r] Nothing Nothing Nothing (Just h) (Just h)
-        if status == ExitSuccess
-          then do
-            putStrLn "OK!"
-            return True
-          else do
-            putStrLn "Fail!"
-            errors ← readFile "/tmp/biegunka.errors"
-            error errors
-  update (Git _ r) = do
-    putStr $ concat ["Pulling in ", r, " from origin master.. "]
-    hFlush stdout
-    status ← withFile "/tmp/biegunka.errors" WriteMode $ \h →
-      waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
-    if status == ExitSuccess
-      then putStrLn "OK!"
-      else do
-        putStrLn "Fail!"
-        errors ← redFile "/tmp/biegunka.errors"
-        error errors
+    withProgressString ("Pulling in " ++ r ++ " from origin master… ") $
+      withTempFile $ \h →
+        waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
   path (Git _ r) = r
+
+withProgressString ∷ String → IO ExitCode → IO ()
+withProgressString hello μ = do
+  putStr hello >> hFlush stdout
+  result ← μ
+  printResult result
+  where printResult ∷ ExitCode → IO ()
+        printResult ExitSuccess = putStrLn "OK!"
+        printResult (ExitFailure _) = do
+          putStrLn "Fail!"
+          errors ← readFile "/tmp/biegunka.errors"
+          error errors
+
+withTempFile ∷ (Handle → IO α) → IO α
+withTempFile = withFile "/tmp/biegunka.errors" WriteMode
