@@ -17,8 +17,6 @@ import Biegunka.DB
 -- | Repository interface.
 -- It should support these operations:
 class Repository ρ where
-  -- | Update or clone repository
-  update ∷ ρ → IO ()
   -- | Get (absolute) path to the repository
   path ∷ ρ → String
 

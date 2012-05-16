@@ -12,32 +12,34 @@ import System.Exit (ExitCode(..))
 
 import Biegunka.Core
 
-data Git = Git FilePath FilePath
+newtype Git = Git { ρ ∷ FilePath }
+type UrlPath = String
+
+instance Repository Git where
+  path = ρ
 
 -- | Setup git instance as follows:
 --
 -- 1. If specified directory doesn't exist then clone repository from specified URL to it.
 --
--- 2. If specified directory does exist then pull from origin master.
+-- 2. Pull from origin master.
 --
 -- 3. Return ADT with specified repository root path.
-git ∷ FilePath → FilePath → IO Git
+git ∷ UrlPath → FilePath → IO Git
 git u p = do
-  let r = Git u p
-  update r
-  return r
+  update u p
+  return (Git p)
 
-instance Repository Git where
-  update (Git u r) = do
-    exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
-    unless exists $
-      withProgressString ("Clone git repository from " ++ u ++ " to " ++ r ++ "… ") $
-        withTempFile $ \h →
-          waitForProcess =<< runProcess "git" ["clone", u, r] Nothing Nothing Nothing (Just h) (Just h)
-    withProgressString ("Pulling in " ++ r ++ " from origin master… ") $
+update ∷ UrlPath → FilePath → IO ()
+update u p = do
+  exists ← (||) <$> doesDirectoryExist p <*> doesFileExist p
+  unless exists $
+    withProgressString ("Clone git repository from " ++ u ++ " to " ++ p ++ "… ") $
       withTempFile $ \h →
-        waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just r) Nothing Nothing (Just h) (Just h)
-  path (Git _ r) = r
+        waitForProcess =<< runProcess "git" ["clone", u, p] Nothing Nothing Nothing (Just h) (Just h)
+  withProgressString ("Pulling in " ++ p ++ " from origin master… ") $
+    withTempFile $ \h →
+      waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just p) Nothing Nothing (Just h) (Just h)
 
 withProgressString ∷ String → IO ExitCode → IO ()
 withProgressString hello μ = do

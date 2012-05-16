@@ -9,17 +9,19 @@ import System.Directory (doesDirectoryExist, doesFileExist)
 
 import Biegunka.Core
 
-data Git = Git FilePath
+newtype Git = Git { ρ ∷ FilePath }
+type UrlPath = String
 
 -- | Mimic 'Biegunka.Repository.git' behaviour
-git ∷ FilePath → FilePath → IO Git
-git _ p = update r >> return r
-  where r = Git p
+git ∷ UrlPath → FilePath → IO Git
+git u p = update u p >> return (Git p)
+
+update ∷ UrlPath → FilePath → IO ()
+update u p = do
+  exists ← (||) <$> doesDirectoryExist p <*> doesFileExist p
+  unless exists $
+    putStrLn ("Clone from git to " ++ p)
+  putStrLn ("Pull from " ++ u ++ " (check that repo in " ++ p ++ " has remote origin with master branch!)")
 
 instance Repository Git where
-  update (Git r) = do
-    exists ← (||) <$> doesDirectoryExist r <*> doesFileExist r
-    unless exists $
-      putStrLn ("Clone from git to " ++  r)
-    putStrLn ("Pull from git (check that repo in " ++ r ++ " has remote origin with master branch!)")
-  path (Git r) = r
+  path = ρ
