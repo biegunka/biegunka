@@ -18,6 +18,7 @@ install = bzdury
   [ git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" --> neco_ghc
   , git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" --> neocomplicache
   , git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" --> completions
+  , git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" --> tabbedex
   , git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" --> dotfiles
   , git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" --> cabal_completion
   , git "git@budueba.com:tools" "/home/maksenov/git/tools" --> utils
@@ -32,6 +33,8 @@ install = bzdury
           message "Installing zsh cabal completion"
         completions =
           message "Installing zsh completions"
+        tabbedex =
+          message "Installing urxvt-tabbedex"
 
 {-
  - .dotfiles
