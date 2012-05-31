@@ -3,7 +3,7 @@
 module Biegunka.Script () where
 
 import Control.Applicative ((<$>))
-import Control.Monad (void, when)
+import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.Writer (WriterT, tell)
@@ -49,7 +49,7 @@ doWithFiles f sf df = Script $ do
   s ← sf <$> ask
   d ← df <$> getHomeDirectory'
   liftIO $ createDirectoryIfMissing True (dropFileName d)
-  void $ f s d
+  _ ← f s d
   tell (singleton d)
 
 copyFile ∷ FilePath → FilePath → IO ()
@@ -61,7 +61,8 @@ compile_with_ ∷ Compiler → FilePath → FilePath → Script ()
 compile_with_ GHC sf df = Script $ do
       s ← (</> dir) <$> ask
       d ← (</> df) <$> getHomeDirectory'
-      void . liftIO $ waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", d] (Just s) Nothing Nothing Nothing Nothing
+      _ ← liftIO $ waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", d] (Just s) Nothing Nothing Nothing Nothing
+      return ()
   where (dir, file) = splitFileName sf
 
 getHomeDirectory' ∷ WriterT (Set FilePath) (ReaderT FilePath IO) FilePath

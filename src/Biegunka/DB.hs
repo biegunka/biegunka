@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Biegunka.DB is module defining operations on the result of installation scripts, Biegunkas.
@@ -13,11 +12,11 @@ import Data.Functor ((<$>))
 import Control.Arrow ((***))
 import Control.Monad (when)
 import Data.Map (Map, (!))
-import Data.Monoid (Monoid, (<>), mconcat, mempty)
+import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import System.Directory (getHomeDirectory, doesFileExist, removeDirectoryRecursive, removeFile)
 import System.FilePath ((</>))
-import Text.PrettyPrint hiding ((<>))
+import Text.PrettyPrint
 import qualified Data.Map as M
 import qualified Data.Set as S
 
@@ -57,11 +56,11 @@ load = do
     then Biegunka . read <$> readFile db
     else return mempty
 
-save (φ → !α) = do
+save (φ → α) = do
   hd ← getHomeDirectory
-  writeFile (hd </> ".biegunka.db") (show α)
+  α `seq` writeFile (hd </> ".biegunka.db") (show α)
 
-merge (φ → α) (φ → β) = Biegunka $ M.unionWith (<>) α β
+merge (φ → α) (φ → β) = Biegunka $ M.unionWith mappend α β
 
 -- Algorithm is as follows:
 -- 1. adjust current map by key `rp' with set with deleted element `fp'
@@ -93,7 +92,7 @@ purge (φ → o) rp = do
 -- 2. remove every file in the list
 -- 3. no point to return something: resulting map is merely the Data.Map.empty one
 wipe (φ → db) =
-  do let xs = S.toList $ M.foldl (<>) S.empty db
+  do let xs = S.toList $ M.foldlWithKey (\a _ b → a `mappend` b) S.empty db
          ys = M.keys db
      mapM_ removeFile xs
      mapM_ removeDirectoryRecursive ys
