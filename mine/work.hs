@@ -20,6 +20,7 @@ install = do
     [ git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") --> neco_ghc
     , git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") --> neocomplicache
     , git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") --> completions
+    , git "https://github.com/stepb/urxvt-tabbedex" (hd </> "git/urxvt-tabbedex") --> tabbedex
     , git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") --> dotfiles
     , git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") --> cabal_completion
     ]
@@ -33,6 +34,8 @@ install = do
           message "Installing zsh cabal completion"
         completions =
           message "Installing zsh completions"
+        tabbedex =
+          message "Installing urxvt-tabbedex"
 
 {-
  - .dotfiles
