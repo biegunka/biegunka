@@ -65,7 +65,7 @@ merge (φ → α) (φ → β) = Biegunka $ M.unionWith mappend α β
 -- Algorithm is as follows:
 -- 1. adjust current map by key `rp' with set with deleted element `fp'
 --    note: both Data.Map.adjust and Data.Set.delete return the same data struct on fail
--- 2. if adjusted map is not the same with initial (which means Data.Map.adjust and 
+-- 2. if adjusted map is not the same with initial (which means Data.Map.adjust and
 --    Data.Set.delete both have succeed) remove file `fp`
 -- 3. return new map (either it's old one or really adjusted)
 delete (φ → o) rp fp = do
@@ -76,7 +76,7 @@ delete (φ → o) rp fp = do
 -- Algorithm is as follows:
 -- 1. delete from current map by key `rp'
 --    note: Data.Map.delete returns the same data struct on fail
--- 2. if adjusted map is not the same with initial (which means Data.Map.delete 
+-- 2. if adjusted map is not the same with initial (which means Data.Map.delete
 --    has succeed) remove all files by key `rp` in the initial map
 -- 3. return new map (either it's old one or really adjusted)
 purge (φ → o) rp = do
@@ -92,7 +92,7 @@ purge (φ → o) rp = do
 -- 2. remove every file in the list
 -- 3. no point to return something: resulting map is merely the Data.Map.empty one
 wipe (φ → db) =
-  do let xs = S.toList $ M.foldlWithKey (\a _ b → a `mappend` b) S.empty db
+  do let xs = S.toList $ M.fold mappend S.empty db
          ys = M.keys db
      mapM_ removeFile xs
      mapM_ removeDirectoryRecursive ys
