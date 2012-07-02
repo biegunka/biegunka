@@ -70,6 +70,7 @@ dotfiles = mapM_ installSet [C, E, L]
           , ("vim/haskellmode.vim", ".vim/autoload/haskellmode.vim")
           , ("vim/cscope_maps.vim", ".vim/bundle/cscope_maps.vim")
           , ("vim/scratch", ".vim/bundle/scratch")
+          , ("vim/indent/haskell.vim", ".vim/indent/haskell.vim")
           , ("conceal/haskell.vim", ".vim/after/syntax/haskell.vim")
           , ("XCompose", ".XCompose")
           ]
