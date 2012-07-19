@@ -73,7 +73,6 @@ dotfiles = mapM_ installSet [C, E, L]
           , ("gitignore", ".gitignore")
           , ("ackrc", ".ackrc")
           , ("vim/pathogen.vim", ".vim/autoload/pathogen.vim")
-          , ("vim/haskellmode.vim", ".vim/autoload/haskellmode.vim")
           , ("vim/cscope_maps.vim", ".vim/bundle/cscope_maps.vim")
           , ("vim/scratch", ".vim/bundle/scratch")
           , ("vim/indent/haskell.vim", ".vim/indent/haskell.vim")
