@@ -85,8 +85,8 @@ merge (φ → α) (φ → β) = Biegunka $ M.unionWith mappend α β
 -- 2. if adjusted map is not the same with initial (which means Data.Map.adjust and
 --    Data.Set.delete both have succeed) remove file `fp`
 -- 3. return new map (either it's old one or really adjusted)
-delete ∷ Biegunka → FilePath → FilePath → IO Biegunka
-delete (φ → o) rp fp =
+delete ∷ FilePath → FilePath → Biegunka → IO Biegunka
+delete rp fp (φ → o) =
   do let n = M.adjust (S.delete fp) rp o
      when (n /= o) $ removeFile fp
      return $ Biegunka n
@@ -100,8 +100,8 @@ delete (φ → o) rp fp =
 -- 2. if adjusted map is not the same with initial (which means Data.Map.delete
 --    has succeed) remove all files by key `rp` in the initial map
 -- 3. return new map (either it's old one or really adjusted)
-purge ∷ Biegunka → FilePath → IO Biegunka
-purge (φ → o) rp =
+purge ∷ FilePath → Biegunka → IO Biegunka
+purge rp (φ → o) =
   do let n = M.delete rp o
          xs = S.toList $ o ! rp
      when (n /= o) $
@@ -116,12 +116,13 @@ purge (φ → o) rp =
 -- 1. fold current map to list of files
 -- 2. remove every file in the list
 -- 3. no point to return something: resulting map is merely the Data.Map.empty one
-wipe ∷ Biegunka → IO ()
+wipe ∷ Biegunka → IO Biegunka
 wipe (φ → db) =
   do let xs = S.toList $ M.fold mappend S.empty db
          ys = M.keys db
      mapM_ removeFile xs
      mapM_ removeDirectoryRecursive ys
+     return $ Biegunka mempty
 
 -- | Pretty printer for Biegunka.
 pretty ∷ Biegunka → String
