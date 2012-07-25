@@ -90,6 +90,7 @@ dotfiles = mapM_ installSet [C, E, L]
           , ("gvimrc", ".gvimrc")
           , ("vimcolors", ".vim/colors")
           , ("pentadactylrc", ".pentadactylrc")
+          , ("pentadactyl/wanker.penta", ".pentadactyl/plugins/wanker.penta")
           , ("gtkrc.mine", ".gtkrc.mine")
           , ("xmobar.hs", ".xmobar/xmobar.hs")
           ]
