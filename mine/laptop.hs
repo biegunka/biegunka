@@ -10,9 +10,7 @@ import System.FilePath ((</>))
 main ∷ IO ()
 main = do
   α ← install
-  β ← load
-  let γ = merge α β
-  save γ
+  withBiegunka (return . merge α)
 
 install = bzdury
   [ git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" --> vimproc

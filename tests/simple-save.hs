@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>))
 import Biegunka.DryRun
 import System.FilePath ((<.>))
 import System.Directory (renameFile)
@@ -18,7 +18,9 @@ hidden ∷ FilePath → IO a → IO ()
 hidden fp x = renameFile fp (fp <.> "old") >> x >> renameFile (fp <.> "old") fp
 
 step ∷ IO Biegunka → IO ()
-step link = merge <$> load <*> link >>= save >> readFile "/home/maksenov/.biegunka.db" >>= print
+step link =
+  do withBiegunka (\b → merge b <$> link)
+     readFile "/home/maksenov/.biegunka.db" >>= print
 
 main ∷ IO ()
 main = hidden "/home/maksenov/.biegunka.db" $ step link_one >> step link_two

@@ -29,7 +29,7 @@ parser = Options
 
 
 doBiegunka ∷ Options → IO ()
-doBiegunka Options { wipe = True } = B.load >>= B.wipe >>= B.save
-doBiegunka Options { remove = r@(_:_), file = [] } = B.load >>= B.purge r >>= B.save
-doBiegunka Options { remove = r@(_:_), file = f } = B.load >>= B.delete r f >>= B.save
+doBiegunka Options { wipe = True } = B.withBiegunka B.wipe
+doBiegunka Options { remove = r@(_:_), file = [] } = B.withBiegunka (B.purge r)
+doBiegunka Options { remove = r@(_:_), file = f } = B.withBiegunka (B.delete r f)
 doBiegunka _ = putStrLn "You should specify either a REPO or REPO+FILE or --wipe alltogether."

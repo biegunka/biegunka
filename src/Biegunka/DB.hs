@@ -5,7 +5,8 @@
 -- | Biegunka.DB is module defining operations on the result of installation scripts, Biegunkas.
 module Biegunka.DB
   ( Biegunka
-  , create, load, save, merge, delete, purge, wipe
+  , withBiegunka
+  , create, merge, delete, purge, wipe
   , pretty
   , bzdury
   ) where
@@ -52,24 +53,20 @@ create ∷ FilePath → Set FilePath → Biegunka
 create fp = Biegunka . M.singleton fp
 
 
--- | Load a Biegunka from ~/.biegunka.db.
--- If ~/.biegunka.db doesn't exist return an empty map
-load ∷ IO Biegunka
-load =
-  do db ← (</> ".biegunka.db") <$> getHomeDirectory
-     exists ← doesFileExist db
-     if exists
-       then withFile db ReadMode $ \h →
-              do !j ← B.hGetContents h
-                 return $ fromMaybe mempty (decode j ∷  Maybe Biegunka)
-       else return mempty
+-- | Load a Biegunka from ~/.biegunka.db, do any actions with it, save it back.
+withBiegunka ∷ (Biegunka → IO Biegunka) → IO ()
+withBiegunka action = load >>= action >>= save
+ where
+  load =
+    do db ← (</> ".biegunka.db") <$> getHomeDirectory
+       exists ← doesFileExist db
+       if exists
+         then withFile db ReadMode $ \h → do
+                !j ← B.hGetContents h
+                return $ fromMaybe mempty (decode j ∷ Maybe Biegunka)
+         else return mempty
 
-
--- | Save a Biegunka to ~/.biegunka.db (warning: overwrite the old one).
-save ∷ Biegunka → IO ()
-save α =
-  do hd ← getHomeDirectory
-     B.writeFile (hd </> ".biegunka.db") (encode α)
+  save α = getHomeDirectory >>= \hd → B.writeFile (hd </> ".biegunka.db") (encode α)
 
 
 -- | Merge (sum) two Biegunkas.
@@ -123,6 +120,7 @@ wipe (φ → db) =
      mapM_ removeFile xs
      mapM_ removeDirectoryRecursive ys
      return $ Biegunka mempty
+
 
 -- | Pretty printer for Biegunka.
 pretty ∷ Biegunka → String
