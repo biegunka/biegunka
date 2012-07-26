@@ -6,4 +6,3 @@ module Biegunka.DryRun
 import Biegunka.Core as B
 import Biegunka.DB as B
 import Biegunka.DryRun.Repository as B
-import Biegunka.DryRun.Script ()

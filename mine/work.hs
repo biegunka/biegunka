@@ -1,16 +1,19 @@
-#!/usr/bin/env runhaskell
 {-# LANGUAGE UnicodeSyntax #-}
 
-import Biegunka
 import Control.Arrow (first)
 import Control.Monad (forM_)
+
 import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
+
+import Biegunka
+
 
 main ∷ IO ()
 main = do
   α ← install
   withBiegunka (return . merge α)
+
 
 install = do
   hd ← getHomeDirectory
@@ -22,35 +25,33 @@ install = do
     , git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") --> dotfiles
     , git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") --> cabal_completion
     ]
-  where neco_ghc = do
-          message "Installing neco-ghc"
-          link_repo_itself ".vim/bundle/neco-ghc"
-        neocomplicache = do
-          message "Installing neocomplcache"
-          link_repo_itself ".vim/bundle/neocomplcache"
-        cabal_completion =
-          message "Installing zsh cabal completion"
-        completions =
-          message "Installing zsh completions"
-        tabbedex =
-          message "Installing urxvt-tabbedex"
+ where
+  neco_ghc =
+    do message "Installing neco-ghc"
+       linkRepo ".vim/bundle/neco-ghc"
+  neocomplicache =
+    do message "Installing neocomplcache"
+       linkRepo ".vim/bundle/neocomplcache"
+  cabal_completion = message "Installing zsh cabal completion"
+  completions = message "Installing zsh completions"
+  tabbedex = message "Installing urxvt-tabbedex"
 
-{-
- - .dotfiles
- -}
 
 data Set = C | E | W
            deriving Show
 
+
+dir ∷ Set → String
 dir C = "core"
 dir E = "extended"
 dir W = "work"
 
-dotfiles ∷ Script ()
+
+dotfiles ∷ Free Script ()
 dotfiles = mapM_ installSet [C, E, W]
   where installSet s = do
           message $ "Installing " ++ show s ++ " configs..."
-          forM_ (links s) $ uncurry link_repo_file . first (dir s </>)
+          forM_ (links s) $ uncurry linkRepoFile . first (dir s </>)
         links C =
           [ ("xsession", ".xsession")
           , ("mpdconf", ".mpdconf")

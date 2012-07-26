@@ -1,17 +1,21 @@
-#!/usr/bin/env runhaskell
 {-# LANGUAGE UnicodeSyntax #-}
 
-import Biegunka
 import Control.Arrow (first)
 import Control.Monad (forM_)
 import Data.Monoid ((<>))
+
 import System.FilePath ((</>))
+
+import Biegunka
+
 
 main ∷ IO ()
 main = do
   α ← install
   withBiegunka (return . merge α)
 
+
+install ∷ IO Biegunka
 install = bzdury
   [ git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" --> vimproc
   , git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" --> ghcmod_vim
@@ -26,36 +30,36 @@ install = bzdury
  where
   vimproc =
     do message "Installing vimproc"
-       link_repo_itself ".vim/bundle/vimproc"
+       linkRepo ".vim/bundle/vimproc"
   ghcmod_vim =
     do message "Installing ghcmod-vim"
-       link_repo_itself ".vim/bundle/ghcmod-vim"
+       linkRepo ".vim/bundle/ghcmod-vim"
   neco_ghc =
     do message "Installing neco-ghc"
-       link_repo_itself ".vim/bundle/neco-ghc"
+       linkRepo ".vim/bundle/neco-ghc"
   neocomplicache =
     do message "Installing neocomplcache"
-       link_repo_itself ".vim/bundle/neocomplcache"
+       linkRepo ".vim/bundle/neocomplcache"
   cabal_completion = message "Installing zsh cabal completion"
   completions = message "Installing zsh completions"
   tabbedex = message "Installing urxvt-tabbedex"
 
-{-
- - .dotfiles
- -}
 
 data Set = C | E | L
            deriving Show
 
+
+dir ∷ Set → String
 dir C = "core"
 dir E = "extended"
 dir L = "laptop"
 
-dotfiles ∷ Script ()
+
+dotfiles ∷ Free Script ()
 dotfiles = mapM_ installSet [C, E, L]
   where installSet s = do
           message $ "Installing " <> show s <> " configs..."
-          forM_ (links s) $ uncurry link_repo_file . first (dir s </>)
+          forM_ (links s) $ uncurry linkRepoFile . first (dir s </>)
         links C =
           [ ("xsession", ".xsession")
           , ("mpdconf", ".mpdconf")
@@ -101,14 +105,12 @@ dotfiles = mapM_ installSet [C, E, L]
           , ("xmodmap", ".xmodmap")
           ]
 
-{-
- - utils
- -}
 
+utils ∷ Free Script ()
 utils = do
   message "Installing tools"
-  forM_ links $ uncurry link_repo_file
-  forM_ execs $ uncurry (compile_with GHC)
+  forM_ links $ uncurry linkRepoFile
+  forM_ execs $ uncurry (compile GHC)
   where links =
           [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")
           , ("cue2tracks.sh", "bin/cue2tracks")

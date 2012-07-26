@@ -19,8 +19,8 @@ Library
                    Biegunka.Script
                    Biegunka.DryRun
                    Biegunka.DryRun.Repository
-                   Biegunka.DryRun.Script
                    Biegunka.Core
+  Other-Modules: Biegunka.Interpreter
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax
