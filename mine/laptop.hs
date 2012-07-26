@@ -2,6 +2,7 @@
 
 import Control.Arrow (first)
 import Control.Monad (forM_)
+import Control.Monad.Free (Free)
 import Data.Monoid ((<>))
 
 import System.FilePath ((</>))
