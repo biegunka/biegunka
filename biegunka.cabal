@@ -11,7 +11,7 @@ Cabal-Version: >= 1.8
 Build-Type: Simple
 
 Library
-  Build-Depends: base >= 3 && < 5, aeson, containers, mtl, directory, process, filepath, unix, bytestring, pretty
+  Build-Depends: base >= 3 && < 5, aeson, containers, mtl, directory, process, filepath, unix, bytestring, pretty, free
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.DB

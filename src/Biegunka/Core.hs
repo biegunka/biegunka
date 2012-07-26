@@ -5,11 +5,12 @@ module Biegunka.Core
   , Biegunka, Repository(..)
   ) where
 
+import Control.Monad.Free (Free)
 import Data.Set (empty)
 
 import Biegunka.DB (Biegunka, create)
 import Biegunka.Interpreter (dryRun, execute)
-import Biegunka.Script (Free, Script)
+import Biegunka.Script (Script)
 
 
 -- | Repository interface.

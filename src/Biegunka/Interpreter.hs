@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter
   ( dryRun, execute
   ) where
@@ -9,6 +10,7 @@ import Data.Monoid ((<>))
 import Data.Set (Set, singleton)
 
 import qualified Data.ByteString as B
+import Control.Monad.Free (Free(..))
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
@@ -18,7 +20,7 @@ import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.DB (Biegunka, create)
-import Biegunka.Script
+import Biegunka.Script (Script(..), Compiler(..))
 
 
 dryRun ∷ Free Script a → FilePath → String

@@ -1,18 +1,11 @@
 -- | Biegunka.Script module provides script engine as free monad.
 module Biegunka.Script
-  ( Free(..), Script(..), Compiler(..)
+  ( Script(..), Compiler(..)
   , message, linkRepo, linkRepoFile
   , copyRepoFile, compile
   ) where
 
-
-data Free f r = Free (f (Free f r)) | Pure r
-
-
-instance (Functor f) ⇒ Monad (Free f) where
-  return = Pure
-  (Free x) >>= f = Free (fmap (>>= f) x)
-  (Pure r) >>= f = f r
+import Control.Monad.Free (Free(..), liftF)
 
 
 -- | Compilers enumeration
@@ -20,13 +13,13 @@ data Compiler = GHC -- ^ The Glorious Glasgow Haskell Compilation System
   deriving Show
 
 
--- | Script engine.
+-- | Script engine
 data Script next =
-    Message String next -- ^ Send a message to stdout
-  | LinkRepo FilePath next -- ^ Link a repository somewhere
-  | LinkRepoFile FilePath FilePath next -- ^ Link a file somewhere
-  | CopyRepoFile FilePath FilePath next -- ^ Copy a file somewhere
-  | Compile Compiler FilePath FilePath next -- ^ Compile a file somewhere
+    Message String next
+  | LinkRepo FilePath next
+  | LinkRepoFile FilePath FilePath next
+  | CopyRepoFile FilePath FilePath next
+  | Compile Compiler FilePath FilePath next
 
 
 instance Functor Script where
@@ -37,25 +30,26 @@ instance Functor Script where
   fmap f (Compile cmp src dst next)  = Compile cmp src dst (f next)
 
 
-liftF ∷ Functor f ⇒ f r → Free f r
-liftF command = Free (fmap Pure command)
-
-
+-- | Send a message to stdout
 message ∷ String → Free Script ()
 message m = liftF (Message m ())
 
 
+-- | Link a repository somewhere
 linkRepo ∷ FilePath → Free Script ()
 linkRepo dst = liftF (LinkRepo dst ())
 
 
+-- | Link a file somewhere
 linkRepoFile ∷ FilePath → FilePath → Free Script ()
 linkRepoFile src dst = liftF (LinkRepoFile src dst ())
 
 
+-- | Copy a file somewhere
 copyRepoFile ∷ FilePath → FilePath → Free Script ()
 copyRepoFile src dst = liftF (CopyRepoFile src dst ())
 
 
+-- | Compile a file somewhere
 compile ∷ Compiler → FilePath → FilePath → Free Script ()
 compile cmp src dst = liftF (Compile cmp src dst ())
