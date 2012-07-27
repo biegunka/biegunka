@@ -1,5 +1,6 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
+import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad (forM_)
 import Control.Monad.Free (Free)
@@ -11,39 +12,31 @@ import Biegunka
 
 
 main ∷ IO ()
-main = do
-  α ← install
-  withBiegunka (return . merge α)
+main = withBiegunka (\biegunka → merge biegunka <$> install)
 
 
 install ∷ IO Biegunka
-install = bzdury
-  [ git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" --> vimproc
-  , git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" --> ghcmod_vim
-  , git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" --> neco_ghc
-  , git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" --> neocomplicache
-  , git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" --> completions
-  , git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" --> tabbedex
-  , git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" --> dotfiles
-  , git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" --> cabal_completion
-  , git "git@budueba.com:tools" "/home/maksenov/git/tools" --> utils
-  ]
- where
-  vimproc =
-    do message "Installing vimproc"
+install = execute $
+  do git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" $ do
+       message "Installing vimproc"
        linkRepo ".vim/bundle/vimproc"
-  ghcmod_vim =
-    do message "Installing ghcmod-vim"
+     git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" $ do
+       message "Installing ghcmod-vim"
        linkRepo ".vim/bundle/ghcmod-vim"
-  neco_ghc =
-    do message "Installing neco-ghc"
+     git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" $ do
+       message "Installing neco-ghc"
        linkRepo ".vim/bundle/neco-ghc"
-  neocomplicache =
-    do message "Installing neocomplcache"
+     git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" $ do
+       message "Installing neocomplcache"
        linkRepo ".vim/bundle/neocomplcache"
-  cabal_completion = message "Installing zsh cabal completion"
-  completions = message "Installing zsh completions"
-  tabbedex = message "Installing urxvt-tabbedex"
+     git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" $
+       message "Installing zsh completions"
+     git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" $
+       message "Installing urxvt-tabbedex"
+     git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" dotfiles
+     git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" $
+       message "Installing zsh cabal completion"
+     git "git@budueba.com:tools" "/home/maksenov/git/tools" utils
 
 
 data Set = C | E | L

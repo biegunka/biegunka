@@ -17,8 +17,6 @@ Library
                    Biegunka.DB
                    Biegunka.Repository
                    Biegunka.Script
-                   Biegunka.DryRun
-                   Biegunka.DryRun.Repository
                    Biegunka.Core
   Other-Modules: Biegunka.Interpreter
   GHC-Options: -Wall

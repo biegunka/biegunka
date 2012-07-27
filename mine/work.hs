@@ -1,5 +1,6 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
+import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad (forM_)
 import Control.Monad.Free (Free)
@@ -11,31 +12,26 @@ import Biegunka
 
 
 main ∷ IO ()
-main = do
-  α ← install
-  withBiegunka (return . merge α)
+main = withBiegunka (\biegunka → merge biegunka <$> install)
 
 
-install = do
-  hd ← getHomeDirectory
-  bzdury
-    [ git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") --> neco_ghc
-    , git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") --> neocomplicache
-    , git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") --> completions
-    , git "https://github.com/stepb/urxvt-tabbedex" (hd </> "git/urxvt-tabbedex") --> tabbedex
-    , git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") --> dotfiles
-    , git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") --> cabal_completion
-    ]
- where
-  neco_ghc =
-    do message "Installing neco-ghc"
-       linkRepo ".vim/bundle/neco-ghc"
-  neocomplicache =
-    do message "Installing neocomplcache"
-       linkRepo ".vim/bundle/neocomplcache"
-  cabal_completion = message "Installing zsh cabal completion"
-  completions = message "Installing zsh completions"
-  tabbedex = message "Installing urxvt-tabbedex"
+install ∷ IO Biegunka
+install =
+  do hd ← getHomeDirectory
+     execute $ do
+       git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") $ do
+         message "Installing neco-ghc"
+         linkRepo ".vim/bundle/neco-ghc"
+       git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") $ do
+         message "Installing neocomplcache"
+         linkRepo ".vim/bundle/neocomplcache"
+       git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") $
+         message "Installing zsh completions"
+       git "https://github.com/stepb/urxvt-tabbedex" (hd </> "git/urxvt-tabbedex") $
+         message "Installing urxvt-tabbedex"
+       git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") dotfiles
+       git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") $
+         message "Installing zsh cabal completion"
 
 
 data Set = C | E | W
