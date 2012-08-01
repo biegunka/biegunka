@@ -6,12 +6,11 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless, when)
 import Data.Monoid (Monoid(..))
 
-import qualified Data.ByteString as B
 import Control.Monad.Free (Free(..))
 import Control.Monad.Writer (WriterT, execWriterT, liftIO, tell)
 import Data.Set (Set, singleton)
 import System.FilePath ((</>), dropFileName, splitFileName)
-import System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory, createDirectoryIfMissing)
+import System.Directory (copyFile, doesDirectoryExist, doesFileExist, getHomeDirectory, createDirectoryIfMissing)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
@@ -85,10 +84,6 @@ overWriteWith f s df =
        createDirectoryIfMissing True (dropFileName d)
        f s d
      tell (singleton d)
-
-
-copyFile ∷ FilePath → FilePath → IO ()
-copyFile s d = B.readFile s >>= \ !contents → B.writeFile d contents
 
 
 compileWith ∷ Compiler → FilePath → FilePath → WriterT (Set FilePath) IO ()
