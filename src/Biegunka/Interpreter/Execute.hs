@@ -1,19 +1,19 @@
-{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Execute (execute) where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad (unless, when)
+import Control.Exception (SomeException, try)
+import Control.Monad (unless)
 import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
 import Control.Monad.Writer (WriterT, execWriterT, liftIO, tell)
 import Data.Set (Set, singleton)
 import System.FilePath ((</>), dropFileName, splitFileName)
-import System.Directory (copyFile, doesDirectoryExist, doesFileExist, getHomeDirectory, createDirectoryIfMissing)
+import System.Directory (copyFile, doesDirectoryExist, doesFileExist, getHomeDirectory, createDirectoryIfMissing, removeFile)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
-import System.Posix.Files (createSymbolicLink, fileExist, removeLink)
+import System.Posix.Files (createSymbolicLink)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.DB (Biegunka, create)
@@ -60,16 +60,12 @@ update u p =
 
 
 withProgressString ∷ String → IO ExitCode → IO ()
-withProgressString hello μ = do
-  putStr hello >> hFlush stdout
-  result ← μ
-  printResult result
- where
-  printResult ExitSuccess = putStrLn "OK!"
-  printResult (ExitFailure _) =
-    do putStrLn "Fail!"
-       errors ← readFile "/tmp/biegunka.errors"
-       error errors
+withProgressString prompt action = do
+  putStr prompt >> hFlush stdout
+  result ← action
+  case result of
+    ExitSuccess → putStrLn "OK!"
+    ExitFailure _ → putStrLn "Fail!" >> readFile "/tmp/biegunka.errors" >>= error
 
 
 overWriteWith ∷ (FilePath → FilePath → IO a)
@@ -77,13 +73,13 @@ overWriteWith ∷ (FilePath → FilePath → IO a)
             → (FilePath → FilePath)
             → WriterT (Set FilePath) IO ()
 overWriteWith f s df =
-  do d ← df <$> liftIO getHomeDirectory
-     liftIO $ do
-       exists ← fileExist d
-       when exists $ removeLink d
-       createDirectoryIfMissing True (dropFileName d)
-       f s d
-     tell (singleton d)
+  do d ← liftIO $
+       do d ← df <$> getHomeDirectory
+          createDirectoryIfMissing True $ dropFileName d
+          try $ removeFile d ∷ IO (Either SomeException ())
+          f s d
+          return d
+     tell $ singleton d
 
 
 compileWith ∷ Compiler → FilePath → FilePath → WriterT (Set FilePath) IO ()
