@@ -7,18 +7,16 @@ module Biegunka.DB
   ( Biegunka
   , withBiegunka
   , create, merge, delete, purge, wipe
-  , pretty
-  , bzdury
   ) where
 
 import Control.Applicative ((<$>), empty, liftA2)
-import Control.Arrow ((***))
 import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import System.IO (IOMode(ReadMode), withFile)
 
-import Data.Aeson
+import Data.Aeson hiding (encode)
+import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy as B
 import System.Directory (getHomeDirectory, doesFileExist, removeDirectoryRecursive, removeFile)
 import System.FilePath ((</>))
@@ -26,7 +24,6 @@ import Data.Map (Map, (!))
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import Text.PrettyPrint hiding (empty)
 
 
 -- | The result of the installation script.
@@ -41,11 +38,6 @@ instance FromJSON Biegunka where
   parseJSON _ = empty
 instance ToJSON Biegunka where
   toJSON (Biegunka α) = object [ "repo" .= map (\(k,v) → object ["path" .= k, "files" .= S.toList v]) (M.toList α) ]
-
-
--- | Combine all Biegunkas into one.
-bzdury ∷ [IO Biegunka] → IO Biegunka
-bzdury xs = mconcat <$> sequence xs
 
 
 -- | Create an Biegunka for a repostory.
@@ -66,7 +58,8 @@ withBiegunka action = load >>= action >>= save
                 return $ fromMaybe mempty (decode j ∷ Maybe Biegunka)
          else return mempty
 
-  save α = getHomeDirectory >>= \hd → B.writeFile (hd </> ".biegunka.db") (encode α)
+  save α = getHomeDirectory >>= \hd →
+    B.writeFile (hd </> ".biegunka.db") (encode EncodingEnv { indentationStep = 2 } α)
 
 
 -- | Merge (sum) two Biegunkas.
@@ -120,8 +113,3 @@ wipe (φ → db) =
      mapM_ removeFile xs
      mapM_ removeDirectoryRecursive ys
      return $ Biegunka mempty
-
-
--- | Pretty printer for Biegunka.
-pretty ∷ Biegunka → String
-pretty = render . vcat . map (uncurry ($$) . (text *** vcat . map (nest 2 . text) . S.toList)) . M.toList . φ
