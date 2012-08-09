@@ -4,7 +4,7 @@
 {-# LANGUAGE ViewPatterns #-}
 -- | Biegunka.DB is module defining operations on the result of installation scripts, Biegunkas.
 module Biegunka.DB
-  ( Biegunka
+  ( Biegunka(..)
   , withBiegunka
   , create, merge
   , removeFile, removeRepo, removeProfile, wipe
@@ -15,6 +15,7 @@ import Control.Monad (when)
 import Data.Foldable (fold, foldMap, mapM_)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+import Data.String (fromString)
 import Prelude hiding (mapM_)
 import System.IO (IOMode(ReadMode), withFile)
 
@@ -38,15 +39,15 @@ newtype Biegunka =
 
 instance FromJSON Biegunka where
   parseJSON (Object o) = Biegunka . M.singleton "default" . M.fromList <$>
-    (o .: "repo" >>= mapM (\r → liftA2 (,) (r .: "path") (S.fromList <$> r .: "files")))
+    (o .: "default" >>= mapM (\r → liftA2 (,) (r .: "path") (S.fromList <$> r .: "files")))
   parseJSON _ = empty
 instance ToJSON Biegunka where
-  toJSON (Biegunka α) = object [ "repo" .= map (\(k,v) → object ["path" .= k, "files" .= S.toList v]) (M.toList $ α ! "default") ]
+  toJSON (Biegunka α) = object $ map (\(k,v) → (fromString k) .= map (\(k',v') → object ["path" .= k', "files" .= S.toList v']) (M.toList v)) (M.toList α)
 
 
 -- | Create an Biegunka for a repostory.
-create ∷ FilePath → Set FilePath → Biegunka
-create fp = Biegunka . M.singleton "default" . M.singleton fp
+create ∷ FilePath → Set FilePath → Map FilePath (Set FilePath)
+create fp = M.singleton fp
 
 
 -- | Load a Biegunka from ~/.biegunka.db, do any actions with it, save it back.
@@ -66,9 +67,16 @@ withBiegunka action = load >>= action >>= save
     B.writeFile (hd </> ".biegunka.db") (encode EncodingEnv { indentationStep = 2 } α)
 
 
--- | Merge (sum) two Biegunkas.
+-- | Merge two Biegunkas.
 merge ∷ Biegunka → Biegunka → Biegunka
-merge (Biegunka α) (Biegunka β) = Biegunka $ M.unionWith mappend α β
+merge (Biegunka α) (Biegunka β) =
+  let γ = flip M.mapWithKey α $ \k a →
+        case M.lookup k β of
+          Just profileFiles → M.unionWith mappend a profileFiles
+          Nothing → a
+      ε = γ `mappend` (β M.\\ α)
+  in Biegunka ε
+
 
 
 -- | Delete an installed file related to specified repository in given profile.

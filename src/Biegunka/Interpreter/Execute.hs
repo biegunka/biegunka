@@ -8,6 +8,8 @@ import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
 import Control.Monad.Writer (WriterT, execWriterT, liftIO, tell)
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Set (Set, singleton)
 import System.FilePath ((</>), dropFileName, splitFileName)
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist, getHomeDirectory, createDirectoryIfMissing, removeFile)
@@ -16,20 +18,24 @@ import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Posix.Files (createSymbolicLink)
 import System.Process (runProcess, waitForProcess)
 
-import Biegunka.DB (Biegunka, create)
+import Biegunka.DB (Biegunka(..), create)
 import Biegunka.Repository (Repository(..))
 import Biegunka.Script (Script(..), Compiler(..))
 
 
 execute ∷ Free (Repository a) b → IO Biegunka
-execute (Free (Git url path script next)) =
+execute script = Biegunka . M.singleton "default" <$> execute' script
+
+
+execute' ∷ Free (Repository a) b → IO (Map FilePath (Set FilePath))
+execute' (Free (Git url path script next)) =
   do update url path
      biegunka ← executeRepo script path
-     mappend biegunka <$> execute next
-execute (Pure _) = return mempty
+     mappend biegunka <$> execute' next
+execute' (Pure _) = return mempty
 
 
-executeRepo ∷ Free Script a → FilePath → IO Biegunka
+executeRepo ∷ Free Script a → FilePath → IO (Map FilePath (Set FilePath))
 executeRepo script path = create path <$> execWriterT (runScript script)
  where
   runScript (Free (Message m x)) =
