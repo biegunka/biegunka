@@ -16,27 +16,32 @@ main = withBiegunka (\biegunka → merge biegunka <$> install)
 
 
 install ∷ IO Biegunka
-install = execute $
-  do git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" $ do
-       message "Installing vimproc"
-       linkRepo ".vim/bundle/vimproc"
-     git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" $ do
-       message "Installing ghcmod-vim"
-       linkRepo ".vim/bundle/ghcmod-vim"
-     git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" $ do
-       message "Installing neco-ghc"
-       linkRepo ".vim/bundle/neco-ghc"
-     git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" $ do
-       message "Installing neocomplcache"
-       linkRepo ".vim/bundle/neocomplcache"
-     git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" $
-       message "Installing zsh completions"
-     git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" $
-       message "Installing urxvt-tabbedex"
-     git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" dotfiles
-     git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" $
-       message "Installing zsh cabal completion"
-     git "git@budueba.com:tools" "/home/maksenov/git/tools" utils
+install = execute $ do
+  profile "mine" $ do
+    git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" dotfiles
+    git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" $
+      message "Installing zsh cabal completion"
+    git "git@budueba.com:tools" "/home/maksenov/git/tools" utils
+  profile "vim-related" $ do
+    git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" $ do
+      message "Installing vimproc"
+      linkRepo ".vim/bundle/vimproc"
+    git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" $ do
+      message "Installing ghcmod-vim"
+      linkRepo ".vim/bundle/ghcmod-vim"
+    git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" $ do
+      message "Installing neco-ghc"
+      linkRepo ".vim/bundle/neco-ghc"
+    git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" $ do
+      message "Installing neocomplcache"
+      linkRepo ".vim/bundle/neocomplcache"
+  profile "misc" $ do
+    git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" $
+      message "Installing zsh completions"
+    git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" $
+      message "Installing urxvt-tabbedex"
+  profile "experimental" $
+    return ()
 
 
 data Set = C | E | L

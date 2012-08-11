@@ -8,3 +8,4 @@ import Biegunka.Interpreter.Execute as B
 import Biegunka.Interpreter.Pretend as B
 import Biegunka.Script as B
 import Biegunka.Repository as B
+import Biegunka.Profile as B

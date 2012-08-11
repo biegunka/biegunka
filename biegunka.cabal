@@ -25,12 +25,14 @@ Library
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.DB
-                   Biegunka.Repository
                    Biegunka.Script
+                   Biegunka.Repository
+                   Biegunka.Profile
   Other-Modules: Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Execute
                  Biegunka.Interpreter.Execute.Files
                  Biegunka.Interpreter.Execute.Repository
+                 Biegunka.Interpreter.Execute.Profile
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax

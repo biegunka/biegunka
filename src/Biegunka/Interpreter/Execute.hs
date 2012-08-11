@@ -4,12 +4,11 @@ module Biegunka.Interpreter.Execute (execute) where
 import Control.Applicative ((<$>))
 
 import Control.Monad.Free (Free(..))
-import qualified Data.Map as M
 
 import Biegunka.DB (Biegunka(..))
-import Biegunka.Repository (Repository(..))
-import qualified Biegunka.Interpreter.Execute.Repository as Repository
+import Biegunka.Profile (Profile)
+import qualified Biegunka.Interpreter.Execute.Profile as Profile
 
 
-execute ∷ Free (Repository a) b → IO Biegunka
-execute script = Biegunka . M.singleton "default" <$> Repository.execute script
+execute ∷ Free (Profile a) b → IO Biegunka
+execute script = Biegunka <$> Profile.execute script

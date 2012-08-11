@@ -16,22 +16,25 @@ main = withBiegunka (\biegunka → merge biegunka <$> install)
 
 
 install ∷ IO Biegunka
-install =
-  do hd ← getHomeDirectory
-     execute $ do
-       git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") $ do
-         message "Installing neco-ghc"
-         linkRepo ".vim/bundle/neco-ghc"
-       git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") $ do
-         message "Installing neocomplcache"
-         linkRepo ".vim/bundle/neocomplcache"
-       git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") $
-         message "Installing zsh completions"
-       git "https://github.com/stepb/urxvt-tabbedex" (hd </> "git/urxvt-tabbedex") $
-         message "Installing urxvt-tabbedex"
-       git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") dotfiles
-       git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") $
-         message "Installing zsh cabal completion"
+install = do
+  hd ← getHomeDirectory
+  execute $ do
+    profile "mine" $ do
+      git "git@github.com:supki/.dotfiles" (hd </> "git/dotfiles") dotfiles
+      git "git@github.com:supki/zsh-cabal-completion" (hd </> "git/zsh-cabal-completion") $
+        message "Installing zsh cabal completion"
+    profile "vim-related" $ do
+      git "https://github.com/ujihisa/neco-ghc" (hd </> "git/neco-ghc") $ do
+        message "Installing neco-ghc"
+        linkRepo ".vim/bundle/neco-ghc"
+      git "https://github.com/Shougo/neocomplcache" (hd </> "git/neocomplcache") $ do
+        message "Installing neocomplcache"
+        linkRepo ".vim/bundle/neocomplcache"
+    profile "misc" $ do
+      git "https://github.com/zsh-users/zsh-completions.git" (hd </> "git/zsh-completions") $
+        message "Installing zsh completions"
+      git "https://github.com/stepb/urxvt-tabbedex" (hd </> "git/urxvt-tabbedex") $
+        message "Installing urxvt-tabbedex"
 
 
 data Set = C | E | W
