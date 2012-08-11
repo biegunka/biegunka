@@ -10,12 +10,11 @@ module Biegunka.DB
   , removeFile, removeRepo, removeProfile, wipe
   ) where
 
-import Control.Applicative ((<$>), empty, liftA2)
+import Control.Applicative ((<$>), empty)
 import Control.Monad (when)
 import Data.Foldable (fold, foldMap, mapM_)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
-import Data.String (fromString)
 import Prelude hiding (mapM_)
 import System.IO (IOMode(ReadMode), withFile)
 
@@ -38,11 +37,22 @@ newtype Biegunka =
 
 
 instance FromJSON Biegunka where
-  parseJSON (Object o) = Biegunka . M.singleton "default" . M.fromList <$>
-    (o .: "default" >>= mapM (\r → liftA2 (,) (r .: "path") (S.fromList <$> r .: "files")))
+  parseJSON (Object o) = Biegunka . M.fromList <$> (mapM profile =<< o .: "profiles")
+   where
+    profile p = do
+      n ← p .: "profile"
+      rs ← mapM repo =<< p .: "repos"
+      return (n, M.fromList rs)
+    repo r = do
+      n ← r .: "path"
+      fs ← r .: "files"
+      return (n, S.fromList fs)
   parseJSON _ = empty
 instance ToJSON Biegunka where
-  toJSON (Biegunka α) = object $ map (\(k,v) → (fromString k) .= map (\(k',v') → object ["path" .= k', "files" .= S.toList v']) (M.toList v)) (M.toList α)
+  toJSON (Biegunka α) =
+    let profileToJSON (k, v) = object ["profile" .= k, "repos" .= map repoToJSON (M.toList v)]
+        repoToJSON (k, v) = object ["path" .= k, "files" .= S.toList v]
+    in object $ ["profiles" .= map profileToJSON (M.toList α)]
 
 
 -- | Create an Biegunka for a repostory.
