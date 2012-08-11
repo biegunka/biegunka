@@ -29,6 +29,8 @@ Library
                    Biegunka.Script
   Other-Modules: Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Execute
+                 Biegunka.Interpreter.Execute.Files
+                 Biegunka.Interpreter.Execute.Repository
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax
