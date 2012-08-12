@@ -1,6 +1,5 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
-import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad (forM_)
 import Control.Monad.Free (Free)
@@ -12,11 +11,7 @@ import Biegunka
 
 
 main ∷ IO ()
-main = withBiegunka (\biegunka → merge biegunka <$> install)
-
-
-install ∷ IO Biegunka
-install = execute $ do
+main = execute $ do
   profile "mine" $ do
     git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" dotfiles
     git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" $

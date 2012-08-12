@@ -36,11 +36,3 @@ Library
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax
-
-Executable biegunka
-  Build-Depends: base >= 3 && < 5, Biegunka, optparse-applicative
-  HS-Source-Dirs: cli
-  Main-is: Main.hs
-  GHC-Options: -Wall
-               -fno-warn-unused-do-bind
-  Extensions: UnicodeSyntax

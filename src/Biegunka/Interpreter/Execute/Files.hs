@@ -5,6 +5,7 @@ import Control.Applicative ((<$>))
 import Control.Exception (SomeException, try)
 
 import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 import Control.Monad.Free (Free(..))
@@ -14,12 +15,11 @@ import System.FilePath ((</>), dropFileName, splitFileName)
 import System.Posix.Files (createSymbolicLink)
 import System.Process (runProcess, waitForProcess)
 
-import Biegunka.DB (create)
 import Biegunka.Script (Script(..), Compiler(..))
 
 
 execute ∷ Free Script a → FilePath → IO (Map FilePath (Set FilePath))
-execute script path = create path <$> execWriterT (runScript script)
+execute script path = M.singleton path <$> execWriterT (runScript script)
  where
   runScript (Free (Message m x)) =
     liftIO (putStrLn m) >> runScript x
