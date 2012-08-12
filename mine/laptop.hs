@@ -13,28 +13,26 @@ import Biegunka
 main ∷ IO ()
 main = execute $ do
   profile "mine" $ do
-    git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles" dotfiles
+    git "git@github.com:supki/.dotfiles" "/home/maksenov/git/.dotfiles"
+      dotfiles
     git "git@github.com:supki/zsh-cabal-completion" "/home/maksenov/git/zsh-cabal-completion" $
-      message "Installing zsh cabal completion"
-    git "git@budueba.com:tools" "/home/maksenov/git/tools" utils
+      return ()
+    git "git@budueba.com:tools" "/home/maksenov/git/tools"
+      utils
   profile "vim-related" $ do
     git "https://github.com/Shougo/vimproc" "/home/maksenov/git/vimproc" $ do
-      message "Installing vimproc"
-      linkRepo ".vim/bundle/vimproc"
+      registerAt ".vim/bundle/vimproc"
     git "https://github.com/eagletmt/ghcmod-vim" "/home/maksenov/git/ghcmod-vim" $ do
-      message "Installing ghcmod-vim"
-      linkRepo ".vim/bundle/ghcmod-vim"
+      registerAt ".vim/bundle/ghcmod-vim"
     git "https://github.com/ujihisa/neco-ghc" "/home/maksenov/git/neco-ghc" $ do
-      message "Installing neco-ghc"
-      linkRepo ".vim/bundle/neco-ghc"
+      registerAt ".vim/bundle/neco-ghc"
     git "https://github.com/Shougo/neocomplcache" "/home/maksenov/git/neocomplcache" $ do
-      message "Installing neocomplcache"
-      linkRepo ".vim/bundle/neocomplcache"
+      registerAt ".vim/bundle/neocomplcache"
   profile "misc" $ do
     git "https://github.com/zsh-users/zsh-completions.git" "/home/maksenov/git/zsh-completions" $
-      message "Installing zsh completions"
+      return ()
     git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" $
-      message "Installing urxvt-tabbedex"
+      return ()
   profile "experimental" $
     return ()
 
@@ -52,8 +50,7 @@ dir L = "laptop"
 dotfiles ∷ Free Script ()
 dotfiles = mapM_ installSet [C, E, L]
   where installSet s = do
-          message $ "Installing " <> show s <> " configs..."
-          forM_ (links s) $ uncurry linkRepoFile . first (dir s </>)
+          forM_ (links s) $ uncurry link . first (dir s </>)
         links C =
           [ ("xsession", ".xsession")
           , ("mpdconf", ".mpdconf")
@@ -102,8 +99,7 @@ dotfiles = mapM_ installSet [C, E, L]
 
 utils ∷ Free Script ()
 utils = do
-  message "Installing tools"
-  forM_ links $ uncurry linkRepoFile
+  forM_ links $ uncurry link
   forM_ execs $ uncurry (compile GHC)
   where links =
           [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")

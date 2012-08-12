@@ -1,8 +1,9 @@
 -- | Biegunka.Script module provides script engine as free monad.
 module Biegunka.Script
   ( Script(..), Compiler(..)
-  , message, linkRepo, linkRepoFile
-  , copyRepoFile, compile
+  , message
+  , registerAt
+  , copy, link, compile
   ) where
 
 import Control.Monad.Free (Free(..), liftF)
@@ -16,18 +17,18 @@ data Compiler = GHC -- ^ The Glorious Glasgow Haskell Compilation System
 -- | Script engine
 data Script next =
     Message String next
-  | LinkRepo FilePath next
-  | LinkRepoFile FilePath FilePath next
-  | CopyRepoFile FilePath FilePath next
+  | RegisterAt FilePath next
+  | Link FilePath FilePath next
+  | Copy FilePath FilePath next
   | Compile Compiler FilePath FilePath next
 
 
 instance Functor Script where
-  fmap f (Message m next)            = Message m (f next)
-  fmap f (LinkRepo dst next)         = LinkRepo dst (f next)
-  fmap f (LinkRepoFile src dst next) = LinkRepoFile src dst (f next)
-  fmap f (CopyRepoFile src dst next) = CopyRepoFile src dst (f next)
-  fmap f (Compile cmp src dst next)  = Compile cmp src dst (f next)
+  fmap f (Message m next)           = Message m (f next)
+  fmap f (RegisterAt dst next)      = RegisterAt dst (f next)
+  fmap f (Link src dst next)        = Link src dst (f next)
+  fmap f (Copy src dst next)        = Copy src dst (f next)
+  fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
 
 
 -- | Send a message to stdout
@@ -36,18 +37,18 @@ message m = liftF (Message m ())
 
 
 -- | Link a repository somewhere
-linkRepo ∷ FilePath → Free Script ()
-linkRepo dst = liftF (LinkRepo dst ())
+registerAt ∷ FilePath → Free Script ()
+registerAt dst = liftF (RegisterAt dst ())
 
 
 -- | Link a file somewhere
-linkRepoFile ∷ FilePath → FilePath → Free Script ()
-linkRepoFile src dst = liftF (LinkRepoFile src dst ())
+link ∷ FilePath → FilePath → Free Script ()
+link src dst = liftF (Link src dst ())
 
 
 -- | Copy a file somewhere
-copyRepoFile ∷ FilePath → FilePath → Free Script ()
-copyRepoFile src dst = liftF (CopyRepoFile src dst ())
+copy ∷ FilePath → FilePath → Free Script ()
+copy src dst = liftF (Copy src dst ())
 
 
 -- | Compile a file somewhere

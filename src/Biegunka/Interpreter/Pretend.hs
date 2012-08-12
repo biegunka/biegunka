@@ -22,9 +22,9 @@ profile (Free (Git url path script next)) = mconcat
   ["Setup repository ", url, " at ", path, "\n", repo script, "\n", profile next]
  where
   repo (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo x]
-  repo (Free (LinkRepo dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo x]
-  repo (Free (LinkRepoFile src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo x]
-  repo (Free (CopyRepoFile src dst x)) = mconcat ["Copy file ", path </> src, " to ~/", dst, "\n", repo x]
+  repo (Free (RegisterAt dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo x]
+  repo (Free (Link src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo x]
+  repo (Free (Copy src dst x)) = mconcat ["Copy file ", path </> src, " to ~/", dst, "\n", repo x]
   repo (Free (Compile cmp src dst x)) = mconcat
     ["Compile with ", show cmp, " file ", path </> src, " to ~/", dst, "\n", repo x]
   repo (Pure _) = ""

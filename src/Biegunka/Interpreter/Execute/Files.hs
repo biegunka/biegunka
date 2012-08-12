@@ -23,11 +23,11 @@ execute script path = M.singleton path <$> execWriterT (runScript script)
  where
   runScript (Free (Message m x)) =
     liftIO (putStrLn m) >> runScript x
-  runScript (Free (LinkRepo dst x)) =
+  runScript (Free (RegisterAt dst x)) =
     overWriteWith createSymbolicLink path (</> dst) >> runScript x
-  runScript (Free (LinkRepoFile src dst x)) =
+  runScript (Free (Link src dst x)) =
     overWriteWith createSymbolicLink (path </> src) (</> dst) >> runScript x
-  runScript (Free (CopyRepoFile src dst x)) =
+  runScript (Free (Copy src dst x)) =
     overWriteWith copyFile (path </> src) (</> dst) >> runScript x
   runScript (Free (Compile cmp src dst x)) =
     compileWith cmp (path </> src) dst >> runScript x
