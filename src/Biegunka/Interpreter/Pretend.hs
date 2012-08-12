@@ -1,24 +1,31 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Pretend (pretend) where
 
-import Data.Monoid ((<>))
+import Data.Monoid (mconcat)
 
 import Control.Monad.Free (Free(..))
 import System.FilePath ((</>))
 
+import Biegunka.Profile (Profile(..))
 import Biegunka.Repository (Repository(..))
 import Biegunka.Script (Script(..))
 
 
-pretend ∷ Free (Repository a) b → String
-pretend (Free (Git url path script next)) =
-  "Setup repository " <> url <> " at " <> path <> "\n" <> repo script <> "\n" <> pretend next
- where
-  repo (Free (Message m x)) = "Message: " <> show m <> "\n" <> repo x
-  repo (Free (LinkRepo dst x)) = "Link repository " <> path <> " to ~/" <> dst <> "\n" <> repo x
-  repo (Free (LinkRepoFile src dst x)) = "Link file " <> (path </> src) <> " to ~/" <> dst <> "\n" <> repo x
-  repo (Free (CopyRepoFile src dst x)) = "Copy file " <> (path </> src) <> " to ~/" <> dst <> "\n" <> repo x
-  repo (Free (Compile cmp src dst x)) =
-    "Compile with " <> show cmp <> " file " <> (path </> src) <> " to ~/" <> dst <> "\n" <> repo x
-  repo (Pure _) = ""
+pretend ∷ Free (Profile a) b → String
+pretend (Free (Profile name script next)) = mconcat
+  ["Setup profile ", name, "\n", profile script, "\n", pretend next]
 pretend (Pure _) = ""
+
+
+profile ∷ Free (Repository a) b → String
+profile (Free (Git url path script next)) = mconcat
+  ["Setup repository ", url, " at ", path, "\n", repo script, "\n", profile next]
+ where
+  repo (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo x]
+  repo (Free (LinkRepo dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo x]
+  repo (Free (LinkRepoFile src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo x]
+  repo (Free (CopyRepoFile src dst x)) = mconcat ["Copy file ", path </> src, " to ~/", dst, "\n", repo x]
+  repo (Free (Compile cmp src dst x)) = mconcat
+    ["Compile with ", show cmp, " file ", path </> src, " to ~/", dst, "\n", repo x]
+  repo (Pure _) = ""
+profile (Pure _) = ""
