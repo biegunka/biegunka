@@ -29,6 +29,8 @@ Library
                    Biegunka.Repository
                    Biegunka.Profile
   Other-Modules: Biegunka.Interpreter.Pretend
+                 Biegunka.Interpreter.Pretend.Log
+                 Biegunka.Interpreter.Pretend.Map
                  Biegunka.Interpreter.Execute
                  Biegunka.Interpreter.Execute.Files
                  Biegunka.Interpreter.Execute.Repository
