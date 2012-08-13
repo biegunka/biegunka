@@ -33,8 +33,11 @@ main = execute $ do
       return ()
     git "https://github.com/stepb/urxvt-tabbedex" "/home/maksenov/git/urxvt-tabbedex" $
       return ()
-  profile "experimental" $
-    return ()
+  profile "experimental" $ do
+    git "https://github.com/sol/vimus" "/home/maksenov/git/vimus" $
+      return ()
+    git "https://github.com/sol/libmpd-haskell" "/home/maksenov/git/libmpd-haskell" $
+      return ()
 
 
 data Set = C | E | L
