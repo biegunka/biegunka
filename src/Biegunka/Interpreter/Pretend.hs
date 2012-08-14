@@ -12,8 +12,8 @@ import           System.Directory (getHomeDirectory)
 
 import           Biegunka.DB (Biegunka(..), load)
 import           Biegunka.Profile (Profile(..))
-import qualified Biegunka.Interpreter.Pretend.Log as Log
-import qualified Biegunka.Interpreter.Pretend.Map as Map
+import qualified Biegunka.Interpreter.Log as Log
+import qualified Biegunka.Interpreter.ConstructMap as Map
 
 
 data Stat = Stat
@@ -38,7 +38,7 @@ pretend script = do
   Biegunka α ← load
   home ← getHomeDirectory
   let installLog = Log.install script
-      β = Map.pretend home script
+      β = Map.construct home script
       uninstallLog = Log.uninstall α β
       stat = Stat
         { addedFiles = (countNotElems `on` files) β α

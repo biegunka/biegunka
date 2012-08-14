@@ -6,8 +6,6 @@ import Control.Monad (unless)
 import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
-import Data.Map (Map)
-import Data.Set (Set)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
@@ -17,11 +15,11 @@ import Biegunka.Repository (Repository(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 
-execute ∷ Free (Repository a) b → IO (Map FilePath (Set FilePath))
+execute ∷ Free (Repository a) b → IO ()
 execute (Free (Git url path script next)) =
   do update url path
-     biegunka ← Files.execute script path
-     mappend biegunka <$> execute next
+     Files.execute script path
+     execute next
 execute (Pure _) = return mempty
 
 

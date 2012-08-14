@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.Pretend.Map (pretend) where
+module Biegunka.Interpreter.ConstructMap (construct) where
 
 import Data.Monoid (Monoid(..))
 
@@ -16,10 +16,10 @@ import           Biegunka.Repository (Repository(..))
 import           Biegunka.Script (Script(..))
 
 
-pretend ∷ FilePath → Free (Profile a) b → Map String (Map FilePath (Set FilePath))
-pretend home (Free (Profile name script next)) =
-  M.insertWith' mappend name (profile home script) (pretend home next)
-pretend _ (Pure _) = mempty
+construct ∷ FilePath → Free (Profile a) b → Map String (Map FilePath (Set FilePath))
+construct home (Free (Profile name script next)) =
+  M.insertWith' mappend name (profile home script) (construct home next)
+construct _ (Pure _) = mempty
 
 
 profile ∷ FilePath → Free (Repository a) b → Map FilePath (Set FilePath)
