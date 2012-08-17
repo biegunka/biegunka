@@ -57,6 +57,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/.dotfiles" $ do
     , ("vim/indent/haskell.vim", ".vim/indent/haskell.vim")
     , ("conceal/haskell.vim", ".vim/after/syntax/haskell.vim")
     , ("XCompose", ".XCompose")
+    , ("vimusrc", ".vimusrc")
     ]
   repositoryRoot .= rr </> "extended"
   mapM_ (uncurry link) $
