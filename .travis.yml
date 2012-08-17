@@ -1,0 +1,4 @@
+language: haskell
+
+before_install:
+    - cd aeson-encode-pretty && cabal install && cd ..
