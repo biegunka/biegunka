@@ -1,12 +1,12 @@
 -- | Biegunka.Profile module provides profile engine as free monad.
-module Biegunka.Profile
+module Biegunka.DSL.Profile
   ( Profile(..)
   , profile
   ) where
 
 import Control.Monad.Free (Free(..), liftF)
 
-import Biegunka.Repository
+import Biegunka.DSL.Repository
 
 
 -- | Profile engine

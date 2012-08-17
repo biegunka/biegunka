@@ -11,7 +11,7 @@ import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 
-import Biegunka.Repository (Repository(..))
+import Biegunka.DSL.Repository (Repository(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 

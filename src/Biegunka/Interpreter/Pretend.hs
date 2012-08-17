@@ -11,7 +11,7 @@ import qualified Data.Set as S
 import           System.Directory (getHomeDirectory)
 
 import           Biegunka.DB (Biegunka(..), load)
-import           Biegunka.Profile (Profile(..))
+import           Biegunka.DSL.Profile (Profile(..))
 import qualified Biegunka.Interpreter.Log as Log
 import qualified Biegunka.Interpreter.ConstructMap as Map
 

@@ -11,9 +11,9 @@ import           Data.Set (Set)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
 
-import           Biegunka.Profile (Profile(..))
-import           Biegunka.Repository (Repository(..))
-import           Biegunka.Script (Script(..))
+import Biegunka.DSL.Profile (Profile(..))
+import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Files (Files(..))
 
 
 construct ∷ FilePath → Free (Profile a) b → Map String (Map FilePath (Set FilePath))
@@ -27,10 +27,10 @@ profile home (Free (Git _ path script next)) = M.singleton path (repo home scrip
 profile _ (Pure _) = mempty
 
 
-repo ∷ FilePath → Free Script a → Set FilePath
+repo ∷ FilePath → Free Files a → Set FilePath
 repo home script = execWriter (runScript script)
  where
-  runScript ∷ Free Script a → Writer (Set FilePath) a
+  runScript ∷ Free Files a → Writer (Set FilePath) a
   runScript (Free (Message _ x)) = runScript x
   runScript (Free (RegisterAt dst x)) = tell (S.singleton (home </> dst)) >> runScript x
   runScript (Free (Link _ dst x)) = tell (S.singleton (home </> dst)) >> runScript x

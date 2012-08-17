@@ -24,11 +24,12 @@ Library
                  free
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
-                   Biegunka.DB
-                   Biegunka.Script
-                   Biegunka.Repository
-                   Biegunka.Profile
-  Other-Modules: Biegunka.Interpreter.Pretend
+  Other-Modules: Biegunka.DB
+                 Biegunka.DSL
+                 Biegunka.DSL.Files
+                 Biegunka.DSL.Repository
+                 Biegunka.DSL.Profile
+                 Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Log
                  Biegunka.Interpreter.ConstructMap
                  Biegunka.Interpreter.Execute

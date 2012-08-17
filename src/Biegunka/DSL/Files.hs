@@ -1,6 +1,6 @@
--- | Biegunka.Script module provides script engine as free monad.
-module Biegunka.Script
-  ( Script(..), Compiler(..)
+-- | Biegunka.Files module provides script engine as free monad.
+module Biegunka.DSL.Files
+  ( Files(..), Compiler(..)
   , message
   , registerAt
   , copy, link, compile
@@ -14,8 +14,8 @@ data Compiler = GHC -- ^ The Glorious Glasgow Haskell Compilation System
   deriving Show
 
 
--- | Script engine
-data Script next =
+-- | Files engine
+data Files next =
     Message String next
   | RegisterAt FilePath next
   | Link FilePath FilePath next
@@ -23,7 +23,7 @@ data Script next =
   | Compile Compiler FilePath FilePath next
 
 
-instance Functor Script where
+instance Functor Files where
   fmap f (Message m next)           = Message m (f next)
   fmap f (RegisterAt dst next)      = RegisterAt dst (f next)
   fmap f (Link src dst next)        = Link src dst (f next)
@@ -31,26 +31,21 @@ instance Functor Script where
   fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
 
 
--- | Send a message to stdout
-message ∷ String → Free Script ()
+message ∷ String → Free Files ()
 message m = liftF (Message m ())
 
 
--- | Link a repository somewhere
-registerAt ∷ FilePath → Free Script ()
+registerAt ∷ FilePath → Free Files ()
 registerAt dst = liftF (RegisterAt dst ())
 
 
--- | Link a file somewhere
-link ∷ FilePath → FilePath → Free Script ()
+link ∷ FilePath → FilePath → Free Files ()
 link src dst = liftF (Link src dst ())
 
 
--- | Copy a file somewhere
-copy ∷ FilePath → FilePath → Free Script ()
+copy ∷ FilePath → FilePath → Free Files ()
 copy src dst = liftF (Copy src dst ())
 
 
--- | Compile a file somewhere
-compile ∷ Compiler → FilePath → FilePath → Free Script ()
+compile ∷ Compiler → FilePath → FilePath → Free Files ()
 compile cmp src dst = liftF (Compile cmp src dst ())

@@ -11,7 +11,7 @@ import qualified Data.Set as S
 import           System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
 
 import           Biegunka.DB (Biegunka(..), load, save)
-import           Biegunka.Profile (Profile)
+import           Biegunka.DSL.Profile (Profile)
 import qualified Biegunka.Interpreter.Execute.Profile as Profile
 import qualified Biegunka.Interpreter.ConstructMap as Map
 

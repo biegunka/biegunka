@@ -15,9 +15,9 @@ import           Data.Set (Set)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
 
-import Biegunka.Profile (Profile(..))
-import Biegunka.Repository (Repository(..))
-import Biegunka.Script (Script(..))
+import Biegunka.DSL.Profile (Profile(..))
+import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Files (Files(..))
 
 
 install ∷ Free (Profile a) b → String
@@ -32,7 +32,7 @@ profile (Free (Git url path script next)) = mconcat
 profile (Pure _) = ""
 
 
-repo ∷ FilePath → Free Script b → String
+repo ∷ FilePath → Free Files b → String
 repo path (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo path x]
 repo path (Free (RegisterAt dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo path x]
 repo path (Free (Link src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo path x]

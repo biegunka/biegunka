@@ -2,7 +2,6 @@
 
 import Control.Arrow (first)
 import Control.Monad (forM_)
-import Control.Monad.Free (Free)
 
 import System.Directory (getHomeDirectory)
 import System.FilePath ((</>))
@@ -41,7 +40,7 @@ dir E = "extended"
 dir W = "work"
 
 
-dotfiles ∷ Free Script ()
+dotfiles ∷ Script Files ()
 dotfiles = mapM_ installSet [C, E, W]
   where installSet s = do
           message $ "Installing " ++ show s ++ " configs..."

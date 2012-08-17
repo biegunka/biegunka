@@ -2,7 +2,6 @@
 
 import Control.Arrow (first)
 import Control.Monad (forM_)
-import Control.Monad.Free (Free)
 import Data.Monoid ((<>))
 
 import System.FilePath ((</>))
@@ -50,7 +49,7 @@ dir E = "extended"
 dir L = "laptop"
 
 
-dotfiles ∷ Free Script ()
+dotfiles ∷ Script Files ()
 dotfiles = mapM_ installSet [C, E, L]
   where installSet s = do
           forM_ (links s) $ uncurry link . first (dir s </>)
@@ -100,7 +99,7 @@ dotfiles = mapM_ installSet [C, E, L]
           ]
 
 
-utils ∷ Free Script ()
+utils ∷ Script Files ()
 utils = do
   forM_ links $ uncurry link
   forM_ execs $ uncurry (compile GHC)

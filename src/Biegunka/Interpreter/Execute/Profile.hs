@@ -5,7 +5,7 @@ import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
 
-import Biegunka.Profile (Profile(..))
+import Biegunka.DSL.Profile (Profile(..))
 import qualified Biegunka.Interpreter.Execute.Repository as Repository
 
 

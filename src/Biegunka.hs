@@ -3,9 +3,6 @@ module Biegunka
   ( module B
   ) where
 
-import Biegunka.DB as B
 import Biegunka.Interpreter.Execute as B
 import Biegunka.Interpreter.Pretend as B
-import Biegunka.Script as B
-import Biegunka.Repository as B
-import Biegunka.Profile as B
+import Biegunka.DSL as B

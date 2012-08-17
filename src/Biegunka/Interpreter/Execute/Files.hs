@@ -10,10 +10,10 @@ import System.FilePath ((</>), dropFileName, splitFileName)
 import System.Posix.Files (createSymbolicLink)
 import System.Process (runProcess, waitForProcess)
 
-import Biegunka.Script (Script(..), Compiler(..))
+import Biegunka.DSL.Files (Files(..), Compiler(..))
 
 
-execute ∷ Free Script a → FilePath → IO a
+execute ∷ Free Files a → FilePath → IO a
 execute script path = runScript script
  where
   runScript (Free (Message m x)) =
