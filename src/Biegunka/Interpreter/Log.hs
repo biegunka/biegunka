@@ -14,36 +14,36 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
 import qualified Data.Set as S
-import           System.FilePath ((</>))
 
+import Biegunka.State
 import Biegunka.DSL.Profile (Profile(..))
 import Biegunka.DSL.Repository (Repository(..))
 import Biegunka.DSL.Files (Files(..))
 
 
-install ∷ Free (Profile ()) () → String
-install (Free (Profile name script next)) = mconcat
-  ["Setup profile ", name, "\n", profile (evalStateT script ()), "\n", install next]
-install (Pure _) = ""
+install ∷ BiegunkaState → Free (Profile ()) () → String
+install state (Free (Profile name script next)) = mconcat
+  ["Setup profile ", name, "\n", profile state (evalStateT script state), "\n", install state next]
+install _ (Pure _) = ""
 
 
-profile ∷ Free (Repository ()) () → String
-profile (Free (Git url path script next)) = mconcat
-  ["Setup repository ", url, " at ", path, "\n", repo path (evalStateT script ()), "\n", profile next]
-profile (Pure _) = ""
+profile ∷ BiegunkaState → Free (Repository ()) () → String
+profile state (Free (Git url path script next)) = mconcat
+  ["Setup repository ", url, " at ", path, "\n", repo (evalStateT script state { _repositoryRoot = path }), "\n", profile state next]
+profile _ (Pure _) = ""
 
 
-repo ∷ FilePath → Free Files () → String
-repo path (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo path x]
-repo path (Free (RegisterAt dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo path x]
-repo path (Free (Link src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo path x]
-repo path (Free (Copy src dst x)) = mconcat ["Copy file ", path </> src, " to ~/", dst, "\n", repo path x]
-repo path (Free (Compile cmp src dst x)) = mconcat
-  ["Compile with ", show cmp, " file ", path </> src, " to ~/", dst, "\n", repo path x]
-repo _ (Pure _) = ""
+repo ∷ Free Files () → String
+repo (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo x]
+repo (Free (RegisterAt src dst x)) = mconcat ["Link repository ", src, " to ", dst, "\n", repo x]
+repo (Free (Link src dst x)) = mconcat ["Link file ", src, " to ", dst, "\n", repo x]
+repo (Free (Copy src dst x)) = mconcat ["Copy file ", src, " to ", dst, "\n", repo x]
+repo (Free (Compile cmp src dst x)) = mconcat
+  ["Compile with ", show cmp, " file ", src, " to ", dst, "\n", repo x]
+repo (Pure _) = ""
 
 
-uninstall ∷ Map String (Map FilePath (Set FilePath)) -> Map String (Map FilePath (Set FilePath)) → String
+uninstall ∷ Map String (Map FilePath (Set FilePath)) → Map String (Map FilePath (Set FilePath)) → String
 uninstall α β = (logNotElems `on` files) α β ++ (logNotElems `on` repos) α β
  where
   logNotElems xs ys = execWriter (forM_ xs $ \x → unless (x `elem` ys) (tell $ "Delete " ++ x ++ "\n"))

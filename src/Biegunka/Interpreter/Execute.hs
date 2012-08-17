@@ -11,21 +11,23 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
 
+import           Biegunka.State
 import           Biegunka.DB (Biegunka(..), load, save)
 import           Biegunka.DSL.Profile (Profile)
 import qualified Biegunka.Interpreter.Execute.Profile as Profile
 import qualified Biegunka.Interpreter.ConstructMap as Map
 
 
-execute ∷ StateT () (Free (Profile ())) () → IO ()
+execute ∷ StateT BiegunkaState (Free (Profile ())) () → IO ()
 execute script = do
-  let script' = evalStateT script ()
+  home ← getHomeDirectory
+  let state = BiegunkaState { _root = home, _repositoryRoot = ""}
+      script' = evalStateT script state
   Biegunka α ← load
   when (α == mempty) $
     putStrLn "Warning: Biegunka is empty"
-  Profile.execute script'
-  home ← getHomeDirectory
-  let β = Map.construct home script'
+  Profile.execute state script'
+  let β = Map.construct state script'
   removeOrphanFiles α β
   removeOrphanRepos α β
   save $ Biegunka β

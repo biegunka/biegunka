@@ -10,6 +10,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory)
 
+import           Biegunka.State
 import           Biegunka.DB (Biegunka(..), load)
 import           Biegunka.DSL.Profile (Profile(..))
 import qualified Biegunka.Interpreter.Log as Log
@@ -33,13 +34,14 @@ instance Show Stat where
     ]
 
 
-pretend ∷ StateT () (Free (Profile ())) () → IO ()
+pretend ∷ StateT BiegunkaState (Free (Profile ())) () → IO ()
 pretend script = do
-  let script' = evalStateT script ()
-  Biegunka α ← load
   home ← getHomeDirectory
-  let installLog = Log.install script'
-      β = Map.construct home script'
+  let state = BiegunkaState { _root = home, _repositoryRoot = ""}
+      script' = evalStateT script state
+  Biegunka α ← load
+  let installLog = Log.install state script'
+      β = Map.construct state script'
       uninstallLog = Log.uninstall α β
       stat = Stat
         { addedFiles = (countNotElems `on` files) β α

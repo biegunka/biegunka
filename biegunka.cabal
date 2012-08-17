@@ -21,10 +21,12 @@ Library
                  filepath,
                  unix,
                  bytestring,
-                 free
+                 free,
+                 lens
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
   Other-Modules: Biegunka.DB
+                 Biegunka.State
                  Biegunka.DSL
                  Biegunka.DSL.Files
                  Biegunka.DSL.Repository

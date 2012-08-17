@@ -3,7 +3,6 @@ module Biegunka.Interpreter.Execute.Repository (execute) where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
-import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
 import Control.Monad.State (evalStateT)
@@ -12,16 +11,17 @@ import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 
+import Biegunka.State
 import Biegunka.DSL.Repository (Repository(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 
-execute ∷ Free (Repository a) b → IO ()
-execute (Free (Git url path script next)) =
+execute ∷ BiegunkaState → Free (Repository a) b → IO ()
+execute state (Free (Git url path script next)) =
   do update url path
-     Files.execute (evalStateT script ()) path
-     execute next
-execute (Pure _) = return mempty
+     Files.execute $ evalStateT script state { _repositoryRoot = path }
+     execute state next
+execute _ (Pure _) = return ()
 
 
 update ∷ String → FilePath → IO ()
