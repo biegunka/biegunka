@@ -11,7 +11,6 @@ import Control.Monad.Trans (lift)
 import Biegunka.DSL.Repository
 
 
--- | Profile engine
 data Profile a next =
     Profile String (StateT () (Free (Repository a)) a) next
 
@@ -20,6 +19,5 @@ instance Functor (Profile a) where
   fmap f (Profile name repo next) = Profile name repo (f next)
 
 
--- | Sta
 profile ∷ String → StateT () (Free (Repository a)) a → StateT () (Free (Profile a)) ()
-profile name repo = lift $ liftF (Profile name repo ())
+profile name repo = lift . liftF $ Profile name repo ()

@@ -20,4 +20,4 @@ instance Functor (Repository a) where
 
 
 git ∷ String → FilePath → StateT () (Free Files) a → StateT () (Free (Repository a)) ()
-git url path script = lift $ liftF (Git url path script ())
+git url path script = lift . liftF $ Git url path script ()

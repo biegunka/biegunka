@@ -13,26 +13,18 @@ import System.Process (runProcess, waitForProcess)
 import Biegunka.DSL.Files (Files(..), Compiler(..))
 
 
-execute ∷ Free Files a → FilePath → IO a
-execute script path = runScript script
+execute ∷ Free Files a → FilePath → IO ()
+execute script path = run script
  where
-  runScript (Free (Message m x)) =
-    putStrLn m >> runScript x
-  runScript (Free (RegisterAt dst x)) =
-    overWriteWith createSymbolicLink path (</> dst) >> runScript x
-  runScript (Free (Link src dst x)) =
-    overWriteWith createSymbolicLink (path </> src) (</> dst) >> runScript x
-  runScript (Free (Copy src dst x)) =
-    overWriteWith copyFile (path </> src) (</> dst) >> runScript x
-  runScript (Free (Compile cmp src dst x)) =
-    compileWith cmp (path </> src) dst >> runScript x
-  runScript (Pure x) = return x
+  run (Free (Message m x)) = putStrLn m >> run x
+  run (Free (RegisterAt dst x)) = overWriteWith createSymbolicLink path (</> dst) >> run x
+  run (Free (Link src dst x)) = overWriteWith createSymbolicLink (path </> src) (</> dst) >> run x
+  run (Free (Copy src dst x)) = overWriteWith copyFile (path </> src) (</> dst) >> run x
+  run (Free (Compile cmp src dst x)) = compileWith cmp (path </> src) dst >> run x
+  run (Pure _) = return ()
 
 
-overWriteWith ∷ (FilePath → FilePath → IO ())
-            → FilePath
-            → (FilePath → FilePath)
-            → IO ()
+overWriteWith ∷ (FilePath → FilePath → IO ()) → FilePath → (FilePath → FilePath) → IO ()
 overWriteWith f s df =
   do d ← df <$> getHomeDirectory
      createDirectoryIfMissing True $ dropFileName d

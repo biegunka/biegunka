@@ -32,20 +32,20 @@ instance Functor Files where
 
 
 message ∷ String → StateT () (Free Files) ()
-message m = lift $ liftF (Message m ())
+message m = lift . liftF $ Message m ()
 
 
 registerAt ∷ FilePath → StateT () (Free Files) ()
-registerAt dst = lift $ liftF (RegisterAt dst ())
+registerAt dst = lift . liftF $ RegisterAt dst ()
 
 
 link ∷ FilePath → FilePath → StateT () (Free Files) ()
-link src dst = lift $ liftF (Link src dst ())
+link src dst = lift . liftF $ Link src dst ()
 
 
 copy ∷ FilePath → FilePath → StateT () (Free Files) ()
-copy src dst = lift $ liftF (Copy src dst ())
+copy src dst = lift . liftF $ Copy src dst ()
 
 
 compile ∷ Compiler → FilePath → FilePath → StateT () (Free Files) ()
-compile cmp src dst = lift $ liftF (Compile cmp src dst ())
+compile cmp src dst = lift . liftF $ Compile cmp src dst ()
