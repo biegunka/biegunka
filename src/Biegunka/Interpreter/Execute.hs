@@ -16,7 +16,7 @@ import qualified Biegunka.Interpreter.Execute.Profile as Profile
 import qualified Biegunka.Interpreter.ConstructMap as Map
 
 
-execute ∷ Free (Profile a) b → IO ()
+execute ∷ Free (Profile ()) () → IO ()
 execute script = do
   Biegunka α ← load
   when (α == mempty) $

@@ -6,17 +6,15 @@ module Biegunka.DSL.Files
   , copy, link, compile
   ) where
 
-import Control.Monad.Free (Free(..), liftF)
-import Control.Monad.State (StateT(..))
+import Control.Monad.Free (Free, liftF)
+import Control.Monad.State (StateT)
 import Control.Monad.Trans (lift)
 
 
--- | Compilers enumeration
-data Compiler = GHC -- ^ The Glorious Glasgow Haskell Compilation System
+data Compiler = GHC
   deriving Show
 
 
--- | Files engine
 data Files next =
     Message String next
   | RegisterAt FilePath next

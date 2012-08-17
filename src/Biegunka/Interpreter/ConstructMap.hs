@@ -17,18 +17,18 @@ import Biegunka.DSL.Repository (Repository(..))
 import Biegunka.DSL.Files (Files(..))
 
 
-construct ∷ FilePath → Free (Profile a) b → Map String (Map FilePath (Set FilePath))
+construct ∷ FilePath → Free (Profile ()) () → Map String (Map FilePath (Set FilePath))
 construct home (Free (Profile name script next)) =
-  M.insertWith' mappend name (profile home script) (construct home next)
+  M.insertWith' mappend name (profile home (evalStateT script ())) (construct home next)
 construct _ (Pure _) = mempty
 
 
-profile ∷ FilePath → Free (Repository a) b → Map FilePath (Set FilePath)
+profile ∷ FilePath → Free (Repository ()) () → Map FilePath (Set FilePath)
 profile home (Free (Git _ path script next)) = M.singleton path (repo home (evalStateT script ())) `mappend` profile home next
 profile _ (Pure _) = mempty
 
 
-repo ∷ FilePath → Free Files a → Set FilePath
+repo ∷ FilePath → Free Files () → Set FilePath
 repo home script = execWriter (runScript script)
  where
   runScript ∷ Free Files a → Writer (Set FilePath) a

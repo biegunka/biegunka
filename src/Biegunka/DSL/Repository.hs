@@ -4,13 +4,13 @@ module Biegunka.DSL.Repository
   , git
   ) where
 
-import Control.Monad.Free (Free(..), liftF)
-import Control.Monad.State (StateT(..))
+import Control.Monad.Free (Free, liftF)
+import Control.Monad.State (StateT)
+import Control.Monad.Trans (lift)
 
 import Biegunka.DSL.Files
 
 
--- | Repositories
 data Repository a next =
     Git String FilePath (StateT () (Free Files) a) next
 
@@ -19,6 +19,5 @@ instance Functor (Repository a) where
   fmap f (Git url path script next) = Git url path script (f next)
 
 
--- | Setup git repository
-git ∷ String → FilePath → StateT () (Free Files) a → Free (Repository a) ()
-git url path script = liftF (Git url path script ())
+git ∷ String → FilePath → StateT () (Free Files) a → StateT () (Free (Repository a)) ()
+git url path script = lift $ liftF (Git url path script ())

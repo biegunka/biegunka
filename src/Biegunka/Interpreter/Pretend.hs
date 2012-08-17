@@ -33,7 +33,7 @@ instance Show Stat where
     ]
 
 
-pretend ∷ Free (Profile a) b → IO ()
+pretend ∷ Free (Profile ()) () → IO ()
 pretend script = do
   Biegunka α ← load
   home ← getHomeDirectory
