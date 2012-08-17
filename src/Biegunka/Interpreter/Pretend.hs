@@ -4,8 +4,8 @@ module Biegunka.Interpreter.Pretend (pretend) where
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 
-import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (execState, modify)
+import           Control.Monad.Free (Free)
+import           Control.Monad.State (StateT, evalStateT, execState, modify)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory)
@@ -33,12 +33,13 @@ instance Show Stat where
     ]
 
 
-pretend ∷ Free (Profile ()) () → IO ()
+pretend ∷ StateT () (Free (Profile ())) () → IO ()
 pretend script = do
+  let script' = evalStateT script ()
   Biegunka α ← load
   home ← getHomeDirectory
-  let installLog = Log.install script
-      β = Map.construct home script
+  let installLog = Log.install script'
+      β = Map.construct home script'
       uninstallLog = Log.uninstall α β
       stat = Stat
         { addedFiles = (countNotElems `on` files) β α

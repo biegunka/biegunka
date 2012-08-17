@@ -6,6 +6,7 @@ module Biegunka.DSL.Profile
 
 import Control.Monad.Free (Free, liftF)
 import Control.Monad.State (StateT)
+import Control.Monad.Trans (lift)
 
 import Biegunka.DSL.Repository
 
@@ -20,5 +21,5 @@ instance Functor (Profile a) where
 
 
 -- | Sta
-profile ∷ String → StateT () (Free (Repository a)) a → Free (Profile a) ()
-profile name repo = liftF (Profile name repo ())
+profile ∷ String → StateT () (Free (Repository a)) a → StateT () (Free (Profile a)) ()
+profile name repo = lift $ liftF (Profile name repo ())
