@@ -5,6 +5,7 @@ import Data.Monoid (Monoid(..))
 
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (Writer, execWriter, tell)
+import           Control.Monad.State (evalStateT)
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
@@ -23,7 +24,7 @@ construct _ (Pure _) = mempty
 
 
 profile ∷ FilePath → Free (Repository a) b → Map FilePath (Set FilePath)
-profile home (Free (Git _ path script next)) = M.singleton path (repo home script) `mappend` profile home next
+profile home (Free (Git _ path script next)) = M.singleton path (repo home (evalStateT script ())) `mappend` profile home next
 profile _ (Pure _) = mempty
 
 

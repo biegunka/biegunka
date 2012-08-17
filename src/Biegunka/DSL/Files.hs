@@ -7,6 +7,8 @@ module Biegunka.DSL.Files
   ) where
 
 import Control.Monad.Free (Free(..), liftF)
+import Control.Monad.State (StateT(..))
+import Control.Monad.Trans (lift)
 
 
 -- | Compilers enumeration
@@ -31,21 +33,21 @@ instance Functor Files where
   fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
 
 
-message ∷ String → Free Files ()
-message m = liftF (Message m ())
+message ∷ String → StateT () (Free Files) ()
+message m = lift $ liftF (Message m ())
 
 
-registerAt ∷ FilePath → Free Files ()
-registerAt dst = liftF (RegisterAt dst ())
+registerAt ∷ FilePath → StateT () (Free Files) ()
+registerAt dst = lift $ liftF (RegisterAt dst ())
 
 
-link ∷ FilePath → FilePath → Free Files ()
-link src dst = liftF (Link src dst ())
+link ∷ FilePath → FilePath → StateT () (Free Files) ()
+link src dst = lift $ liftF (Link src dst ())
 
 
-copy ∷ FilePath → FilePath → Free Files ()
-copy src dst = liftF (Copy src dst ())
+copy ∷ FilePath → FilePath → StateT () (Free Files) ()
+copy src dst = lift $ liftF (Copy src dst ())
 
 
-compile ∷ Compiler → FilePath → FilePath → Free Files ()
-compile cmp src dst = liftF (Compile cmp src dst ())
+compile ∷ Compiler → FilePath → FilePath → StateT () (Free Files) ()
+compile cmp src dst = lift $ liftF (Compile cmp src dst ())

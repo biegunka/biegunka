@@ -8,6 +8,7 @@ import Data.Function (on)
 import Data.Monoid (Monoid(..))
 
 import           Control.Monad.Free (Free(..))
+import           Control.Monad.State (evalStateT)
 import           Control.Monad.Writer (execWriter, tell)
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -28,11 +29,11 @@ install (Pure _) = ""
 
 profile ∷ Free (Repository a) b → String
 profile (Free (Git url path script next)) = mconcat
-  ["Setup repository ", url, " at ", path, "\n", repo path script, "\n", profile next]
+  ["Setup repository ", url, " at ", path, "\n", repo path (evalStateT script ()), "\n", profile next]
 profile (Pure _) = ""
 
 
-repo ∷ FilePath → Free Files b → String
+repo ∷ FilePath → Free Files a → String
 repo path (Free (Message m x)) = mconcat ["Message: ", show m, "\n", repo path x]
 repo path (Free (RegisterAt dst x)) = mconcat ["Link repository ", path, " to ~/", dst, "\n", repo path x]
 repo path (Free (Link src dst x)) = mconcat ["Link file ", path </> src, " to ~/", dst, "\n", repo path x]

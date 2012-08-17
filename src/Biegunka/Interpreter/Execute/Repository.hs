@@ -6,6 +6,7 @@ import Control.Monad (unless)
 import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
+import Control.Monad.State (evalStateT)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
@@ -18,7 +19,7 @@ import qualified Biegunka.Interpreter.Execute.Files as Files
 execute ∷ Free (Repository a) b → IO ()
 execute (Free (Git url path script next)) =
   do update url path
-     Files.execute script path
+     Files.execute (evalStateT script ()) path
      execute next
 execute (Pure _) = return mempty
 
