@@ -32,5 +32,5 @@ repo (Free (Message _ x)) = repo x
 repo (Free (RegisterAt _ dst x)) = S.singleton dst `mappend` repo x
 repo (Free (Link _ dst x)) = S.singleton dst `mappend` repo x
 repo (Free (Copy _ dst x)) = S.singleton dst `mappend` repo x
-repo (Free (Compile _ _ _ x)) = repo x
+repo (Free (Compile _ _ dst x)) = S.singleton dst `mappend` repo x
 repo (Pure _) = S.empty
