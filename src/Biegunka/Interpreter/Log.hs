@@ -21,13 +21,13 @@ import Biegunka.DSL.Repository (Repository(..))
 import Biegunka.DSL.Files (Files(..))
 
 
-install ∷ BiegunkaState → Free (Profile ()) () → String
+install ∷ BiegunkaState → Free Profile () → String
 install state (Free (Profile name script next)) = mconcat
   ["Setup profile ", name, "\n", profile state (evalStateT script state), "\n", install state next]
 install _ (Pure _) = ""
 
 
-profile ∷ BiegunkaState → Free (Repository ()) () → String
+profile ∷ BiegunkaState → Free Repository () → String
 profile state (Free (Git url path script next)) = mconcat
   ["Setup repository ", url, " at ", path, "\n", repo (evalStateT script state { _repositoryRoot = path }), "\n", profile state next]
 profile _ (Pure _) = ""

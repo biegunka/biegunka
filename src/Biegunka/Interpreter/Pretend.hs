@@ -34,7 +34,7 @@ instance Show Stat where
     ]
 
 
-pretend ∷ StateT BiegunkaState (Free (Profile ())) () → IO ()
+pretend ∷ StateT BiegunkaState (Free Profile) () → IO ()
 pretend script = do
   home ← getHomeDirectory
   let state = BiegunkaState { _root = home, _repositoryRoot = ""}

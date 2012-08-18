@@ -16,7 +16,7 @@ import Biegunka.DSL.Repository (Repository(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 
-execute ∷ BiegunkaState → Free (Repository a) b → IO ()
+execute ∷ BiegunkaState → Free Repository () → IO ()
 execute state (Free (Git url path script next)) =
   do update url path
      Files.execute $ evalStateT script state { _repositoryRoot = path }

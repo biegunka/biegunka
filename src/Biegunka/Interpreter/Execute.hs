@@ -18,7 +18,7 @@ import qualified Biegunka.Interpreter.Execute.Profile as Profile
 import qualified Biegunka.Interpreter.ConstructMap as Map
 
 
-execute ∷ StateT BiegunkaState (Free (Profile ())) () → IO ()
+execute ∷ StateT BiegunkaState (Free Profile) () → IO ()
 execute script = do
   home ← getHomeDirectory
   let state = BiegunkaState { _root = home, _repositoryRoot = ""}

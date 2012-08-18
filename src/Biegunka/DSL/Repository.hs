@@ -14,15 +14,15 @@ import Biegunka.State
 import Biegunka.DSL.Files
 
 
-data Repository a next =
-    Git String FilePath (StateT BiegunkaState (Free Files) a) next
+data Repository next =
+    Git String FilePath (StateT BiegunkaState (Free Files) ()) next
 
 
-instance Functor (Repository a) where
+instance Functor Repository where
   fmap f (Git url path script next) = Git url path script (f next)
 
 
-git ∷ String → FilePath → StateT BiegunkaState (Free Files) a → StateT BiegunkaState (Free (Repository a)) ()
+git ∷ String → FilePath → StateT BiegunkaState (Free Files) () → StateT BiegunkaState (Free Repository) ()
 git url path script = do
   sr ← use root
   lift . liftF $ Git url (sr </> path) script ()

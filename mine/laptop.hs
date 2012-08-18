@@ -32,7 +32,8 @@ main = execute $ do
     git "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell" $
       return ()
 
-dotfiles ∷ Script (Repository ()) ()
+
+dotfiles ∷ Script Repository ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/.dotfiles" $ do
   localStateT $ do
     repositoryRoot </>= "core"
@@ -89,8 +90,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/.dotfiles" $ do
   localStateT m = get >>= \s → mapStateT (>> return ((), s)) m
 
 
-
-tools ∷ Script (Repository ()) ()
+tools ∷ Script Repository ()
 tools = git "git@budueba.com:tools" "git/tools" $ do
   mapM_ (uncurry link)
     [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")

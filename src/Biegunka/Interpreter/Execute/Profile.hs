@@ -9,7 +9,7 @@ import Biegunka.DSL.Profile (Profile(..))
 import qualified Biegunka.Interpreter.Execute.Repository as Repository
 
 
-execute ∷ BiegunkaState → Free (Profile ()) () → IO ()
+execute ∷ BiegunkaState → Free Profile () → IO ()
 execute state (Free (Profile _ repo next)) =
   do Repository.execute state (evalStateT repo state)
      execute state next
