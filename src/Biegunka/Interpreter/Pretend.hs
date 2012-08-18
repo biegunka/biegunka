@@ -37,12 +37,10 @@ instance Show Stat where
 pretend ∷ StateT BiegunkaState (Free Profile) () → IO ()
 pretend script = do
   home ← getHomeDirectory
+  Biegunka α ← load
   let state = BiegunkaState { _root = home, _repositoryRoot = ""}
       script' = evalStateT script state
-  Biegunka α ← load
-  let installLog = Log.install state script'
       β = Map.construct state script'
-      uninstallLog = Log.uninstall α β
       stat = Stat
         { addedFiles = (countNotElems `on` files) β α
         , addedRepos = (countNotElems `on` repos) β α
@@ -53,12 +51,30 @@ pretend script = do
   putStr $ unlines
    [ "=================="
    , ""
-   , "Do you want to see full log? [y/n]"
+   , "Do you want to see full stats? [y/n]"
    ]
   c ← getChar
-  when (c == 'y') $ putStrLn (installLog ++ uninstallLog)
+  when (c == 'y') $ putStr $ unlines
+   [ "Added files:"
+   , (logNotElems `on` files) β α
+   , "Added repositories:"
+   , (logNotElems `on` repos) β α
+   , "Deleted files:"
+   , (logNotElems `on` files) α β
+   , "Deleted repositories:"
+   , (logNotElems `on` repos) α β
+   , "=================="
+   , ""
+   , "Do you want to see full log? [y/n]"
+   ]
+  c' ← getChar
+  let installLog = Log.install state script'
+      uninstallLog = Log.uninstall α β
+      fullLog = installLog ++ uninstallLog
+  when (c' == 'y') $ putStrLn fullLog
  where
   countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
+  logNotElems xs ys = execState (ifNotElem (\m → modify (\s → s ++ m ++ "\n")) xs ys) ""
   ifNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) (f x)
   files α = M.elems α >>= M.elems >>= S.toList
   repos α = M.elems α >>= M.keys
