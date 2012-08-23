@@ -31,6 +31,7 @@ Library
                  Biegunka.DSL.Files
                  Biegunka.DSL.Source
                  Biegunka.DSL.Profile
+                 Biegunka.Interpreter
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Log
                  Biegunka.Interpreter.ConstructMap
