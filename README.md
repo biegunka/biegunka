@@ -43,4 +43,6 @@ This command links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmona
 After execution of the script user has cloned git repository at `/home/user/.dotfiles` and XMonad config at `/home/user/.xmonad/xmonad.hs` linked from it.
 
 ## More sophisticated example
-See wiki.
+See [wiki][1].
+
+ [1]: https://github.com/supki/biegunka/wiki/Examples
