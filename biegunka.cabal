@@ -29,14 +29,14 @@ Library
                  Biegunka.State
                  Biegunka.DSL
                  Biegunka.DSL.Files
-                 Biegunka.DSL.Repository
+                 Biegunka.DSL.Source
                  Biegunka.DSL.Profile
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Log
                  Biegunka.Interpreter.ConstructMap
                  Biegunka.Interpreter.Execute
                  Biegunka.Interpreter.Execute.Files
-                 Biegunka.Interpreter.Execute.Repository
+                 Biegunka.Interpreter.Execute.Source
                  Biegunka.Interpreter.Execute.Profile
                  Biegunka.Interpreter.Verify
   GHC-Options: -Wall

@@ -17,7 +17,7 @@ import qualified Data.Set as S
 
 import Biegunka.State
 import Biegunka.DSL.Profile (Profile(..))
-import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Source (Source(..))
 import Biegunka.DSL.Files (Files(..))
 
 
@@ -27,7 +27,7 @@ install state (Free (Profile name script next)) = mconcat
 install _ (Pure _) = ""
 
 
-profile ∷ BiegunkaState → Free Repository () → String
+profile ∷ BiegunkaState → Free Source () → String
 profile state (Free (Git url path script next)) = mconcat
   ["Setup repository ", url, " at ", path, "\n", repo (evalStateT script state { _repositoryRoot = path }), "\n", profile state next]
 profile _ (Pure _) = ""

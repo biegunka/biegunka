@@ -9,7 +9,7 @@ import Control.Monad.State (StateT)
 
 import Biegunka.State as B
 import Biegunka.DSL.Files as B
-import Biegunka.DSL.Repository as B
+import Biegunka.DSL.Source as B
 import Biegunka.DSL.Profile as B
 
 

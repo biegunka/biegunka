@@ -1,4 +1,4 @@
--- | Biegunka.Profile module provides profile engine as free monad.
+{-# OPTIONS_HADDOCK hide #-}
 module Biegunka.DSL.Profile
   ( Profile(..)
   , profile
@@ -9,16 +9,16 @@ import Control.Monad.State (StateT)
 import Control.Monad.Trans (lift)
 
 import Biegunka.State
-import Biegunka.DSL.Repository
+import Biegunka.DSL.Source
 
 
 data Profile next =
-    Profile String (StateT BiegunkaState (Free Repository) ()) next
+    Profile String (StateT BiegunkaState (Free Source) ()) next
 
 
 instance Functor Profile where
   fmap f (Profile name repo next) = Profile name repo (f next)
 
 
-profile ∷ String → StateT BiegunkaState (Free Repository) () → StateT BiegunkaState (Free Profile) ()
+profile ∷ String → StateT BiegunkaState (Free Source) () → StateT BiegunkaState (Free Profile) ()
 profile name repo = lift . liftF $ Profile name repo ()

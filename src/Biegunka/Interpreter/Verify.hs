@@ -14,7 +14,7 @@ import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.State
 import Biegunka.DSL.Profile (Profile(..))
-import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Source (Source(..))
 import Biegunka.DSL.Files (Files(..))
 
 
@@ -39,7 +39,7 @@ profile state (Free (Profile _ script next)) =
 profile _ (Pure _) = return True
 
 
-repo ∷ BiegunkaState → Free Repository () → WriterT String IO Bool
+repo ∷ BiegunkaState → Free Source () → WriterT String IO Bool
 repo state (Free (Git _ path script next)) = do
   repoExists ← io $ doesDirectoryExist path
   if repoExists

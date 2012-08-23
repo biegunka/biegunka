@@ -12,7 +12,7 @@ import qualified Data.Set as S
 
 import Biegunka.State
 import Biegunka.DSL.Profile (Profile(..))
-import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Source (Source(..))
 import Biegunka.DSL.Files (Files(..))
 
 
@@ -22,7 +22,7 @@ construct state (Free (Profile name script next)) =
 construct _ (Pure _) = mempty
 
 
-profile ∷ BiegunkaState → Free Repository () → Map FilePath (Set FilePath)
+profile ∷ BiegunkaState → Free Source () → Map FilePath (Set FilePath)
 profile state (Free (Git _ path script next)) = M.singleton path (repo (evalStateT script state)) `mappend` profile state next
 profile _ (Pure _) = mempty
 

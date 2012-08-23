@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.Execute.Repository (execute) where
+module Biegunka.Interpreter.Execute.Source (execute) where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
@@ -12,11 +12,11 @@ import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.State
-import Biegunka.DSL.Repository (Repository(..))
+import Biegunka.DSL.Source (Source(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 
-execute ∷ BiegunkaState → Free Repository () → IO ()
+execute ∷ BiegunkaState → Free Source () → IO ()
 execute state (Free (Git url path script next)) =
   do update url path
      Files.execute $ evalStateT script state { _repositoryRoot = path }

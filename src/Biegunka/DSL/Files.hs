@@ -1,4 +1,4 @@
--- | Biegunka.Files module provides script engine as free monad.
+{-# OPTIONS_HADDOCK hide #-}
 module Biegunka.DSL.Files
   ( Files(..), Compiler(..)
   , message

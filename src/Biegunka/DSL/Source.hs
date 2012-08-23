@@ -1,6 +1,6 @@
--- | Biegunka.Repository module exports a bunch of functions to connect scripts with various VCS instances.
-module Biegunka.DSL.Repository
-  ( Repository(..)
+{-# OPTIONS_HADDOCK hide #-}
+module Biegunka.DSL.Source
+  ( Source(..)
   , git
   ) where
 
@@ -14,15 +14,15 @@ import Biegunka.State
 import Biegunka.DSL.Files
 
 
-data Repository next =
+data Source next =
     Git String FilePath (StateT BiegunkaState (Free Files) ()) next
 
 
-instance Functor Repository where
+instance Functor Source where
   fmap f (Git url path script next) = Git url path script (f next)
 
 
-git ∷ String → FilePath → StateT BiegunkaState (Free Files) () → StateT BiegunkaState (Free Repository) ()
+git ∷ String → FilePath → StateT BiegunkaState (Free Files) () → StateT BiegunkaState (Free Source) ()
 git url path script = do
   sr ← use root
   lift . liftF $ Git url (sr </> path) script ()

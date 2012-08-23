@@ -29,7 +29,7 @@ main = execute |>>| verify $ script
   (|>>|) = liftA2 (>>)
 
 
-dotfiles ∷ Script Repository ()
+dotfiles ∷ Script Source ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT $ do
     repositoryRoot </>= "core"
