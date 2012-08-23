@@ -1,4 +1,6 @@
 {-# LANGUAGE UnicodeSyntax #-}
+import Control.Applicative (liftA2)
+
 import Control.Monad.State (get, mapStateT)
 import System.FilePath.Lens ((</>=))
 
@@ -6,21 +8,25 @@ import Biegunka
 
 
 main ∷ IO ()
-main = execute $ do
-  profile "mine" $ do
-    dotfiles
-    git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $
-      return ()
-  profile "vim-related" $ do
-    git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ do
-      registerAt ".vim/bundle/neco-ghc"
-    git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ do
-      registerAt ".vim/bundle/neocomplcache"
-  profile "misc" $ do
-    git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $
-      return ()
-    git "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex" $
-      return ()
+main = execute |>>| verify $ script
+ where
+  script = do
+    profile "mine" $ do
+      dotfiles
+      git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $
+        return ()
+    profile "vim-related" $ do
+      git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ do
+        registerAt ".vim/bundle/neco-ghc"
+      git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ do
+        registerAt ".vim/bundle/neocomplcache"
+    profile "misc" $ do
+      git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $
+        return ()
+      git "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex" $
+        return ()
+
+  (|>>|) = liftA2 (>>)
 
 
 dotfiles ∷ Script Repository ()
