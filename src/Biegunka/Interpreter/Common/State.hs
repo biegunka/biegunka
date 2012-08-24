@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.State (infect) where
+module Biegunka.Interpreter.Common.State (infect) where
 
 import Control.Monad.Free (Free(..))
 import Control.Monad.State (evalStateT)

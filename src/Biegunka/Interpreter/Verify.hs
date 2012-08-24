@@ -12,7 +12,7 @@ import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDir
 import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..))
-import Biegunka.Interpreter.State
+import Biegunka.Interpreter.Common.State
 
 
 verify ∷ ProfileScript () → IO ()

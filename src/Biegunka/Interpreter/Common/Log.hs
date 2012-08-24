@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.Log
+module Biegunka.Interpreter.Common.Log
   ( install, uninstall
   ) where
 

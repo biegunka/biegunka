@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.ConstructMap (construct) where
+module Biegunka.Interpreter.Common.Map (construct) where
 
 import Data.Monoid (Monoid(..))
 

@@ -22,8 +22,8 @@ import           System.Process (runProcess, waitForProcess)
 
 import           Biegunka.DB (Biegunka(..), load, save)
 import           Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), Compiler(..))
-import qualified Biegunka.Interpreter.ConstructMap as Map
-import           Biegunka.Interpreter.State
+import qualified Biegunka.Interpreter.Common.Map as Map
+import           Biegunka.Interpreter.Common.State
 
 
 execute ∷ ProfileScript () → IO ()

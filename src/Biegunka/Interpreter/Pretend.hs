@@ -11,9 +11,9 @@ import           System.Directory (getHomeDirectory)
 
 import           Biegunka.DB (Biegunka(..), load)
 import           Biegunka.DSL (ProfileScript)
-import qualified Biegunka.Interpreter.Log as Log
-import qualified Biegunka.Interpreter.ConstructMap as Map
-import           Biegunka.Interpreter.State
+import qualified Biegunka.Interpreter.Common.Log as Log
+import qualified Biegunka.Interpreter.Common.Map as Map
+import           Biegunka.Interpreter.Common.State
 
 
 data Stat = Stat

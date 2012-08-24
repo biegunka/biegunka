@@ -32,12 +32,12 @@ Library
                  Biegunka.DSL.Source
                  Biegunka.DSL.Profile
                  Biegunka.Interpreter
-                 Biegunka.Interpreter.Pretend
-                 Biegunka.Interpreter.Log
-                 Biegunka.Interpreter.ConstructMap
                  Biegunka.Interpreter.Execute
+                 Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Verify
-                 Biegunka.Interpreter.State
+                 Biegunka.Interpreter.Common.Log
+                 Biegunka.Interpreter.Common.Map
+                 Biegunka.Interpreter.Common.State
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax
