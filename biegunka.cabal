@@ -36,9 +36,6 @@ Library
                  Biegunka.Interpreter.Log
                  Biegunka.Interpreter.ConstructMap
                  Biegunka.Interpreter.Execute
-                 Biegunka.Interpreter.Execute.Files
-                 Biegunka.Interpreter.Execute.Source
-                 Biegunka.Interpreter.Execute.Profile
                  Biegunka.Interpreter.Verify
                  Biegunka.Interpreter.State
   GHC-Options: -Wall
