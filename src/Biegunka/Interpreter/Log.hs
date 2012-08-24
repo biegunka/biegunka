@@ -8,29 +8,27 @@ import Data.Function (on)
 import Data.Monoid (Monoid(..))
 
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (evalStateT)
 import           Control.Monad.Writer (execWriter, tell)
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
 import qualified Data.Set as S
 
-import Biegunka.State
-import Biegunka.DSL.Profile (Profile(..))
-import Biegunka.DSL.Source (Source(..))
-import Biegunka.DSL.Files (Files(..))
+import Biegunka.DSL (Profile(..), Source(..), Files(..))
 
 
-install ∷ BiegunkaState → Free Profile () → String
-install state (Free (Profile name script next)) = mconcat
-  ["Setup profile ", name, "\n", profile state (evalStateT script state), "\n", install state next]
-install _ (Pure _) = ""
+install ∷ Free (Profile (Free (Source (Free Files ())) ())) ()
+        → String
+install (Free (Profile name script next)) = mconcat
+  ["Setup profile ", name, "\n", profile script, "\n", install next]
+install (Pure _) = ""
 
 
-profile ∷ BiegunkaState → Free Source () → String
-profile state (Free (Git url path script next)) = mconcat
-  ["Setup repository ", url, " at ", path, "\n", repo (evalStateT script state { _repositoryRoot = path }), "\n", profile state next]
-profile _ (Pure _) = ""
+profile ∷ Free (Source (Free Files ())) ()
+        → String
+profile (Free (Git url path script next)) = mconcat
+  ["Setup repository ", url, " at ", path, "\n", repo script, "\n", profile next]
+profile (Pure _) = ""
 
 
 repo ∷ Free Files () → String

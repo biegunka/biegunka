@@ -40,6 +40,7 @@ Library
                  Biegunka.Interpreter.Execute.Source
                  Biegunka.Interpreter.Execute.Profile
                  Biegunka.Interpreter.Verify
+                 Biegunka.Interpreter.State
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax

@@ -4,17 +4,16 @@ module Biegunka.Interpreter.Pretend (pretend) where
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 
-import           Control.Monad.Free (Free)
-import           Control.Monad.State (StateT, evalStateT, execState, modify)
+import           Control.Monad.State (execState, modify)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory)
 
-import           Biegunka.State
 import           Biegunka.DB (Biegunka(..), load)
-import           Biegunka.DSL.Profile (Profile(..))
+import           Biegunka.DSL (ProfileScript)
 import qualified Biegunka.Interpreter.Log as Log
 import qualified Biegunka.Interpreter.ConstructMap as Map
+import           Biegunka.Interpreter.State
 
 
 data Stat = Stat
@@ -34,13 +33,12 @@ instance Show Stat where
     ]
 
 
-pretend ∷ StateT BiegunkaState (Free Profile) () → IO ()
+pretend ∷ ProfileScript () → IO ()
 pretend script = do
   home ← getHomeDirectory
   Biegunka α ← load
-  let state = BiegunkaState { _root = home, _repositoryRoot = ""}
-      script' = evalStateT script state
-      β = Map.construct state script'
+  let script' = infect home script
+      β = Map.construct script'
       stat = Stat
         { addedFiles = (countNotElems `on` files) β α
         , addedRepos = (countNotElems `on` repos) β α
@@ -53,8 +51,8 @@ pretend script = do
    , ""
    , "Do you want to see full stats? [y/n]"
    ]
-  c ← getChar
-  when (c == 'y') $ putStr $ unlines
+  c ← getLine
+  when (c == "y") $ putStr $ unlines
    [ "Added files:"
    , (logNotElems `on` files) β α
    , "Added repositories:"
@@ -67,11 +65,11 @@ pretend script = do
    , ""
    , "Do you want to see full log? [y/n]"
    ]
-  c' ← getChar
-  let installLog = Log.install state script'
+  c' ← getLine
+  let installLog = Log.install script'
       uninstallLog = Log.uninstall α β
       fullLog = installLog ++ uninstallLog
-  when (c' == 'y') $ putStrLn fullLog
+  when (c' == "y") $ putStrLn fullLog
  where
   countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
   logNotElems xs ys = execState (ifNotElem (\m → modify (\s → s ++ m ++ "\n")) xs ys) ""

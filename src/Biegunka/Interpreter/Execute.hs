@@ -5,29 +5,26 @@ import Data.Monoid (mempty)
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 
-import           Control.Monad.Free (Free)
-import           Control.Monad.State (StateT, evalStateT)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
 
-import           Biegunka.State
 import           Biegunka.DB (Biegunka(..), load, save)
-import           Biegunka.DSL.Profile (Profile)
+import           Biegunka.DSL (ProfileScript)
 import qualified Biegunka.Interpreter.Execute.Profile as Profile
 import qualified Biegunka.Interpreter.ConstructMap as Map
+import           Biegunka.Interpreter.State
 
 
-execute ∷ StateT BiegunkaState (Free Profile) () → IO ()
+execute ∷ ProfileScript () → IO ()
 execute script = do
   home ← getHomeDirectory
-  let state = BiegunkaState { _root = home, _repositoryRoot = ""}
-      script' = evalStateT script state
+  let script' = infect home script
   Biegunka α ← load
   when (α == mempty) $
     putStrLn "Warning: Biegunka is empty"
-  Profile.execute state script'
-  let β = Map.construct state script'
+  Profile.execute script'
+  let β = Map.construct script'
   removeOrphanFiles α β
   removeOrphanRepos α β
   save $ Biegunka β

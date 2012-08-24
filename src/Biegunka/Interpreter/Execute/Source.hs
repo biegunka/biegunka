@@ -5,23 +5,22 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (unless)
 
 import Control.Monad.Free (Free(..))
-import Control.Monad.State (evalStateT)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 
-import Biegunka.State
-import Biegunka.DSL.Source (Source(..))
+import Biegunka.DSL (Source(..), Files(..))
 import qualified Biegunka.Interpreter.Execute.Files as Files
 
 
-execute ∷ BiegunkaState → Free Source () → IO ()
-execute state (Free (Git url path script next)) =
+execute ∷ Free (Source (Free Files ())) ()
+        → IO ()
+execute (Free (Git url path script next)) =
   do update url path
-     Files.execute $ evalStateT script state { _repositoryRoot = path }
-     execute state next
-execute _ (Pure _) = return ()
+     Files.execute script
+     execute next
+execute (Pure _) = return ()
 
 
 update ∷ String → FilePath → IO ()

@@ -1,7 +1,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.DSL
   ( module B
-  , Script
+  , FileScript, SourceScript, ProfileScript
   ) where
 
 import Control.Monad.Free (Free)
@@ -13,4 +13,7 @@ import Biegunka.DSL.Source as B
 import Biegunka.DSL.Profile as B
 
 
-type Script a b = StateT BiegunkaState (Free a) b
+type Script α β = StateT BiegunkaState (Free α) β
+type FileScript α = Script Files α
+type SourceScript α = Script (Source (FileScript ())) α
+type ProfileScript α = Script (Profile (SourceScript ())) α

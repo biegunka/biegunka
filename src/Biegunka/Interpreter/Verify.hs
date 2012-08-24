@@ -5,24 +5,21 @@ import Control.Applicative (Applicative, liftA2)
 import Control.Monad (unless)
 
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (StateT, evalStateT)
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.State
-import Biegunka.DSL.Profile (Profile(..))
-import Biegunka.DSL.Source (Source(..))
-import Biegunka.DSL.Files (Files(..))
+import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..))
+import Biegunka.Interpreter.State
 
 
-verify ∷ StateT BiegunkaState (Free Profile) () → IO ()
+verify ∷ ProfileScript () → IO ()
 verify script = do
   home ← getHomeDirectory
-  let state = BiegunkaState { _root = home, _repositoryRoot = ""}
-  (verified, failures) ← runWriterT (profile state (evalStateT script state))
+  let script' = infect home script
+  (verified, failures) ← runWriterT (profile script')
   putStr "Verified... "
   if verified
     then do
@@ -33,21 +30,23 @@ verify script = do
       putStrLn failures
 
 
-profile ∷ BiegunkaState → Free Profile () → WriterT String IO Bool
-profile state (Free (Profile _ script next)) =
-  repo state (evalStateT script state) |&&| profile state next
-profile _ (Pure _) = return True
+profile ∷ Free (Profile (Free (Source (Free Files ())) ())) ()
+        → WriterT String IO Bool
+profile (Free (Profile _ script next)) =
+  repo script |&&| profile next
+profile (Pure _) = return True
 
 
-repo ∷ BiegunkaState → Free Source () → WriterT String IO Bool
-repo state (Free (Git _ path script next)) = do
+repo ∷ Free (Source (Free Files ())) ()
+     → WriterT String IO Bool
+repo (Free (Git _ path script next)) = do
   repoExists ← io $ doesDirectoryExist path
   if repoExists
-    then files (evalStateT script state { _repositoryRoot = path }) |&&| repo state next
+    then files script |&&| repo next
     else do
       tellLn $ "  Repository " ++ path ++ " does not exist"
-      return False |&&| repo state next
-repo _ (Pure _) = return True
+      return False |&&| repo next
+repo (Pure _) = return True
 
 
 files ∷ Free Files () → WriterT String IO Bool

@@ -2,15 +2,12 @@
 module Biegunka.Interpreter.Execute.Profile (execute) where
 
 import Control.Monad.Free (Free(..))
-import Control.Monad.State (evalStateT)
 
-import Biegunka.State
-import Biegunka.DSL.Profile (Profile(..))
+import Biegunka.DSL (Profile(..), Source(..), Files(..))
 import qualified Biegunka.Interpreter.Execute.Source as Source
 
 
-execute ∷ BiegunkaState → Free Profile () → IO ()
-execute state (Free (Profile _ repo next)) =
-  do Source.execute state (evalStateT repo state)
-     execute state next
-execute _ (Pure _) = return ()
+execute ∷ Free (Profile (Free (Source (Free Files ())) ())) ()
+        → IO ()
+execute (Free (Profile _ repo next)) = Source.execute repo >> execute next
+execute (Pure _) = return ()
