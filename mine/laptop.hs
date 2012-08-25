@@ -25,6 +25,9 @@ main = execute |>>| verify $ script
         registerAt ".vim/bundle/neco-ghc"
       git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $
         registerAt ".vim/bundle/neocomplcache"
+      git "https://github.com/spolu/dwm.vim" "git/dwm" $
+        registerAt ".vim/bundle/dwm"
+
     profile "misc" $ do
       git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $
         return ()

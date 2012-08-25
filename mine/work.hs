@@ -15,11 +15,15 @@ main = execute |>>| verify $ script
       dotfiles
       git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $
         return ()
+
     profile "vim-related" $ do
       git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ do
         registerAt ".vim/bundle/neco-ghc"
       git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ do
         registerAt ".vim/bundle/neocomplcache"
+      git "https://github.com/spolu/dwm.vim" "git/dwm" $
+        registerAt ".vim/bundle/dwm"
+
     profile "misc" $ do
       git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $
         return ()
