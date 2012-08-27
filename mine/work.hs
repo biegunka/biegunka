@@ -52,7 +52,6 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("gitignore", ".gitignore")
       , ("ackrc", ".ackrc")
       , ("vim/pathogen.vim", ".vim/autoload/pathogen.vim")
-      , ("vim/haskellmode.vim", ".vim/autoload/haskellmode.vim")
       , ("vim/cscope_maps.vim", ".vim/bundle/cscope_maps.vim")
       , ("vim/scratch", ".vim/bundle/scratch")
       , ("conceal/haskell.vim", ".vim/after/syntax/haskell.vim")
