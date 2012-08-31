@@ -43,7 +43,7 @@ main = execute |>>| verify $ script
 
 
 dotfiles ∷ SourceScript ()
-dotfiles = git "git@github.com:supki/.dotfiles" "git/.dotfiles" $ do
+dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT $ do
     repositoryRoot </>= "core"
     mapM_ (uncurry link)
