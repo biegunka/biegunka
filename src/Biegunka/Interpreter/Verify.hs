@@ -7,6 +7,7 @@ import Control.Monad (unless)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
+import           Data.Default (Default)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink)
@@ -15,7 +16,7 @@ import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..))
 import Biegunka.Interpreter.Common.State
 
 
-verify ∷ ProfileScript s () → IO ()
+verify ∷ Default s ⇒ ProfileScript s () → IO ()
 verify script = do
   home ← getHomeDirectory
   let script' = infect home script

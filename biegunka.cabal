@@ -22,7 +22,8 @@ Library
                  unix,
                  bytestring,
                  free,
-                 lens
+                 lens,
+                 data-default
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
   Other-Modules: Biegunka.DB

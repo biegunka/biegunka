@@ -2,8 +2,11 @@
 module Biegunka.Interpreter.Common.State (infect) where
 
 import Control.Applicative ((<$>))
+
+
 import Control.Monad.Free (Free(..), iter)
 import Control.Monad.State (evalStateT, runStateT)
+import Data.Default (Default(def))
 
 import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
@@ -12,11 +15,12 @@ import Biegunka.DSL
 import Biegunka.State
 
 
-infect ∷ FilePath
+infect ∷ Default s
+       ⇒ FilePath
        → ProfileScript s ()
        → Free (Profile (Free (Source (Free Files ())) ())) ()
 infect home script =
-  let mas = runStateT script BiegunkaState { _root = home, _repositoryRoot = "", _custom = undefined }
+  let mas = runStateT script BiegunkaState { _root = home, _repositoryRoot = "", _custom = def }
   in profile (iter degrade (snd <$> mas)) (fst <$> mas)
  where
   degrade (Profile _ _ a) = a

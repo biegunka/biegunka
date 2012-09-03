@@ -5,6 +5,7 @@ import Control.Monad (when)
 
 import Control.Lens
 import Control.Monad.State (get, mapStateT)
+import Data.Default (Default(def))
 import System.FilePath.Lens ((</>=))
 
 import Biegunka
@@ -20,15 +21,18 @@ data Custom = Custom
 makeLenses ''Custom
 
 
+instance Default Custom where
+  def = Custom
+    { _profileDirectory = "laptop"
+    , _buildTools = True
+    , _buildExperimental = True
+    }
+
+
 main ∷ IO ()
 main = execute -->>-- verify $ script
  where
   script = do
-    custom .= Custom
-      { _profileDirectory = "laptop"
-      , _buildTools = True
-      , _buildExperimental = True
-      }
     profile "mine" $ do
       dotfiles
       whenM (use $ custom . buildTools) tools

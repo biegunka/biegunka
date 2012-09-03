@@ -4,12 +4,13 @@ module Biegunka.Interpreter.Execute (execute) where
 import Control.Applicative ((<$>), (<*>))
 import Control.Exception (SomeException, try)
 import Control.Monad (forM_, unless, when)
-import Control.Monad.Free (Free(..))
 import Data.Function (on)
 import Data.Monoid (mempty)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 
+import           Control.Monad.Free (Free(..))
+import           Data.Default (Default)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory
@@ -26,7 +27,7 @@ import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 
 
-execute ∷ ProfileScript s () → IO ()
+execute ∷ Default s ⇒ ProfileScript s () → IO ()
 execute script = do
   home ← getHomeDirectory
   let script' = infect home script

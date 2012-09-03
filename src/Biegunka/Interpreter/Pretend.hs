@@ -5,6 +5,7 @@ import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 
 import           Control.Monad.State (execState, modify)
+import           Data.Default (Default)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import           System.Directory (getHomeDirectory)
@@ -33,7 +34,7 @@ instance Show Stat where
     ]
 
 
-pretend ∷ ProfileScript s () → IO ()
+pretend ∷ Default s ⇒ ProfileScript s () → IO ()
 pretend script = do
   home ← getHomeDirectory
   Biegunka α ← load
