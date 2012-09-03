@@ -35,32 +35,32 @@ instance Functor Files where
   fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
 
 
-message ∷ String → StateT BiegunkaState (Free Files) ()
+message ∷ String → StateT (BiegunkaState s) (Free Files) ()
 message m = lift . liftF $ Message m ()
 
 
-registerAt ∷ FilePath → StateT BiegunkaState (Free Files) ()
+registerAt ∷ FilePath → StateT (BiegunkaState s) (Free Files) ()
 registerAt dst = do
   rr ← use repositoryRoot
   sr ← use root
   lift . liftF $ RegisterAt rr (sr </> dst) ()
 
 
-link ∷ FilePath → FilePath → StateT BiegunkaState (Free Files) ()
+link ∷ FilePath → FilePath → StateT (BiegunkaState s) (Free Files) ()
 link src dst = do
   rr ← use repositoryRoot
   sr ← use root
   lift . liftF $ Link (rr </> src) (sr </> dst) ()
 
 
-copy ∷ FilePath → FilePath → StateT BiegunkaState (Free Files) ()
+copy ∷ FilePath → FilePath → StateT (BiegunkaState s) (Free Files) ()
 copy src dst = do
   rr ← use repositoryRoot
   sr ← use root
   lift . liftF $ Copy (rr </> src) (sr </> dst) ()
 
 
-compile ∷ Compiler → FilePath → FilePath → StateT BiegunkaState (Free Files) ()
+compile ∷ Compiler → FilePath → FilePath → StateT (BiegunkaState s) (Free Files) ()
 compile cmp src dst = do
   rr ← use repositoryRoot
   sr ← use root

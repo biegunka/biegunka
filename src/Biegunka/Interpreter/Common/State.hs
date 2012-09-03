@@ -1,8 +1,9 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.State (infect) where
 
-import Control.Monad.Free (Free(..))
-import Control.Monad.State (evalStateT)
+import Control.Applicative ((<$>))
+import Control.Monad.Free (Free(..), iter)
+import Control.Monad.State (evalStateT, runStateT)
 
 import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
@@ -12,23 +13,28 @@ import Biegunka.State
 
 
 infect ∷ FilePath
-       → ProfileScript ()
+       → ProfileScript s ()
        → Free (Profile (Free (Source (Free Files ())) ())) ()
-infect home script = profile state (evalStateT script state)
+infect home script =
+  let mas = runStateT script BiegunkaState { _root = home, _repositoryRoot = "", _custom = undefined }
+  in profile (iter degrade (snd <$> mas)) (fst <$> mas)
  where
-  state = BiegunkaState { _root = home, _repositoryRoot = ""}
+  degrade (Profile _ _ a) = a
 
 
-profile ∷ BiegunkaState
-        → Free (Profile (SourceScript ())) ()
+profile ∷ BiegunkaState s
+        → Free (Profile (SourceScript s ())) ()
         → Free (Profile (Free (Source (Free Files ())) ())) ()
 profile state (Free (Profile name script next)) =
-  Free (Profile name (repo state (evalStateT script state)) (profile state next))
+  let mas = runStateT script state
+  in Free (Profile name (repo state (fst <$> mas)) (profile (iter degrade (snd <$> mas)) next))
+ where
+  degrade (Git _ _ _ a) = a
 profile _ (Pure m) = Pure m
 
 
-repo ∷ BiegunkaState
-     → Free (Source (FileScript ())) ()
+repo ∷ BiegunkaState s
+     → Free (Source (FileScript s ())) ()
      → Free (Source (Free Files ())) ()
 repo state (Free (Git url path script next)) =
   Free (Git url path (evalStateT script state { _repositoryRoot = path }) (repo state next))

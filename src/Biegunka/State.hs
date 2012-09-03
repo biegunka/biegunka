@@ -4,9 +4,10 @@ module Biegunka.State where
 import Control.Lens (makeLenses)
 
 
-data BiegunkaState = BiegunkaState
+data BiegunkaState a = BiegunkaState
   { _repositoryRoot ∷ FilePath
   , _root ∷ FilePath
+  , _custom ∷ a
   } deriving Show
 
 

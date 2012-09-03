@@ -13,7 +13,7 @@ import Biegunka.DSL.Source as B
 import Biegunka.DSL.Profile as B
 
 
-type Script α β = StateT BiegunkaState (Free α) β
-type FileScript α = Script Files α
-type SourceScript α = Script (Source (FileScript ())) α
-type ProfileScript α = Script (Profile (SourceScript ())) α
+type Script s α β = StateT (BiegunkaState s) (Free α) β
+type FileScript s α = Script s Files α
+type SourceScript s α = Script s (Source (FileScript s ())) α
+type ProfileScript s α = Script s (Profile (SourceScript s ())) α

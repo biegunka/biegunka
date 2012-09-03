@@ -24,8 +24,8 @@ instance Functor (Source a) where
 
 git ∷ String
     → FilePath
-    → StateT BiegunkaState (Free Files) ()
-    → StateT BiegunkaState (Free (Source (StateT BiegunkaState (Free Files) ()))) ()
+    → StateT (BiegunkaState s) (Free Files) ()
+    → StateT (BiegunkaState s) (Free (Source (StateT (BiegunkaState s) (Free Files) ()))) ()
 git url path script = do
   sr ← use root
   lift . liftF $ Git url (sr </> path) script ()

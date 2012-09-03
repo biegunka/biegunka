@@ -22,6 +22,6 @@ instance Functor (Profile a) where
 
 
 profile ∷ String
-        → StateT BiegunkaState (Free (Source (StateT BiegunkaState (Free Files) ()))) ()
-        → StateT BiegunkaState (Free (Profile (StateT BiegunkaState (Free (Source (StateT BiegunkaState (Free Files) ()))) ()))) ()
+        → StateT (BiegunkaState s) (Free (Source (StateT (BiegunkaState s) (Free Files) ()))) ()
+        → StateT (BiegunkaState s) (Free (Profile (StateT (BiegunkaState s) (Free (Source (StateT (BiegunkaState s) (Free Files) ()))) ()))) ()
 profile name repo = lift . liftF $ Profile name repo ()

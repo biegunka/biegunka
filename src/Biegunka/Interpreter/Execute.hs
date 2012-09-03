@@ -26,7 +26,7 @@ import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 
 
-execute ∷ ProfileScript () → IO ()
+execute ∷ ProfileScript s () → IO ()
 execute script = do
   home ← getHomeDirectory
   let script' = infect home script

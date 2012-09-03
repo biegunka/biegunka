@@ -15,7 +15,7 @@ import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..))
 import Biegunka.Interpreter.Common.State
 
 
-verify ∷ ProfileScript () → IO ()
+verify ∷ ProfileScript s () → IO ()
 verify script = do
   home ← getHomeDirectory
   let script' = infect home script

@@ -1,48 +1,58 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 import Control.Applicative (liftA2)
+import Control.Monad (when)
 
+import Control.Lens
 import Control.Monad.State (get, mapStateT)
 import System.FilePath.Lens ((</>=))
 
 import Biegunka
 
 
+data Custom = Custom
+  { _profileDirectory ∷ FilePath
+  , _buildTools ∷ Bool
+  , _buildExperimental ∷ Bool
+  } deriving (Show, Read, Eq, Ord)
+
+
+makeLenses ''Custom
+
+
 main ∷ IO ()
-main = execute |>>| verify $ script
+main = execute -->>-- verify $ script
  where
   script = do
+    custom .= Custom
+      { _profileDirectory = "laptop"
+      , _buildTools = True
+      , _buildExperimental = True
+      }
     profile "mine" $ do
       dotfiles
-      tools
-      git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $
-        return ()
-    profile "vim-related" $ do
-      git "https://github.com/Shougo/vimproc" "git/vimproc" $
-        registerAt ".vim/bundle/vimproc"
-      git "https://github.com/eagletmt/ghcmod-vim" "git/ghcmod-vim" $
-        registerAt ".vim/bundle/ghcmod-vim"
-      git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $
-        registerAt ".vim/bundle/neco-ghc"
-      git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $
-        registerAt ".vim/bundle/neocomplcache"
-      git "https://github.com/spolu/dwm.vim" "git/dwm" $
-        registerAt ".vim/bundle/dwm"
+      whenM (use $ custom . buildTools) tools
+      git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $ return ()
+
+    profile "vim" $ vim
 
     profile "misc" $ do
-      git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $
-        return ()
-      git "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex" $
-        return ()
-    profile "experimental" $ do
-      git "https://github.com/sol/vimus" "git/vimus" $
-        return ()
-      git "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell" $
-        return ()
+      git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $ return ()
+      git "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex" $ return ()
 
-  (|>>|) = liftA2 (>>)
+    whenM (use $ custom . buildExperimental) $
+      profile "experimental" $ do
+        git "https://github.com/sol/vimus" "git/vimus" $ return ()
+        git "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell" $ return ()
+
+  (-->>--) = liftA2 (>>)
+
+  whenM ma mb = do
+    p ← ma
+    when p mb
 
 
-dotfiles ∷ SourceScript ()
+dotfiles ∷ SourceScript Custom ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT $ do
     repositoryRoot </>= "core"
@@ -86,7 +96,8 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("xmobar.hs", ".xmobar/xmobar.hs")
       ]
   localStateT $ do
-    repositoryRoot </>= "laptop"
+    directory ← use $ custom . profileDirectory
+    repositoryRoot </>= directory
     mapM_ (uncurry link)
       [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
       , ("mcabberrc", ".mcabberrc")
@@ -99,7 +110,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT m = get >>= \s → mapStateT (>> return ((), s)) m
 
 
-tools ∷ SourceScript ()
+tools ∷ SourceScript Custom ()
 tools = git "git@budueba.com:tools" "git/tools" $ do
   mapM_ (uncurry link)
     [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")
@@ -124,3 +135,12 @@ tools = git "git@budueba.com:tools" "git/tools" $ do
     , ("audio.hs", "bin/vaio-audio")
     , ("shutdown-gui.hs", "bin/shutdown-gui")
     ]
+
+
+vim ∷ SourceScript Custom ()
+vim = do
+  git "https://github.com/Shougo/vimproc" "git/vimproc" $ registerAt ".vim/bundle/vimproc"
+  git "https://github.com/eagletmt/ghcmod-vim" "git/ghcmod-vim" $ registerAt ".vim/bundle/ghcmod-vim"
+  git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ registerAt ".vim/bundle/neco-ghc"
+  git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
+  git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
