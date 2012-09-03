@@ -144,3 +144,4 @@ vim = do
   git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ registerAt ".vim/bundle/neco-ghc"
   git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
   git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
+  git "https://github.com/widox/vim-buffer-explorer-plugin" "git/vim-be" $ registerAt ".vim/bundle/be"
