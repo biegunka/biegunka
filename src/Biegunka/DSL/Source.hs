@@ -1,7 +1,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.DSL.Source
   ( Source(..)
-  , git
+  , git, git_
   ) where
 
 import Control.Lens (use)
@@ -29,3 +29,9 @@ git ∷ String
 git url path script = do
   sr ← use root
   lift . liftF $ Git url (sr </> path) script ()
+
+
+git_ ∷ String
+     → FilePath
+     → StateT (BiegunkaState s) (Free (Source (StateT (BiegunkaState s) (Free Files) ()))) ()
+git_ url path = git url path (return ())

@@ -30,24 +30,24 @@ instance Default Custom where
 
 
 main ∷ IO ()
-main = execute -->>-- verify $ script
+main = pretend -->>-- execute -->>-- verify $ script
  where
   script = do
     profile "mine" $ do
       dotfiles
       whenM (use $ custom . buildTools) tools
-      git "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion" $ return ()
+      git_ "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion"
 
     profile "vim" $ vim
 
     profile "misc" $ do
-      git "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions" $ return ()
-      git "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex" $ return ()
+      git_ "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions"
+      git_ "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex"
 
     whenM (use $ custom . buildExperimental) $
       profile "experimental" $ do
-        git "https://github.com/sol/vimus" "git/vimus" $ return ()
-        git "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell" $ return ()
+        git_ "https://github.com/sol/vimus" "git/vimus"
+        git_ "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell"
 
   (-->>--) = liftA2 (>>)
 
