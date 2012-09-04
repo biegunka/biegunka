@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
-module Data.Aeson.Encode.Pretty
-  ( EncodingEnv(..), Parentheses(..)
+module Data.Aeson.Biegunka
+  ( EncodingEnv(..)
   , encode
   ) where
 
@@ -21,14 +21,8 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
 
-data Parentheses = Allman
-                 | KnR
-                   deriving (Show, Read, Eq, Ord)
-
-
 data EncodingEnv = EncodingEnv
   { indentationStep ∷ Int
-  , parentheses ∷ Parentheses
   } deriving (Show, Read, Eq, Ord)
 
 
@@ -50,9 +44,7 @@ fromComplex (delimL,delimR) fromItem items =
      items' ← mconcat . intersperse ",\n" <$>
        mapM (\item → mappend <$> fromIndent <*> fromItem item) items
      modify pred
-     asks $ \env → mconcat $ case env of
-       EncodingEnv { parentheses = KnR } → [delimL, "\n", items', "\n", spaces, delimR]
-       EncodingEnv { parentheses = Allman } → ["\n", spaces, delimL, "\n", items', "\n", spaces, delimR]
+     return . mconcat $ [delimL, "\n", items', "\n", spaces, delimR]
 
 
 fromKeyValue ∷ (Text, Value) → StateT Int (Reader EncodingEnv) Builder

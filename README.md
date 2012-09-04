@@ -4,7 +4,6 @@ This library provides tools to write configuration files management scripts.
 
 ## Installing
 ```
-cd aeson-encode-pretty && cabal install && cd ..
 cabal install
 ```
 

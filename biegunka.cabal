@@ -13,7 +13,6 @@ Build-Type: Simple
 Library
   Build-Depends: base >= 3 && < 5,
                  aeson,
-                 aeson-encode-pretty,
                  containers,
                  mtl >= 2.1 && < 2.2,
                  directory,
@@ -21,8 +20,11 @@ Library
                  filepath,
                  unix,
                  bytestring,
+                 text,
                  free,
                  lens >= 2 && < 3,
+                 vector,
+                 unordered-containers,
                  data-default
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka

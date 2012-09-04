@@ -17,7 +17,7 @@ import Data.Typeable (Typeable)
 import System.IO (IOMode(ReadMode), withFile)
 
 import           Data.Aeson hiding (encode)
-import           Data.Aeson.Encode.Pretty (EncodingEnv(..), Parentheses(..), encode)
+import           Data.Aeson.Biegunka
 import qualified Data.ByteString.Lazy as B
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -75,7 +75,7 @@ load = do
 
 save ∷ Biegunka → IO ()
 save α = getHomeDirectory >>= \hd →
-  B.writeFile (hd </> ".biegunka.db") (encode EncodingEnv { indentationStep = 2, parentheses = KnR } α)
+  B.writeFile (hd </> ".biegunka.db") (encode EncodingEnv { indentationStep = 2 } α)
 
 
 filepaths ∷ Biegunka → [FilePath]
