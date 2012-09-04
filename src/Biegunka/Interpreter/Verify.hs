@@ -3,6 +3,7 @@ module Biegunka.Interpreter.Verify (verify) where
 
 import Control.Applicative (Applicative, liftA2)
 import Control.Monad (unless)
+import Data.Monoid (mconcat)
 
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
@@ -21,14 +22,10 @@ verify script = do
   home ← getHomeDirectory
   let script' = infect home script
   (verified, failures) ← runWriterT (profile script')
-  putStr "Verified... "
+  putStr "Verify… "
   if verified
-    then do
-      putStrLn "OK"
-      putStrLn failures
-    else do
-      putStrLn "Fail!\n"
-      putStrLn failures
+    then putStrLn "OK"
+    else putStrLn $ "Fail!\n" ++ failures
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) ()
@@ -45,7 +42,7 @@ repo (Free (Git _ path script next)) = do
   if repoExists
     then files script |&&| repo next
     else do
-      tellLn $ "  Repository " ++ path ++ " does not exist"
+      tellLn [indent 2, "Repository ", path, " does not exist"]
       return False |&&| repo next
 repo (Pure _) = return True
 
@@ -54,25 +51,23 @@ files ∷ Free Files () → WriterT String IO Bool
 files (Free (Message _ next)) = files next
 files (Free (RegisterAt _ dst next)) = do
   repoExists ← io $ doesDirectoryExist dst
-  unless repoExists (tellLn $ "    Repository link at " ++ dst ++ " does not exist")
+  unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
   return repoExists |&&| files next
 files (Free (Link src dst next)) = do
   src' ← io $ readSymbolicLink dst
   dstExists ← io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
   let correctLink = src == src' && dstExists
-  unless correctLink (tellLn brokenLink)
+  unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
   return correctLink |&&| files next
- where
-  brokenLink = "    Link at " ++ dst ++ " is broken/destination does not exist"
 files (Free (Copy src dst next)) = do
   src' ← io $ B.readFile src
   dst' ← io $ B.readFile dst
   let same = src' == dst'
-  unless same (tellLn $ "    Files at " ++ src ++ " and " ++ dst ++ " are not copies")
+  unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
   return same |&&| files next
 files (Free (Compile _ _ dst next)) = do
   binaryExists ← io $ doesFileExist dst
-  unless binaryExists (tellLn $ "    Compiled binary file at " ++ dst ++ " does not exist")
+  unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
   return binaryExists |&&| files next
 files (Pure _) = return True
 
@@ -86,5 +81,9 @@ io ∷ IO a → WriterT String IO a
 io = liftIO
 
 
-tellLn ∷ String → WriterT String IO ()
-tellLn failure = tell $ failure ++ "\n"
+tellLn ∷ [String] → WriterT String IO ()
+tellLn failure = tell . mconcat $ failure ++ ["\n"]
+
+
+indent ∷ Int → String
+indent n = replicate n ' '
