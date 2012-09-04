@@ -9,11 +9,12 @@ import qualified Data.Map as M
 import           Data.Set (Set)
 import qualified Data.Set as S
 
+import Biegunka.DB (Biegunka, biegunize)
 import Biegunka.DSL (Profile(..), Source(..), Files(..), foldie, mfoldie)
 
 
-construct ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Map String (Map FilePath (Set FilePath))
-construct = profile
+construct ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Biegunka
+construct = biegunize . profile
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Map String (Map FilePath (Set FilePath))

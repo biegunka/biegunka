@@ -9,19 +9,17 @@ import Data.Monoid (mempty)
 import System.Exit (ExitCode(..))
 import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 
-import           Control.Monad.Free (Free(..))
-import           Data.Default (Default)
-import qualified Data.Map as M
-import qualified Data.Set as S
-import           System.Directory
+import Control.Monad.Free (Free(..))
+import Data.Default (Default)
+import System.Directory
   ( copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist
   , getHomeDirectory, removeDirectoryRecursive, removeFile
   )
-import           System.FilePath (dropFileName, splitFileName)
-import           System.Posix.Files (createSymbolicLink)
-import           System.Process (runProcess, waitForProcess)
+import System.FilePath (dropFileName, splitFileName)
+import System.Posix.Files (createSymbolicLink)
+import System.Process (runProcess, waitForProcess)
 
-import           Biegunka.DB (Biegunka(..), load, save)
+import           Biegunka.DB
 import           Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), Compiler(..), foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
@@ -31,23 +29,20 @@ execute ∷ Default s ⇒ ProfileScript s () → IO ()
 execute script = do
   home ← getHomeDirectory
   let script' = infect home script
-  Biegunka α ← load
+  α ← load
   when (α == mempty) $
     putStrLn "Warning: Biegunka is empty"
   profile script'
   let β = Map.construct script'
   removeOrphanFiles α β
   removeOrphanRepos α β
-  save $ Biegunka β
+  save β
  where
-  removeOrphanFiles = removeOrphan removeFile files'
-  removeOrphanRepos = removeOrphan removeDirectoryRecursive repos
+  removeOrphanFiles = removeOrphan removeFile filepaths
+  removeOrphanRepos = removeOrphan removeDirectoryRecursive sources
 
   removeOrphan f g = removeIfNotElem f `on` g
   removeIfNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) $ f x
-
-  files' α = M.elems α >>= M.elems >>= S.toList
-  repos α = M.elems α >>= M.keys
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → IO ()

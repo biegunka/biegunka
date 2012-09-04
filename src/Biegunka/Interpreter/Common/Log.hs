@@ -5,13 +5,10 @@ import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Monoid (mconcat)
 
-import           Control.Monad.Free (Free(..))
-import           Control.Monad.Writer (execWriter, tell)
-import           Data.Map (Map)
-import qualified Data.Map as M
-import           Data.Set (Set)
-import qualified Data.Set as S
+import Control.Monad.Free (Free(..))
+import Control.Monad.Writer (execWriter, tell)
 
+import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.DSL (Profile(..), Source(..), Files(..), mfoldie)
 
 
@@ -45,9 +42,7 @@ indent ∷ Int → String
 indent n = replicate n ' '
 
 
-uninstall ∷ Map String (Map FilePath (Set FilePath)) → Map String (Map FilePath (Set FilePath)) → String
-uninstall α β = (logNotElems `on` files') α β ++ (logNotElems `on` repos) α β
+uninstall ∷ Biegunka → Biegunka → String
+uninstall α β = (logNotElems `on` filepaths) α β ++ (logNotElems `on` sources) α β
  where
   logNotElems xs ys = execWriter (forM_ xs $ \x → unless (x `elem` ys) (tell $ "Delete " ++ x ++ "\n"))
-  files' m = M.elems m >>= M.elems >>= S.toList
-  repos m = M.elems m >>= M.keys

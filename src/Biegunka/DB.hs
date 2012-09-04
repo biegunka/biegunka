@@ -3,13 +3,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- | Biegunka.DB is module defining operations on the result of installation scripts, Biegunkas.
 module Biegunka.DB
-  ( Biegunka(..)
+  ( Biegunka, biegunize
   , load, save
+  , filepaths, sources
   ) where
 
 import Control.Applicative ((<$>), empty)
+import Control.Monad ((<=<))
 import Data.Monoid (Monoid(..))
 import Control.Exception (Exception, SomeException, handle, throw)
 import Data.Typeable (Typeable)
@@ -26,16 +27,15 @@ import           System.Directory (getHomeDirectory)
 import           System.FilePath ((</>))
 
 
--- | The result of the installation script.
--- Contains a map of repository paths (keys) to installed files (values)
-newtype Biegunka =
-    Biegunka (Map String (Map FilePath (Set FilePath)))
-    deriving (Show, Monoid)
+newtype Biegunka = Biegunka
+  { unBiegunka ∷ Map String (Map FilePath (Set FilePath)) } deriving (Show, Eq, Monoid)
 
 
-data AesonFailedToDecode =
-    AesonFailedToDecode
-    deriving (Typeable, Show)
+biegunize ∷ Map String (Map FilePath (Set FilePath)) → Biegunka
+biegunize = Biegunka
+
+
+data AesonFailedToDecode = AesonFailedToDecode deriving (Typeable, Show)
 
 
 instance Exception AesonFailedToDecode
@@ -76,3 +76,11 @@ load = do
 save ∷ Biegunka → IO ()
 save α = getHomeDirectory >>= \hd →
   B.writeFile (hd </> ".biegunka.db") (encode EncodingEnv { indentationStep = 2, parentheses = KnR } α)
+
+
+filepaths ∷ Biegunka → [FilePath]
+filepaths = S.toList <=< M.elems <=< M.elems . unBiegunka
+
+
+sources ∷ Biegunka → [FilePath]
+sources = M.keys <=< M.elems . unBiegunka
