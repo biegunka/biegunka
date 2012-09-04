@@ -20,19 +20,19 @@ install = profile
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → String
-profile s = mfoldie s f
+profile = mfoldie f
  where
-  f (Profile name s' _) = mconcat ["Setup profile ", name, "\n", source s']
+  f (Profile name s _) = mconcat ["Setup profile ", name, "\n", source s]
 
 
 source ∷ Free (Source (Free Files ())) () → String
-source s = mfoldie s f
+source = mfoldie f
  where
-  f (Git url path s' _) = mconcat [indent 2,"Setup repository ",url," at ",path,"\n",files s']
+  f (Git url path s _) = mconcat [indent 2,"Setup repository ",url," at ",path,"\n",files s]
 
 
 files ∷ Free Files () → String
-files s = mfoldie s f
+files = mfoldie f
  where
   f (Message m _) = mconcat [indent 4,"Message: ",show m,"\n"]
   f (RegisterAt src dst _) = mconcat [indent 4,"Link repository ",src," to ",dst,"\n"]

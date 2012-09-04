@@ -51,19 +51,19 @@ execute script = do
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → IO ()
-profile s = foldie (>>) (return ()) s f
+profile = foldie (>>) (return ()) f
  where
-  f (Profile _ repo _) = source repo
+  f (Profile _ s _) = source s
 
 
 source ∷ Free (Source (Free Files ())) () → IO ()
-source s = foldie (>>) (return ()) s f
+source = foldie (>>) (return ()) f
  where
-  f (Git url path script _) = update url path >> files script
+  f (Git url path s _) = update url path >> files s
 
 
 files ∷ Free Files a → IO ()
-files s = foldie (>>) (return ()) s f
+files = foldie (>>) (return ()) f
  where
   f (Message m _) = putStrLn m
   f (RegisterAt src dst _) = overWriteWith createSymbolicLink src dst

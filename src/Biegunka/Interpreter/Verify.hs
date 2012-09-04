@@ -29,25 +29,25 @@ verify script = do
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → WriterT String IO Bool
-profile s = foldie (|&&|) (return True) s f
+profile = foldie (|&&|) (return True) f
  where
-  f (Profile _ s' _) = repo s'
+  f (Profile _ s _) = repo s
 
 
 repo ∷ Free (Source (Free Files ())) () → WriterT String IO Bool
-repo s = foldie (|&&|) (return True) s f
+repo = foldie (|&&|) (return True) f
  where
-  f (Git _ path script _) = do
+  f (Git _ path s _) = do
     repoExists ← io $ doesDirectoryExist path
     if repoExists
-      then files script
+      then files s
       else do
         tellLn [indent 2, "Repository ", path, " does not exist"]
         return False
 
 
 files ∷ Free Files () → WriterT String IO Bool
-files s = foldie (|&&|) (return True) s f
+files = foldie (|&&|) (return True) f
  where
   f (RegisterAt _ dst _) = do
     repoExists ← io $ doesDirectoryExist dst

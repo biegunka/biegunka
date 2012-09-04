@@ -42,10 +42,10 @@ instance Next (Profile a) where
   next (Profile _ _ x) = x
 
 
-foldie ∷ Next f ⇒ (a → b → b) → b → (Free f c) → (f (Free f c) → a) → b
-foldie f a (Free t) g = f (g t) (foldie f a (next t) g)
-foldie _ a (Pure _) _ = a
+foldie ∷ Next f ⇒ (a → b → b) → b → (f (Free f c) → a) → (Free f c) → b
+foldie f a g (Free t) = f (g t) (foldie f a g (next t))
+foldie _ a _ (Pure _) = a
 
 
-mfoldie ∷ (Monoid m, Next f) ⇒ (Free f c) → (f (Free f c) → m) → m
+mfoldie ∷ (Monoid m, Next f) ⇒ (f (Free f c) → m) → (Free f c) → m
 mfoldie = foldie mappend mempty
