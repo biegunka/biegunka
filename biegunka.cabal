@@ -22,7 +22,7 @@ Library
                  unix,
                  bytestring,
                  free,
-                 lens,
+                 lens >= 2 && < 3,
                  data-default
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
