@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..))
+import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), foldie)
 import Biegunka.Interpreter.Common.State
 
 
@@ -28,48 +28,48 @@ verify script = do
     else putStrLn $ "Fail!\n" ++ failures
 
 
-profile ∷ Free (Profile (Free (Source (Free Files ())) ())) ()
-        → WriterT String IO Bool
-profile (Free (Profile _ script next)) =
-  repo script |&&| profile next
-profile (Pure _) = return True
+profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → WriterT String IO Bool
+profile s = foldie (|&&|) (return True) s f
+ where
+  f (Profile _ s' _) = repo s'
 
 
-repo ∷ Free (Source (Free Files ())) ()
-     → WriterT String IO Bool
-repo (Free (Git _ path script next)) = do
-  repoExists ← io $ doesDirectoryExist path
-  if repoExists
-    then files script |&&| repo next
-    else do
-      tellLn [indent 2, "Repository ", path, " does not exist"]
-      return False |&&| repo next
-repo (Pure _) = return True
+repo ∷ Free (Source (Free Files ())) () → WriterT String IO Bool
+repo s = foldie (|&&|) (return True) s f
+ where
+  f (Git _ path script _) = do
+    repoExists ← io $ doesDirectoryExist path
+    if repoExists
+      then files script
+      else do
+        tellLn [indent 2, "Repository ", path, " does not exist"]
+        return False
 
 
 files ∷ Free Files () → WriterT String IO Bool
-files (Free (Message _ next)) = files next
-files (Free (RegisterAt _ dst next)) = do
-  repoExists ← io $ doesDirectoryExist dst
-  unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
-  return repoExists |&&| files next
-files (Free (Link src dst next)) = do
-  src' ← io $ readSymbolicLink dst
-  dstExists ← io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
-  let correctLink = src == src' && dstExists
-  unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
-  return correctLink |&&| files next
-files (Free (Copy src dst next)) = do
-  src' ← io $ B.readFile src
-  dst' ← io $ B.readFile dst
-  let same = src' == dst'
-  unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
-  return same |&&| files next
-files (Free (Compile _ _ dst next)) = do
-  binaryExists ← io $ doesFileExist dst
-  unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
-  return binaryExists |&&| files next
-files (Pure _) = return True
+files s = foldie (|&&|) (return True) s f
+ where
+  f (RegisterAt _ dst _) = do
+    repoExists ← io $ doesDirectoryExist dst
+    unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
+    return repoExists
+  f (Link src dst _) = do
+    src' ← io $ readSymbolicLink dst
+    dstExists ← io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
+    let correctLink = src == src' && dstExists
+    unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
+    return correctLink
+  f (Copy src dst _) = do
+    src' ← io $ B.readFile src
+    dst' ← io $ B.readFile dst
+    let same = src' == dst'
+    unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
+    return same
+  f (Compile _ _ dst _) = do
+    binaryExists ← io $ doesFileExist dst
+    unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
+    return binaryExists
+  f _ = return True
 
 
 (|&&|) ∷ Applicative m ⇒ m Bool → m Bool → m Bool

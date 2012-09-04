@@ -22,7 +22,7 @@ import           System.Posix.Files (createSymbolicLink)
 import           System.Process (runProcess, waitForProcess)
 
 import           Biegunka.DB (Biegunka(..), load, save)
-import           Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), Compiler(..))
+import           Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), Compiler(..), foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 
@@ -51,16 +51,25 @@ execute script = do
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → IO ()
-profile (Free (Profile _ repo next)) = source repo >> profile next
-profile (Pure _) = return ()
+profile s = foldie (>>) (return ()) s f
+ where
+  f (Profile _ repo _) = source repo
 
 
 source ∷ Free (Source (Free Files ())) () → IO ()
-source (Free (Git url path script next)) =
-  do update url path
-     files script
-     source next
-source (Pure _) = return ()
+source s = foldie (>>) (return ()) s f
+ where
+  f (Git url path script _) = update url path >> files script
+
+
+files ∷ Free Files a → IO ()
+files s = foldie (>>) (return ()) s f
+ where
+  f (Message m _) = putStrLn m
+  f (RegisterAt src dst _) = overWriteWith createSymbolicLink src dst
+  f (Link src dst _) = overWriteWith createSymbolicLink src dst
+  f (Copy src dst _) = overWriteWith copyFile src dst
+  f (Compile cmp src dst _) = compileWith cmp src dst
 
 
 update ∷ String → FilePath → IO ()
@@ -84,15 +93,6 @@ withProgressString prompt action = do
   case result of
     ExitSuccess → putStrLn "OK!"
     ExitFailure _ → putStrLn "Fail!" >> readFile "/tmp/biegunka.errors" >>= error
-
-
-files ∷ Free Files a → IO ()
-files (Free (Message m x)) = putStrLn m >> files x
-files (Free (RegisterAt src dst x)) = overWriteWith createSymbolicLink src dst >> files x
-files (Free (Link src dst x)) = overWriteWith createSymbolicLink src dst >> files x
-files (Free (Copy src dst x)) = overWriteWith copyFile src dst >> files x
-files (Free (Compile cmp src dst x)) = compileWith cmp src dst >> files x
-files (Pure _) = return ()
 
 
 overWriteWith ∷ (FilePath → FilePath → IO ()) → FilePath → FilePath → IO ()
