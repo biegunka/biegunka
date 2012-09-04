@@ -2,9 +2,12 @@
 module Biegunka.DSL
   ( module B
   , FileScript, SourceScript, ProfileScript
+  , Next(..), foldie, mfoldie
   ) where
 
-import Control.Monad.Free (Free)
+import Data.Monoid (Monoid(..))
+
+import Control.Monad.Free (Free(..))
 import Control.Monad.State (StateT)
 
 import Biegunka.State as B
@@ -17,3 +20,32 @@ type Script s α β = StateT (BiegunkaState s) (Free α) β
 type FileScript s α = Script s Files α
 type SourceScript s α = Script s (Source (FileScript s ())) α
 type ProfileScript s α = Script s (Profile (SourceScript s ())) α
+
+
+class Next f where
+  next ∷ f a → a
+
+
+instance Next Files where
+  next (Message _ x) = x
+  next (RegisterAt _ _ x) = x
+  next (Link _ _ x) = x
+  next (Copy _ _ x) = x
+  next (Compile _ _ _ x) = x
+
+
+instance Next (Source a) where
+  next (Git _ _ _ x) = x
+
+
+instance Next (Profile a) where
+  next (Profile _ _ x) = x
+
+
+foldie ∷ Next f ⇒ (a → b → b) → b → (Free f c) → (f (Free f c) → a) → b
+foldie f a (Free t) g = f (g t) (foldie f a (next t) g)
+foldie _ a (Pure _) _ = a
+
+
+mfoldie ∷ (Monoid m, Next f) ⇒ (Free f c) → (f (Free f c) → m) → m
+mfoldie = foldie mappend mempty
