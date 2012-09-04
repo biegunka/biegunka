@@ -15,7 +15,7 @@ Library
                  aeson,
                  aeson-encode-pretty,
                  containers,
-                 mtl,
+                 mtl >= 2.1 && < 2.2,
                  directory,
                  process,
                  filepath,
