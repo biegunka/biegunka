@@ -1,4 +1,4 @@
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Verify (verify) where
 
 import Control.Applicative (Applicative, liftA2)
@@ -23,6 +23,18 @@ import Biegunka.DSL
 import Biegunka.Interpreter.Common.State
 
 
+-- | Verify interpreter
+--
+-- Compares current filesystem state and what is written to be executed in script
+--
+-- May be useful to check if Execute works correctly or too see if you really need to run this script
+--
+-- @
+-- main ∷ IO ()
+-- main = verify $ do
+--   profile ...
+--   profile ...
+-- @
 verify ∷ Default s ⇒ ProfileScript s () → IO ()
 verify s = do
   home ← getHomeDirectory

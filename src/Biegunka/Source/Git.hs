@@ -1,6 +1,8 @@
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
+-- | Biegunka.Source.Git - function to work with git repositories as sources
 module Biegunka.Source.Git
-  ( git, git_
+  ( -- * Source layer
+    git, git_
   ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -19,12 +21,34 @@ import Biegunka.Settings
 import Biegunka.DSL (FileScript, Source(..), SourceScript)
 
 
+-- | Clone repository from the given url to specified path
+-- and/or pull from master. Also executes attached script
+--
+-- > git "https://example.com/repository.git" "git/repository" $ do
+-- >   registerAt "some/not/so/long/path"
+-- >   link "important.file" ".config"
+--
+--  * clone repository from https:\/\/example.com\/repository.git to ${HOME}\/git\/repository
+--
+--  * pull from master
+--
+--  * link ${HOME}\/git\/repository to ${HOME}\/some\/not\/so\/long\/path
+--
+--  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
 git ∷ String → FilePath → FileScript s () → SourceScript s ()
 git url path script = do
   sr ← uses root (</> path)
   lift . liftF $ Source url sr script (update url sr) ()
 
 
+-- | Clone repository from the given url to specified path
+-- and/or pull from master
+--
+-- > git_ "https://example.com/repository.git" "git/repository"
+--
+--  * clone repository from https:\/\/example.com\/repository.git to ${HOME}\/git\/repository
+--
+--  * pull from master
 git_ ∷ String → FilePath → SourceScript s ()
 git_ url path = git url path (return ())
 

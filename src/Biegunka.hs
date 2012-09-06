@@ -1,10 +1,16 @@
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
+-- | Biegunka - configuration management library
 module Biegunka
-  ( ProfileScript, SourceScript, FileScript
+  ( -- * Interpreters
+    pretend, execute, verify
+    -- * Profile layer
   , profile
+    -- * File layer
   , message, registerAt, copy, link, compile, Compiler(..)
-  , pretend, execute, verify
+    -- * Settings
   , Settings(..), root, sourceRoot, custom
+    -- * Convenient type aliases
+  , ProfileScript, SourceScript, FileScript
   ) where
 
 import Biegunka.DSL

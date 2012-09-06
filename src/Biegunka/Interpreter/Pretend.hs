@@ -1,4 +1,4 @@
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Pretend (pretend) where
 
 import Control.Applicative ((<$>))
@@ -35,6 +35,20 @@ instance Show Stat where
     ]
 
 
+-- | Pretend interpreter
+--
+-- Doesn't do any IO, so you can't check if script will fail to do IO
+--
+-- But Pretend can show which changes would be maid if IO will run without errors
+--
+-- Prints execution log if asked
+--
+-- @
+-- main ∷ IO ()
+-- main = pretend $ do
+--   profile ...
+--   profile ...
+-- @
 pretend ∷ Default s ⇒ ProfileScript s () → IO ()
 pretend script = do
   home ← getHomeDirectory

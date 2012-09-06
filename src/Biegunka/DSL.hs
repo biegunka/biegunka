@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.DSL
   ( module B
   , FileScript, SourceScript, ProfileScript
@@ -25,7 +25,10 @@ import Biegunka.Settings as B
 type Script s α β = StateT (Settings s) (Free α) β
 
 
-data Compiler = GHC deriving Show
+-- Supported compilers
+data Compiler =
+    GHC -- ^ The Glorious Glasgow Haskell Compilation System
+  deriving Show
 
 
 data Files next =
@@ -36,7 +39,8 @@ data Files next =
   | Compile Compiler FilePath FilePath next
 
 
-type FileScript s α = Script s Files α
+-- | Convenient wrapper to hide complexity of types
+type FileScript s a = Script s Files a
 
 
 instance Functor Files where
@@ -47,22 +51,59 @@ instance Functor Files where
   fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
 
 
+-- | Prints specified message to stdout
+--
+-- > message "hello!"
+--
+-- prints \"hello!\"
 message ∷ String → FileScript s ()
 message m = lift . liftF $ Message m ()
 
 
+-- | Source registration
+--
+-- Links source to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   registerAt "we/need/you/here"
+--
+-- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt ∷ FilePath → FileScript s ()
 registerAt dst = join $ lifty RegisterAt <$> use sourceRoot <*> uses root (</> dst)
 
 
+-- | File link
+--
+-- Links given file to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   link "you" "we/need/you/here"
+--
+-- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link ∷ FilePath → FilePath → FileScript s ()
 link src dst = join $ lifty Link <$> uses sourceRoot (</> src) <*> uses root (</> dst)
 
 
+-- | File copy
+--
+-- Copies given file to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   copy "you" "we/need/you/here"
+--
+-- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy ∷ FilePath → FilePath → FileScript s ()
 copy src dst = join $ lifty Copy <$> uses sourceRoot (</> src) <*> uses root (</> dst)
 
 
+-- | File compilation
+--
+-- Compiles given file with given compiler to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   compile GHC "you.hs" "we/need/you/here"
+--
+-- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
 compile ∷ Compiler → FilePath → FilePath → FileScript s ()
 compile cmp src dst = join $ lifty (Compile cmp) <$> uses sourceRoot (</> src) <*> uses root (</> dst)
 
@@ -80,7 +121,8 @@ data Source a b = Source
   }
 
 
-type SourceScript s α = Script s (Source (FileScript s ())) α
+-- | Convenient wrapper to hide complexity of types
+type SourceScript s a = Script s (Source (FileScript s ())) a
 
 
 makeLenses ''Source
@@ -93,13 +135,23 @@ instance Functor (Source a) where
 data Profile a b = Profile String a b
 
 
-type ProfileScript s α = Script s (Profile (SourceScript s ())) α
+-- | Convenient wrapper to hide complexity of types
+type ProfileScript s a = Script s (Profile (SourceScript s ())) a
 
 
 instance Functor (Profile a) where
   fmap f (Profile name repo n) = Profile name repo (f n)
 
 
+-- | Configuration profile
+--
+-- Provides convenient sources grouping
+--
+-- > profile "mine" $ do
+-- >   git ...
+-- >   git ...
+-- > profile "friend's" $ do
+-- >   svn ...
 profile ∷ String → SourceScript s () → ProfileScript s ()
 profile name repo = lift . liftF $ Profile name repo ()
 

@@ -1,4 +1,4 @@
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
 
 import Control.Exception (SomeException, try)
@@ -28,6 +28,16 @@ import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 
 
+-- | Execute Interpreter
+--
+-- Execute script. Copy and links files, compiles stuff. You get the idea
+--
+-- @
+-- main ∷ IO ()
+-- main = execute $ do
+--   profile ...
+--   profile ...
+-- @
 execute ∷ Default s ⇒ ProfileScript s () → IO ()
 execute s = do
   home ← getHomeDirectory
