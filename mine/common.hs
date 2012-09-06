@@ -10,6 +10,7 @@ import System.FilePath.Lens ((</>=))
 
 import Biegunka
 import Biegunka.Source.Git
+import Biegunka.Source.Tar
 
 
 data Custom = Custom

@@ -25,10 +25,15 @@ Library
                  lens >= 2 && < 3,
                  vector,
                  unordered-containers,
-                 data-default
+                 data-default,
+                 tar,
+                 zlib,
+                 bzlib,
+                 download-curl
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
+                   Biegunka.Source.Tar
   Other-Modules: Biegunka.DB
                  Biegunka.Settings
                  Biegunka.DSL
