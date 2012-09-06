@@ -41,9 +41,7 @@ tar u p script = do
 
 -- | Download and extract tar archive from the given url to specified path.
 --
--- > tar_ "https://example.com/archive.tar.gz" "git/archive" $ do
--- >   registerAt "some/not/so/long/path"
--- >   link "important.file" ".config"
+-- > tar_ "https://example.com/archive.tar.gz" "git/archive"
 --
 --  * download and extract archive from https:\/\/example.com\/archive.tar.gz to ${HOME}\/git\/archive
 tar_ ∷ String → FilePath → SourceScript s ()
