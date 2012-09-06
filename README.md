@@ -11,6 +11,9 @@ cabal install
 The simplest yet meaningful Biegunka script
 
 ```haskell
+import Biegunka
+import Biegunka.Source.Git
+
 main :: IO ()
 main = execute $
   profile "my-configs" $
@@ -18,6 +21,12 @@ main = execute $
 	  link "xmonad.hs" ".xmonad/xmonad.hs"
 ```
 This example doesn't do very much but is useful to get high level intuition about what Biegunka scripts are. Let's start line by line.
+
+```haskell
+import Biegunka
+import Biegunka.Source.Git
+```
+Needed imports. `Biegunka` imports infrastructure for scripts, `Biegunka.Source.Git` allows to use `git` function to clone and update git repository.
 
 ```haskell
 main = execute $
