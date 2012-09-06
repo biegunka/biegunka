@@ -28,19 +28,17 @@ Library
                  data-default
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
+                   Biegunka.Source.Git
   Other-Modules: Biegunka.DB
-                 Biegunka.State
+                 Biegunka.Settings
                  Biegunka.DSL
-                 Biegunka.DSL.Files
-                 Biegunka.DSL.Source
-                 Biegunka.DSL.Profile
-                 Biegunka.Interpreter
                  Biegunka.Interpreter.Execute
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Verify
                  Biegunka.Interpreter.Common.Log
                  Biegunka.Interpreter.Common.Map
                  Biegunka.Interpreter.Common.State
+                 Data.Aeson.Biegunka
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
   Extensions: UnicodeSyntax

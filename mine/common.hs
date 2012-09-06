@@ -9,6 +9,7 @@ import Data.Default (Default(def))
 import System.FilePath.Lens ((</>=))
 
 import Biegunka
+import Biegunka.Source.Git
 
 
 data Custom = Custom
@@ -30,7 +31,7 @@ instance Default Custom where
 
 
 main ∷ IO ()
-main = pretend -->>-- execute -->>-- verify $ script
+main = pretend >>> execute >>> verify $ script
  where
   script = do
     profile "mine" $ do
@@ -49,17 +50,15 @@ main = pretend -->>-- execute -->>-- verify $ script
         git_ "https://github.com/sol/vimus" "git/vimus"
         git_ "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell"
 
-  (-->>--) = liftA2 (>>)
+  (>>>) = liftA2 (>>)
 
-  whenM ma mb = do
-    p ← ma
-    when p mb
+  whenM ma mb = ma >>= \p → when p mb
 
 
 dotfiles ∷ SourceScript Custom ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT $ do
-    repositoryRoot </>= "core"
+    sourceRoot </>= "core"
     mapM_ (uncurry link)
       [ ("xsession", ".xsession")
       , ("mpdconf", ".mpdconf")
@@ -83,7 +82,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("vimusrc", ".vimusrc")
       ]
   localStateT $ do
-    repositoryRoot </>= "extended"
+    sourceRoot </>= "extended"
     mapM_ (uncurry link)
       [ ("xmonad.hs", ".xmonad/xmonad.hs")
       , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
@@ -101,7 +100,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       ]
   localStateT $ do
     directory ← use $ custom . profileDirectory
-    repositoryRoot </>= directory
+    sourceRoot </>= directory
     mapM_ (uncurry link)
       [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
       , ("mcabberrc", ".mcabberrc")

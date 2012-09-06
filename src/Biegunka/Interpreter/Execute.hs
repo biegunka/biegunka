@@ -1,18 +1,16 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Execute (execute) where
 
-import Control.Applicative ((<$>), (<*>))
 import Control.Exception (SomeException, try)
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 import Data.Monoid (mempty)
-import System.Exit (ExitCode(..))
-import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 
+import Control.Lens ((^.))
 import Control.Monad.Free (Free(..))
 import Data.Default (Default)
 import System.Directory
-  ( copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist
+  ( copyFile, createDirectoryIfMissing
   , getHomeDirectory, removeDirectoryRecursive, removeFile
   )
 import System.FilePath (dropFileName, splitFileName)
@@ -20,20 +18,25 @@ import System.Posix.Files (createSymbolicLink)
 import System.Process (runProcess, waitForProcess)
 
 import           Biegunka.DB
-import           Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), Compiler(..), foldie)
+import           Biegunka.DSL
+  ( ProfileScript
+  , Profile(..)
+  , Source, update, script
+  , Files(..)
+  , Compiler(..), foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 
 
 execute ∷ Default s ⇒ ProfileScript s () → IO ()
-execute script = do
+execute s = do
   home ← getHomeDirectory
-  let script' = infect home script
+  let s' = infect home s
   α ← load
   when (α == mempty) $
     putStrLn "Warning: Biegunka is empty"
-  profile script'
-  let β = Map.construct script'
+  profile s'
+  let β = Map.construct s'
   removeOrphanFiles α β
   removeOrphanRepos α β
   save β
@@ -54,7 +57,7 @@ profile = foldie (>>) (return ()) f
 source ∷ Free (Source (Free Files ())) () → IO ()
 source = foldie (>>) (return ()) f
  where
-  f (Git url path s _) = update url path >> files s
+  f s = (s^.update) >> files (s^.script)
 
 
 files ∷ Free Files a → IO ()
@@ -65,29 +68,6 @@ files = foldie (>>) (return ()) f
   f (Link src dst _) = overWriteWith createSymbolicLink src dst
   f (Copy src dst _) = overWriteWith copyFile src dst
   f (Compile cmp src dst _) = compileWith cmp src dst
-
-
-update ∷ String → FilePath → IO ()
-update u p =
-  do exists ← (||) <$> doesDirectoryExist p <*> doesFileExist p
-     unless exists $
-       withProgressString ("Clone git repository from " ++ u ++ " to " ++ p ++ "… ") $
-         withTempFile $ \h →
-           waitForProcess =<< runProcess "git" ["clone", u, p] Nothing Nothing Nothing (Just h) (Just h)
-     withProgressString ("Pulling in " ++ p ++ " from origin master… ") $
-       withTempFile $ \h →
-         waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just p) Nothing Nothing (Just h) (Just h)
- where
-  withTempFile = withFile "/tmp/biegunka.errors" WriteMode
-
-
-withProgressString ∷ String → IO ExitCode → IO ()
-withProgressString prompt action = do
-  putStr prompt >> hFlush stdout
-  result ← action
-  case result of
-    ExitSuccess → putStrLn "OK!"
-    ExitFailure _ → putStrLn "Fail!" >> readFile "/tmp/biegunka.errors" >>= error
 
 
 overWriteWith ∷ (FilePath → FilePath → IO ()) → FilePath → FilePath → IO ()

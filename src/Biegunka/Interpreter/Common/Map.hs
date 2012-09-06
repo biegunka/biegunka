@@ -3,6 +3,7 @@ module Biegunka.Interpreter.Common.Map (construct) where
 
 import Data.Monoid (Monoid(..))
 
+import           Control.Lens ((^.))
 import           Control.Monad.Free (Free(..))
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -10,7 +11,12 @@ import           Data.Set (Set)
 import qualified Data.Set as S
 
 import Biegunka.DB (Biegunka, biegunize)
-import Biegunka.DSL (Profile(..), Source(..), Files(..), foldie, mfoldie)
+import Biegunka.DSL
+  ( Profile(..)
+  , Source, to, script
+  , Files(..)
+  , foldie, mfoldie
+  )
 
 
 construct ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Biegunka
@@ -26,7 +32,7 @@ profile = foldie ($) mempty f
 source ∷ Free (Source (Free Files ())) () → Map FilePath (Set FilePath)
 source = mfoldie f
  where
-  f (Git _ path s _) = M.singleton path (files s)
+  f s = M.singleton (s^.to) (files $ s^.script)
 
 
 files ∷ Free Files () → Set FilePath

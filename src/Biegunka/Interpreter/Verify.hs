@@ -5,6 +5,7 @@ import Control.Applicative (Applicative, liftA2)
 import Control.Monad (unless)
 import Data.Monoid (mconcat)
 
+import           Control.Lens ((^.))
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
@@ -13,19 +14,24 @@ import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.DSL (ProfileScript, Profile(..), Source(..), Files(..), foldie)
+import Biegunka.DSL
+  ( ProfileScript
+  , Profile(..)
+  , Source, from, to, script
+  , Files(..)
+  , foldie)
 import Biegunka.Interpreter.Common.State
 
 
 verify ∷ Default s ⇒ ProfileScript s () → IO ()
-verify script = do
+verify s = do
   home ← getHomeDirectory
-  let script' = infect home script
-  (verified, failures) ← runWriterT (profile script')
+  let s' = infect home s
+  (verified, failures) ← runWriterT (profile s')
   putStr "Verify… "
   if verified
     then putStrLn "OK"
-    else putStrLn $ "Fail!\n" ++ failures
+    else putStrLn $ failures ++ "\nFail!"
 
 
 profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → WriterT String IO Bool
@@ -37,12 +43,12 @@ profile = foldie (|&&|) (return True) f
 repo ∷ Free (Source (Free Files ())) () → WriterT String IO Bool
 repo = foldie (|&&|) (return True) f
  where
-  f (Git _ path s _) = do
-    repoExists ← io $ doesDirectoryExist path
-    if repoExists
-      then files s
+  f s = do
+    sourceExists ← io $ doesDirectoryExist (s ^. to)
+    if sourceExists
+      then files (s^.script)
       else do
-        tellLn [indent 2, "Repository ", path, " does not exist"]
+        tellLn [indent 2, "Source ", s^.from, " → ", s^.to, " doesn't exist"]
         return False
 
 

@@ -5,11 +5,17 @@ import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Monoid (mconcat)
 
+import Control.Lens ((^.))
 import Control.Monad.Free (Free(..))
 import Control.Monad.Writer (execWriter, tell)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.DSL (Profile(..), Source(..), Files(..), mfoldie)
+import Biegunka.DSL
+  ( Profile(..)
+  , Source, from, to, script
+  , Files(..)
+  , mfoldie
+  )
 
 
 install ∷ Free (Profile (Free (Source (Free Files ())) ())) () → String
@@ -25,7 +31,7 @@ profile = mfoldie f
 source ∷ Free (Source (Free Files ())) () → String
 source = mfoldie f
  where
-  f (Git url path s _) = mconcat [indent 2,"Setup repository ",url," at ",path,"\n",files s]
+  f s = mconcat [indent 2, "Setup repository ", s^.from, " at ", s^.to, "\n", files (s^.script)]
 
 
 files ∷ Free Files () → String
