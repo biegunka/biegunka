@@ -29,11 +29,13 @@ Library
                  tar,
                  zlib,
                  bzlib,
+                 zip-archive,
                  download-curl
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
                    Biegunka.Source.Tar
+                   Biegunka.Source.Zip
   Other-Modules: Biegunka.DB
                  Biegunka.Settings
                  Biegunka.DSL

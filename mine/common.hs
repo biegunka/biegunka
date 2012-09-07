@@ -10,7 +10,6 @@ import System.FilePath.Lens ((</>=))
 
 import Biegunka
 import Biegunka.Source.Git
-import Biegunka.Source.Tar
 
 
 data Custom = Custom
@@ -40,7 +39,7 @@ main = pretend >>> execute >>> verify $ script
       whenM (use $ custom . buildTools) tools
       git_ "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion"
 
-    profile "vim" $ vim
+    profile "vim" vim
 
     profile "misc" $ do
       git_ "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions"
@@ -148,4 +147,4 @@ vim = do
   git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ registerAt ".vim/bundle/neco-ghc"
   git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
   git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
-  git "https://github.com/widox/vim-buffer-explorer-plugin" "git/vim-be" $ registerAt ".vim/bundle/be"
+  git "https://github.com/vim-scripts/bufexplorer.zip" "git/vim-be" $ registerAt ".vim/bundle/be"

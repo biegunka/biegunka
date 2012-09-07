@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK prune #-}
--- | Biegunka.Source.Git - function to work with git repositories as sources
+-- | Biegunka.Source.Git - functions to work with git repositories as sources
 module Biegunka.Source.Git
   ( -- * Source layer
     git, git_

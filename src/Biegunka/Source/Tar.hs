@@ -1,5 +1,5 @@
 {-# OPTIONS_HADDOCK prune #-}
--- | Biegunka.Source.Tar - function to work with [.tar, .tar.gz, .tar.bz2] files as sources
+-- | Biegunka.Source.Tar - functions to work with [.tar, .tar.gz, .tar.bz2] archives as sources
 module Biegunka.Source.Tar
   ( -- * Source layer
     tar, tar_
@@ -21,8 +21,8 @@ import Biegunka.Settings
 import Biegunka.DSL (FileScript, Source(..), SourceScript)
 
 
--- | Download and extract tar archive from the given url to specified path.
--- Also executes attached script
+-- | Download and extract tar archive (possibly with compression)
+-- from the given url to specified path. Also executes attached script
 --
 -- > tar "https://example.com/archive.tar.gz" "git/archive" $ do
 -- >   registerAt "some/not/so/long/path"
@@ -39,7 +39,8 @@ tar u p script = do
   lift . liftF $ Source u sr script (update u sr) ()
 
 
--- | Download and extract tar archive from the given url to specified path.
+-- | Download and extract tar archive (possibly with compression)
+-- from the given url to specified path.
 --
 -- > tar_ "https://example.com/archive.tar.gz" "git/archive"
 --
