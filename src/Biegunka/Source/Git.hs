@@ -13,8 +13,6 @@ import Control.Monad.Free (liftF)
 import Control.Monad.Trans (lift)
 import System.FilePath ((</>))
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.Exit (ExitCode(..))
-import System.IO (IOMode(WriteMode), hFlush, stdout, withFile)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.Settings
@@ -36,9 +34,7 @@ import Biegunka.DSL (FileScript, Source(..), SourceScript)
 --
 --  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
 git ∷ String → FilePath → FileScript s () → SourceScript s ()
-git url path script = do
-  sr ← uses root (</> path)
-  lift . liftF $ Source url sr script (update url sr) ()
+git url path script = uses root (</> path) >>= \sr -> lift . liftF $ Source url sr script (update url sr) ()
 
 
 -- | Clone repository from the given url to specified path
@@ -54,25 +50,10 @@ git_ url path = git url path (return ())
 
 
 update ∷ String → FilePath → IO ()
-update u p =
-  do exists ← (||) <$> doesDirectoryExist p <*> doesFileExist p
-     unless exists $
-       withProgressString ("Clone git repository from " ++ u ++ " to " ++ p ++ "… ") $
-         withTempFile $ \h →
-           waitForProcess =<< runProcess "git" ["clone", u, p] Nothing Nothing Nothing (Just h) (Just h)
-     withProgressString ("Pulling in " ++ p ++ " from origin master… ") $
-       withTempFile $ \h →
-         waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just p) Nothing Nothing (Just h) (Just h)
- where
-  withTempFile = withFile "/tmp/biegunka.errors" WriteMode
-
-
-withProgressString ∷ String → IO ExitCode → IO ()
-withProgressString prompt action = do
-  putStr prompt >> hFlush stdout
-  result ← action
-  case result of
-    ExitSuccess → putStrLn "OK!"
-    ExitFailure _ → putStrLn "Fail!" >> readFile "/tmp/biegunka.errors" >>= error
-
-
+update url path = do
+  exists ← (||) <$> doesDirectoryExist path <*> doesFileExist path
+  unless exists $ do
+    waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing Nothing Nothing
+    return ()
+  waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing Nothing Nothing
+  return ()

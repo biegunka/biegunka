@@ -32,9 +32,7 @@ import Biegunka.Source.Common (download, remove)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 tar ∷ String → FilePath → FileScript s () → SourceScript s ()
-tar u p script = do
-  sr ← uses root (</> p)
-  lift . liftF $ Source u sr script (update u sr) ()
+tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
 
 
 -- | Download and extract tar archive (possibly with compression)
@@ -44,15 +42,15 @@ tar u p script = do
 --
 --  * download and extract archive from https:\/\/example.com\/archive.tar.gz to ${HOME}\/git\/archive
 tar_ ∷ String → FilePath → SourceScript s ()
-tar_ u p = tar u p $ return ()
+tar_ url path = tar url path $ return ()
 
 
 update ∷ String → FilePath → IO ()
-update u p = do
-  remove p
-  Tar.unpack p . Tar.read . decompress =<< download u
+update url path = do
+  remove path
+  Tar.unpack path . Tar.read . decompress =<< download url
  where
-  decompress = case u ^. extension of
+  decompress = case url ^. extension of
     ".gz" → GZip.decompress
     ".bz2" → BZip.decompress
     _ → id

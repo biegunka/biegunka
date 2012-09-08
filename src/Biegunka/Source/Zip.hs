@@ -33,9 +33,7 @@ import Biegunka.Source.Common (download, remove)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 zip ∷ String → FilePath → FileScript s () → SourceScript s ()
-zip u p script = do
-  sr ← uses root (</> p)
-  lift . liftF $ Source u sr script (update u sr) ()
+zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
 
 
 -- | Download and extract zip archive from the given url to specified path.
@@ -44,14 +42,14 @@ zip u p script = do
 --
 --  * download and extract archive from https:\/\/example.com\/archive.zip to ${HOME}\/git\/archive
 zip_ ∷ String → FilePath → SourceScript s ()
-zip_ u p = zip u p $ return ()
+zip_ url path = zip url path $ return ()
 
 
 update ∷ String → FilePath → IO ()
-update u p = do
-  remove p
-  archive ← toArchive <$> download u
-  withWorkingDirectory p $
+update url path = do
+  remove path
+  archive ← toArchive <$> download url
+  withWorkingDirectory path $
     extractFilesFromArchive [] archive
 
 
