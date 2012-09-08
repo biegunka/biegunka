@@ -9,21 +9,15 @@ import Control.Applicative ((<$>))
 import Prelude hiding (zip)
 
 import Codec.Archive.Zip (toArchive, extractFilesFromArchive)
-import Control.Lens ((^.), uses)
-import Control.Monad (when)
+import Control.Lens (uses)
 import Control.Monad.Free (liftF)
 import Control.Monad.Trans (lift)
-import Network.Curl.Download.Lazy (openLazyURI)
 import System.FilePath ((</>))
-import System.FilePath.Lens (directory)
-import System.Directory
-  ( doesDirectoryExist, doesFileExist
-  , createDirectoryIfMissing, getCurrentDirectory, setCurrentDirectory
-  , removeDirectoryRecursive, removeFile
-  )
+import System.Directory (createDirectoryIfMissing, getCurrentDirectory, setCurrentDirectory)
 
 import Biegunka.Settings
 import Biegunka.DSL (FileScript, Source(..), SourceScript)
+import Biegunka.Source.Common (download, remove)
 
 
 -- | Download and extract zip archive from the given url to specified path.
@@ -55,13 +49,10 @@ zip_ u p = zip u p $ return ()
 
 update ∷ String → FilePath → IO ()
 update u p = do
-  whenM doesDirectoryExist removeDirectoryRecursive p
-  whenM doesFileExist removeFile p
-  archive ← toArchive . either (error . show) id <$> openLazyURI u
+  remove p
+  archive ← toArchive <$> download u
   withWorkingDirectory p $
     extractFilesFromArchive [] archive
- where
-  whenM cM f t = cM t >>= \c → when c (f t)
 
 
 withWorkingDirectory ∷ FilePath → IO a → IO ()
