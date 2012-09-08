@@ -13,6 +13,7 @@ import Control.Monad.Free (liftF)
 import Control.Monad.Trans (lift)
 import System.FilePath ((</>))
 import System.Directory (doesDirectoryExist, doesFileExist)
+import System.IO (IOMode(WriteMode), withFile)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.Settings
@@ -53,7 +54,9 @@ update ∷ String → FilePath → IO ()
 update url path = do
   exists ← (||) <$> doesDirectoryExist path <*> doesFileExist path
   unless exists $ do
-    waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing Nothing Nothing
+    withFile "/dev/null" WriteMode $ \h → do
+      waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing (Just h) (Just h)
+      return ()
+  withFile "/dev/null" WriteMode $ \h → do
+    waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing (Just h) (Just h)
     return ()
-  waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing Nothing Nothing
-  return ()
