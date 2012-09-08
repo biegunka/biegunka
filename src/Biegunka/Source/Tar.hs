@@ -11,12 +11,13 @@ import qualified Codec.Compression.BZip as BZip (decompress)
 import           Control.Lens ((^.), uses)
 import           Control.Monad.Free (liftF)
 import           Control.Monad.Trans (lift)
+import           Data.ByteString.Lazy (ByteString)
 import           System.FilePath ((</>))
 import           System.FilePath.Lens (extension)
 
 import Biegunka.Settings
 import Biegunka.DSL (FileScript, Source(..), SourceScript)
-import Biegunka.Source.Common (download, remove)
+import Biegunka.Source.Common (update)
 
 
 -- | Download and extract tar archive (possibly with compression)
@@ -32,7 +33,7 @@ import Biegunka.Source.Common (download, remove)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 tar ∷ String → FilePath → FileScript s () → SourceScript s ()
-tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
+tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateTar url sr) ()
 
 
 -- | Download and extract tar archive (possibly with compression)
@@ -45,12 +46,13 @@ tar_ ∷ String → FilePath → SourceScript s ()
 tar_ url path = tar url path $ return ()
 
 
-update ∷ String → FilePath → IO ()
-update url path = do
-  remove path
-  Tar.unpack path . Tar.read . decompress =<< download url
- where
-  decompress = case url ^. extension of
-    ".gz" → GZip.decompress
-    ".bz2" → BZip.decompress
-    _ → id
+updateTar ∷ String → FilePath → IO ()
+updateTar url path = do
+  update url path (Tar.unpack path . Tar.read . decompress url)
+
+
+decompress ∷ String → ByteString → ByteString
+decompress url = case url ^. extension of
+  ".gz" → GZip.decompress
+  ".bz2" → BZip.decompress
+  _ → id

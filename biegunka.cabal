@@ -30,7 +30,8 @@ Library
                  zlib,
                  bzlib,
                  zip-archive,
-                 download-curl
+                 download-curl,
+                 SHA
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git

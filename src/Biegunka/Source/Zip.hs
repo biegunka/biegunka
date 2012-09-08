@@ -5,7 +5,6 @@ module Biegunka.Source.Zip
     zip, zip_
   ) where
 
-import Control.Applicative ((<$>))
 import Prelude hiding (zip)
 
 import Codec.Archive.Zip (toArchive, extractFilesFromArchive)
@@ -17,7 +16,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory, setCurre
 
 import Biegunka.Settings
 import Biegunka.DSL (FileScript, Source(..), SourceScript)
-import Biegunka.Source.Common (download, remove)
+import Biegunka.Source.Common (update)
 
 
 -- | Download and extract zip archive from the given url to specified path.
@@ -33,7 +32,7 @@ import Biegunka.Source.Common (download, remove)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 zip ∷ String → FilePath → FileScript s () → SourceScript s ()
-zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
+zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateZip url sr) ()
 
 
 -- | Download and extract zip archive from the given url to specified path.
@@ -45,16 +44,12 @@ zip_ ∷ String → FilePath → SourceScript s ()
 zip_ url path = zip url path $ return ()
 
 
-update ∷ String → FilePath → IO ()
-update url path = do
-  remove path
-  archive ← toArchive <$> download url
-  withWorkingDirectory path $
-    extractFilesFromArchive [] archive
+updateZip ∷ String → FilePath → IO ()
+updateZip url path = update url path (with path . extractFilesFromArchive [] . toArchive)
 
 
-withWorkingDirectory ∷ FilePath → IO a → IO ()
-withWorkingDirectory path action = do
+with ∷ FilePath → IO a → IO ()
+with path action = do
   saved ← getCurrentDirectory
   createDirectoryIfMissing True path
   setCurrentDirectory path
