@@ -1,7 +1,10 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 import Control.Applicative (liftA2)
 import Control.Monad (when)
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 
 import Control.Lens
 import Control.Monad.State (get, mapStateT)
@@ -19,15 +22,19 @@ data Custom = Custom
   } deriving (Show, Read, Eq, Ord)
 
 
+data Template = Template
+  { xmobar ∷ Xmobar
+  } deriving (Data, Typeable)
+
+
+data Xmobar = Xmobar
+  { backgroundColor ∷ String
+  , position ∷ String
+  , battery ∷ Maybe String
+  } deriving (Data, Typeable)
+
+
 makeLenses ''Custom
-
-
-instance Default Custom where
-  def = Custom
-    { _profileDirectory = "laptop"
-    , _buildTools = True
-    , _buildExperimental = True
-    }
 
 
 main ∷ IO ()
@@ -55,7 +62,7 @@ main = pretend >>> execute >>> verify $ script
   whenM ma mb = ma >>= \p → when p mb
 
 
-dotfiles ∷ SourceScript Custom ()
+dotfiles ∷ SourceScript Custom Template ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT $ do
     sourceRoot </>= "core"
@@ -98,14 +105,12 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("gtkrc.mine", ".gtkrc.mine")
       , ("xmobar.hs", ".xmobar/xmobar.hs")
       ]
+    substitute "xmobarrc.template" ".xmobarrc"
   localStateT $ do
     directory ← use $ custom . profileDirectory
     sourceRoot </>= directory
     mapM_ (uncurry link)
       [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
-      , ("mcabberrc", ".mcabberrc")
-      , ("ncmpcpp", ".ncmpcpp/config")
-      , ("xmobarrc", ".xmobarrc")
       , ("Xdefaults", ".Xdefaults")
       , ("xmodmap", ".xmodmap")
       ]
@@ -113,7 +118,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
   localStateT m = get >>= \s → mapStateT (>> return ((), s)) m
 
 
-tools ∷ SourceScript Custom ()
+tools ∷ SourceScript Custom Template ()
 tools = git "git@budueba.com:tools" "git/tools" $ do
   mapM_ (uncurry link)
     [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")
@@ -140,7 +145,7 @@ tools = git "git@budueba.com:tools" "git/tools" $ do
     ]
 
 
-vim ∷ SourceScript Custom ()
+vim ∷ SourceScript Custom Template ()
 vim = do
   git "https://github.com/Shougo/vimproc" "git/vimproc" $ registerAt ".vim/bundle/vimproc"
   git "https://github.com/eagletmt/ghcmod-vim" "git/ghcmod-vim" $ registerAt ".vim/bundle/ghcmod-vim"
@@ -148,3 +153,25 @@ vim = do
   git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
   git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
   git "https://github.com/vim-scripts/bufexplorer.zip" "git/vim-be" $ registerAt ".vim/bundle/be"
+
+
+instance Default Custom where
+  def = Custom
+    { _profileDirectory = "laptop"
+    , _buildTools = True
+    , _buildExperimental = True
+    }
+
+
+instance Default Template where
+  def = Template
+    { xmobar = def
+    }
+
+
+instance Default Xmobar where
+  def = Xmobar
+    { backgroundColor = "\"#333333\""
+    , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+    , battery = Just "%battery%%mysep%"
+    }
