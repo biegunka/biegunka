@@ -1,21 +1,23 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
 
+import Control.Applicative ((<$>))
 import Control.Exception (SomeException, try)
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 import Data.Monoid (mempty)
 
-import Control.Lens ((^.))
-import Control.Monad.Free (Free(..))
-import Data.Default (Default)
-import System.Directory
+import           Control.Lens ((^.))
+import qualified Data.Text.Lazy.IO as T
+import           Control.Monad.Free (Free(..))
+import           Data.Default (Default)
+import           System.Directory
   ( copyFile, createDirectoryIfMissing
   , getHomeDirectory, removeDirectoryRecursive, removeFile
   )
-import System.FilePath (dropFileName, splitFileName)
-import System.Posix.Files (createSymbolicLink)
-import System.Process (runProcess, waitForProcess)
+import           System.FilePath (dropFileName, splitFileName)
+import           System.Posix.Files (createSymbolicLink)
+import           System.Process (runProcess, waitForProcess)
 
 import           Biegunka.DB
 import           Biegunka.DSL
@@ -38,7 +40,7 @@ import           Biegunka.Interpreter.Common.State
 --   profile ...
 --   profile ...
 -- @
-execute ∷ Default s ⇒ ProfileScript s () → IO ()
+execute ∷ (Default s, Default t) ⇒ ProfileScript s t () → IO ()
 execute s = do
   home ← getHomeDirectory
   let s' = infect home s
@@ -78,6 +80,7 @@ files = foldie (>>) (return ()) f
   f (Link src dst _) = overWriteWith createSymbolicLink src dst
   f (Copy src dst _) = overWriteWith copyFile src dst
   f (Compile cmp src dst _) = compileWith cmp src dst
+  f (Template src dst substitute _) = substitute <$> readFile src >>= T.writeFile dst
 
 
 overWriteWith ∷ (FilePath → FilePath → IO ()) → FilePath → FilePath → IO ()

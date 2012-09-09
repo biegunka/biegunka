@@ -42,6 +42,7 @@ files = mfoldie f
   f (Link src dst _) = mconcat [indent 4,"Link file ",src," to ",dst,"\n"]
   f (Copy src dst _) = mconcat [indent 4,"Copy file ",src," to ",dst,"\n"]
   f (Compile cmp src dst _) = mconcat [indent 4,"Compile with ",show cmp," file ",src," to ",dst,"\n"]
+  f (Template src dst _ _) = mconcat [indent 4,"Write ",src," with substituted templates to ",dst,"\n"]
 
 
 indent ∷ Int → String

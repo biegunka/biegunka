@@ -6,7 +6,7 @@ module Biegunka
     -- * Profile layer
   , profile
     -- * File layer
-  , message, registerAt, copy, link, compile, Compiler(..)
+  , message, registerAt, copy, link, compile, Compiler(..), substitute
     -- * Settings
   , Settings(..), root, sourceRoot, custom
     -- * Convenient type aliases
@@ -16,7 +16,7 @@ module Biegunka
 import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
   , profile
-  , message, registerAt, copy, link, compile, Compiler(..)
+  , message, registerAt, copy, link, compile, Compiler(..), substitute
   )
 
 import Biegunka.Settings (Settings(..), root, sourceRoot, custom)

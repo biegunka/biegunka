@@ -49,7 +49,7 @@ instance Show Stat where
 --   profile ...
 --   profile ...
 -- @
-pretend ∷ Default s ⇒ ProfileScript s () → IO ()
+pretend ∷ (Default s, Default t) ⇒ ProfileScript s t () → IO ()
 pretend script = do
   home ← getHomeDirectory
   α ← load

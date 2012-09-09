@@ -21,14 +21,15 @@ import Biegunka.Settings
 type Freest a b = Free (a b) ()
 
 
-infect ∷ Default s ⇒ FilePath → ProfileScript s () → Freest Profile (Freest Source (Free Files ()))
+infect ∷ (Default s, Default t)
+       ⇒ FilePath → ProfileScript s t () → Freest Profile (Freest Source (Free Files ()))
 infect home s =
   let mas = runStateT s (set root home def)
   in profile (iter next (snd <$> mas)) (fst <$> mas)
 
 
-profile ∷ Settings s
-        → Free (Profile (SourceScript s ())) ()
+profile ∷ Settings s t
+        → Free (Profile (SourceScript s t ())) ()
         → Freest Profile (Freest Source (Free Files ()))
 profile s = transform f
  where
@@ -38,7 +39,7 @@ profile s = transform f
 
 
 
-source ∷ Settings s → Free (Source (FileScript s ())) () → Freest Source (Free Files ())
+source ∷ Settings s t → Free (Source (FileScript s t ())) () → Freest Source (Free Files ())
 source s = transform f
  where
   f p = over step (source s) . over script (flip evalStateT (set sourceRoot (p^.to) s)) $ p

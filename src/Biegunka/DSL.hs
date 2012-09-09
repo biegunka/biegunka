@@ -5,7 +5,7 @@ module Biegunka.DSL
   , FileScript, SourceScript, ProfileScript
   , Profile(..), profile
   , Source(..) , to, from, script, update, step
-  , Files(..), Compiler(..), message, registerAt, copy, link, compile
+  , Files(..), Compiler(..), message, registerAt, copy, link, compile, substitute
   , Next(..), foldie, mfoldie, transform
   ) where
 
@@ -17,12 +17,15 @@ import Control.Lens (over, makeLenses, use, uses)
 import Control.Monad.Free (Free(..), liftF)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadTrans, lift)
+import Data.Text.Lazy (Text)
 import System.FilePath ((</>))
+import Text.StringTemplate (ToSElem, newSTMP, render, setAttribute)
+import Text.StringTemplate.GenericStandard ()
 
 import Biegunka.Settings as B
 
 
-type Script s α β = StateT (Settings s) (Free α) β
+type Script s t α β = StateT (Settings s t) (Free α) β
 
 
 -- Supported compilers
@@ -37,10 +40,11 @@ data Files next =
   | Link FilePath FilePath next
   | Copy FilePath FilePath next
   | Compile Compiler FilePath FilePath next
+  | Template FilePath FilePath (String → Text) next
 
 
 -- | Convenient wrapper to hide complexity of types
-type FileScript s a = Script s Files a
+type FileScript s t a = Script s t Files a
 
 
 instance Functor Files where
@@ -49,6 +53,7 @@ instance Functor Files where
   fmap f (Link src dst next)        = Link src dst (f next)
   fmap f (Copy src dst next)        = Copy src dst (f next)
   fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
+  fmap f (Template src dst g next)  = Template src dst g (f next)
 
 
 -- | Prints specified message to stdout
@@ -56,56 +61,63 @@ instance Functor Files where
 -- > message "hello!"
 --
 -- prints \"hello!\"
-message ∷ String → FileScript s ()
+message ∷ String → FileScript s t ()
 message m = lift . liftF $ Message m ()
 
 
--- | Source registration
---
--- Links source to specified filepath
+-- | Links source to specified filepath
 --
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   registerAt "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
-registerAt ∷ FilePath → FileScript s ()
+registerAt ∷ FilePath → FileScript s t ()
 registerAt dst = join $ lifty RegisterAt <$> use sourceRoot <*> uses root (</> dst)
 
 
--- | File link
---
--- Links given file to specified filepath
+-- | Links given file to specified filepath
 --
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link ∷ FilePath → FilePath → FileScript s ()
+link ∷ FilePath → FilePath → FileScript s t ()
 link src dst = join $ lifty Link <$> uses sourceRoot (</> src) <*> uses root (</> dst)
 
 
--- | File copy
---
--- Copies given file to specified filepath
+-- | Copies given file to specified filepath
 --
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy ∷ FilePath → FilePath → FileScript s ()
+copy ∷ FilePath → FilePath → FileScript s t ()
 copy src dst = join $ lifty Copy <$> uses sourceRoot (</> src) <*> uses root (</> dst)
 
 
--- | File compilation
---
--- Compiles given file with given compiler to specified filepath
+-- | Compiles given file with given compiler to specified filepath
 --
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   compile GHC "you.hs" "we/need/you/here"
 --
 -- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
-compile ∷ Compiler → FilePath → FilePath → FileScript s ()
+compile ∷ Compiler → FilePath → FilePath → FileScript s t ()
 compile cmp src dst = join $ lifty (Compile cmp) <$> uses sourceRoot (</> src) <*> uses root (</> dst)
+
+
+-- | Substitutes $template.X$ templates in given file and writes result to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   substitute "you.hs" "we/need/you/here"
+--
+-- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
+-- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
+substitute ∷ ToSElem t ⇒ FilePath → FilePath → FileScript s t ()
+substitute src dst = do
+  sr ← uses sourceRoot (</> src)
+  r ← uses root (</> dst)
+  t ← uses template (\b → render . setAttribute "template" b . newSTMP)
+  lift . liftF $ Template sr r t ()
 
 
 lifty ∷ (Functor f, MonadTrans t) ⇒ (c → d → () → f a) → c → d → t (Free f) a
@@ -122,7 +134,7 @@ data Source a b = Source
 
 
 -- | Convenient wrapper to hide complexity of types
-type SourceScript s a = Script s (Source (FileScript s ())) a
+type SourceScript s t a = Script s t (Source (FileScript s t ())) a
 
 
 makeLenses ''Source
@@ -136,7 +148,7 @@ data Profile a b = Profile String a b
 
 
 -- | Convenient wrapper to hide complexity of types
-type ProfileScript s a = Script s (Profile (SourceScript s ())) a
+type ProfileScript s t a = Script s t (Profile (SourceScript s t ())) a
 
 
 instance Functor (Profile a) where
@@ -152,7 +164,7 @@ instance Functor (Profile a) where
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile ∷ String → SourceScript s () → ProfileScript s ()
+profile ∷ String → SourceScript s t () → ProfileScript s t ()
 profile name repo = lift . liftF $ Profile name repo ()
 
 
@@ -166,6 +178,7 @@ instance Next Files where
   next (Link _ _ x) = x
   next (Copy _ _ x) = x
   next (Compile _ _ _ x) = x
+  next (Template _ _ _ x) = x
 
 
 instance Next (Source a) where

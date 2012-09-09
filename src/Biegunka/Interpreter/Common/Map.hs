@@ -43,3 +43,4 @@ files = mfoldie f
   f (Link _ dst _) = S.singleton dst
   f (Copy _ dst _) = S.singleton dst
   f (Compile _ _ dst _) = S.singleton dst
+  f (Template _ dst _ _) = S.singleton dst

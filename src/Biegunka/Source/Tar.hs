@@ -32,7 +32,7 @@ import Biegunka.Source.Common (update)
 --  * link ${HOME}\/git\/archive to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
-tar ∷ String → FilePath → FileScript s () → SourceScript s ()
+tar ∷ String → FilePath → FileScript s t () → SourceScript s t ()
 tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateTar url sr) ()
 
 
@@ -42,7 +42,7 @@ tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url
 -- > tar_ "https://example.com/archive.tar.gz" "git/archive"
 --
 --  * download and extract archive from https:\/\/example.com\/archive.tar.gz to ${HOME}\/git\/archive
-tar_ ∷ String → FilePath → SourceScript s ()
+tar_ ∷ String → FilePath → SourceScript s t ()
 tar_ url path = tar url path $ return ()
 
 

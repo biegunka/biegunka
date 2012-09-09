@@ -34,8 +34,8 @@ import Biegunka.DSL (FileScript, Source(..), SourceScript)
 --  * link ${HOME}\/git\/repository to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
-git ∷ String → FilePath → FileScript s () → SourceScript s ()
-git url path script = uses root (</> path) >>= \sr -> lift . liftF $ Source url sr script (update url sr) ()
+git ∷ String → FilePath → FileScript s t () → SourceScript s t ()
+git url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
 
 
 -- | Clone repository from the given url to specified path
@@ -46,7 +46,7 @@ git url path script = uses root (</> path) >>= \sr -> lift . liftF $ Source url 
 --  * clone repository from https:\/\/example.com\/repository.git to ${HOME}\/git\/repository
 --
 --  * pull from master
-git_ ∷ String → FilePath → SourceScript s ()
+git_ ∷ String → FilePath → SourceScript s t ()
 git_ url path = git url path (return ())
 
 

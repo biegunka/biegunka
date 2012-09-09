@@ -35,7 +35,7 @@ import Biegunka.Interpreter.Common.State
 --   profile ...
 --   profile ...
 -- @
-verify ∷ Default s ⇒ ProfileScript s () → IO ()
+verify ∷ (Default s, Default t) ⇒ ProfileScript s t () → IO ()
 verify s = do
   home ← getHomeDirectory
   let s' = infect home s
@@ -67,6 +67,7 @@ repo = foldie (|&&|) (return True) f
 files ∷ Free Files () → WriterT String IO Bool
 files = foldie (|&&|) (return True) f
  where
+  f (Message _ _) = return True
   f (RegisterAt _ dst _) = do
     repoExists ← io $ doesDirectoryExist dst
     unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
@@ -87,7 +88,8 @@ files = foldie (|&&|) (return True) f
     binaryExists ← io $ doesFileExist dst
     unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
     return binaryExists
-  f _ = return True
+  f (Template _ dst _ _) = io $ doesFileExist dst
+
 
 
 (|&&|) ∷ Applicative m ⇒ m Bool → m Bool → m Bool

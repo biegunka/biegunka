@@ -31,7 +31,7 @@ import Biegunka.Source.Common (update)
 --  * link ${HOME}\/git\/archive to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
-zip ∷ String → FilePath → FileScript s () → SourceScript s ()
+zip ∷ String → FilePath → FileScript s t () → SourceScript s t ()
 zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateZip url sr) ()
 
 
@@ -40,7 +40,7 @@ zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url
 -- > zip_ "https://example.com/archive.zip" "git/archive"
 --
 --  * download and extract archive from https:\/\/example.com\/archive.zip to ${HOME}\/git\/archive
-zip_ ∷ String → FilePath → SourceScript s ()
+zip_ ∷ String → FilePath → SourceScript s t ()
 zip_ url path = zip url path $ return ()
 
 
