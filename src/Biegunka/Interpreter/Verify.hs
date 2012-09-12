@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Verify (verify) where
 
@@ -16,9 +17,9 @@ import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.DSL
   ( ProfileScript
-  , Profile(..)
-  , Source, from, to, script
-  , Files(..)
+  , Command(..)
+  , from, to, script
+  , Profile, Source, Files
   , foldie)
 import Biegunka.Interpreter.Common.State
 
@@ -46,13 +47,15 @@ verify s = do
     else putStrLn $ failures ++ "\nFail!"
 
 
-profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → WriterT String IO Bool
+profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
+        → WriterT String IO Bool
 profile = foldie (|&&|) (return True) f
  where
+  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → WriterT String IO Bool
   f (Profile _ s _) = repo s
 
 
-repo ∷ Free (Source (Free Files ())) () → WriterT String IO Bool
+repo ∷ Free (Command Source (Free (Command Files ()) ())) () → WriterT String IO Bool
 repo = foldie (|&&|) (return True) f
  where
   f s = do
@@ -64,9 +67,10 @@ repo = foldie (|&&|) (return True) f
         return False
 
 
-files ∷ Free Files () → WriterT String IO Bool
+files ∷ Free (Command Files ()) () → WriterT String IO Bool
 files = foldie (|&&|) (return True) f
  where
+  f ∷ Command Files () a → WriterT String IO Bool
   f (Message _ _) = return True
   f (RegisterAt _ dst _) = do
     repoExists ← io $ doesDirectoryExist dst

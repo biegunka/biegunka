@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.Log (install, uninstall) where
 
@@ -11,32 +12,34 @@ import Control.Monad.Writer (execWriter, tell)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.DSL
-  ( Profile(..)
-  , Source, from, to, script
-  , Files(..)
+  ( Command(..)
+  , from, to, script
+  , Profile, Source, Files
   , mfoldie
   )
 
 
-install ∷ Free (Profile (Free (Source (Free Files ())) ())) () → String
+install ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → String
 install = profile
 
 
-profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → String
+profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → String
 profile = mfoldie f
  where
+  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → String
   f (Profile name s _) = mconcat ["Setup profile ", name, "\n", source s]
 
 
-source ∷ Free (Source (Free Files ())) () → String
+source ∷ Free (Command Source (Free (Command Files ()) ())) () → String
 source = mfoldie f
  where
   f s = mconcat [indent 2, "Setup repository ", s^.from, " at ", s^.to, "\n", files (s^.script)]
 
 
-files ∷ Free Files () → String
+files ∷ Free (Command Files ()) () → String
 files = mfoldie f
  where
+  f ∷ Command Files () a → String
   f (Message m _) = mconcat [indent 4,"Message: ",show m,"\n"]
   f (RegisterAt src dst _) = mconcat [indent 4,"Link repository ",src," to ",dst,"\n"]
   f (Link src dst _) = mconcat [indent 4,"Link file ",src," to ",dst,"\n"]

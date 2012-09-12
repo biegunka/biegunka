@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
 
@@ -22,9 +23,9 @@ import           System.Process (runProcess, waitForProcess)
 import           Biegunka.DB
 import           Biegunka.DSL
   ( ProfileScript
-  , Profile(..)
-  , Source, update, script
-  , Files(..)
+  , Command(..)
+  , update, script
+  , Profile, Source, Files
   , Compiler(..), foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
@@ -60,21 +61,23 @@ execute s = do
   removeIfNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) $ f x
 
 
-profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → IO ()
+profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → IO ()
 profile = foldie (>>) (return ()) f
  where
+  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → IO ()
   f (Profile _ s _) = source s
 
 
-source ∷ Free (Source (Free Files ())) () → IO ()
+source ∷ Free (Command Source (Free (Command Files ()) ())) () → IO ()
 source = foldie (>>) (return ()) f
  where
   f s = (s^.update) >> files (s^.script)
 
 
-files ∷ Free Files a → IO ()
+files ∷ Free (Command Files ()) a → IO ()
 files = foldie (>>) (return ()) f
  where
+  f ∷ Command Files () a → IO ()
   f (Message m _) = putStrLn m
   f (RegisterAt src dst _) = overWriteWith createSymbolicLink src dst
   f (Link src dst _) = overWriteWith createSymbolicLink src dst

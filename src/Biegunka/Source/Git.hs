@@ -17,7 +17,7 @@ import System.IO (IOMode(WriteMode), withFile)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Source(..), SourceScript)
+import Biegunka.DSL (FileScript, Command(Source), SourceScript)
 
 
 -- | Clone repository from the given url to specified path

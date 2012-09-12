@@ -15,7 +15,7 @@ import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory, setCurrentDirectory)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Source(..), SourceScript)
+import Biegunka.DSL (FileScript, Command(Source), SourceScript)
 import Biegunka.Source.Common (update)
 
 

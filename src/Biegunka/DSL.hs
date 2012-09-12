@@ -1,19 +1,22 @@
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.DSL
   ( module B
   , FileScript, SourceScript, ProfileScript
-  , Profile(..), profile
-  , Source(..) , to, from, script, update, step
-  , Files(..), Compiler(..), message, registerAt, copy, link, compile, substitute
-  , Next(..), foldie, mfoldie, transform
+  , Profile, profile
+  , Source, Files, from, to, script, update, next
+  , Command(..), Compiler(..), message, registerAt, copy, link, compile, substitute
+  , foldie, mfoldie, transform
   ) where
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (join)
 import Data.Monoid (Monoid(..))
 
-import Control.Lens (over, makeLenses, use, uses)
+import Control.Lens (Lens, (^.), over, use, uses)
 import Control.Monad.Free (Free(..), liftF)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadTrans, lift)
@@ -28,32 +31,73 @@ import Biegunka.Settings as B
 type Script s t α β = StateT (Settings s t) (Free α) β
 
 
+-- | Convenient wrapper to hide complexity of types
+type FileScript s t a = Script s t (Command Files ()) a
+
+
+-- | Convenient wrapper to hide complexity of types
+type SourceScript s t a = Script s t (Command Source (FileScript s t ())) a
+
+
+-- | Convenient wrapper to hide complexity of types
+type ProfileScript s t a = Script s t (Command Profile (SourceScript s t ())) a
+
+
+data Files
+data Source
+data Profile
+
 -- Supported compilers
 data Compiler =
     GHC -- ^ The Glorious Glasgow Haskell Compilation System
   deriving Show
 
 
-data Files next =
-    Message String next
-  | RegisterAt FilePath FilePath next
-  | Link FilePath FilePath next
-  | Copy FilePath FilePath next
-  | Compile Compiler FilePath FilePath next
-  | Template FilePath FilePath (String → Text) next
+data Command l s a where
+  Message ∷ String → a → Command Files () a
+  RegisterAt ∷ FilePath → FilePath → a → Command Files () a
+  Link ∷ FilePath → FilePath → a → Command Files () a
+  Copy ∷ FilePath → FilePath → a → Command Files () a
+  Compile ∷ Compiler → FilePath → FilePath → a → Command Files () a
+  Template ∷ FilePath → FilePath → (String → Text) → a → Command Files () a
+  Source ∷ { _from ∷ String, _to ∷ FilePath, _script ∷ s, _update ∷ IO (), _step ∷ a } → Command Source s a
+  Profile ∷ String → s → a → Command Profile s a
 
 
--- | Convenient wrapper to hide complexity of types
-type FileScript s t a = Script s t Files a
+next ∷ Lens (Command l s a) (Command l s b) a b
+next f (Message m x)          = Message m <$> f x
+next f (RegisterAt s d x)     = RegisterAt s d <$> f x
+next f (Link s d x)           = Link s d <$> f x
+next f (Copy s d x)           = Copy s d <$> f x
+next f (Compile c s d x)      = Compile c s d <$> f x
+next f (Template s d g x)     = Template s d g <$> f x
+next f s@(Source {_step = x}) = (\y → s { _step = y }) <$> f x
+next f (Profile n s x)        = Profile n s <$> f x
+{-# INLINE next #-}
 
 
-instance Functor Files where
-  fmap f (Message m next)           = Message m (f next)
-  fmap f (RegisterAt src dst next)  = RegisterAt src dst (f next)
-  fmap f (Link src dst next)        = Link src dst (f next)
-  fmap f (Copy src dst next)        = Copy src dst (f next)
-  fmap f (Compile cmp src dst next) = Compile cmp src dst (f next)
-  fmap f (Template src dst g next)  = Template src dst g (f next)
+from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
+from f s@(Source {_from = x}) = (\y → s { _from = y }) <$> f x
+{-# INLINE from #-}
+
+
+to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
+to f s@(Source {_to = x}) = (\y → s { _to = y }) <$> f x
+{-# INLINE to #-}
+
+
+script ∷ Lens (Command Source s a) (Command Source s' a) s s'
+script f s@(Source {_script = x}) = (\y → s { _script = y }) <$> f x
+{-# INLINE script #-}
+
+
+update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
+update f s@(Source {_update = x}) = (\y → s { _update = y }) <$> f x
+{-# INLINE update #-}
+
+
+instance Functor (Command l s) where
+  fmap = over next
 
 
 -- | Prints specified message to stdout
@@ -124,37 +168,6 @@ lifty ∷ (Functor f, MonadTrans t) ⇒ (c → d → () → f a) → c → d →
 lifty f r sr = lift . liftF $ f r sr ()
 
 
-data Source a b = Source
-  { _from ∷ String
-  , _to ∷ FilePath
-  , _script ∷ a
-  , _update ∷ IO ()
-  , _step ∷ b
-  }
-
-
--- | Convenient wrapper to hide complexity of types
-type SourceScript s t a = Script s t (Source (FileScript s t ())) a
-
-
-makeLenses ''Source
-
-
-instance Functor (Source a) where
-  fmap = over step
-
-
-data Profile a b = Profile String a b
-
-
--- | Convenient wrapper to hide complexity of types
-type ProfileScript s t a = Script s t (Profile (SourceScript s t ())) a
-
-
-instance Functor (Profile a) where
-  fmap f (Profile name repo n) = Profile name repo (f n)
-
-
 -- | Configuration profile
 --
 -- Provides convenient sources grouping
@@ -168,33 +181,12 @@ profile ∷ String → SourceScript s t () → ProfileScript s t ()
 profile name repo = lift . liftF $ Profile name repo ()
 
 
-class Next f where
-  next ∷ f a → a
-
-
-instance Next Files where
-  next (Message _ x) = x
-  next (RegisterAt _ _ x) = x
-  next (Link _ _ x) = x
-  next (Copy _ _ x) = x
-  next (Compile _ _ _ x) = x
-  next (Template _ _ _ x) = x
-
-
-instance Next (Source a) where
-  next (Source _ _ _ _ x) = x
-
-
-instance Next (Profile a) where
-  next (Profile _ _ x) = x
-
-
-foldie ∷ Next f ⇒ (a → b → b) → b → (f (Free f c) → a) → (Free f c) → b
-foldie f a g (Free t) = f (g t) (foldie f a g (next t))
+foldie ∷ (a → b → b) → b → (Command l s (Free (Command l s) c) → a) → (Free (Command l s) c) → b
+foldie f a g (Free t) = f (g t) (foldie f a g (t ^. next))
 foldie _ a _ (Pure _) = a
 
 
-mfoldie ∷ (Monoid m, Next f) ⇒ (f (Free f c) → m) → (Free f c) → m
+mfoldie ∷ Monoid m ⇒ (Command l s (Free (Command l s) c) → m) → (Free (Command l s) c) → m
 mfoldie = foldie mappend mempty
 
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.Map (construct) where
 
@@ -12,32 +13,36 @@ import qualified Data.Set as S
 
 import Biegunka.DB (Biegunka, biegunize)
 import Biegunka.DSL
-  ( Profile(..)
-  , Source, to, script
-  , Files(..)
+  ( Command(..)
+  , to, script
+  , Files, Source, Profile
   , foldie, mfoldie
   )
 
 
-construct ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Biegunka
+construct ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → Biegunka
 construct = biegunize . profile
 
 
-profile ∷ Free (Profile (Free (Source (Free Files ())) ())) () → Map String (Map FilePath (Set FilePath))
+profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → Map String (Map FilePath (Set FilePath))
 profile = foldie ($) mempty f
  where
+  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a
+    → Map String (Map FilePath (Set FilePath))
+    → Map String (Map FilePath (Set FilePath))
   f (Profile name s _) = M.insertWith' mappend name (source s)
 
 
-source ∷ Free (Source (Free Files ())) () → Map FilePath (Set FilePath)
+source ∷ Free (Command Source (Free (Command Files ()) ())) () → Map FilePath (Set FilePath)
 source = mfoldie f
  where
   f s = M.singleton (s^.to) (files $ s^.script)
 
 
-files ∷ Free Files () → Set FilePath
+files ∷ Free (Command Files ()) () → Set FilePath
 files = mfoldie f
  where
+  f ∷ Command Files () a → Set FilePath
   f (Message _ _) = mempty
   f (RegisterAt _ dst _) = S.singleton dst
   f (Link _ dst _) = S.singleton dst

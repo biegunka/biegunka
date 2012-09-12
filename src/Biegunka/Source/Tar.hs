@@ -16,7 +16,7 @@ import           System.FilePath ((</>))
 import           System.FilePath.Lens (extension)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Source(..), SourceScript)
+import Biegunka.DSL (FileScript, Command(Source), SourceScript)
 import Biegunka.Source.Common (update)
 
 
