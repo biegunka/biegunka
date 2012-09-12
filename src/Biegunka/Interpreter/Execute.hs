@@ -87,15 +87,15 @@ files = foldie (>>) (return ()) f
 
 
 overWriteWith ∷ (FilePath → FilePath → IO ()) → FilePath → FilePath → IO ()
-overWriteWith f src dst =
-  do createDirectoryIfMissing True $ dropFileName dst
-     try $ removeFile dst ∷ IO (Either SomeException ())
-     f src dst
+overWriteWith f src dst = do
+  createDirectoryIfMissing True $ dropFileName dst
+  try $ removeFile dst ∷ IO (Either SomeException ())
+  f src dst
 
 
 compileWith ∷ Compiler → FilePath → FilePath → IO ()
-compileWith GHC src dst =
-  do waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", dst] (Just dir) Nothing Nothing Nothing Nothing
-     return ()
+compileWith GHC src dst = do
+  waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", dst] (Just dir) Nothing Nothing Nothing Nothing
+  return ()
  where
   (dir, file) = splitFileName src

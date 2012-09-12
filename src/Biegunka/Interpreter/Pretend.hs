@@ -5,10 +5,11 @@ import Control.Applicative ((<$>))
 import Control.Monad (forM_, void, unless, when)
 import Data.Function (on)
 
-import Control.Monad.State (execState, modify)
-import Data.Default (Default)
-import System.Directory (getHomeDirectory)
-import System.IO (hFlush, stdout)
+import           Control.Monad.State (execState, modify)
+import           Data.Default (Default)
+import qualified Data.Text.Lazy.IO as T
+import           System.Directory (getHomeDirectory)
+import           System.IO (hFlush, stdout)
 
 import           Biegunka.DB (load, filepaths, sources)
 import           Biegunka.DSL (ProfileScript)
@@ -70,7 +71,7 @@ pretend script = do
     , "------------------"
     ]
   whenM ((== "y") <$> query "Do you want to see full log?") $
-    putStrLn $ Log.install script' ++ Log.uninstall α β
+    T.putStrLn $ Log.full script' α β
   void $ putStrLn "Press any key to continue" >> getLine
  where
   countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
