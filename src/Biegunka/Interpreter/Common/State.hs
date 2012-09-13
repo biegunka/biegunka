@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.State (infect) where
@@ -11,9 +12,8 @@ import Data.Default (Default(def))
 
 import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
-  , Command(..)
+  , Layer(..), Command(..)
   , to, script, next, next, transform
-  , Profile, Source, Files
   )
 import Biegunka.Settings
 
@@ -32,9 +32,9 @@ profile ∷ Settings s t
         → Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
 profile s = transform f
  where
-  f (Profile name s' n) =
+  f (P name s' n) =
     let mas = runStateT s' s
-    in Profile name (source s (fst <$> mas)) (profile (iter (^. next) (snd <$> mas)) n)
+    in P name (source s (fst <$> mas)) (profile (iter (^. next) (snd <$> mas)) n)
 
 
 source ∷ Settings s t

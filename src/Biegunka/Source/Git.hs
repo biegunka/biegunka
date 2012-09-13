@@ -17,7 +17,7 @@ import System.IO (IOMode(WriteMode), withFile)
 import System.Process (runProcess, waitForProcess)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Command(Source), SourceScript)
+import Biegunka.DSL (FileScript, Command(S), SourceScript)
 
 
 -- | Clone repository from the given url to specified path
@@ -35,7 +35,7 @@ import Biegunka.DSL (FileScript, Command(Source), SourceScript)
 --
 --  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
 git ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-git url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (update url sr) ()
+git url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (update url sr) ()
 
 
 -- | Clone repository from the given url to specified path

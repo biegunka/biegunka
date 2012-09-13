@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.Map (construct) where
@@ -13,9 +14,8 @@ import qualified Data.Set as S
 
 import Biegunka.DB (Biegunka, biegunize)
 import Biegunka.DSL
-  ( Command(..)
+  ( Layer(..), Command(..)
   , to, script
-  , Files, Source, Profile
   , foldie, mfoldie
   )
 
@@ -30,7 +30,7 @@ profile = foldie ($) mempty f
   f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a
     → Map String (Map FilePath (Set FilePath))
     → Map String (Map FilePath (Set FilePath))
-  f (Profile name s _) = M.insertWith' mappend name (source s)
+  f (P name s _) = M.insertWith' mappend name (source s)
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → Map FilePath (Set FilePath)

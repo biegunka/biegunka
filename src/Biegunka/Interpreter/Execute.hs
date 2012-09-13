@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
@@ -23,9 +24,8 @@ import           System.Process (runProcess, waitForProcess)
 import           Biegunka.DB
 import           Biegunka.DSL
   ( ProfileScript
-  , Command(..)
+  , Layer(..), Command(..)
   , update, script
-  , Profile, Source, Files
   , Compiler(..), foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
@@ -65,7 +65,7 @@ profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ())
 profile = foldie (>>) (return ()) f
  where
   f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → IO ()
-  f (Profile _ s _) = source s
+  f (P _ s _) = source s
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → IO ()

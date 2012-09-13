@@ -16,7 +16,7 @@ import           System.FilePath ((</>))
 import           System.FilePath.Lens (extension)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Command(Source), SourceScript)
+import Biegunka.DSL (FileScript, Command(S), SourceScript)
 import Biegunka.Source.Common (update)
 
 
@@ -33,7 +33,7 @@ import Biegunka.Source.Common (update)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 tar ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-tar url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateTar url sr) ()
+tar url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (updateTar url sr) ()
 
 
 -- | Download and extract tar archive (possibly with compression)
