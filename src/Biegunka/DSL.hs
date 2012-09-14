@@ -9,7 +9,7 @@ module Biegunka.DSL
   , Profile, profile
   , Source, Files, from, to, script, update, next
   , Command(..), Compiler(..), message, registerAt, copy, link, compile, substitute
-  , foldie, mfoldie, transform
+  , foldie, mfoldie, foldieM, foldieM_, transform
   ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -188,6 +188,16 @@ foldie _ a _ (Pure _) = a
 
 mfoldie ∷ Monoid m ⇒ (Command l s (Free (Command l s) c) → m) → (Free (Command l s) c) → m
 mfoldie = foldie mappend mempty
+
+
+foldieM ∷ Monad m ⇒ (Command l s (Free (Command l s) c) → m a) → Free (Command l s) c → m ()
+foldieM = foldie (>>) (return ())
+{-# SPECIALIZE foldieM ∷ (Command l s (Free (Command l s) c) → IO a) → Free (Command l s) c → IO () #-}
+
+
+foldieM_ ∷ Monad m ⇒ (Command l s (Free (Command l s) c) → m ()) → Free (Command l s) c → m ()
+foldieM_ = foldie (>>) (return ())
+{-# SPECIALIZE foldieM_ ∷ (Command l s (Free (Command l s) c) → IO ()) → Free (Command l s) c → IO () #-}
 
 
 transform ∷ (f (Free f a) → g (Free g a)) → Free f a → Free g a

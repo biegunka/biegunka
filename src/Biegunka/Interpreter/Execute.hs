@@ -17,7 +17,7 @@ import           Biegunka.DSL
   , Command(..)
   , script
   , Profile, Source, Files
-  , foldie)
+  , foldieM, foldieM_)
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 import           Biegunka.Interpreter.IO (issue)
@@ -54,15 +54,12 @@ execute s = do
 
 
 profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → IO ()
-profile = foldie (>>) (return ()) f
- where
-  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → IO ()
-  f (Profile _ s _) = source s
+profile = foldieM_ $ \(Profile _ s _) → source s
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → IO ()
-source = foldie (>>) (return ()) (\s → issue s >>= \r → when r $ files (s^.script))
+source = foldieM $ \s → issue s >>= \r → when r $ files (s^.script)
 
 
 files ∷ Free (Command Files ()) a → IO ()
-files = foldie (>>) (return ()) issue
+files = foldieM issue
