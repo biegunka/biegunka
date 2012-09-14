@@ -15,7 +15,7 @@ import           Biegunka.DB
 import           Biegunka.DSL
   ( ProfileScript
   , Command(..)
-  , update, script
+  , script
   , Profile, Source, Files
   , foldie)
 import qualified Biegunka.Interpreter.Common.Map as Map
@@ -61,9 +61,7 @@ profile = foldie (>>) (return ()) f
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → IO ()
-source = foldie (>>) (return ()) f
- where
-  f s = (s^.update) >> files (s^.script)
+source = foldie (>>) (return ()) (\s → issue s >>= \r → when r $ files (s^.script))
 
 
 files ∷ Free (Command Files ()) a → IO ()

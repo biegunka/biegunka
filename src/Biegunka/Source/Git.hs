@@ -5,19 +5,20 @@ module Biegunka.Source.Git
     git, git_
   ) where
 
-import Control.Applicative ((<$>), (<*>))
-
-import Control.Lens (uses)
-import Control.Monad (unless)
-import Control.Monad.Free (liftF)
-import Control.Monad.Trans (lift)
-import System.FilePath ((</>))
-import System.Directory (doesDirectoryExist, doesFileExist)
-import System.IO (IOMode(WriteMode), withFile)
-import System.Process (runProcess, waitForProcess)
+import           Control.Lens (uses)
+import           Control.Monad (unless)
+import           Control.Monad.Free (liftF)
+import           Control.Monad.Trans (lift)
+import qualified Data.Text.Lazy.IO as T
+import           System.FilePath ((</>))
+import           System.Directory (doesDirectoryExist)
+import           System.Exit (ExitCode(..))
+import           System.Posix.IO (createPipe, fdToHandle)
+import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.Settings
 import Biegunka.DSL (FileScript, Command(Source), SourceScript)
+import Biegunka.Interpreter.IO (sourceFailure)
 
 
 -- | Clone repository from the given url to specified path
@@ -52,11 +53,15 @@ git_ url path = git url path (return ())
 
 update ∷ String → FilePath → IO ()
 update url path = do
-  exists ← (||) <$> doesDirectoryExist path <*> doesFileExist path
+  (ifd,ofd) ← createPipe
+  ih ← fdToHandle ifd
+  oh ← fdToHandle ofd
+  exists ← doesDirectoryExist path
   unless exists $ do
-    withFile "/dev/null" WriteMode $ \h → do
-      waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing (Just h) (Just h)
-      return ()
-  withFile "/dev/null" WriteMode $ \h → do
-    waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing (Just h) (Just h)
-    return ()
+    check ih =<< waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing (Just oh) (Just oh)
+  check ih =<< waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing (Just oh) (Just oh)
+ where
+  check ih (ExitFailure _) = do
+    l ← T.hGetContents ih
+    sourceFailure url path l
+  check _ _ = return ()

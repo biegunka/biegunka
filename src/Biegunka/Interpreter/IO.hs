@@ -2,7 +2,10 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Interpreter.IO provides fancy command execution infrastructure
-module Biegunka.Interpreter.IO (issue) where
+module Biegunka.Interpreter.IO
+  ( sourceFailure
+  , issue
+  ) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (Exception, SomeException(..), throw, try)
@@ -21,7 +24,7 @@ import           System.Posix.Files (createSymbolicLink)
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process (runProcess, waitForProcess)
 
-import Biegunka.DSL (Command(..), Files, Compiler(..))
+import Biegunka.DSL (Command(..), Compiler(..))
 
 
 -- | Possible user's reactions on failures
@@ -34,36 +37,47 @@ data Response =
 -- | Custom execptions
 data BiegunkaException =
     CompilationFailure Compiler FilePath Text -- ^ Compiler reports errors
+  | SourceEmergingFailure String FilePath Text -- ^ Source emerging routine reports errors
   | ExecutionAbortion -- ^ User aborts script
     deriving (Typeable)
 
 
 instance Show BiegunkaException where
-  show = pretty
+  show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
 instance Exception BiegunkaException
 
 
-pretty ∷ BiegunkaException → String
-pretty ExecutionAbortion = show ExecutionAbortion
-pretty (CompilationFailure cmp fp fs) = unlines
+pretty ∷ BiegunkaException → Text
+pretty ExecutionAbortion = T.pack $ show ExecutionAbortion
+pretty (CompilationFailure cmp fp fs) = T.unlines $ map T.pack
   [ printf "%s has failed to compile %s" (show cmp) fp
+  , printf "Failures log:\n%s" (T.unpack fs)
+  ]
+pretty (SourceEmergingFailure up fp fs) = T.unlines $ map T.pack
+  [ printf "Biegunka has failed to emerge source %s in %s" up fp
   , printf "Failures log:\n%s" (T.unpack fs)
   ]
 
 
+sourceFailure ∷ String → FilePath → Text → a
+sourceFailure up fp fs = throw $ SourceEmergingFailure up fp fs
+
+
 -- | Single command execution and exception handling
-issue ∷ Command Files () a → IO ()
+--
+-- Returns True is command is successful, False otherwise
+issue ∷ Command l s a → IO Bool
 issue command = do
   r ← try $ execute command
   case r of
     Left (SomeException e) → do
-      printf "Exception raised: %s\n" (show e)
+      printf "FAIL: %s\n" (show e)
       u ← askUser
       case u of
         Retry → issue command
         Abort → throw ExecutionAbortion
-        Ignore → return ()
-    Right () → return ()
+        Ignore → return False
+    Right () → return True
  where
   askUser = do
     putStr "[I]gnore, [R]etry, [A]bort? "
@@ -77,16 +91,18 @@ issue command = do
 
 
 -- | Command execution
-execute ∷ Command Files () a → IO ()
+execute ∷ Command l s a → IO ()
 execute command = f command
  where
-  f ∷ Command Files () a → IO ()
+  f ∷ Command l s a → IO ()
   f (Message m _) = putStrLn m
   f (RegisterAt src dst _) = overWriteWith createSymbolicLink src dst
   f (Link src dst _) = overWriteWith createSymbolicLink src dst
   f (Copy src dst _) = overWriteWith copyFile src dst
   f (Compile cmp src dst _) = compileWith cmp src dst
   f (Template src dst substitute _) = substitute <$> readFile src >>= T.writeFile dst
+  f (Source { _update = update })= update
+  f (Profile {}) = return ()
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
