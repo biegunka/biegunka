@@ -16,8 +16,9 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (join)
 import Data.Monoid (Monoid(..))
 
-import Control.Lens (Lens, (^.), over, use, uses)
+import Control.Lens (Lens, (^.), over, query, queries)
 import Control.Monad.Free (Free(..), liftF)
+import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadTrans, lift)
 import Data.Text.Lazy (Text)
@@ -32,7 +33,7 @@ type Script s t α β = StateT (Settings s t) (Free α) β
 
 
 -- | Convenient wrapper to hide complexity of types
-type FileScript s t a = Script s t (Command Files ()) a
+type FileScript s t a = ReaderT (Settings s t) (Free (Command Files ())) a
 
 
 -- | Convenient wrapper to hide complexity of types
@@ -116,7 +117,7 @@ message m = lift . liftF $ Message m ()
 --
 -- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt ∷ FilePath → FileScript s t ()
-registerAt dst = join $ lifty RegisterAt <$> use sourceRoot <*> uses root (</> dst)
+registerAt dst = join $ lifty RegisterAt <$> query sourceRoot <*> queries root (</> dst)
 
 
 -- | Links given file to specified filepath
@@ -126,7 +127,7 @@ registerAt dst = join $ lifty RegisterAt <$> use sourceRoot <*> uses root (</> d
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link ∷ FilePath → FilePath → FileScript s t ()
-link src dst = join $ lifty Link <$> uses sourceRoot (</> src) <*> uses root (</> dst)
+link src dst = join $ lifty Link <$> queries sourceRoot (</> src) <*> queries root (</> dst)
 
 
 -- | Copies given file to specified filepath
@@ -136,7 +137,7 @@ link src dst = join $ lifty Link <$> uses sourceRoot (</> src) <*> uses root (</
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy ∷ FilePath → FilePath → FileScript s t ()
-copy src dst = join $ lifty Copy <$> uses sourceRoot (</> src) <*> uses root (</> dst)
+copy src dst = join $ lifty Copy <$> queries sourceRoot (</> src) <*> queries root (</> dst)
 
 
 -- | Compiles given file with given compiler to specified filepath
@@ -146,7 +147,7 @@ copy src dst = join $ lifty Copy <$> uses sourceRoot (</> src) <*> uses root (</
 --
 -- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
 compile ∷ Compiler → FilePath → FilePath → FileScript s t ()
-compile cmp src dst = join $ lifty (Compile cmp) <$> uses sourceRoot (</> src) <*> uses root (</> dst)
+compile cmp src dst = join $ lifty (Compile cmp) <$> queries sourceRoot (</> src) <*> queries root (</> dst)
 
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -158,9 +159,9 @@ compile cmp src dst = join $ lifty (Compile cmp) <$> uses sourceRoot (</> src) <
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute ∷ ToSElem t ⇒ FilePath → FilePath → FileScript s t ()
 substitute src dst = do
-  sr ← uses sourceRoot (</> src)
-  r ← uses root (</> dst)
-  t ← uses template (\b → render . setAttribute "template" b . newSTMP)
+  sr ← queries sourceRoot (</> src)
+  r ← queries root (</> dst)
+  t ← queries template (\b → render . setAttribute "template" b . newSTMP)
   lift . liftF $ Template sr r t ()
 
 

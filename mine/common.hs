@@ -7,9 +7,9 @@ import Data.Data (Data)
 import Data.Typeable (Typeable)
 
 import Control.Lens
-import Control.Monad.State (get, mapStateT)
+import Control.Monad.Reader (local)
 import Data.Default (Default(def))
-import System.FilePath.Lens ((</>=))
+import System.FilePath.Lens ((</>~))
 
 import Biegunka
 import Biegunka.Source.Git
@@ -64,8 +64,7 @@ main = pretend >>> execute >>> verify $ script
 
 dotfiles ∷ SourceScript Custom Template ()
 dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
-  localStateT $ do
-    sourceRoot </>= "core"
+  local (sourceRoot </>~ "core") $ do
     mapM_ (uncurry link)
       [ ("xsession", ".xsession")
       , ("mpdconf", ".mpdconf")
@@ -88,8 +87,7 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("XCompose", ".XCompose")
       , ("vimusrc", ".vimusrc")
       ]
-  localStateT $ do
-    sourceRoot </>= "extended"
+  local (sourceRoot </>~ "extended") $ do
     mapM_ (uncurry link)
       [ ("xmonad.hs", ".xmonad/xmonad.hs")
       , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
@@ -106,16 +104,13 @@ dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
       , ("xmobar.hs", ".xmobar/xmobar.hs")
       ]
     substitute "xmobarrc.template" ".xmobarrc"
-  localStateT $ do
-    directory ← use $ custom . profileDirectory
-    sourceRoot </>= directory
+  directory ← query $ custom . profileDirectory
+  local (sourceRoot </>~ directory) $ do
     mapM_ (uncurry link)
       [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
       , ("Xdefaults", ".Xdefaults")
       , ("xmodmap", ".xmodmap")
       ]
- where
-  localStateT m = get >>= \s → mapStateT (>> return ((), s)) m
 
 
 tools ∷ SourceScript Custom Template ()
