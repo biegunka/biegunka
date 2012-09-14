@@ -12,10 +12,13 @@ import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 import Text.Printf (printf)
 
+import           Data.Text.Lazy (Text)
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing, removeFile)
 import           System.FilePath (dropFileName, splitFileName)
 import           System.Posix.Files (createSymbolicLink)
+import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.DSL (Command(..), Files, Compiler(..))
@@ -30,12 +33,22 @@ data Response =
 
 -- | Custom execptions
 data BiegunkaException =
-    CompilationFailure Compiler FilePath -- ^ Compiler reports errors
+    CompilationFailure Compiler FilePath Text -- ^ Compiler reports errors
   | ExecutionAbortion -- ^ User aborts script
-    deriving (Show, Typeable)
+    deriving (Typeable)
 
 
+instance Show BiegunkaException where
+  show = pretty
 instance Exception BiegunkaException
+
+
+pretty ∷ BiegunkaException → String
+pretty ExecutionAbortion = show ExecutionAbortion
+pretty (CompilationFailure cmp fp fs) = unlines
+  [ printf "%s has failed to compile %s" (show cmp) fp
+  , printf "Failures log:\n%s" (T.unpack fs)
+  ]
 
 
 -- | Single command execution and exception handling
@@ -81,9 +94,14 @@ execute command = f command
     g src dst
 
   compileWith GHC src dst = do
-    r ← waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", dst] (Just dir) Nothing Nothing Nothing Nothing
+    (ifd,ofd) ← createPipe
+    ih ← fdToHandle ifd
+    oh ← fdToHandle ofd
+    r ← waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", dst] (Just dir) Nothing Nothing Nothing (Just oh)
     case r of
-      ExitFailure _ → throw $ CompilationFailure GHC src
+      ExitFailure _ → do
+        l ← T.hGetContents ih
+        throw $ CompilationFailure GHC src l
       _ → return ()
    where
     (dir, file) = splitFileName src
