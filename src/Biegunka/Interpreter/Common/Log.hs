@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK hide #-}
@@ -17,9 +18,8 @@ import           Data.Text.Lazy.Builder (Builder, fromLazyText, fromString, toLa
 
 import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.DSL
-  ( Command(..)
+  ( Layer(..), Command(..)
   , from, to, script
-  , Profile, Source, Files
   , mfoldie
   )
 
@@ -39,7 +39,7 @@ profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ())
 profile = mfoldie f
  where
   f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → Builder
-  f (Profile name s _) = "Setup profile " <> string name <> "\n" <> source s
+  f (P name s _) = "Setup profile " <> string name <> "\n" <> source s
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → Builder

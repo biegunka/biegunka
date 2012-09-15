@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Verify (verify) where
 
@@ -17,9 +18,8 @@ import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.DSL
   ( ProfileScript
-  , Command(..)
+  , Layer(..), Command(..)
   , from, to, script
-  , Profile, Source, Files
   , foldie)
 import Biegunka.Interpreter.Common.State
 
@@ -52,7 +52,7 @@ profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ())
 profile = foldie (|&&|) (return True) f
  where
   f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → WriterT String IO Bool
-  f (Profile _ s _) = repo s
+  f (P _ s _) = repo s
 
 
 repo ∷ Free (Command Source (Free (Command Files ()) ())) () → WriterT String IO Bool

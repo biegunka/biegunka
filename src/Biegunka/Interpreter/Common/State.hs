@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Common.State (infect) where
@@ -12,9 +13,8 @@ import Data.Default (Default(def))
 
 import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
-  , Command(..)
-  , to, script, next, transform
-  , Profile, Source, Files
+  , Layer(..), Command(..)
+  , to, script, next, next, transform
   )
 import Biegunka.Settings
 
@@ -41,11 +41,11 @@ infect home scr =
 profile ∷ Settings s t
         → Free (Command Profile (SourceScript s t ())) ()
         → Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
-profile s = transform $ \(Profile t scr n) →
+profile s = transform $ \(P t scr n) →
   let mas = runStateT scr s
       a' = fst <$> mas
       s' = iter (^. next) (snd <$> mas)
-  in Profile t (source s' a') (profile s n)
+  in P t (source s' a') (profile s n)
 
 
 -- | Evaluate reader monad actions inside a source

@@ -101,8 +101,8 @@ execute command = f command
   f (Copy src dst _) = overWriteWith copyFile src dst
   f (Compile cmp src dst _) = compileWith cmp src dst
   f (Template src dst substitute _) = substitute <$> readFile src >>= T.writeFile dst
-  f (Source { _update = update })= update
-  f (Profile {}) = return ()
+  f (S { _update = update })= update
+  f (P {}) = return ()
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst

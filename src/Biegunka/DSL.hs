@@ -1,14 +1,15 @@
-{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.DSL
   ( module B
   , FileScript, SourceScript, ProfileScript
-  , Profile, profile
-  , Source, Files, from, to, script, update, next
-  , Command(..), Compiler(..), message, registerAt, copy, link, compile, substitute
+  , Layer(..)
+  , from, to, script, update, next
+  , Command(..), Compiler(..), message, registerAt, copy, link, compile, substitute, profile
   , foldie, mfoldie, foldieM, foldieM_, transform
   ) where
 
@@ -44,9 +45,7 @@ type SourceScript s t a = Script s t (Command Source (FileScript s t ())) a
 type ProfileScript s t a = Script s t (Command Profile (SourceScript s t ())) a
 
 
-data Files
-data Source
-data Profile
+data Layer = Files | Source | Profile
 
 -- Supported compilers
 data Compiler =
@@ -54,46 +53,46 @@ data Compiler =
   deriving Show
 
 
-data Command l s a where
+data Command (l ∷ Layer) s a where
   Message ∷ String → a → Command Files () a
   RegisterAt ∷ FilePath → FilePath → a → Command Files () a
   Link ∷ FilePath → FilePath → a → Command Files () a
   Copy ∷ FilePath → FilePath → a → Command Files () a
   Compile ∷ Compiler → FilePath → FilePath → a → Command Files () a
   Template ∷ FilePath → FilePath → (String → Text) → a → Command Files () a
-  Source ∷ { _from ∷ String, _to ∷ FilePath, _script ∷ s, _update ∷ IO (), _step ∷ a } → Command Source s a
-  Profile ∷ String → s → a → Command Profile s a
+  S ∷ { _from ∷ String, _to ∷ FilePath, _script ∷ s, _update ∷ IO (), _step ∷ a } → Command Source s a
+  P ∷ String → s → a → Command Profile s a
 
 
 next ∷ Lens (Command l s a) (Command l s b) a b
-next f (Message m x)          = Message m <$> f x
-next f (RegisterAt s d x)     = RegisterAt s d <$> f x
-next f (Link s d x)           = Link s d <$> f x
-next f (Copy s d x)           = Copy s d <$> f x
-next f (Compile c s d x)      = Compile c s d <$> f x
-next f (Template s d g x)     = Template s d g <$> f x
-next f s@(Source {_step = x}) = (\y → s { _step = y }) <$> f x
-next f (Profile n s x)        = Profile n s <$> f x
+next f (Message m x)      = Message m <$> f x
+next f (RegisterAt s d x) = RegisterAt s d <$> f x
+next f (Link s d x)       = Link s d <$> f x
+next f (Copy s d x)       = Copy s d <$> f x
+next f (Compile c s d x)  = Compile c s d <$> f x
+next f (Template s d g x) = Template s d g <$> f x
+next f s@(S {_step = x})  = (\y → s { _step = y }) <$> f x
+next f (P n s x)          = P n s <$> f x
 {-# INLINE next #-}
 
 
 from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-from f s@(Source {_from = x}) = (\y → s { _from = y }) <$> f x
+from f s@(S {_from = x}) = (\y → s { _from = y }) <$> f x
 {-# INLINE from #-}
 
 
 to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-to f s@(Source {_to = x}) = (\y → s { _to = y }) <$> f x
+to f s@(S {_to = x}) = (\y → s { _to = y }) <$> f x
 {-# INLINE to #-}
 
 
 script ∷ Lens (Command Source s a) (Command Source s' a) s s'
-script f s@(Source {_script = x}) = (\y → s { _script = y }) <$> f x
+script f s@(S {_script = x}) = (\y → s { _script = y }) <$> f x
 {-# INLINE script #-}
 
 
 update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
-update f s@(Source {_update = x}) = (\y → s { _update = y }) <$> f x
+update f s@(S {_update = x}) = (\y → s { _update = y }) <$> f x
 {-# INLINE update #-}
 
 
@@ -179,7 +178,7 @@ lifty f r sr = lift . liftF $ f r sr ()
 -- > profile "friend's" $ do
 -- >   svn ...
 profile ∷ String → SourceScript s t () → ProfileScript s t ()
-profile name repo = lift . liftF $ Profile name repo ()
+profile name repo = lift . liftF $ P name repo ()
 
 
 foldie ∷ (a → b → b) → b → (Command l s (Free (Command l s) c) → a) → (Free (Command l s) c) → b

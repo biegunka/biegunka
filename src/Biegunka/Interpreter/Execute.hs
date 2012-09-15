@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
@@ -14,10 +15,10 @@ import System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
 import           Biegunka.DB
 import           Biegunka.DSL
   ( ProfileScript
-  , Command(..)
+  , Layer(..), Command(..)
   , script
-  , Profile, Source, Files
-  , foldieM, foldieM_)
+  , foldieM, foldieM_
+  )
 import qualified Biegunka.Interpreter.Common.Map as Map
 import           Biegunka.Interpreter.Common.State
 import           Biegunka.Interpreter.IO (issue)
@@ -54,7 +55,7 @@ execute s = do
 
 
 profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → IO ()
-profile = foldieM_ $ \(Profile _ s _) → source s
+profile = foldieM_ $ \(P _ s _) → source s
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → IO ()

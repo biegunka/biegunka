@@ -15,7 +15,7 @@ import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory, setCurrentDirectory)
 
 import Biegunka.Settings
-import Biegunka.DSL (FileScript, Command(Source), SourceScript)
+import Biegunka.DSL (FileScript, Command(S), SourceScript)
 import Biegunka.Source.Common (update)
 
 
@@ -32,7 +32,7 @@ import Biegunka.Source.Common (update)
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
 zip ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-zip url path script = uses root (</> path) >>= \sr → lift . liftF $ Source url sr script (updateZip url sr) ()
+zip url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (updateZip url sr) ()
 
 
 -- | Download and extract zip archive from the given url to specified path.
