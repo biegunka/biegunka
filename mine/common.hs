@@ -162,11 +162,11 @@ evaluate = (pretend >>> execute >>> verify) . commands
 
 commands ∷ (Settings, Template) → ProfileScript Settings Template ()
 commands (settings, templates) = do
-  custom .= settings
+  setting .= settings
   template .= templates
   profile "mine" $ do
     dotfiles
-    whenM (use $ custom . buildTools) tools
+    whenM (use $ setting . buildTools) tools
     git_ "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion"
 
   profile "vim" vim
@@ -175,7 +175,7 @@ commands (settings, templates) = do
     git_ "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions"
     git_ "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex"
 
-  whenM (use $ custom . buildExperimental) $
+  whenM (use $ setting . buildExperimental) $
     profile "experimental" $ do
       git_ "https://github.com/sol/vimus" "git/vimus"
       git_ "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell"
@@ -223,7 +223,7 @@ commands (settings, templates) = do
         [ ("xmobarrc.template", ".xmobarrc")
         , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
         ]
-    directory ← query $ custom . profileDirectory
+    directory ← query $ setting . profileDirectory
     local (sourceRoot </>~ directory) $ do
       mapM_ (uncurry link)
         [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
@@ -250,7 +250,7 @@ commands (settings, templates) = do
       , ("upload/budueba.sh", "bin/upload-budueba")
       , ("upload/pastebin.hs", "bin/upload-pastebin")
       ]
-    mapM_ (uncurry $ compile GHC)
+    mapM_ (uncurry ghc)
       [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
       , ("audio.hs", "bin/vaio-audio")
       , ("shutdown-gui.hs", "bin/shutdown-gui")

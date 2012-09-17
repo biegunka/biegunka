@@ -9,7 +9,7 @@ module Biegunka.DSL
   , FileScript, SourceScript, ProfileScript
   , Layer(..)
   , from, to, script, update, next
-  , Command(..), Compiler(..), message, registerAt, copy, link, compile, substitute, profile
+  , Command(..), Compiler(..), message, registerAt, copy, link, ghc, substitute, profile
   , foldie, mfoldie, foldieM, foldieM_, transform
   ) where
 
@@ -71,28 +71,28 @@ next f (Link s d x)       = Link s d <$> f x
 next f (Copy s d x)       = Copy s d <$> f x
 next f (Compile c s d x)  = Compile c s d <$> f x
 next f (Template s d g x) = Template s d g <$> f x
-next f s@(S {_step = x})  = (\y → s { _step = y }) <$> f x
+next f s@(S {_step = x})  = (\y → s {_step = y}) <$> f x
 next f (P n s x)          = P n s <$> f x
 {-# INLINE next #-}
 
 
 from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-from f s@(S {_from = x}) = (\y → s { _from = y }) <$> f x
+from f s@(S {_from = x}) = (\y → s {_from = y}) <$> f x
 {-# INLINE from #-}
 
 
 to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-to f s@(S {_to = x}) = (\y → s { _to = y }) <$> f x
+to f s@(S {_to = x}) = (\y → s {_to = y}) <$> f x
 {-# INLINE to #-}
 
 
 script ∷ Lens (Command Source s a) (Command Source s' a) s s'
-script f s@(S {_script = x}) = (\y → s { _script = y }) <$> f x
+script f s@(S {_script = x}) = (\y → s {_script = y}) <$> f x
 {-# INLINE script #-}
 
 
 update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
-update f s@(S {_update = x}) = (\y → s { _update = y }) <$> f x
+update f s@(S {_update = x}) = (\y → s {_update = y}) <$> f x
 {-# INLINE update #-}
 
 
@@ -139,14 +139,14 @@ copy ∷ FilePath → FilePath → FileScript s t ()
 copy src dst = join $ lifty Copy <$> queries sourceRoot (</> src) <*> queries root (</> dst)
 
 
--- | Compiles given file with given compiler to specified filepath
+-- | Compiles given file with ghc to specified filepath
 --
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   compile GHC "you.hs" "we/need/you/here"
 --
 -- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
-compile ∷ Compiler → FilePath → FilePath → FileScript s t ()
-compile cmp src dst = join $ lifty (Compile cmp) <$> queries sourceRoot (</> src) <*> queries root (</> dst)
+ghc ∷ FilePath → FilePath → FileScript s t ()
+ghc src dst = join $ lifty (Compile GHC) <$> queries sourceRoot (</> src) <*> queries root (</> dst)
 
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
