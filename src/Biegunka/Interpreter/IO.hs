@@ -18,9 +18,9 @@ import Text.Printf (printf)
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
-import           System.Directory (copyFile, createDirectoryIfMissing, removeFile)
+import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName, splitFileName)
-import           System.Posix.Files (createSymbolicLink)
+import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process (runProcess, waitForProcess)
 
@@ -100,13 +100,14 @@ execute command = f command
   f (Link src dst _) = overWriteWith createSymbolicLink src dst
   f (Copy src dst _) = overWriteWith copyFile src dst
   f (Compile cmp src dst _) = compileWith cmp src dst
-  f (Template src dst substitute _) = substitute <$> readFile src >>= T.writeFile dst
+  f (Template src dst substitute _) =
+    overWriteWith (\s d → substitute <$> readFile s >>= T.writeFile d) src dst
   f (S { _update = update })= update
   f (P {}) = return ()
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
-    removeFile dst
+    removeLink dst
     g src dst
 
   compileWith GHC src dst = do
