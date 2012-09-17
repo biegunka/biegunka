@@ -65,6 +65,10 @@ files = mfoldie f
     "Compile with " <> string (show cmp) <> " file " <> string src <> " to " <> string dst <> "\n"
   f (Template src dst _ _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
+  f (Mode fp m _) = indent 4 <>
+    "Set " <> string fp <> " mode to " <> string (show m) <> "\n"
+  f (Ownership fp u g _) = indent 4 <>
+    "Set " <> string fp <> " owner to " <> string u <> ":" <> string g <> "\n"
 
 
 indent ∷ Int64 → Builder

@@ -3,7 +3,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Verify (verify) where
 
-import Control.Applicative (Applicative, liftA2)
+import Control.Applicative (Applicative, (<$>), liftA2)
 import Control.Monad (unless)
 import Data.Monoid (mconcat)
 
@@ -14,7 +14,8 @@ import           Control.Monad.Trans (liftIO)
 import           Data.Default (Default)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
-import           System.Posix.Files (readSymbolicLink)
+import           System.Posix.Files (readSymbolicLink, fileMode, fileOwner, fileGroup, getFileStatus)
+import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 
 import Biegunka.DSL
   ( ProfileScript
@@ -92,6 +93,20 @@ files = foldie (|&&|) (return True) f
     binaryExists ← io $ doesFileExist dst
     unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
     return binaryExists
+  f (Mode fp m _) = do
+    m' ← io $ fileMode <$> getFileStatus fp
+    let same = m == m'
+    unless same $ tellLn [indent 4, "File mode of ", fp, " is not ", show m]
+    return same
+  f (Ownership fp u g _) = do
+    uid ← io $ userID <$> getUserEntryForName u
+    gid ← io $ groupID <$> getGroupEntryForName g
+    s ← io $ getFileStatus fp
+    let uid' = fileOwner s
+        gid' = fileGroup s
+    let same = (uid,gid) == (uid',gid')
+    unless same $ tellLn [indent 4, "File ownership of ", fp, " is not ", u, ":", g]
+    return same
   f (Template _ dst _ _) = io $ doesFileExist dst
 
 

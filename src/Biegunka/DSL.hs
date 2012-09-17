@@ -9,7 +9,9 @@ module Biegunka.DSL
   , FileScript, SourceScript, ProfileScript
   , Layer(..)
   , from, to, script, update, next
-  , Command(..), Compiler(..), message, registerAt, copy, link, ghc, substitute, profile
+  , Command(..), Compiler(..), message, registerAt, copy, link, ghc, substitute
+  , chmod, chown
+  , profile
   , foldie, mfoldie, foldieM, foldieM_, transform
   ) where
 
@@ -24,6 +26,7 @@ import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadTrans, lift)
 import Data.Text.Lazy (Text)
 import System.FilePath ((</>))
+import System.Posix.Types (FileMode)
 import Text.StringTemplate (ToSElem, newSTMP, render, setAttribute)
 import Text.StringTemplate.GenericStandard ()
 
@@ -60,19 +63,23 @@ data Command (l ∷ Layer) s a where
   Copy ∷ FilePath → FilePath → a → Command Files () a
   Compile ∷ Compiler → FilePath → FilePath → a → Command Files () a
   Template ∷ FilePath → FilePath → (String → Text) → a → Command Files () a
+  Mode ∷ FilePath → FileMode → a → Command Files () a
+  Ownership ∷ FilePath → String → String → a → Command Files () a
   S ∷ { _from ∷ String, _to ∷ FilePath, _script ∷ s, _update ∷ IO (), _step ∷ a } → Command Source s a
   P ∷ String → s → a → Command Profile s a
 
 
 next ∷ Lens (Command l s a) (Command l s b) a b
-next f (Message m x)      = Message m <$> f x
-next f (RegisterAt s d x) = RegisterAt s d <$> f x
-next f (Link s d x)       = Link s d <$> f x
-next f (Copy s d x)       = Copy s d <$> f x
-next f (Compile c s d x)  = Compile c s d <$> f x
-next f (Template s d g x) = Template s d g <$> f x
-next f s@(S {_step = x})  = (\y → s {_step = y}) <$> f x
-next f (P n s x)          = P n s <$> f x
+next f (Message m x)        = Message m <$> f x
+next f (RegisterAt s d x)   = RegisterAt s d <$> f x
+next f (Link s d x)         = Link s d <$> f x
+next f (Copy s d x)         = Copy s d <$> f x
+next f (Compile c s d x)    = Compile c s d <$> f x
+next f (Template s d g x)   = Template s d g <$> f x
+next f (Mode fp m x)        = Mode fp m <$> f x
+next f (Ownership fp u g x) = Ownership fp u g <$> f x
+next f s@(S {_step = x})    = (\y → s {_step = y}) <$> f x
+next f (P n s x)            = P n s <$> f x
 {-# INLINE next #-}
 
 
@@ -162,6 +169,28 @@ substitute src dst = do
   r ← queries root (</> dst)
   t ← queries template (\b → render . setAttribute "template" b . newSTMP)
   lift . liftF $ Template sr r t ()
+
+
+-- | Changes mode of given file to specified value
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   chmod "bin/script.sh" (ownerModes `unionFileModes` groupReadMode `unionFileModes` otherReadMode)
+--
+-- Changes file mode of ${HOME}\/bin\/script.sh to 0744
+chmod ∷ FilePath → FileMode → FileScript s t ()
+chmod fp m = join $ lifty Mode <$> queries root (</> fp) <*> return m
+
+
+-- | Changes ownership of given file to specified values
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   chown "bin/script.sh" "user" "group"
+--
+-- Changes ownership of ${HOME}\/bin\/script.sh to user:group
+chown ∷ FilePath → String → String → FileScript s t ()
+chown fp u g = do
+  r ← queries root (</> fp)
+  lift . liftF $ Ownership r u g ()
 
 
 lifty ∷ (Functor f, MonadTrans t) ⇒ (c → d → () → f a) → c → d → t (Free f) a

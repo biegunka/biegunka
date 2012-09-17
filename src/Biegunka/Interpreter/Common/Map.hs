@@ -49,3 +49,5 @@ files = mfoldie f
   f (Copy _ dst _) = S.singleton dst
   f (Compile _ _ dst _) = S.singleton dst
   f (Template _ dst _ _) = S.singleton dst
+  f (Mode {}) = mempty
+  f (Ownership {}) = mempty

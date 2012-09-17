@@ -13,6 +13,7 @@ import Data.Char (toUpper)
 import Data.Typeable (Typeable)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
+import System.Posix.Files (setFileMode)
 import Text.Printf (printf)
 
 import           Data.Text.Lazy (Text)
@@ -20,8 +21,9 @@ import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName, splitFileName)
-import           System.Posix.Files (createSymbolicLink, removeLink)
+import           System.Posix.Files (createSymbolicLink, removeLink, setOwnerAndGroup)
 import           System.Posix.IO (createPipe, fdToHandle)
+import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.DSL (Command(..), Compiler(..))
@@ -102,6 +104,11 @@ execute command = f command
   f (Compile cmp src dst _) = compileWith cmp src dst
   f (Template src dst substitute _) =
     overWriteWith (\s d → substitute <$> readFile s >>= T.writeFile d) src dst
+  f (Mode fp m _) = setFileMode fp m
+  f (Ownership fp u g _) = do
+    uid ← userID <$> getUserEntryForName u
+    gid ← groupID <$> getGroupEntryForName g
+    setOwnerAndGroup fp uid gid
   f (S { _update = update })= update
   f (P {}) = return ()
 

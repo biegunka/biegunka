@@ -7,6 +7,7 @@ module Biegunka
   , profile
     -- * File layer
   , message, registerAt, copy, link, ghc, substitute
+  , chmod, chown
     -- * Settings
   , root, sourceRoot, setting, template
     -- * Convenient type aliases
@@ -17,6 +18,7 @@ import Biegunka.DSL
   ( ProfileScript, SourceScript, FileScript
   , profile
   , message, registerAt, copy, link, ghc, substitute
+  , chmod, chown
   )
 
 import Biegunka.Settings (root, sourceRoot, setting, template)
