@@ -8,7 +8,7 @@ module Biegunka
     -- * File layer
   , message, registerAt, copy, link, compile, Compiler(..), substitute
     -- * Settings
-  , root, sourceRoot, custom
+  , root, sourceRoot, custom, template
     -- * Convenient type aliases
   , ProfileScript, SourceScript, FileScript
   ) where
@@ -19,7 +19,7 @@ import Biegunka.DSL
   , message, registerAt, copy, link, compile, Compiler(..), substitute
   )
 
-import Biegunka.Settings (root, sourceRoot, custom)
+import Biegunka.Settings (root, sourceRoot, custom, template)
 
 import Biegunka.Interpreter.Pretend (pretend)
 import Biegunka.Interpreter.Execute (execute)

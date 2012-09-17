@@ -28,24 +28,38 @@ makeLenses ''Settings
 
 data Template = Template
   { xmobar ∷ Xmobar
+  , xmonad ∷ Xmonad
   } deriving (Data, Typeable)
 
 
 data Xmobar = Xmobar
-  { backgroundColor ∷ String
+  { background ∷ String
   , position ∷ String
   , battery ∷ Maybe String
   } deriving (Data, Typeable)
 
 
+data Xmonad = Xmonad
+  { terminal ∷ String
+  , ubuntu ∷ String
+  , terminus ∷ String
+  , white ∷ String
+  , grayDark ∷ String
+  , grayLight ∷ String
+  , black ∷ String
+  , orange ∷ String
+  , yellow ∷ String
+  } deriving (Data, Typeable)
+
+
 main ∷ IO ()
 main = execParser opts >>= evaluate
-  where
-    opts = info (helper <*> sample) (fullDesc <> header "Biegunka script")
+ where
+   opts = info (helper <*> sample) (fullDesc <> header "Biegunka script")
 
-    sample =
-       flag def laptop (long "laptop" <> short 'l' <> help "Use laptop settings") <|>
-       flag def work (long "work" <> short 'w' <> help "Use work settings")
+   sample =
+     flag def (laptopSettings, laptopTemplates) (long "laptop" <> short 'l' <> help "Use laptop settings") <|>
+     flag def (workSettings, workTemplates) (long "work" <> short 'w' <> help "Use work settings")
 
 
 instance Default Settings where
@@ -56,29 +70,100 @@ instance Default Settings where
     }
 
 
-laptop ∷ Settings
-laptop = def
+laptopSettings ∷ Settings
+laptopSettings = def
     { _profileDirectory = "laptop"
     , _buildTools = True
     , _buildExperimental = True
     }
 
 
-work ∷ Settings
-work = def
+workSettings ∷ Settings
+workSettings = def
     { _profileDirectory = "work"
     }
 
 
-evaluate ∷ Settings → IO ()
+instance Default Template where
+  def = Template
+    { xmobar = def
+    , xmonad = def
+    }
+
+
+instance Default Xmobar where
+  def = Xmobar
+    { background = def
+    , position = def
+    , battery = def
+    }
+
+
+instance Default Xmonad where
+  def = Xmonad
+    { terminal = def
+    , ubuntu = def
+    , terminus = def
+    , white = def
+    , grayDark = def
+    , grayLight = def
+    , black = def
+    , orange = def
+    , yellow = def
+    }
+
+
+laptopTemplates ∷ Template
+laptopTemplates = def
+  { xmobar = def
+      { background = "\"#333333\""
+      , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+      , battery = Just "%battery%%mysep%"
+      }
+  , xmonad = def
+      { terminal = "urxvtcd"
+      , ubuntu = "xft:ubuntu:size=9"
+      , terminus = "xft:terminus:size=9"
+      , white = "#ffffff"
+      , grayDark = "#474747"
+      , grayLight = "#cccccc"
+      , black = "#333333"
+      , orange = "#dd9977"
+      , yellow = "#eeccaa"
+      }
+  }
+
+
+workTemplates ∷ Template
+workTemplates = def
+  { xmobar = def
+      { background = "\"#333333\""
+      , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+      }
+  , xmonad = def
+      { terminal = "urxvt"
+      , ubuntu = "xft:ubuntu:size=9"
+      , terminus = "xft:terminus:size=9"
+      , white = "#ffffff"
+      , grayDark = "#515151"
+      , grayLight = "#cccccc"
+      , black = "#373737"
+      , orange = "#dd9977"
+      , yellow = "#eeccaa"
+      }
+  }
+
+
+evaluate ∷ (Settings, Template) → IO ()
 evaluate = (pretend >>> execute >>> verify) . commands
  where
   (>>>) = liftA2 (>>)
 
 
-commands ∷ Settings → ProfileScript Settings Template ()
-commands settings = do
+commands ∷ (Settings, Template) → ProfileScript Settings Template ()
+commands (settings, templates) = do
   custom .= settings
+  template .= templates
   profile "mine" $ do
     dotfiles
     whenM (use $ custom . buildTools) tools
@@ -124,7 +209,6 @@ commands settings = do
         [ ("xmonad.hs", ".xmonad/xmonad.hs")
         , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
         , ("xmonad/Layouts.hs", ".xmonad/lib/Layouts.hs")
-        , ("xmonad/Misc.hs", ".xmonad/lib/Misc.hs")
         , ("xmonad/Startup.hs", ".xmonad/lib/Startup.hs")
         , ("xmonad/Themes.hs", ".xmonad/lib/Themes.hs")
         , ("xmonad/Workspaces.hs", ".xmonad/lib/Workspaces.hs")
@@ -135,7 +219,10 @@ commands settings = do
         , ("gtkrc.mine", ".gtkrc.mine")
         , ("xmobar.hs", ".xmobar/xmobar.hs")
         ]
-      substitute "xmobarrc.template" ".xmobarrc"
+      mapM_ (uncurry substitute)
+        [ ("xmobarrc.template", ".xmobarrc")
+        , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
+        ]
     directory ← query $ custom . profileDirectory
     local (sourceRoot </>~ directory) $ do
       mapM_ (uncurry link)
@@ -180,17 +267,3 @@ commands settings = do
 
 whenM ∷ Monad m ⇒ m Bool → m () → m ()
 whenM ma mb = ma >>= \p → when p mb
-
-
-instance Default Template where
-  def = Template
-    { xmobar = def
-    }
-
-
-instance Default Xmobar where
-  def = Xmobar
-    { backgroundColor = "\"#333333\""
-    , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
-    , battery = Just "%battery%%mysep%"
-    }
