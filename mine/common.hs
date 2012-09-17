@@ -8,6 +8,8 @@ import Data.Typeable (Typeable)
 
 import Control.Lens
 import Control.Monad.Reader (local)
+import Data.DeriveTH
+import Data.Derive.Default
 import Data.Default (Default(def))
 import Options.Applicative
 import System.FilePath.Lens ((</>~))
@@ -30,6 +32,7 @@ data Template = Template
   { xmobar ∷ Xmobar
   , xmonad ∷ Xmonad
   , xmodmap ∷ Xmodmap
+  , urxvt ∷ Urxvt
   } deriving (Data, Typeable)
 
 
@@ -58,6 +61,25 @@ data Xmodmap = Xmodmap
   } deriving (Data, Typeable)
 
 
+data Urxvt = Urxvt
+  { tabbedex ∷ String
+  , background_ ∷ String
+  , browser ∷ String
+  } deriving (Data, Typeable)
+
+
+instance Default Bool where
+  def = False
+
+
+$(derive makeDefault ''Settings)
+$(derive makeDefault ''Template)
+$(derive makeDefault ''Xmobar)
+$(derive makeDefault ''Xmonad)
+$(derive makeDefault ''Urxvt)
+$(derive makeDefault ''Xmodmap)
+
+
 main ∷ IO ()
 main = execParser opts >>= evaluate
  where
@@ -68,65 +90,18 @@ main = execParser opts >>= evaluate
      flag def (workSettings, workTemplates) (long "work" <> short 'w' <> help "Use work settings")
 
 
-instance Default Settings where
-  def = Settings
-    { _profileDirectory = ""
-    , _buildTools = False
-    , _buildExperimental = False
-    }
-
-
-laptopSettings ∷ Settings
+laptopSettings, workSettings ∷ Settings
 laptopSettings = def
     { _profileDirectory = "laptop"
     , _buildTools = True
     , _buildExperimental = True
     }
-
-
-workSettings ∷ Settings
 workSettings = def
     { _profileDirectory = "work"
     }
 
 
-instance Default Template where
-  def = Template
-    { xmobar = def
-    , xmonad = def
-    , xmodmap = def
-    }
-
-
-instance Default Xmobar where
-  def = Xmobar
-    { background = def
-    , position = def
-    , battery = def
-    }
-
-
-instance Default Xmonad where
-  def = Xmonad
-    { terminal = def
-    , ubuntu = def
-    , terminus = def
-    , white = def
-    , grayDark = def
-    , grayLight = def
-    , black = def
-    , orange = def
-    , yellow = def
-    }
-
-
-instance Default Xmodmap where
-  def = Xmodmap
-    { menu = def
-    }
-
-
-laptopTemplates ∷ Template
+laptopTemplates, workTemplates ∷ Template
 laptopTemplates = def
   { xmobar = def
       { background = "\"#333333\""
@@ -147,10 +122,12 @@ laptopTemplates = def
   , xmodmap = def
       { menu = "keysym Menu = Super_R"
       }
+  , urxvt = def
+      { tabbedex = "/home/maksenov/git/urxvt-tabbedex"
+      , background_ = "#333333"
+      , browser = "iceweasel"
+      }
   }
-
-
-workTemplates ∷ Template
 workTemplates = def
   { xmobar = def
       { background = "\"#333333\""
@@ -166,6 +143,11 @@ workTemplates = def
       , black = "#373737"
       , orange = "#dd9977"
       , yellow = "#eeccaa"
+      }
+  , urxvt = def
+      { tabbedex = "/home/pyoseek/git/urxvt-tabbedex"
+      , background_ = "#373737"
+      , browser = "firefox"
       }
   }
 
@@ -198,7 +180,7 @@ commands (settings, templates) = do
  where
   dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
     local (sourceRoot </>~ "core") $ do
-      mapM_ (uncurry link)
+      ex link
         [ ("xsession", ".xsession")
         , ("mpdconf", ".mpdconf")
         , ("bashrc", ".bashrc")
@@ -221,7 +203,7 @@ commands (settings, templates) = do
         , ("vimusrc", ".vimusrc")
         ]
     local (sourceRoot </>~ "extended") $ do
-      mapM_ (uncurry link)
+      ex link
         [ ("xmonad.hs", ".xmonad/xmonad.hs")
         , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
         , ("xmonad/Layouts.hs", ".xmonad/lib/Layouts.hs")
@@ -235,20 +217,18 @@ commands (settings, templates) = do
         , ("gtkrc.mine", ".gtkrc.mine")
         , ("xmobar.hs", ".xmobar/xmobar.hs")
         ]
-      mapM_ (uncurry substitute)
+      ex substitute
         [ ("xmobarrc.template", ".xmobarrc")
         , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
         , ("xmodmap.template", ".xmodmap")
+        , ("Xdefaults.template", ".Xdefaults")
         ]
     directory ← query $ setting . profileDirectory
-    local (sourceRoot </>~ directory) $ do
-      mapM_ (uncurry link)
-        [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
-        , ("Xdefaults", ".Xdefaults")
-        ]
+    local (sourceRoot </>~ directory) $
+      link "xmonad/Profile.hs" ".xmonad/lib/Profile.hs"
 
   tools = git "git@budueba.com:tools" "git/tools" $ do
-    mapM_ (uncurry link)
+    ex link
       [ ("youtube-in-mplayer.sh", "bin/youtube-in-mplayer")
       , ("cue2tracks.sh", "bin/cue2tracks")
       , ("weather.rb", "bin/ask-weather")
@@ -266,7 +246,7 @@ commands (settings, templates) = do
       , ("upload/budueba.sh", "bin/upload-budueba")
       , ("upload/pastebin.hs", "bin/upload-pastebin")
       ]
-    mapM_ (uncurry ghc)
+    ex ghc
       [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
       , ("audio.hs", "bin/vaio-audio")
       , ("shutdown-gui.hs", "bin/shutdown-gui")
@@ -283,3 +263,7 @@ commands (settings, templates) = do
 
 whenM ∷ Monad m ⇒ m Bool → m () → m ()
 whenM ma mb = ma >>= \p → when p mb
+
+
+ex ∷ Monad m ⇒ (FilePath → FilePath → m a) → [(FilePath, FilePath)] → m ()
+ex f = mapM_ (uncurry f)
