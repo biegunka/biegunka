@@ -29,6 +29,7 @@ makeLenses ''Settings
 data Template = Template
   { xmobar ∷ Xmobar
   , xmonad ∷ Xmonad
+  , xmodmap ∷ Xmodmap
   } deriving (Data, Typeable)
 
 
@@ -49,6 +50,11 @@ data Xmonad = Xmonad
   , black ∷ String
   , orange ∷ String
   , yellow ∷ String
+  } deriving (Data, Typeable)
+
+
+data Xmodmap = Xmodmap
+  { menu ∷ String
   } deriving (Data, Typeable)
 
 
@@ -88,6 +94,7 @@ instance Default Template where
   def = Template
     { xmobar = def
     , xmonad = def
+    , xmodmap = def
     }
 
 
@@ -113,6 +120,12 @@ instance Default Xmonad where
     }
 
 
+instance Default Xmodmap where
+  def = Xmodmap
+    { menu = def
+    }
+
+
 laptopTemplates ∷ Template
 laptopTemplates = def
   { xmobar = def
@@ -130,6 +143,9 @@ laptopTemplates = def
       , black = "#333333"
       , orange = "#dd9977"
       , yellow = "#eeccaa"
+      }
+  , xmodmap = def
+      { menu = "keysym Menu = Super_R"
       }
   }
 
@@ -222,13 +238,13 @@ commands (settings, templates) = do
       mapM_ (uncurry substitute)
         [ ("xmobarrc.template", ".xmobarrc")
         , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
+        , ("xmodmap.template", ".xmodmap")
         ]
     directory ← query $ setting . profileDirectory
     local (sourceRoot </>~ directory) $ do
       mapM_ (uncurry link)
         [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
         , ("Xdefaults", ".Xdefaults")
-        , ("xmodmap", ".xmodmap")
         ]
 
   tools = git "git@budueba.com:tools" "git/tools" $ do
