@@ -3,6 +3,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Execute (execute) where
 
+import Control.Exception (SomeException, try)
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
 import Data.Monoid (mempty)
@@ -51,7 +52,7 @@ execute s = do
   removeOrphanRepos = removeOrphan removeDirectoryRecursive sources
 
   removeOrphan f g = removeIfNotElem f `on` g
-  removeIfNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) $ f x
+  removeIfNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) $ (try (f x) ∷ IO (Either SomeException ())) >> return ()
 
 
 profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → IO ()

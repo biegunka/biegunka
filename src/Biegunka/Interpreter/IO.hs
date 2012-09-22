@@ -114,7 +114,7 @@ execute command = f command
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
-    removeLink dst
+    try (removeLink dst) ∷ IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
   compileWith GHC src dst = do

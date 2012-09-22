@@ -53,15 +53,18 @@ git_ url path = git url path (return ())
 
 update ∷ String → FilePath → IO ()
 update url path = do
-  (ifd,ofd) ← createPipe
-  ih ← fdToHandle ifd
-  oh ← fdToHandle ofd
   exists ← doesDirectoryExist path
   unless exists $ do
-    check ih =<< waitForProcess =<< runProcess "git" ["clone", url, path] Nothing Nothing Nothing (Just oh) (Just oh)
-  check ih =<< waitForProcess =<< runProcess "git" ["pull", "origin", "master"] (Just path) Nothing Nothing (Just oh) (Just oh)
+    gitie ["clone", url, path] Nothing
+  gitie ["pull", "origin", "master"] (Just path)
  where
   check ih (ExitFailure _) = do
     l ← T.hGetContents ih
     sourceFailure url path l
   check _ _ = return ()
+
+  gitie xs p = do
+    (ifd,ofd) ← createPipe
+    ih ← fdToHandle ifd
+    oh ← fdToHandle ofd
+    check ih =<< waitForProcess =<< runProcess "git" xs p Nothing Nothing (Just oh) (Just oh)
