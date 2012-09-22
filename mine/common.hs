@@ -259,6 +259,7 @@ commands (settings, templates) = do
     git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
     git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
     git "https://github.com/vim-scripts/bufexplorer.zip" "git/vim-be" $ registerAt ".vim/bundle/be"
+    git "https://github.com/rosstimson/scala-vim-support" "git/scala-vim-support" $ registerAt ".vim/bundle/scala-vim-support"
 
 
 whenM ∷ Monad m ⇒ m Bool → m () → m ()
