@@ -32,7 +32,8 @@ Library
                  zip-archive,
                  download-curl,
                  SHA,
-                 HStringTemplate
+                 HStringTemplate,
+                 text-format
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git

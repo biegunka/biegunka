@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Interpreter.IO provides fancy command execution infrastructure
 module Biegunka.Interpreter.IO
@@ -8,14 +9,15 @@ module Biegunka.Interpreter.IO
   ) where
 
 import Control.Applicative ((<$>))
-import Control.Exception (Exception, SomeException(..), throw, try)
+import Control.Exception (Exception, SomeException(..), throwIO, try)
 import Data.Char (toUpper)
 import Data.Typeable (Typeable)
+import Prelude hiding (print)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 import System.Posix.Files (setFileMode)
-import Text.Printf (printf)
 
+import           Data.Text.Format (Only(..), format, print)
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
@@ -46,23 +48,17 @@ data BiegunkaException =
 
 instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
+   where
+    pretty ExecutionAbortion = "Biegunka has aborted"
+    pretty (CompilationFailure cmp fp fs) =
+      format "{} has failed to compile {}\nFailures log:\n{}" (show cmp, fp, fs)
+    pretty (SourceEmergingFailure up fp fs) =
+      format "Biegunka has failed to emerge source {} in {}\nFailures log:\n{}" (up, fp, fs)
 instance Exception BiegunkaException
 
 
-pretty ∷ BiegunkaException → Text
-pretty ExecutionAbortion = T.pack $ show ExecutionAbortion
-pretty (CompilationFailure cmp fp fs) = T.unlines $ map T.pack
-  [ printf "%s has failed to compile %s" (show cmp) fp
-  , printf "Failures log:\n%s" (T.unpack fs)
-  ]
-pretty (SourceEmergingFailure up fp fs) = T.unlines $ map T.pack
-  [ printf "Biegunka has failed to emerge source %s in %s" up fp
-  , printf "Failures log:\n%s" (T.unpack fs)
-  ]
-
-
-sourceFailure ∷ String → FilePath → Text → a
-sourceFailure up fp fs = throw $ SourceEmergingFailure up fp fs
+sourceFailure ∷ String → FilePath → Text → IO a
+sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs
 
 
 -- | Single command execution and exception handling
@@ -73,11 +69,11 @@ issue command = do
   r ← try $ execute command
   case r of
     Left (SomeException e) → do
-      printf "FAIL: %s\n" (show e)
+      print "FAIL: {}\n" (Only (show e))
       u ← askUser
       case u of
         Retry → issue command
-        Abort → throw ExecutionAbortion
+        Abort → throwIO (ExecutionAbortion)
         Ignore → return False
     Right () → return True
  where
@@ -125,7 +121,7 @@ execute command = f command
     case r of
       ExitFailure _ → do
         l ← T.hGetContents ih
-        throw $ CompilationFailure GHC src l
+        throwIO $ CompilationFailure GHC src l
       _ → return ()
    where
     (dir, file) = splitFileName src
