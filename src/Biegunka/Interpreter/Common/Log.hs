@@ -9,7 +9,7 @@ import Data.Function (on)
 import Data.Int (Int64)
 import Data.Monoid ((<>))
 
-import           Control.Lens ((^.))
+import           Control.Lens ((^.), view)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (execWriter, tell)
 import           Data.Text.Lazy (Text)
@@ -18,8 +18,8 @@ import           Data.Text.Lazy.Builder (Builder, fromLazyText, fromString, toLa
 
 import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.DSL
-  ( Layer(..), Command(..)
-  , from, to, script
+  ( Layer(..), Command(..), Action(..)
+  , action, from, to, script
   , mfoldie
   )
 
@@ -40,6 +40,7 @@ profile = mfoldie f
  where
   f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → Builder
   f (P name s _) = "Setup profile " <> string name <> "\n" <> source s
+  f (W p _) = f p
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → Builder
@@ -50,24 +51,23 @@ source = mfoldie f
 
 
 files ∷ Free (Command Files ()) () → Builder
-files = mfoldie f
+files = mfoldie (f . view action)
  where
-  f ∷ Command Files () a → Builder
-  f (Message m _) = indent 4 <>
+  f (Message m) = indent 4 <>
     "Message: " <> string m <> "\n"
-  f (RegisterAt src dst _) = indent 4 <>
+  f (RegisterAt src dst) = indent 4 <>
     "Link repository " <> string src <> " to " <> string dst <> "\n"
-  f (Link src dst _) = indent 4 <>
+  f (Link src dst) = indent 4 <>
     "Link file " <> string src <> " to " <> string dst <> "\n"
-  f (Copy src dst _) = indent 4 <>
+  f (Copy src dst) = indent 4 <>
     "Copy file " <> string src <> " to " <> string dst <> "\n"
-  f (Compile cmp src dst _) = indent 4 <>
+  f (Compile cmp src dst) = indent 4 <>
     "Compile with " <> string (show cmp) <> " file " <> string src <> " to " <> string dst <> "\n"
-  f (Template src dst _ _) = indent 4 <>
+  f (Template src dst _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
-  f (Mode fp m _) = indent 4 <>
+  f (Mode fp m) = indent 4 <>
     "Set " <> string fp <> " mode to " <> string (show m) <> "\n"
-  f (Ownership fp u g _) = indent 4 <>
+  f (Ownership fp u g) = indent 4 <>
     "Set " <> string fp <> " owner to " <> string u <> ":" <> string g <> "\n"
 
 

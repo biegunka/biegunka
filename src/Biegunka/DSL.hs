@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -8,8 +7,9 @@ module Biegunka.DSL
   ( module B
   , FileScript, SourceScript, ProfileScript
   , Layer(..)
-  , from, to, script, update, next
-  , Command(..), Compiler(..), message, registerAt, copy, link, ghc, substitute
+  , next, action, from, to, script, update
+  , Command(..), Action(..)
+  , Compiler(..), message, registerAt, copy, link, ghc, substitute
   , chmod, chown
   , profile
   , foldie, mfoldie, foldieM, foldieM_, transform
@@ -57,54 +57,63 @@ data Compiler =
 
 
 data Command (l ∷ Layer) s a where
-  Message ∷ String → a → Command Files () a
-  RegisterAt ∷ FilePath → FilePath → a → Command Files () a
-  Link ∷ FilePath → FilePath → a → Command Files () a
-  Copy ∷ FilePath → FilePath → a → Command Files () a
-  Compile ∷ Compiler → FilePath → FilePath → a → Command Files () a
-  Template ∷ FilePath → FilePath → (String → Text) → a → Command Files () a
-  Mode ∷ FilePath → FileMode → a → Command Files () a
-  Ownership ∷ FilePath → String → String → a → Command Files () a
-  S ∷ { _from ∷ String, _to ∷ FilePath, _script ∷ s, _update ∷ IO (), _step ∷ a } → Command Source s a
+  F ∷ Action → a → Command Files () a
+  S ∷ String → FilePath → s → IO () → a → Command Source s a
   P ∷ String → s → a → Command Profile s a
-
-
-next ∷ Lens (Command l s a) (Command l s b) a b
-next f (Message m x)        = Message m <$> f x
-next f (RegisterAt s d x)   = RegisterAt s d <$> f x
-next f (Link s d x)         = Link s d <$> f x
-next f (Copy s d x)         = Copy s d <$> f x
-next f (Compile c s d x)    = Compile c s d <$> f x
-next f (Template s d g x)   = Template s d g <$> f x
-next f (Mode fp m x)        = Mode fp m <$> f x
-next f (Ownership fp u g x) = Ownership fp u g <$> f x
-next f s@(S {_step = x})    = (\y → s {_step = y}) <$> f x
-next f (P n s x)            = P n s <$> f x
-{-# INLINE next #-}
-
-
-from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-from f s@(S {_from = x}) = (\y → s {_from = y}) <$> f x
-{-# INLINE from #-}
-
-
-to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-to f s@(S {_to = x}) = (\y → s {_to = y}) <$> f x
-{-# INLINE to #-}
-
-
-script ∷ Lens (Command Source s a) (Command Source s' a) s s'
-script f s@(S {_script = x}) = (\y → s {_script = y}) <$> f x
-{-# INLINE script #-}
-
-
-update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
-update f s@(S {_update = x}) = (\y → s {_update = y}) <$> f x
-{-# INLINE update #-}
+  W ∷ Command l s b → a → Command l s a
 
 
 instance Functor (Command l s) where
   fmap = over next
+
+
+next ∷ Lens (Command l s a) (Command l s b) a b
+next f (F a x)       = F a <$> f x
+next f (S a b c d x) = (\y → S a b c d y) <$> f x
+next f (P n s x)     = P n s <$> f x
+next f (W s x)       = W s <$> f x
+{-# INLINE next #-}
+
+
+action ∷ Lens (Command Files () a) (Command Files () a) Action Action
+action f (F x a) = (\y → F y a) <$> f x
+action f (W x a) = (\y → W y a) <$> action f x
+{-# INLINE action #-}
+
+
+from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
+from f (S x a b c d) = (\y → S y a b c d) <$> f x
+from f (W x a) = (\y → W y a) <$> from f x
+{-# INLINE from #-}
+
+
+to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
+to f (S a x b c d) = (\y → S a y b c d) <$> f x
+to f (W x a) = (\y → W y a) <$> to f x
+{-# INLINE to #-}
+
+
+script ∷ Lens (Command Source s a) (Command Source s' a) s s'
+script f (S a b x c d) = (\y → S a b y c d) <$> f x
+script f (W x a) = (\y → W y a) <$> script f x
+{-# INLINE script #-}
+
+
+update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
+update f (S a b c x d) = (\y → S a b c y d) <$> f x
+update f (W x a) = (\y → W y a) <$> update f x
+{-# INLINE update #-}
+
+
+data Action =
+    Message String
+  | RegisterAt FilePath FilePath
+  | Link FilePath FilePath
+  | Copy FilePath FilePath
+  | Compile Compiler FilePath FilePath
+  | Template FilePath FilePath (String → Text)
+  | Mode FilePath FileMode
+  | Ownership FilePath String String
 
 
 -- | Prints specified message to stdout
@@ -113,7 +122,7 @@ instance Functor (Command l s) where
 --
 -- prints \"hello!\"
 message ∷ String → FileScript s t ()
-message m = lift . liftF $ Message m ()
+message m = lift . liftF $ F (Message m) ()
 
 
 -- | Links source to specified filepath
@@ -168,7 +177,7 @@ substitute src dst = do
   sr ← queries sourceRoot (</> src)
   r ← queries root (</> dst)
   t ← queries template (\b → render . setAttribute "template" b . newSTMP)
-  lift . liftF $ Template sr r t ()
+  lift . liftF $ F (Template sr r t) ()
 
 
 -- | Changes mode of given file to specified value
@@ -190,11 +199,11 @@ chmod fp m = join $ lifty Mode <$> queries root (</> fp) <*> return m
 chown ∷ FilePath → String → String → FileScript s t ()
 chown fp u g = do
   r ← queries root (</> fp)
-  lift . liftF $ Ownership r u g ()
+  lift . liftF $ F (Ownership r u g) ()
 
 
-lifty ∷ (Functor f, MonadTrans t) ⇒ (c → d → () → f a) → c → d → t (Free f) a
-lifty f r sr = lift . liftF $ f r sr ()
+lifty ∷ MonadTrans t ⇒ (a → b → Action) → a → b → t (Free (Command Files ())) ()
+lifty f r sr = lift . liftF $ F (f r sr) ()
 
 
 -- | Configuration profile

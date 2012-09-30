@@ -5,7 +5,7 @@ module Biegunka.Interpreter.Common.Map (construct) where
 
 import Data.Monoid (Monoid(..))
 
-import           Control.Lens ((^.))
+import           Control.Lens ((^.), view)
 import           Control.Monad.Free (Free(..))
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -14,8 +14,8 @@ import qualified Data.Set as S
 
 import Biegunka.DB (Biegunka, biegunize)
 import Biegunka.DSL
-  ( Layer(..), Command(..)
-  , to, script
+  ( Layer(..), Command(..), Action(..)
+  , action, to, script
   , foldie, mfoldie
   )
 
@@ -31,6 +31,7 @@ profile = foldie ($) mempty f
     → Map String (Map FilePath (Set FilePath))
     → Map String (Map FilePath (Set FilePath))
   f (P name s _) = M.insertWith' mappend name (source s)
+  f (W p _) = f p
 
 
 source ∷ Free (Command Source (Free (Command Files ()) ())) () → Map FilePath (Set FilePath)
@@ -40,14 +41,13 @@ source = mfoldie f
 
 
 files ∷ Free (Command Files ()) () → Set FilePath
-files = mfoldie f
+files = mfoldie (f . view action)
  where
-  f ∷ Command Files () a → Set FilePath
-  f (Message _ _) = mempty
-  f (RegisterAt _ dst _) = S.singleton dst
-  f (Link _ dst _) = S.singleton dst
-  f (Copy _ dst _) = S.singleton dst
-  f (Compile _ _ dst _) = S.singleton dst
-  f (Template _ dst _ _) = S.singleton dst
+  f (Message _) = mempty
+  f (RegisterAt _ dst) = S.singleton dst
+  f (Link _ dst) = S.singleton dst
+  f (Copy _ dst) = S.singleton dst
+  f (Compile _ _ dst) = S.singleton dst
+  f (Template _ dst _) = S.singleton dst
   f (Mode {}) = mempty
   f (Ownership {}) = mempty

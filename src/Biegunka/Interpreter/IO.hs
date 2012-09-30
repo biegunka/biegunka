@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Interpreter.IO provides fancy command execution infrastructure
 module Biegunka.Interpreter.IO
@@ -17,6 +18,7 @@ import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 import System.Posix.Files (setFileMode)
 
+import           Control.Lens ((^.))
 import           Data.Text.Format (Only(..), format, print)
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -28,7 +30,7 @@ import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 import           System.Process (runProcess, waitForProcess)
 
-import Biegunka.DSL (Command(..), Compiler(..))
+import Biegunka.DSL (Command(..), Action(..), Compiler(..), update)
 
 
 -- | Possible user's reactions on failures
@@ -93,20 +95,23 @@ execute ∷ Command l s a → IO ()
 execute command = f command
  where
   f ∷ Command l s a → IO ()
-  f (Message m _) = putStrLn m
-  f (RegisterAt src dst _) = overWriteWith createSymbolicLink src dst
-  f (Link src dst _) = overWriteWith createSymbolicLink src dst
-  f (Copy src dst _) = overWriteWith copyFile src dst
-  f (Compile cmp src dst _) = compileWith cmp src dst
-  f (Template src dst substitute _) =
+  f (F a _) = h a
+  f s@(S {}) = s^.update
+  f (P {}) = return ()
+  f (W {}) = return ()
+
+  h (Message m) = putStrLn m
+  h (RegisterAt src dst) = overWriteWith createSymbolicLink src dst
+  h (Link src dst) = overWriteWith createSymbolicLink src dst
+  h (Copy src dst) = overWriteWith copyFile src dst
+  h (Compile cmp src dst) = compileWith cmp src dst
+  h (Template src dst substitute) =
     overWriteWith (\s d → substitute <$> readFile s >>= T.writeFile d) src dst
-  f (Mode fp m _) = setFileMode fp m
-  f (Ownership fp u g _) = do
+  h (Mode fp m) = setFileMode fp m
+  h (Ownership fp u g) = do
     uid ← userID <$> getUserEntryForName u
     gid ← groupID <$> getGroupEntryForName g
     setOwnerAndGroup fp uid gid
-  f (S { _update = update })= update
-  f (P {}) = return ()
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
