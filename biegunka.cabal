@@ -22,7 +22,7 @@ Library
                  bytestring,
                  text,
                  free,
-                 lens >= 2 && < 3,
+                 lens >= 3.0.2,
                  vector,
                  unordered-containers,
                  data-default,
