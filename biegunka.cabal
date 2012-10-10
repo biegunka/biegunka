@@ -44,7 +44,6 @@ Library
                  Biegunka.DSL
                  Biegunka.Source.Common
                  Biegunka.Interpreter.Execute
-                 Biegunka.Interpreter.IO
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Verify
                  Biegunka.Interpreter.Log

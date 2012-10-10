@@ -18,7 +18,7 @@ import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.DSL (FileScript, Command(S), SourceScript)
 import Biegunka.Settings
-import Biegunka.Interpreter.IO (sourceFailure)
+import Biegunka.Interpreter.Execute (sourceFailure)
 
 
 -- | Clone repository from the given url to specified path
