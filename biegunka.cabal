@@ -47,9 +47,9 @@ Library
                  Biegunka.Interpreter.IO
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Verify
-                 Biegunka.Interpreter.Common.Log
-                 Biegunka.Interpreter.Common.Map
-                 Biegunka.Interpreter.Common.State
+                 Biegunka.Interpreter.Log
+                 Biegunka.Interpreter.Map
+                 Biegunka.Interpreter.State
                  Data.Aeson.Biegunka
   GHC-Options: -Wall
                -fno-warn-unused-do-bind

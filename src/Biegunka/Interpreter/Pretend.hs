@@ -13,9 +13,9 @@ import           System.IO (hFlush, stdout)
 
 import           Biegunka.DB (load, filepaths, sources)
 import           Biegunka.DSL (ProfileScript)
-import qualified Biegunka.Interpreter.Common.Log as Log
-import qualified Biegunka.Interpreter.Common.Map as Map
-import           Biegunka.Interpreter.Common.State
+import qualified Biegunka.Interpreter.Log as Log
+import qualified Biegunka.Interpreter.Map as Map
+import           Biegunka.Interpreter.State
 
 
 data Stat = Stat

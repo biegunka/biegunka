@@ -20,8 +20,8 @@ import           Biegunka.DSL
   , script
   , foldieM, foldieM_
   )
-import qualified Biegunka.Interpreter.Common.Map as Map
-import           Biegunka.Interpreter.Common.State
+import qualified Biegunka.Interpreter.Map as Map
+import           Biegunka.Interpreter.State
 import           Biegunka.Interpreter.IO (issue)
 
 

@@ -22,7 +22,7 @@ import Biegunka.DSL
   , Layer(..), Command(..), Action(..)
   , action, from, to, script
   , foldie)
-import Biegunka.Interpreter.Common.State
+import Biegunka.Interpreter.State
 
 
 -- | Verify interpreter
