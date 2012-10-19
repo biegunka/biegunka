@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Source.Zip - functions to work with .zip archives as sources
 module Biegunka.Source.Zip
@@ -8,14 +10,10 @@ module Biegunka.Source.Zip
 import Prelude hiding (zip)
 
 import Codec.Archive.Zip (toArchive, extractFilesFromArchive)
-import Control.Lens (uses)
 import Control.Monad.Free (liftF)
-import Control.Monad.Trans (lift)
-import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory, setCurrentDirectory)
 
-import Biegunka.Settings
-import Biegunka.DSL (FileScript, Command(S), SourceScript)
+import Biegunka.DSL (Script, Layer(Files, Source), Command(S))
 import Biegunka.Source.Common (update)
 
 
@@ -31,8 +29,8 @@ import Biegunka.Source.Common (update)
 --  * link ${HOME}\/git\/archive to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
-zip ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-zip url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (updateZip url sr) ()
+zip ∷ String → FilePath → Script Files → Script Source
+zip url path script = liftF $ S url path script (updateZip url) ()
 
 
 -- | Download and extract zip archive from the given url to specified path.
@@ -40,7 +38,7 @@ zip url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr s
 -- > zip_ "https://example.com/archive.zip" "git/archive"
 --
 --  * download and extract archive from https:\/\/example.com\/archive.zip to ${HOME}\/git\/archive
-zip_ ∷ String → FilePath → SourceScript s t ()
+zip_ ∷ String → FilePath → Script Source
 zip_ url path = zip url path $ return ()
 
 

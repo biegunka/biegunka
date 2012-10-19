@@ -21,11 +21,11 @@ Library
                  unix,
                  bytestring,
                  text,
+                 lifted-base,
                  free,
                  lens >= 3.0.2,
                  vector,
                  unordered-containers,
-                 data-default,
                  tar,
                  zlib,
                  bzlib,
@@ -40,7 +40,6 @@ Library
                    Biegunka.Source.Tar
                    Biegunka.Source.Zip
   Other-Modules: Biegunka.DB
-                 Biegunka.Settings
                  Biegunka.DSL
                  Biegunka.Source.Common
                  Biegunka.Interpreter.Execute
@@ -49,7 +48,7 @@ Library
                  Biegunka.Interpreter.Log
                  Biegunka.Interpreter.Map
                  Biegunka.Interpreter.State
+                 Biegunka.Interpreter.Flatten
                  Data.Aeson.Biegunka
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
-  Extensions: UnicodeSyntax

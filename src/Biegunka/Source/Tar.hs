@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Source.Tar - functions to work with [.tar, .tar.gz, .tar.bz2] archives as sources
 module Biegunka.Source.Tar
@@ -8,15 +10,12 @@ module Biegunka.Source.Tar
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Compression.GZip as GZip (decompress)
 import qualified Codec.Compression.BZip as BZip (decompress)
-import           Control.Lens ((^.), uses)
+import           Control.Lens ((^.))
 import           Control.Monad.Free (liftF)
-import           Control.Monad.Trans (lift)
 import           Data.ByteString.Lazy (ByteString)
-import           System.FilePath ((</>))
 import           System.FilePath.Lens (extension)
 
-import Biegunka.Settings
-import Biegunka.DSL (FileScript, Command(S), SourceScript)
+import Biegunka.DSL (Script, Layer(Files, Source), Command(S))
 import Biegunka.Source.Common (update)
 
 
@@ -32,8 +31,8 @@ import Biegunka.Source.Common (update)
 --  * link ${HOME}\/git\/archive to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/archive\/important.file to ${HOME}\/.config
-tar ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-tar url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (updateTar url sr) ()
+tar ∷ String → FilePath → Script Files → Script Source
+tar url path script = liftF $ S url path script (updateTar url) ()
 
 
 -- | Download and extract tar archive (possibly with compression)
@@ -42,13 +41,12 @@ tar url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr s
 -- > tar_ "https://example.com/archive.tar.gz" "git/archive"
 --
 --  * download and extract archive from https:\/\/example.com\/archive.tar.gz to ${HOME}\/git\/archive
-tar_ ∷ String → FilePath → SourceScript s t ()
+tar_ ∷ String → FilePath → Script Source
 tar_ url path = tar url path $ return ()
 
 
 updateTar ∷ String → FilePath → IO ()
-updateTar url path = do
-  update url path (Tar.unpack path . Tar.read . decompress url)
+updateTar url path = update url path (Tar.unpack path . Tar.read . decompress url)
 
 
 decompress ∷ String → ByteString → ByteString

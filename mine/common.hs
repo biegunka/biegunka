@@ -1,31 +1,32 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+module Main (main) where
+
 import Control.Monad (when)
 import Data.Data (Data)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
 
 import Control.Lens
-import Control.Monad.Reader (local)
 import Data.DeriveTH
-import Data.Derive.Default
+import Data.Derive.Default ()
 import Data.Default (Default(def))
 import Options.Applicative
-import System.FilePath.Lens ((</>~))
+import System.FilePath ((</>))
 
 import Biegunka
 import Biegunka.Source.Git
 
 
 data Settings = Settings
-  { _profileDirectory ∷ FilePath
-  , _buildTools ∷ Bool
-  , _buildExperimental ∷ Bool
+  { _directory ∷ FilePath
+  , _tools ∷ Bool
+  , _experimental ∷ Bool
   } deriving (Show, Read, Eq, Ord)
-
-
-makeLenses ''Settings
 
 
 data Template = Template
@@ -81,151 +82,140 @@ $(derive makeDefault ''Xmodmap)
 
 
 main ∷ IO ()
-main = execParser opts >>= evaluate
+main = execParser opts >>= \(s,t) → commands s %
+  pretend >-> executeWith (defaultExecution % templates .~ t) >-> verify
  where
-   opts = info (helper <*> sample) (fullDesc <> header "Biegunka script")
+  opts = info (helper <*> sample) (fullDesc <> header "Biegunka script")
 
-   sample =
+  sample =
      flag def (laptopSettings, laptopTemplates) (long "laptop" <> short 'l' <> help "Use laptop settings") <|>
      flag def (workSettings, workTemplates) (long "work" <> short 'w' <> help "Use work settings")
+
+  (>->) = liftA2 (>>)
 
 
 laptopSettings, workSettings ∷ Settings
 laptopSettings = def
-    { _profileDirectory = "laptop"
-    , _buildTools = True
-    , _buildExperimental = True
-    }
+  { _directory = "laptop"
+  , _tools = True
+  , _experimental = True
+  }
 workSettings = def
-    { _profileDirectory = "work"
-    }
+  { _directory = "work"
+  }
 
 
 laptopTemplates, workTemplates ∷ Template
 laptopTemplates = def
   { xmobar = def
-      { background = "\"#333333\""
-      , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
-      , battery = Just "%battery%%mysep%"
-      }
+    { background = "\"#333333\""
+    , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+    , battery = Just "%battery%%mysep%"
+    }
   , xmonad = def
-      { terminal = "urxvtcd"
-      , ubuntu = "xft:ubuntu:size=9"
-      , terminus = "xft:terminus:size=9"
-      , white = "#ffffff"
-      , grayDark = "#474747"
-      , grayLight = "#cccccc"
-      , black = "#333333"
-      , orange = "#dd9977"
-      , yellow = "#eeccaa"
-      }
+    { terminal = "urxvtcd"
+    , ubuntu = "xft:ubuntu:size=9"
+    , terminus = "xft:terminus:size=9"
+    , white = "#ffffff"
+    , grayDark = "#474747"
+    , grayLight = "#cccccc"
+    , black = "#333333"
+    , orange = "#dd9977"
+    , yellow = "#eeccaa"
+    }
   , xmodmap = def
-      { menu = "keysym Menu = Super_R"
-      }
+    { menu = "keysym Menu = Super_R"
+    }
   , urxvt = def
-      { tabbedex = "/home/maksenov/git/urxvt-tabbedex"
-      , background_ = "#333333"
-      , browser = "iceweasel"
-      }
+    { tabbedex = "/home/maksenov/git/urxvt-tabbedex"
+    , background_ = "#333333"
+    , browser = "iceweasel"
+    }
   }
 workTemplates = def
   { xmobar = def
-      { background = "\"#333333\""
-      , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
-      }
+    { background = "\"#333333\""
+    , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+    }
   , xmonad = def
-      { terminal = "urxvt"
-      , ubuntu = "xft:ubuntu:size=9"
-      , terminus = "xft:terminus:size=9"
-      , white = "#ffffff"
-      , grayDark = "#515151"
-      , grayLight = "#cccccc"
-      , black = "#373737"
-      , orange = "#dd9977"
-      , yellow = "#eeccaa"
-      }
+    { terminal = "urxvt"
+    , ubuntu = "xft:ubuntu:size=9"
+    , terminus = "xft:terminus:size=9"
+    , white = "#ffffff"
+    , grayDark = "#515151"
+    , grayLight = "#cccccc"
+    , black = "#373737"
+    , orange = "#dd9977"
+    , yellow = "#eeccaa"
+    }
   , urxvt = def
-      { tabbedex = "/home/pyoseek/git/urxvt-tabbedex"
-      , background_ = "#373737"
-      , browser = "firefox"
-      }
+    { tabbedex = "/home/pyoseek/git/urxvt-tabbedex"
+    , background_ = "#373737"
+    , browser = "firefox"
+    }
   }
 
 
-evaluate ∷ (Settings, Template) → IO ()
-evaluate = (pretend >>> execute >>> verify) . commands
- where
-  (>>>) = liftA2 (>>)
-
-
-commands ∷ (Settings, Template) → ProfileScript Settings Template ()
-commands (settings, templates) = do
-  setting .= settings
-  template .= templates
+commands ∷ Settings → Script Profile
+commands Settings {..} = do
   profile "mine" $ do
     dotfiles
-    whenM (use $ setting . buildTools) tools
-    git_ "git@github.com:supki/zsh-cabal-completion" "git/zsh-cabal-completion"
-
+    when _tools tools
+    "git@github.com:supki/zsh-cabal-completion" --> "git/zsh-cabal-completion"
   profile "vim" vim
-
   profile "misc" $ do
-    git_ "https://github.com/zsh-users/zsh-completions.git" "git/zsh-completions"
-    git_ "https://github.com/stepb/urxvt-tabbedex" "git/urxvt-tabbedex"
-
-  whenM (use $ setting . buildExperimental) $
-    profile "experimental" $ do
-      git_ "https://github.com/sol/vimus" "git/vimus"
-      git_ "https://github.com/sol/libmpd-haskell" "git/libmpd-haskell"
+    "https://github.com/zsh-users/zsh-completions.git" --> "git/zsh-completions"
+    "https://github.com/stepb/urxvt-tabbedex"          --> "git/urxvt-tabbedex"
+  when _experimental . profile "experimental" $ do
+    "https://github.com/sol/vimus"          --> "git/vimus"
+    "https://github.com/sol/libmpd-haskell" --> "git/libmpd-haskell"
  where
   dotfiles = git "git@github.com:supki/.dotfiles" "git/dotfiles" $ do
-    local (sourceRoot </>~ "core") $ do
-      ex link
-        [ ("xsession", ".xsession")
-        , ("mpdconf", ".mpdconf")
-        , ("bashrc", ".bashrc")
-        , ("zshrc", ".zshrc")
-        , ("inputrc", ".inputrc")
-        , ("profile", ".profile")
-        , ("vimrc", ".vimrc")
-        , ("ghci", ".ghci")
-        , ("haskeline", ".haskeline")
-        , ("racketrc", ".racketrc")
-        , ("gitconfig", ".gitconfig")
-        , ("gitignore", ".gitignore")
-        , ("ackrc", ".ackrc")
-        , ("vim/pathogen.vim", ".vim/autoload/pathogen.vim")
-        , ("vim/cscope_maps.vim", ".vim/bundle/cscope_maps.vim")
-        , ("vim/scratch", ".vim/bundle/scratch")
-        , ("vim/indent/haskell.vim", ".vim/indent/haskell.vim")
-        , ("conceal/haskell.vim", ".vim/after/syntax/haskell.vim")
-        , ("XCompose", ".XCompose")
-        , ("vimusrc", ".vimusrc")
-        ]
-    local (sourceRoot </>~ "extended") $ do
-      ex link
-        [ ("xmonad.hs", ".xmonad/xmonad.hs")
-        , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
-        , ("xmonad/Layouts.hs", ".xmonad/lib/Layouts.hs")
-        , ("xmonad/Startup.hs", ".xmonad/lib/Startup.hs")
-        , ("xmonad/Themes.hs", ".xmonad/lib/Themes.hs")
-        , ("xmonad/Workspaces.hs", ".xmonad/lib/Workspaces.hs")
-        , ("gvimrc", ".gvimrc")
-        , ("vimcolors", ".vim/colors")
-        , ("pentadactylrc", ".pentadactylrc")
-        , ("pentadactyl/wanker.penta", ".pentadactyl/plugins/wanker.penta")
-        , ("gtkrc.mine", ".gtkrc.mine")
-        , ("xmobar.hs", ".xmobar/xmobar.hs")
-        ]
-      ex substitute
-        [ ("xmobarrc.template", ".xmobarrc")
-        , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
-        , ("xmodmap.template", ".xmodmap")
-        , ("Xdefaults.template", ".Xdefaults")
-        ]
-    directory ← query $ setting . profileDirectory
-    local (sourceRoot </>~ directory) $
-      link "xmonad/Profile.hs" ".xmonad/lib/Profile.hs"
+    ex link $ traverse . _1 %~ ("core" </>) $
+      [ ("xsession", ".xsession")
+      , ("mpdconf", ".mpdconf")
+      , ("bashrc", ".bashrc")
+      , ("zshrc", ".zshrc")
+      , ("inputrc", ".inputrc")
+      , ("profile", ".profile")
+      , ("vimrc", ".vimrc")
+      , ("ghci", ".ghci")
+      , ("haskeline", ".haskeline")
+      , ("racketrc", ".racketrc")
+      , ("gitconfig", ".gitconfig")
+      , ("gitignore", ".gitignore")
+      , ("ackrc", ".ackrc")
+      , ("vim/pathogen.vim", ".vim/autoload/pathogen.vim")
+      , ("vim/cscope_maps.vim", ".vim/bundle/cscope_maps.vim")
+      , ("vim/scratch", ".vim/bundle/scratch")
+      , ("vim/indent/haskell.vim", ".vim/indent/haskell.vim")
+      , ("conceal/haskell.vim", ".vim/after/syntax/haskell.vim")
+      , ("XCompose", ".XCompose")
+      , ("vimusrc", ".vimusrc")
+      ]
+    ex link $ traverse . _1 %~ ("extended" </>) $
+      [ ("xmonad.hs", ".xmonad/xmonad.hs")
+      , ("xmonad/Controls.hs", ".xmonad/lib/Controls.hs")
+      , ("xmonad/Layouts.hs", ".xmonad/lib/Layouts.hs")
+      , ("xmonad/Startup.hs", ".xmonad/lib/Startup.hs")
+      , ("xmonad/Themes.hs", ".xmonad/lib/Themes.hs")
+      , ("xmonad/Workspaces.hs", ".xmonad/lib/Workspaces.hs")
+      , ("gvimrc", ".gvimrc")
+      , ("vimcolors", ".vim/colors")
+      , ("pentadactylrc", ".pentadactylrc")
+      , ("pentadactyl/wanker.penta", ".pentadactyl/plugins/wanker.penta")
+      , ("gtkrc.mine", ".gtkrc.mine")
+      , ("xmobar.hs", ".xmobar/xmobar.hs")
+      ]
+    ex substitute $ traverse . _1 %~ ("extended" </>) $
+      [ ("xmobarrc.template", ".xmobarrc")
+      , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
+      , ("xmodmap.template", ".xmodmap")
+      , ("Xdefaults.template", ".Xdefaults")
+      ]
+    ex link $ traverse . _1 %~ (_directory </>) $
+      [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
+      ]
 
   tools = git "git@budueba.com:tools" "git/tools" $ do
     ex link
@@ -246,25 +236,25 @@ commands (settings, templates) = do
       , ("upload/budueba.sh", "bin/upload-budueba")
       , ("upload/pastebin.hs", "bin/upload-pastebin")
       ]
-    ex ghc
+    ignorant $ ex ghc
       [ ("mpd/scrobbler.hs", "bin/liblastfm-scrobbler")
       , ("audio.hs", "bin/vaio-audio")
       , ("shutdown-gui.hs", "bin/shutdown-gui")
       ]
 
   vim = do
-    git "https://github.com/Shougo/vimproc" "git/vimproc" $ registerAt ".vim/bundle/vimproc"
-    git "https://github.com/eagletmt/ghcmod-vim" "git/ghcmod-vim" $ registerAt ".vim/bundle/ghcmod-vim"
-    git "https://github.com/ujihisa/neco-ghc" "git/neco-ghc" $ registerAt ".vim/bundle/neco-ghc"
-    git "https://github.com/Shougo/neocomplcache" "git/neocomplcache" $ registerAt ".vim/bundle/neocomplcache"
-    git "https://github.com/spolu/dwm.vim" "git/dwm" $ registerAt ".vim/bundle/dwm"
-    git "https://github.com/vim-scripts/bufexplorer.zip" "git/vim-be" $ registerAt ".vim/bundle/be"
-    git "https://github.com/rosstimson/scala-vim-support" "git/scala-vim-support" $ registerAt ".vim/bundle/scala-vim-support"
-
-
-whenM ∷ Monad m ⇒ m Bool → m () → m ()
-whenM ma mb = ma >>= \p → when p mb
+    "git@github.com:Shougo/vimproc"               --> ".vim/bundle/vimproc"
+    "git@github.com:eagletmt/ghcmod-vim"          --> ".vim/bundle/ghcmod-vim"
+    "git@github.com:ujihisa/neco-ghc"             --> ".vim/bundle/neco-ghc"
+    "git@github.com:Shougo/neocomplcache"         --> ".vim/bundle/neocomplcache"
+    "git@github.com:spolu/dwm.vim"                --> ".vim/bundle/dwm"
+    "git@github.com:vim-scripts/bufexplorer.zip"  --> ".vim/bundle/be"
+    "git@github.com:rosstimson/scala-vim-support" --> ".vim/bundle/scala-vim-support"
 
 
 ex ∷ Monad m ⇒ (FilePath → FilePath → m a) → [(FilePath, FilePath)] → m ()
-ex f = mapM_ (uncurry f)
+ex = mapM_ . uncurry
+
+
+(-->) ∷ String → FilePath → Script Source
+(-->) = git_

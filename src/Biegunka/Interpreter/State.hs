@@ -1,57 +1,75 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.State (infect) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative (Applicative, (<$>), (<*>), liftA2, liftA3, pure)
+import Data.Monoid (mempty)
 
-import Control.Lens ((^.), (.~), over)
-import Control.Monad.Free (Free(..), iter)
-import Control.Monad.Reader (runReaderT)
-import Control.Monad.State (runStateT)
-import Data.Default (Default(def))
+import           Control.Lens
+import           Control.Monad.Free (Free(..))
+import           Control.Monad.State (State, evalState)
+import qualified System.FilePath as F
 
-import Biegunka.DSL
-  ( ProfileScript, SourceScript, FileScript
-  , Layer(..), Command(..)
-  , to, script, next, next, transform
-  )
-import Biegunka.Settings
+import Biegunka.DSL (Command(..), Action(..))
 
 
--- | Evaluate state monad actions to get pure free monad
+data Infect = Infect
+  { _root ∷ FilePath
+  , _source ∷ FilePath
+  }
+
+
+makeLenses ''Infect
+
+
+-- | Infect free monad with state:
 --
--- First we evaluate outer layer state actions: everything around 'profile' calls. Then evaluated state is passed to 'profile' calls
-infect ∷ (Default s, Default t)
-       ⇒ FilePath
-       → ProfileScript s t ()
-       → Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
-infect home scr =
-  let mas = runStateT scr (root .~ home $ def)
-      a' = fst <$> mas
-      s' = iter (^. next) (snd <$> mas)
-  in profile s' a'
+-- * Path to root
+-- * Path to current source
+infect ∷ FilePath
+       → Free (Command l ()) ()
+       → Free (Command l ()) ()
+infect path cs = evalState (f cs) Infect { _root = path, _source = mempty }
 
 
--- | Evaluate state monad actions inside a profile
---
--- Gets initial state as evaluated from outer layer, appends its mutations on inner layer, passes mutated state to 'source'
---
--- Next 'profile' call gets unmodified state from outer layer
-profile ∷ Settings s t
-        → Free (Command Profile (SourceScript s t ())) ()
-        → Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
-profile s = transform $ \(P t scr n) →
-  let mas = runStateT scr s
-      a' = fst <$> mas
-      s' = iter (^. next) (snd <$> mas)
-  in P t (source s' a') (profile s n)
+f ∷ Free (Command l ()) () → State Infect (Free (Command l ()) ())
+f (Free t) = Free <$> g t
+f (Pure ()) = return (Pure ())
 
 
--- | Evaluate reader monad actions inside a source
---
--- Note: source actions cannot mutate state at all
-source ∷ Settings s t
-       → Free (Command Source (FileScript s t ())) ()
-       → Free (Command Source (Free (Command Files ()) ())) ()
-source s = transform $ \p → over next (source s) $ over script (flip runReaderT (sourceRoot .~ (p^.to) $ s)) p
+g ∷ Command l () (Free (Command l ()) ()) → State Infect (Command l () (Free (Command l ()) ()))
+g (F a x) = h a >>= \t → F t <$> f x
+ where
+  h m@(Message _) = return m
+  h (RegisterAt src dst) =
+    liftA2 RegisterAt (use source </> pure src) (use root </> pure dst)
+  h (Link src dst) =
+    liftA2 Link (use source </> pure src) (use root </> pure dst)
+  h (Copy src dst) =
+    liftA2 Copy (use source </> pure src) (use root </> pure dst)
+  h (Compile cmp src dst) =
+    liftA2 (Compile cmp) (use source </> pure src) (use root </> pure dst)
+  h (Template src dst substitute) =
+    liftA2 (\s d → Template s d substitute) (use source </> pure src) (use root </> pure dst)
+  h (Mode fp mode) =
+    liftA2 Mode (use root </> pure fp) (pure mode)
+  h (Ownership fp user group) =
+    liftA3 Ownership (use root </> pure fp) (pure user) (pure group)
+g (S url dst s update x) = do
+  r ← use root
+  source .= (r F.</> dst)
+  liftA5 S (pure url) (use root </> pure dst) (pure s) (pure update) (f x)
+g (S' x) = S' <$> f x
+g (P n () x) = P n () <$> f x
+g (W w x) = W w <$> f x
+
+
+(</>) ∷ State Infect FilePath → State Infect FilePath → State Infect FilePath
+(</>) = liftA2 (F.</>)
+
+
+liftA5 ∷ Applicative m ⇒ (a → b → c → d → e → f) → m a → m b → m c → m d → m e → m f
+liftA5 h a b c d e = pure h <*> a <*> b <*> c <*> d <*> e

@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Interpreter.Log (full) where
 
 import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Int (Int64)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty)
 
-import           Control.Lens ((^.), view)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (execWriter, tell)
 import           Data.Text.Lazy (Text)
@@ -17,58 +17,44 @@ import qualified Data.Text.Lazy as T
 import           Data.Text.Lazy.Builder (Builder, fromLazyText, fromString, toLazyText)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.DSL
-  ( Layer(..), Command(..), Action(..)
-  , action, from, to, script
-  , mfoldie
-  )
+import Biegunka.DSL (Command(..), Action(..), Wrapper(..), mfoldie)
 
 
-full ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
-     → Biegunka
-     → Biegunka
-     → Text
+full ∷ Free (Command l ()) () → Biegunka → Biegunka → Text
 full s α β = toLazyText $ install s <> uninstall α β
 
 
-install ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → Builder
-install = profile
+install ∷ Free (Command l ()) () → Builder
+install = mfoldie g
 
 
-profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) () → Builder
-profile = mfoldie f
+g ∷ Command l () (Free (Command l ()) ()) → Builder
+g (P name _ _) = "Setup profile " <> string name <> "\n"
+g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
+g (S' {}) = mempty
+g (F a _) = h a
  where
-  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → Builder
-  f (P name s _) = "Setup profile " <> string name <> "\n" <> source s
-  f (W p _) = f p
-
-
-source ∷ Free (Command Source (Free (Command Files ()) ())) () → Builder
-source = mfoldie f
- where
-  f s = indent 2 <>
-    "Setup repository " <> string (s^.from) <> " at " <> string (s^.to) <> "\n" <> files (s^.script)
-
-
-files ∷ Free (Command Files ()) () → Builder
-files = mfoldie (f . view action)
- where
-  f (Message m) = indent 4 <>
+  h (Message m) = indent 4 <>
     "Message: " <> string m <> "\n"
-  f (RegisterAt src dst) = indent 4 <>
+  h (RegisterAt src dst) = indent 4 <>
     "Link repository " <> string src <> " to " <> string dst <> "\n"
-  f (Link src dst) = indent 4 <>
+  h (Link src dst) = indent 4 <>
     "Link file " <> string src <> " to " <> string dst <> "\n"
-  f (Copy src dst) = indent 4 <>
+  h (Copy src dst) = indent 4 <>
     "Copy file " <> string src <> " to " <> string dst <> "\n"
-  f (Compile cmp src dst) = indent 4 <>
+  h (Compile cmp src dst) = indent 4 <>
     "Compile with " <> string (show cmp) <> " file " <> string src <> " to " <> string dst <> "\n"
-  f (Template src dst _) = indent 4 <>
+  h (Template src dst _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
-  f (Mode fp m) = indent 4 <>
-    "Set " <> string fp <> " mode to " <> string (show m) <> "\n"
-  f (Ownership fp u g) = indent 4 <>
-    "Set " <> string fp <> " owner to " <> string u <> ":" <> string g <> "\n"
+  h (Mode fp mode) = indent 4 <>
+    "Set " <> string fp <> " mode to " <> string (show mode) <> "\n"
+  h (Ownership fp user group) = indent 4 <>
+    "Set " <> string fp <> " owner to " <> string user <> ":" <> string group <> "\n"
+g (W a _) = h a
+ where
+  h (Ignorance _) = mempty
+  h (User (Just user)) = "--- * Do stuff from user " <> string user <> " * ---"
+  h (User Nothing) = "--- * Do stuff from default user * ---"
 
 
 indent ∷ Int64 → Builder

@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka.Source.Git - functions to work with git repositories as sources
 module Biegunka.Source.Git
@@ -5,19 +7,15 @@ module Biegunka.Source.Git
     git, git_
   ) where
 
-import           Control.Lens (uses)
 import           Control.Monad (unless)
 import           Control.Monad.Free (liftF)
-import           Control.Monad.Trans (lift)
-import qualified Data.Text.Lazy.IO as T
-import           System.FilePath ((</>))
+import qualified Data.Text.IO as T
 import           System.Directory (doesDirectoryExist)
 import           System.Exit (ExitCode(..))
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process (runProcess, waitForProcess)
 
-import Biegunka.DSL (FileScript, Command(S), SourceScript)
-import Biegunka.Settings
+import Biegunka.DSL (Script, Layer(Files, Source), Command(S))
 import Biegunka.Interpreter.Execute (sourceFailure)
 
 
@@ -35,8 +33,8 @@ import Biegunka.Interpreter.Execute (sourceFailure)
 --  * link ${HOME}\/git\/repository to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
-git ∷ String → FilePath → FileScript s t () → SourceScript s t ()
-git url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr script (update url sr) ()
+git ∷ String → FilePath → Script Files → Script Source
+git url path script = liftF $ S url path script (updateGit url) ()
 
 
 -- | Clone repository from the given url to specified path
@@ -47,12 +45,12 @@ git url path script = uses root (</> path) >>= \sr → lift . liftF $ S url sr s
 --  * clone repository from https:\/\/example.com\/repository.git to ${HOME}\/git\/repository
 --
 --  * pull from master
-git_ ∷ String → FilePath → SourceScript s t ()
+git_ ∷ String → FilePath → Script Source
 git_ url path = git url path (return ())
 
 
-update ∷ String → FilePath → IO ()
-update url path = do
+updateGit ∷ String → FilePath → IO ()
+updateGit url path = do
   exists ← doesDirectoryExist path
   unless exists $ do
     gitie ["clone", url, path] Nothing

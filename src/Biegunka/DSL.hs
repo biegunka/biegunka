@@ -1,66 +1,57 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.DSL
-  ( module B
-  , FileScript, SourceScript, ProfileScript
-  , Layer(..)
-  , next, action, from, to, script, update
-  , Command(..), Action(..)
+  ( Script, Layer(..)
+  , next
+  , Command(..), Action(..), Wrapper(..), OnFail(..)
   , Compiler(..), message, registerAt, copy, link, ghc, substitute
   , chmod, chown
+  , sudo, ignorant
   , profile
-  , foldie, mfoldie, foldieM, foldieM_, transform
+  , foldie, mfoldie, foldieM, foldieM_
   ) where
 
-import Control.Applicative ((<$>), (<*>))
-import Control.Monad (join)
+import Control.Applicative ((<$>))
 import Data.Monoid (Monoid(..))
 
-import Control.Lens (Lens, (^.), over, query, queries)
+import Control.Lens (Lens, (^.), over)
 import Control.Monad.Free (Free(..), liftF)
-import Control.Monad.Reader (ReaderT)
-import Control.Monad.State (StateT)
-import Control.Monad.Trans (MonadTrans, lift)
 import Data.Text.Lazy (Text)
-import System.FilePath ((</>))
 import System.Posix.Types (FileMode)
 import Text.StringTemplate (ToSElem, newSTMP, render, setAttribute)
 import Text.StringTemplate.GenericStandard ()
 
-import Biegunka.Settings as B
+
+type family Script (a ∷ Layer)
 
 
-type Script s t α β = StateT (Settings s t) (Free α) β
-
-
--- | Convenient wrapper to hide complexity of types
-type FileScript s t a = ReaderT (Settings s t) (Free (Command Files ())) a
-
-
--- | Convenient wrapper to hide complexity of types
-type SourceScript s t a = Script s t (Command Source (FileScript s t ())) a
-
-
--- | Convenient wrapper to hide complexity of types
-type ProfileScript s t a = Script s t (Command Profile (SourceScript s t ())) a
+type instance (Script Files)   = Free (Command Files ()) ()
+type instance (Script Source)  = Free (Command Source (Script Files)) ()
+type instance (Script Profile) = Free (Command Profile (Script Source)) ()
 
 
 data Layer = Files | Source | Profile
 
+
 -- Supported compilers
 data Compiler =
     GHC -- ^ The Glorious Glasgow Haskell Compilation System
-  deriving Show
+    deriving Show
 
 
 data Command (l ∷ Layer) s a where
-  F ∷ Action → a → Command Files () a
-  S ∷ String → FilePath → s → IO () → a → Command Source s a
-  P ∷ String → s → a → Command Profile s a
-  W ∷ Command l s b → a → Command l s a
+  F ∷ Action → a → Command l () a
+  S ∷ String → FilePath → s → (FilePath → IO ()) → a → Command l s a
+  S' ∷ a → Command l s a
+  P ∷ String → s → a → Command l s a
+  W ∷ Wrapper → a → Command l s a
 
 
 instance Functor (Command l s) where
@@ -70,39 +61,10 @@ instance Functor (Command l s) where
 next ∷ Lens (Command l s a) (Command l s b) a b
 next f (F a x)       = F a <$> f x
 next f (S a b c d x) = (\y → S a b c d y) <$> f x
+next f (S' x)        = (\y → S' y) <$> f x
 next f (P n s x)     = P n s <$> f x
 next f (W s x)       = W s <$> f x
 {-# INLINE next #-}
-
-
-action ∷ Lens (Command Files () a) (Command Files () a) Action Action
-action f (F x a) = (\y → F y a) <$> f x
-action f (W x a) = (\y → W y a) <$> action f x
-{-# INLINE action #-}
-
-
-from ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-from f (S x a b c d) = (\y → S y a b c d) <$> f x
-from f (W x a) = (\y → W y a) <$> from f x
-{-# INLINE from #-}
-
-
-to ∷ Lens (Command Source s a) (Command Source s a) FilePath FilePath
-to f (S a x b c d) = (\y → S a y b c d) <$> f x
-to f (W x a) = (\y → W y a) <$> to f x
-{-# INLINE to #-}
-
-
-script ∷ Lens (Command Source s a) (Command Source s' a) s s'
-script f (S a b x c d) = (\y → S a b y c d) <$> f x
-script f (W x a) = (\y → W y a) <$> script f x
-{-# INLINE script #-}
-
-
-update ∷ Lens (Command Source s a) (Command Source s a) (IO ()) (IO ())
-update f (S a b c x d) = (\y → S a b c y d) <$> f x
-update f (W x a) = (\y → W y a) <$> update f x
-{-# INLINE update #-}
 
 
 data Action =
@@ -111,9 +73,17 @@ data Action =
   | Link FilePath FilePath
   | Copy FilePath FilePath
   | Compile Compiler FilePath FilePath
-  | Template FilePath FilePath (String → Text)
+  | Template FilePath FilePath (forall t. ToSElem t ⇒ t → String → Text)
   | Mode FilePath FileMode
   | Ownership FilePath String String
+
+
+data Wrapper =
+    User (Maybe String)
+  | Ignorance Bool
+
+
+data OnFail = Ignorant | Ask | Abortive
 
 
 -- | Prints specified message to stdout
@@ -121,8 +91,8 @@ data Action =
 -- > message "hello!"
 --
 -- prints \"hello!\"
-message ∷ String → FileScript s t ()
-message m = lift . liftF $ F (Message m) ()
+message ∷ String → Script Files
+message m = liftF $ F (Message m) ()
 
 
 -- | Links source to specified filepath
@@ -131,8 +101,8 @@ message m = lift . liftF $ F (Message m) ()
 -- >   registerAt "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
-registerAt ∷ FilePath → FileScript s t ()
-registerAt dst = join $ lifty RegisterAt <$> query sourceRoot <*> queries root (</> dst)
+registerAt ∷ FilePath → Script Files
+registerAt dst = liftF $ F (RegisterAt mempty dst) ()
 
 
 -- | Links given file to specified filepath
@@ -141,8 +111,8 @@ registerAt dst = join $ lifty RegisterAt <$> query sourceRoot <*> queries root (
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link ∷ FilePath → FilePath → FileScript s t ()
-link src dst = join $ lifty Link <$> queries sourceRoot (</> src) <*> queries root (</> dst)
+link ∷ FilePath → FilePath → Script Files
+link src dst = liftF $ F (Link src dst) ()
 
 
 -- | Copies given file to specified filepath
@@ -151,8 +121,8 @@ link src dst = join $ lifty Link <$> queries sourceRoot (</> src) <*> queries ro
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy ∷ FilePath → FilePath → FileScript s t ()
-copy src dst = join $ lifty Copy <$> queries sourceRoot (</> src) <*> queries root (</> dst)
+copy ∷ FilePath → FilePath → Script Files
+copy src dst = liftF $ F (Copy src dst) ()
 
 
 -- | Compiles given file with ghc to specified filepath
@@ -161,8 +131,8 @@ copy src dst = join $ lifty Copy <$> queries sourceRoot (</> src) <*> queries ro
 -- >   compile GHC "you.hs" "we/need/you/here"
 --
 -- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
-ghc ∷ FilePath → FilePath → FileScript s t ()
-ghc src dst = join $ lifty (Compile GHC) <$> queries sourceRoot (</> src) <*> queries root (</> dst)
+ghc ∷ FilePath → FilePath → Script Files
+ghc src dst = liftF $ F (Compile GHC src dst) ()
 
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -172,12 +142,9 @@ ghc src dst = join $ lifty (Compile GHC) <$> queries sourceRoot (</> src) <*> qu
 --
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
-substitute ∷ ToSElem t ⇒ FilePath → FilePath → FileScript s t ()
-substitute src dst = do
-  sr ← queries sourceRoot (</> src)
-  r ← queries root (</> dst)
-  t ← queries template (\b → render . setAttribute "template" b . newSTMP)
-  lift . liftF $ F (Template sr r t) ()
+substitute ∷ FilePath → FilePath → Script Files
+substitute src dst = liftF $
+  F (Template src dst (\b → render . setAttribute "template" b . newSTMP)) ()
 
 
 -- | Changes mode of given file to specified value
@@ -186,8 +153,8 @@ substitute src dst = do
 -- >   chmod "bin/script.sh" (ownerModes `unionFileModes` groupReadMode `unionFileModes` otherReadMode)
 --
 -- Changes file mode of ${HOME}\/bin\/script.sh to 0744
-chmod ∷ FilePath → FileMode → FileScript s t ()
-chmod fp m = join $ lifty Mode <$> queries root (</> fp) <*> return m
+chmod ∷ FilePath → FileMode → Script Files
+chmod fp m = liftF $ F (Mode fp m) ()
 
 
 -- | Changes ownership of given file to specified values
@@ -196,16 +163,16 @@ chmod fp m = join $ lifty Mode <$> queries root (</> fp) <*> return m
 -- >   chown "bin/script.sh" "user" "group"
 --
 -- Changes ownership of ${HOME}\/bin\/script.sh to user:group
-chown ∷ FilePath → String → String → FileScript s t ()
-chown fp u g = do
-  r ← queries root (</> fp)
-  lift . liftF $ F (Ownership r u g) ()
+chown ∷ FilePath → String → String → Script Files
+chown fp u g = liftF $ F (Ownership fp u g) ()
 
 
-lifty ∷ MonadTrans t ⇒ (a → b → Action) → a → b → t (Free (Command Files ())) ()
-lifty f r sr = lift . liftF $ F (f r sr) ()
+sudo ∷ String → Free (Command l s) () → Free (Command l s) ()
+sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
 
 
+ignorant ∷ Free (Command l s) () → Free (Command l s) ()
+ignorant cs = liftF (W (Ignorance True) ()) >> cs >> liftF (W (Ignorance False) ())
 -- | Configuration profile
 --
 -- Provides convenient sources grouping
@@ -215,8 +182,8 @@ lifty f r sr = lift . liftF $ F (f r sr) ()
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile ∷ String → SourceScript s t () → ProfileScript s t ()
-profile name repo = lift . liftF $ P name repo ()
+profile ∷ String → Script Source → Script Profile
+profile name repo = liftF $ P name repo ()
 
 
 foldie ∷ (a → b → b) → b → (Command l s (Free (Command l s) c) → a) → (Free (Command l s) c) → b
@@ -236,8 +203,3 @@ foldieM = foldie (>>) (return ())
 foldieM_ ∷ Monad m ⇒ (Command l s (Free (Command l s) c) → m ()) → Free (Command l s) c → m ()
 foldieM_ = foldie (>>) (return ())
 {-# SPECIALIZE foldieM_ ∷ (Command l s (Free (Command l s) c) → IO ()) → Free (Command l s) c → IO () #-}
-
-
-transform ∷ (f (Free f a) → g (Free g a)) → Free f a → Free g a
-transform f (Free t) = Free (f t)
-transform _ (Pure t) = Pure t

@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Pretend (pretend) where
 
@@ -6,15 +8,15 @@ import Control.Monad (forM_, void, unless, when)
 import Data.Function (on)
 
 import           Control.Monad.State (execState, modify)
-import           Data.Default (Default)
 import qualified Data.Text.Lazy.IO as T
 import           System.Directory (getHomeDirectory)
 import           System.IO (hFlush, stdout)
 
 import           Biegunka.DB (load, filepaths, sources)
-import           Biegunka.DSL (ProfileScript)
+import           Biegunka.DSL (Script, Layer(..))
 import qualified Biegunka.Interpreter.Log as Log
 import qualified Biegunka.Interpreter.Map as Map
+import           Biegunka.Interpreter.Flatten
 import           Biegunka.Interpreter.State
 
 
@@ -50,11 +52,11 @@ instance Show Stat where
 --   profile ...
 --   profile ...
 -- @
-pretend ∷ (Default s, Default t) ⇒ ProfileScript s t () → IO ()
+pretend ∷ Script Profile → IO ()
 pretend script = do
   home ← getHomeDirectory
   α ← load
-  let script' = infect home script
+  let script' = infect home (flatten script)
       β = Map.construct script'
       stat = Stat
         { addedFiles = (countNotElems `on` filepaths) β α

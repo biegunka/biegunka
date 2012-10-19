@@ -1,5 +1,6 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Interpreter.Verify (verify) where
 
@@ -7,21 +8,16 @@ import Control.Applicative (Applicative, (<$>), liftA2)
 import Control.Monad (unless)
 import Data.Monoid (mconcat)
 
-import           Control.Lens ((^.), view)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
-import           Data.Default (Default)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink, fileMode, fileOwner, fileGroup, getFileStatus)
 import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 
-import Biegunka.DSL
-  ( ProfileScript
-  , Layer(..), Command(..), Action(..)
-  , action, from, to, script
-  , foldie)
+import Biegunka.DSL (Script, Layer(..), Command(..), Action(..), foldie)
+import Biegunka.Interpreter.Flatten
 import Biegunka.Interpreter.State
 
 
@@ -37,78 +33,66 @@ import Biegunka.Interpreter.State
 --   profile ...
 --   profile ...
 -- @
-verify ∷ (Default s, Default t) ⇒ ProfileScript s t () → IO ()
+verify ∷ Script Profile → IO ()
 verify s = do
   home ← getHomeDirectory
-  let s' = infect home s
-  (verified, failures) ← runWriterT (profile s')
+  (verified, failures) ← runWriterT . f . infect home . flatten $ s
   putStr "Verify… "
   if verified
     then putStrLn "OK"
     else putStrLn $ failures ++ "\nFail!"
 
 
-profile ∷ Free (Command Profile (Free (Command Source (Free (Command Files ()) ())) ())) ()
-        → WriterT String IO Bool
-profile = foldie (|&&|) (return True) f
+f ∷ Free (Command l ()) () → WriterT String IO Bool
+f = foldie (|&&|) (return True) g
+
+
+g ∷ Command l () (Free (Command l ()) ()) → WriterT String IO Bool
+g (P _ _ _) = return True
+g (S u p _ _ _) = do
+  sourceExists ← io $ doesDirectoryExist p
+  unless sourceExists $ tellLn [indent 2, "Source ", u, " → ", p, " doesn't exist"]
+  return sourceExists
+g (S' {}) = return True
+g (F a _) = h a
  where
-  f ∷ Command Profile (Free (Command Source (Free (Command Files ()) ())) ()) a → WriterT String IO Bool
-  f (P _ s _) = repo s
-  f (W p _) = f p
-
-
-repo ∷ Free (Command Source (Free (Command Files ()) ())) () → WriterT String IO Bool
-repo = foldie (|&&|) (return True) f
- where
-  f s = do
-    sourceExists ← io $ doesDirectoryExist (s ^. to)
-    if sourceExists
-      then files (s^.script)
-      else do
-        tellLn [indent 2, "Source ", s^.from, " → ", s^.to, " doesn't exist"]
-        return False
-
-
-files ∷ Free (Command Files ()) () → WriterT String IO Bool
-files = foldie (|&&|) (return True) (f . view action)
- where
-  f (Message _) = return True
-  f (RegisterAt _ dst) = do
+  h (Message _) = return True
+  h (RegisterAt _ dst) = do
     repoExists ← io $ doesDirectoryExist dst
     unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
     return repoExists
-  f (Link src dst) = do
+  h (Link src dst) = do
     src' ← io $ readSymbolicLink dst
     dstExists ← io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
     let correctLink = src == src' && dstExists
     unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
     return correctLink
-  f (Copy src dst) = do
+  h (Copy src dst) = do
     src' ← io $ B.readFile src
     dst' ← io $ B.readFile dst
     let same = src' == dst'
     unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
     return same
-  f (Compile _ _ dst) = do
+  h (Compile _ _ dst) = do
     binaryExists ← io $ doesFileExist dst
     unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
     return binaryExists
-  f (Mode fp m) = do
-    m' ← io $ fileMode <$> getFileStatus fp
-    let same = m == m'
-    unless same $ tellLn [indent 4, "File mode of ", fp, " is not ", show m]
+  h (Mode fp mode) = do
+    mode' ← io $ fileMode <$> getFileStatus fp
+    let same = mode == mode'
+    unless same $ tellLn [indent 4, "File mode of ", fp, " is not ", show mode]
     return same
-  f (Ownership fp u g) = do
-    uid ← io $ userID <$> getUserEntryForName u
-    gid ← io $ groupID <$> getGroupEntryForName g
+  h (Ownership fp user group) = do
+    uid ← io $ userID <$> getUserEntryForName user
+    gid ← io $ groupID <$> getGroupEntryForName group
     s ← io $ getFileStatus fp
     let uid' = fileOwner s
         gid' = fileGroup s
     let same = (uid,gid) == (uid',gid')
-    unless same $ tellLn [indent 4, "File ownership of ", fp, " is not ", u, ":", g]
+    unless same $ tellLn [indent 4, "File ownership of ", fp, " is not ", user, ":", group]
     return same
-  f (Template _ dst _) = io $ doesFileExist dst
-
+  h (Template _ dst _) = io $ doesFileExist dst
+g (W {}) = return True
 
 
 (|&&|) ∷ Applicative m ⇒ m Bool → m Bool → m Bool

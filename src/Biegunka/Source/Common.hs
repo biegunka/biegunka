@@ -1,3 +1,4 @@
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Source.Common where
 
