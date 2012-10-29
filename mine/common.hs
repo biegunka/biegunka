@@ -134,8 +134,8 @@ laptopTemplates = def
   }
 workTemplates = def
   { xmobar = def
-    { background = "\"#333333\""
-    , position = "Static { xpos = 102, ypos = 750, width = 1264, height = 20 }"
+    { background = "\"#373737\""
+    , position = "BottomW R 94"
     }
   , xmonad = def
     { terminal = "urxvt"
