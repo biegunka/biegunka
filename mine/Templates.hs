@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 module Templates (laptopTemplates, workTemplates) where
@@ -9,6 +10,7 @@ import Data.Typeable (Typeable)
 import Data.DeriveTH
 import Data.Default (Default(def))
 import Data.Derive.Default ()
+import Data.String.Quote
 
 
 data Template = Template
@@ -36,6 +38,7 @@ data Xmonad = Xmonad
   , black ∷ String
   , orange ∷ String
   , yellow ∷ String
+  , startup ∷ String
   } deriving (Data, Typeable)
 
 
@@ -75,6 +78,26 @@ laptopTemplates = def
     , black = "#333333"
     , orange = "#dd9977"
     , yellow = "#eeccaa"
+    , startup =
+      [s|
+        [ ("trayer", "trayer --edge bottom --align left --transparent true --widthtype pixel --width 102 --heighttype pixel --height 18 --tint 0x" ++ tail blackColor ++ " --alpha 0")
+        , ("/home/maksenov/.dropbox-dist/dropbox", "${HOME}/.dropbox-dist/dropboxd")
+        , ("mpd", "mpd")
+        , ("/usr/lib/iceweasel", "iceweasel")
+        , ("gnome-commander", "gnome-commander")
+        , ("transmission-gtk", "transmission-gtk")
+        , ("ssh .* mcabber", "urxvtcd -title mcabber -e ssh matt@budueba.com -t 'export LANG=en_US.UTF-8; tmux attach -t mcabber'")
+        , ("ssh .* irssi", "urxvtcd -title irssi -e ssh matt@budueba.com -t 'export LANG=en_US.UTF-8; tmux attach -t irssi'")
+        , ("watch -n2 netstat", "urxvtcd -title netstat -e watch -n2 netstat -anptu | egrep '^Proto|:80' | sort")
+        , ("htop", "urxvtcd -title htop -e htop")
+        , ("liblastfm-scrobbler", "liblastfm-scrobbler")
+        , ("procfiled", "procfiled")
+        , ("icedove", "icedove")
+        , ("python /home/maksenov/bin/trayicon-mpd", "trayicon-mpd")
+        , ("python /home/maksenov/bin/trayicon-mcabber", "trayicon-mcabber")
+        , ("suspender", "suspender")
+        ]
+      |]
     }
   , xmodmap = def
     { menu = "keysym Menu = Super_R"
@@ -100,6 +123,18 @@ workTemplates = def
     , black = "#373737"
     , orange = "#dd9977"
     , yellow = "#eeccaa"
+    , startup =
+      [s|
+        [ ("trayer", "trayer --edge bottom --align left --transparent true --widthtype pixel --width 78 --heighttype pixel --height 17 --tint 0x" ++ tail blackColor ++ " --alpha 0")
+        , ("/usr/lib/firefox/firefox", "firefox")
+        , ("thunderbird", "thunderbird")
+        , ("gnome-commander", "gnome-commander")
+        , ("ssh .* mcabber", "urxvt -title mcabber -e ssh matt@budueba.com -t 'export LANG=en_US.UTF-8; tmux attach -t mcabber'")
+        , ("ssh .* irssi", "urxvt -title irssi -e ssh matt@budueba.com -t 'export LANG=en_US.UTF-8; tmux attach -t irssi'")
+        , ("watch -n2 netstat", "urxvt -title netstat -e watch -n2 netstat -anptu | egrep '^Proto|:80' | sort")
+        , ("htop", "urxvt -title htop -e htop")
+        ]
+      |]
     }
   , urxvt = def
     { tabbedex = "/home/pyoseek/git/urxvt-tabbedex"

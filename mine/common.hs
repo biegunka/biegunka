@@ -116,11 +116,9 @@ commands Settings {..} = do
     ex substitute $ traverse . _1 %~ ("extended" </>) $
       [ ("xmobarrc.template", ".xmobarrc")
       , ("xmonad/Misc.hs.template", ".xmonad/lib/Misc.hs")
+      , ("xmonad/Profile.hs.template", ".xmonad/lib/Profile.hs")
       , ("xmodmap.template", ".xmodmap")
       , ("Xdefaults.template", ".Xdefaults")
-      ]
-    ex link $ traverse . _1 %~ (_directory </>) $
-      [ ("xmonad/Profile.hs", ".xmonad/lib/Profile.hs")
       ]
 
   tools = git "git@budueba.com:tools" "git/tools" $ do
