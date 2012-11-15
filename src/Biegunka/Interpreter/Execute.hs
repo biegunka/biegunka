@@ -99,7 +99,7 @@ executeWith execution s = do
   home ← getHomeDirectory
   let s' = infect home (flatten s)
       β = Map.construct s'
-  α ← load
+  α ← load s'
   getEnv "SUDO_USER" >>= \case
     Just sudo → runStateT (foldieM_ issue s') execution { _user = sudo }
     Nothing → runStateT (foldieM_ issue s') execution

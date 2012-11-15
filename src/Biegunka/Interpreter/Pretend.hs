@@ -55,9 +55,9 @@ instance Show Stat where
 pretend ∷ Script Profile → IO ()
 pretend script = do
   home ← getHomeDirectory
-  α ← load
   let script' = infect home (flatten script)
-      β = Map.construct script'
+  α ← load script'
+  let β = Map.construct script'
       stat = Stat
         { addedFiles = (countNotElems `on` filepaths) β α
         , addedRepos = (countNotElems `on` sources) β α
