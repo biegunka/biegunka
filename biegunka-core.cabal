@@ -23,8 +23,6 @@ Library
                  lifted-base,
                  free,
                  lens >= 3.0.2,
-                 zlib,
-                 zip-archive,
                  download-curl,
                  SHA,
                  HStringTemplate,
@@ -32,7 +30,6 @@ Library
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
-                   Biegunka.Source.Zip
                    Biegunka.Source.Common
                    Biegunka.DSL
   Other-Modules: Biegunka.DB
