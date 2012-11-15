@@ -23,8 +23,6 @@ Library
                  lifted-base,
                  free,
                  lens >= 3.0.2,
-                 vector,
-                 unordered-containers,
                  zlib,
                  zip-archive,
                  download-curl,
@@ -45,6 +43,5 @@ Library
                  Biegunka.Interpreter.Map
                  Biegunka.Interpreter.State
                  Biegunka.Interpreter.Flatten
-                 Data.Aeson.Biegunka
   GHC-Options: -Wall
                -fno-warn-unused-do-bind
