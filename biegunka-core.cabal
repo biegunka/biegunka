@@ -1,12 +1,11 @@
-Name: Biegunka
+Name: biegunka-core
 Version: 0.1.0.0
-Description: Config/Utility scripts framework
+Synopsis: DSL definitions, interpreters, templating
 License: MIT
 License-file: LICENSE
 Author: Matvey Aksenov
 Maintainer: Matvey Aksenov <matvey.aksenov@gmail.com>
 Category: System
-Synopsis: Config/Utility scripts framework
 Cabal-Version: >= 1.8
 Build-Type: Simple
 
@@ -26,9 +25,7 @@ Library
                  lens >= 3.0.2,
                  vector,
                  unordered-containers,
-                 tar,
                  zlib,
-                 bzlib,
                  zip-archive,
                  download-curl,
                  SHA,
@@ -37,11 +34,10 @@ Library
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
-                   Biegunka.Source.Tar
                    Biegunka.Source.Zip
+                   Biegunka.Source.Common
+                   Biegunka.DSL
   Other-Modules: Biegunka.DB
-                 Biegunka.DSL
-                 Biegunka.Source.Common
                  Biegunka.Interpreter.Execute
                  Biegunka.Interpreter.Pretend
                  Biegunka.Interpreter.Verify
