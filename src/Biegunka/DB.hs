@@ -19,7 +19,8 @@ import Data.Monoid (Monoid(..))
 import Data.Typeable (Typeable)
 
 import           Data.Aeson
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
@@ -71,7 +72,7 @@ load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . foldie (:) 
     h ← getHomeDirectory
     handle (\(_ ∷ SomeException) → return mempty) $ do
       t ← B.readFile (h </> ".biegunka" <.> k)
-      case decode t of
+      case decode (BL.fromStrict t) of
         Just (Repos p) → return (k, p)
         Nothing → throw AesonFailedToDecode
 
@@ -81,7 +82,7 @@ load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . foldie (:) 
 
 save ∷ Biegunka → IO ()
 save (Biegunka x) = getHomeDirectory >>= \hd →
-  traverseWithKey_ (\k a → B.writeFile (hd </> ".biegunka" <.> k) (encode (Repos a))) x
+  traverseWithKey_ (\k a → B.writeFile (hd </> ".biegunka" <.> k) (BL.toStrict (encode (Repos a)))) x
  where
   traverseWithKey_ f m = M.traverseWithKey f m >> return ()
 
