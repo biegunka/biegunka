@@ -25,7 +25,7 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
 import qualified Data.Set as S
-import           System.Directory (getHomeDirectory)
+import           System.Directory (getHomeDirectory, removeFile)
 import           System.FilePath ((</>), (<.>))
 
 import Biegunka.DSL (Command(P), foldie)
@@ -82,7 +82,12 @@ load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . foldie (:) 
 
 save ∷ Biegunka → IO ()
 save (Biegunka x) = getHomeDirectory >>= \hd →
-  traverseWithKey_ (\k a → B.writeFile (hd </> ".biegunka" <.> k) (BL.toStrict (encode (Repos a)))) x
+  traverseWithKey_ (\k a →
+    let bname = (hd </> ".biegunka" <.> k) in
+      if M.null a
+        then handle (\(_ ∷ SomeException) → return ()) $
+          removeFile bname
+        else B.writeFile bname (BL.toStrict (encode (Repos a)))) x
  where
   traverseWithKey_ f m = M.traverseWithKey f m >> return ()
 
