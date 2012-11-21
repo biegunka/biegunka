@@ -7,7 +7,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Interpreter.Execute
+module Biegunka.Execute
   ( execute, executeWith
   , sourceFailure
   , dropPriviledges, react, templates, defaultExecution
@@ -49,9 +49,9 @@ import           Biegunka.DSL
   , foldieM_
   , OnFail(..)
   )
-import           Biegunka.Interpreter.Flatten
-import qualified Biegunka.Interpreter.Map as Map
-import           Biegunka.Interpreter.State
+import           Biegunka.Flatten
+import qualified Biegunka.Map as Map
+import           Biegunka.State
 
 
 data Execution t = Execution

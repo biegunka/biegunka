@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Interpreter.Verify (verify) where
+module Biegunka.Verify (verify) where
 
 import Control.Applicative (Applicative, (<$>), liftA2)
 import Control.Monad (unless)
@@ -17,8 +17,8 @@ import           System.Posix.Files (readSymbolicLink, fileMode, fileOwner, file
 import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 
 import Biegunka.DSL (Script, Layer(..), Command(..), Action(..), foldie)
-import Biegunka.Interpreter.Flatten
-import Biegunka.Interpreter.State
+import Biegunka.Flatten
+import Biegunka.State
 
 
 -- | Verify interpreter

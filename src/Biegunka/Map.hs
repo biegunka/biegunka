@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.Map (construct) where
+module Biegunka.Map (construct) where
 
 import Data.Monoid (Monoid(..))
 

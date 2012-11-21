@@ -9,7 +9,6 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.DSL
   ( Script, Layer(..)
-  , next
   , Command(..), Action(..), Wrapper(..), OnFail(..)
   , Compiler(..), message, registerAt, copy, link, ghc, substitute
   , chmod, chown

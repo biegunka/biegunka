@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Interpreter.Pretend (pretend) where
+module Biegunka.Pretend (pretend) where
 
 import Control.Applicative ((<$>))
 import Control.Monad (forM_, void, unless, when)
@@ -14,10 +14,10 @@ import           System.IO (hFlush, stdout)
 
 import           Biegunka.DB (load, filepaths, sources)
 import           Biegunka.DSL (Script, Layer(..))
-import qualified Biegunka.Interpreter.Log as Log
-import qualified Biegunka.Interpreter.Map as Map
-import           Biegunka.Interpreter.Flatten
-import           Biegunka.Interpreter.State
+import qualified Biegunka.Log as Log
+import qualified Biegunka.Map as Map
+import           Biegunka.Flatten
+import           Biegunka.State
 
 
 data Stat = Stat

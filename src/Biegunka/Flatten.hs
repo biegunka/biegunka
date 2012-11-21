@@ -3,8 +3,7 @@
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Interpreter.Flatten (flatten) where
-
+module Biegunka.Flatten (flatten) where
 
 import Control.Monad.Free (Free(..), liftF)
 import Biegunka.DSL (Script, Layer(..), Command(..))

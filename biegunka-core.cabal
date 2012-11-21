@@ -33,12 +33,12 @@ Library
                    Biegunka.Source.Common
                    Biegunka.DSL
   Other-Modules: Biegunka.DB
-                 Biegunka.Interpreter.Execute
-                 Biegunka.Interpreter.Pretend
-                 Biegunka.Interpreter.Verify
-                 Biegunka.Interpreter.Log
-                 Biegunka.Interpreter.Map
-                 Biegunka.Interpreter.State
-                 Biegunka.Interpreter.Flatten
+                 Biegunka.Execute
+                 Biegunka.Pretend
+                 Biegunka.Verify
+                 Biegunka.Log
+                 Biegunka.Map
+                 Biegunka.State
+                 Biegunka.Flatten
   GHC-Options: -Wall
                -fno-warn-unused-do-bind

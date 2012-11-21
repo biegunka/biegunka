@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.Log (full) where
+module Biegunka.Log (full) where
 
 import Control.Monad (forM_, unless)
 import Data.Function (on)

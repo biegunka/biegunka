@@ -22,10 +22,10 @@ import Biegunka.DSL
   , chmod, chown
   , sudo, ignorant
   )
-import Biegunka.Interpreter.Pretend (pretend)
-import Biegunka.Interpreter.Execute
+import Biegunka.Pretend (pretend)
+import Biegunka.Execute
   ( execute, executeWith
   , OnFail(..)
   , dropPriviledges, react, templates, defaultExecution
   )
-import Biegunka.Interpreter.Verify (verify)
+import Biegunka.Verify (verify)

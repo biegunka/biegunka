@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Interpreter.State (infect) where
+module Biegunka.State (infect) where
 
 import Control.Applicative (Applicative, (<$>), (<*>), liftA2, liftA3, pure)
 import Data.Monoid (mempty)
