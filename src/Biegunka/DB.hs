@@ -12,6 +12,7 @@ module Biegunka.DB
 
 import Control.Applicative ((<$>), empty)
 import Control.Exception (Exception, SomeException, handle, throw)
+import Control.Lens hiding ((.=), (<.>), save)
 import Control.Monad ((<=<))
 import Control.Monad.Free (Free)
 import Data.Maybe (catMaybes)
@@ -72,7 +73,7 @@ load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . foldie (:) 
     h ← getHomeDirectory
     handle (\(_ ∷ SomeException) → return mempty) $ do
       t ← B.readFile (h </> ".biegunka" <.> k)
-      case decode (BL.fromStrict t) of
+      case decode (fromStrict t) of
         Just (Repos p) → return (k, p)
         Nothing → throw AesonFailedToDecode
 
@@ -87,9 +88,9 @@ save (Biegunka x) = getHomeDirectory >>= \hd →
       if M.null a
         then handle (\(_ ∷ SomeException) → return ()) $
           removeFile bname
-        else B.writeFile bname (BL.toStrict (encode (Repos a)))) x
+        else BL.writeFile bname (encode (Repos a))) x
  where
-  traverseWithKey_ f m = M.traverseWithKey f m >> return ()
+  traverseWithKey_ f m = itraverse f m >> return ()
 
 
 filepaths ∷ Biegunka → [FilePath]
@@ -98,3 +99,7 @@ filepaths = S.toList <=< M.elems <=< M.elems . unBiegunka
 
 sources ∷ Biegunka → [FilePath]
 sources = M.keys <=< M.elems . unBiegunka
+
+
+fromStrict ∷ B.ByteString → BL.ByteString
+fromStrict = BL.fromChunks . return
