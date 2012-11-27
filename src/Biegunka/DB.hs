@@ -12,7 +12,7 @@ module Biegunka.DB
 
 import Control.Applicative ((<$>), empty)
 import Control.Exception (Exception, SomeException, handle, throw)
-import Control.Lens hiding ((.=), (<.>), save)
+import Control.Lens hiding ((.=), (<.>))
 import Control.Monad ((<=<))
 import Control.Monad.Free (Free)
 import Data.Maybe (catMaybes)
