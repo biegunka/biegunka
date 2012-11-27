@@ -11,26 +11,22 @@ Build-Type: Simple
 
 Library
   Build-Depends: base >= 3 && < 5,
-                 aeson,
-                 containers,
-                 mtl >= 2.1 && < 2.2,
+                 filepath,
                  directory,
                  process,
-                 filepath,
                  unix,
+                 containers,
                  bytestring,
                  text,
+                 aeson,
+                 mtl >= 2.1 && < 2.2,
                  lifted-base,
                  free,
                  lens >= 3.0.2,
-                 download-curl,
-                 SHA,
-                 HStringTemplate,
-                 text-format
+                 HStringTemplate
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
-                   Biegunka.Source.Common
                    Biegunka.DSL
   Other-Modules: Biegunka.DB
                  Biegunka.Execute

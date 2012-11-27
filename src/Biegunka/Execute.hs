@@ -18,6 +18,7 @@ import Control.Applicative ((<$>))
 import Control.Exception.Lifted (Exception, SomeException(..), throwIO, try)
 import Control.Monad (forM_, unless, when)
 import Data.Char (toUpper)
+import Data.Monoid ((<>))
 import Data.Function (fix, on)
 import Data.Typeable (Typeable)
 import Prelude hiding (print)
@@ -29,7 +30,6 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (liftIO)
 import           System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
-import           Data.Text.Format (Only(..), format, print)
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -128,13 +128,13 @@ data BiegunkaException =
 
 
 instance Show BiegunkaException where
-  show = T.unpack . T.unlines . filter (not . T.null) . T.lines . toStrict . pretty
+  show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
     pretty ExecutionAbortion = "Biegunka has aborted"
     pretty (CompilationFailure cmp fp fs) =
-      format "{} has failed to compile {}\nFailures log:\n{}" (show cmp, fp, fs)
+      T.pack (show cmp) <> " has failed to compile " <> T.pack fp <> "\nFailures log:\n" <> fs
     pretty (SourceEmergingFailure up fp fs) =
-      format "Biegunka has failed to emerge source {} in {}\nFailures log:\n{}" (up, fp, fs)
+      "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
 instance Exception BiegunkaException
 
 
@@ -150,7 +150,7 @@ issue command = do
       case command of
         S {} → pemis .= False
         _ → return ()
-      liftIO $ print "FAIL: {}\n" (Only (show e))
+      liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
       use onFailCurrent >>= \case
         Ignorant → return ()
         Ask → fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \case
