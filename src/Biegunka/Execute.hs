@@ -44,7 +44,7 @@ import           Text.StringTemplate (ToSElem(..))
 
 import           Biegunka.DB
 import           Biegunka.DSL
-  ( Script, Layer(..), Command(..), Action(..), Compiler(..), Wrapper(..)
+  ( Script, Layer(..), Command(..), Action(..), Wrapper(..)
   , foldieM_
   , OnFail(..)
   )
@@ -120,8 +120,7 @@ execute = executeWith defaultExecution
 
 -- | Custom execptions
 data BiegunkaException =
-    CompilationFailure Compiler FilePath Text -- ^ Compiler reports errors
-  | ShellCommandFailure String -- ^ Shell reports errors
+    ShellCommandFailure String -- ^ Shell reports errors
   | SourceEmergingFailure String FilePath Text -- ^ Source emerging routine reports errors
   | ExecutionAbortion -- ^ User aborts script
     deriving (Typeable)
@@ -132,8 +131,6 @@ instance Show BiegunkaException where
    where
     pretty ExecutionAbortion = "Biegunka has aborted"
     pretty (ShellCommandFailure t) = "Biegunka has failed to execute `" <> T.pack t <> "`"
-    pretty (CompilationFailure cmp fp fs) =
-      T.pack (show cmp) <> " has failed to compile " <> T.pack fp <> "\nFailures log:\n" <> fs
     pretty (SourceEmergingFailure up fp fs) =
       "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
 instance Exception BiegunkaException

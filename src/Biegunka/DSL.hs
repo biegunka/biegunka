@@ -10,7 +10,7 @@
 module Biegunka.DSL
   ( Script, Layer(..)
   , Command(..), Action(..), Wrapper(..), OnFail(..)
-  , Compiler(..), message, registerAt, copy, link, substitute, shell
+  , message, registerAt, copy, link, substitute, shell
   , sudo, ignorant
   , profile
   , foldie, mfoldie, foldieM, foldieM_
@@ -35,12 +35,6 @@ type instance (Script Profile) = Free (Command Profile (Script Source)) ()
 
 
 data Layer = Files | Source | Profile
-
-
--- Supported compilers
-data Compiler =
-    GHC -- ^ The Glorious Glasgow Haskell Compilation System
-    deriving Show
 
 
 data Command (l ∷ Layer) s a where
