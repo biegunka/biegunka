@@ -10,8 +10,7 @@
 module Biegunka.DSL
   ( Script, Layer(..)
   , Command(..), Action(..), Wrapper(..), OnFail(..)
-  , Compiler(..), message, registerAt, copy, link, ghc, substitute
-  , chmod, chown
+  , Compiler(..), message, registerAt, copy, link, ghc, substitute, shell
   , sudo, ignorant
   , profile
   , foldie, mfoldie, foldieM, foldieM_
@@ -23,7 +22,6 @@ import Data.Monoid (Monoid(..))
 import Control.Lens (Lens, (^.), over)
 import Control.Monad.Free (Free(..), liftF)
 import Data.Text.Lazy (Text)
-import System.Posix.Types (FileMode)
 import Text.StringTemplate (ToSElem, newSTMP, render, setAttribute)
 import Text.StringTemplate.GenericStandard ()
 
@@ -73,8 +71,7 @@ data Action =
   | Copy FilePath FilePath
   | Compile Compiler FilePath FilePath
   | Template FilePath FilePath (forall t. ToSElem t ⇒ t → String → Text)
-  | Mode FilePath FileMode
-  | Ownership FilePath String String
+  | Shell FilePath String [String]
 
 
 data Wrapper =
@@ -146,24 +143,14 @@ substitute src dst = liftF $
   F (Template src dst (\b → render . setAttribute "template" b . newSTMP)) ()
 
 
--- | Changes mode of given file to specified value
+-- | Executes shell command with default shell
 --
 -- > git "https://example.com/repo.git" "git/repo" $
--- >   chmod "bin/script.sh" (ownerModes `unionFileModes` groupReadMode `unionFileModes` otherReadMode)
+-- >   shell "echo" ["-n", "hello"]
 --
--- Changes file mode of ${HOME}\/bin\/script.sh to 0744
-chmod ∷ FilePath → FileMode → Script Files
-chmod fp m = liftF $ F (Mode fp m) ()
-
-
--- | Changes ownership of given file to specified values
---
--- > git "https://example.com/repo.git" "git/repo" $
--- >   chown "bin/script.sh" "user" "group"
---
--- Changes ownership of ${HOME}\/bin\/script.sh to user:group
-chown ∷ FilePath → String → String → Script Files
-chown fp u g = liftF $ F (Ownership fp u g) ()
+-- Prints "hello" (without a newline)
+shell ∷ String → [String] → Script Files
+shell c as = liftF $ F (Shell mempty c as) ()
 
 
 sudo ∷ String → Free (Command l s) () → Free (Command l s) ()

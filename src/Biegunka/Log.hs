@@ -8,6 +8,7 @@ module Biegunka.Log (full) where
 import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Int (Int64)
+import Data.List (intercalate)
 import Data.Monoid ((<>), mempty)
 
 import           Control.Monad.Free (Free(..))
@@ -46,10 +47,8 @@ g (F a _) = h a
     "Compile with " <> string (show cmp) <> " file " <> string src <> " to " <> string dst <> "\n"
   h (Template src dst _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
-  h (Mode fp mode) = indent 4 <>
-    "Set " <> string fp <> " mode to " <> string (show mode) <> "\n"
-  h (Ownership fp user group) = indent 4 <>
-    "Set " <> string fp <> " owner to " <> string user <> ":" <> string group <> "\n"
+  h (Shell p c as) = indent 4 <>
+    "Shell `" <> string (intercalate " " (c:as)) <> "` from " <> string p <> "\n"
 g (W a _) = h a
  where
   h (Ignorance _) = mempty

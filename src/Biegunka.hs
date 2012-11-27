@@ -9,7 +9,7 @@ module Biegunka
   , profile
     -- * File layer
   , message, registerAt, copy, link, ghc, substitute
-  , chmod, chown
+  , shell
   , sudo, ignorant
     -- * Convenient type aliases
   , Script, Layer(..)
@@ -19,7 +19,7 @@ import Biegunka.DSL
   ( Script, Layer(..)
   , profile
   , message, registerAt, copy, link, ghc, substitute
-  , chmod, chown
+  , shell
   , sudo, ignorant
   )
 import Biegunka.Pretend (pretend)

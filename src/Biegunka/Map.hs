@@ -53,6 +53,5 @@ g (F a _) = do
   h (Copy _ dst) = S.singleton dst
   h (Compile _ _ dst) = S.singleton dst
   h (Template _ dst _) = S.singleton dst
-  h (Mode {}) = mempty
-  h (Ownership {}) = mempty
+  h (Shell {}) = mempty
 g (W _ _) = return ()

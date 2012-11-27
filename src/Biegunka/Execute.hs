@@ -14,9 +14,10 @@ module Biegunka.Execute
   ) where
 
 import Control.Applicative ((<$>))
-import Control.Exception.Lifted (Exception, SomeException(..), throwIO, try)
+import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
 import Control.Monad (forM_, unless, when)
 import Data.Char (toUpper)
+import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Function (fix, on)
 import Data.Typeable (Typeable)
@@ -28,18 +29,18 @@ import           Control.Lens (Lens, makeLenses, (.=), assign, use)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (liftIO)
-import           System.Directory (getHomeDirectory, removeDirectoryRecursive, removeFile)
+import           System.Directory (getCurrentDirectory, getHomeDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName, splitFileName)
-import           System.Posix.Files (createSymbolicLink, removeLink, setFileMode, setOwnerAndGroup)
+import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.IO (createPipe, fdToHandle)
-import           System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID, setEffectiveUserID)
-import           System.Process (runProcess, waitForProcess)
+import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
+import           System.Process (rawSystem, runProcess, waitForProcess)
 import           Text.StringTemplate (ToSElem(..))
 
 import           Biegunka.DB
@@ -121,6 +122,7 @@ execute = executeWith defaultExecution
 -- | Custom execptions
 data BiegunkaException =
     CompilationFailure Compiler FilePath Text -- ^ Compiler reports errors
+  | ShellCommandFailure String -- ^ Shell reports errors
   | SourceEmergingFailure String FilePath Text -- ^ Source emerging routine reports errors
   | ExecutionAbortion -- ^ User aborts script
     deriving (Typeable)
@@ -130,6 +132,7 @@ instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
     pretty ExecutionAbortion = "Biegunka has aborted"
+    pretty (ShellCommandFailure t) = "Biegunka has failed to execute `" <> T.pack t <> "`"
     pretty (CompilationFailure cmp fp fs) =
       T.pack (show cmp) <> " has failed to compile " <> T.pack fp <> "\nFailures log:\n" <> fs
     pretty (SourceEmergingFailure up fp fs) =
@@ -186,11 +189,15 @@ execute' c = case c of
   h (Template src dst substitute) = do
     ts ← use templates
     liftIO $ overWriteWith (\s d → toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  h (Mode fp m) = liftIO $ setFileMode fp m
-  h (Ownership fp u g) = liftIO $ do
-    uid ← userID <$> getUserEntryForName u
-    gid ← groupID <$> getGroupEntryForName g
-    setOwnerAndGroup fp uid gid
+  h (Shell p sc as) = liftIO $ do
+    d ← getCurrentDirectory
+    setCurrentDirectory p
+    handle (\(SomeException _) → throwIO $ ShellCommandFailure (intercalate " " (sc:as))) $ do
+      e ← rawSystem sc as
+      case e of
+        ExitFailure _ → throwIO $ ShellCommandFailure (intercalate " " (sc:as))
+        _ → return ()
+    setCurrentDirectory d
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst

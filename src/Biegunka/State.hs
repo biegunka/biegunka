@@ -5,7 +5,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.State (infect) where
 
-import Control.Applicative (Applicative, (<$>), (<*>), liftA2, liftA3, pure)
+import Control.Applicative
 import Data.Monoid (mempty)
 
 import           Control.Lens
@@ -54,10 +54,7 @@ g (F a x) = h a >>= \t → F t <$> f x
     liftA2 (Compile cmp) (use source </> pure src) (use root </> pure dst)
   h (Template src dst substitute) =
     liftA2 (\s d → Template s d substitute) (use source </> pure src) (use root </> pure dst)
-  h (Mode fp mode) =
-    liftA2 Mode (use root </> pure fp) (pure mode)
-  h (Ownership fp user group) =
-    liftA3 Ownership (use root </> pure fp) (pure user) (pure group)
+  h (Shell fp c as) = (\r → (Shell (r F.</> fp) c as)) <$> use source
 g (S url dst s update x) = do
   r ← use root
   source .= (r F.</> dst)
