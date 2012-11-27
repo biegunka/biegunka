@@ -72,10 +72,6 @@ g (F a _) = h a
     let same = src' == dst'
     unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
     return same
-  h (Compile _ _ dst) = do
-    binaryExists ← io $ doesFileExist dst
-    unless binaryExists $ tellLn [indent 4, "Compiled binary file at ", dst, " does not exist"]
-    return binaryExists
   h (Template _ dst _) = io $ doesFileExist dst
   h (Shell {}) = return True
 g (W {}) = return True

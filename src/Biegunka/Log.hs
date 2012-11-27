@@ -43,8 +43,6 @@ g (F a _) = h a
     "Link file " <> string src <> " to " <> string dst <> "\n"
   h (Copy src dst) = indent 4 <>
     "Copy file " <> string src <> " to " <> string dst <> "\n"
-  h (Compile cmp src dst) = indent 4 <>
-    "Compile with " <> string (show cmp) <> " file " <> string src <> " to " <> string dst <> "\n"
   h (Template src dst _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
   h (Shell p c as) = indent 4 <>

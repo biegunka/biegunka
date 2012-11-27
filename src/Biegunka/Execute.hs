@@ -35,12 +35,11 @@ import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing)
-import           System.FilePath (dropFileName, splitFileName)
+import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
-import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
-import           System.Process (rawSystem, runProcess, waitForProcess)
+import           System.Process (rawSystem)
 import           Text.StringTemplate (ToSElem(..))
 
 import           Biegunka.DB
@@ -185,7 +184,6 @@ execute' c = case c of
   h (RegisterAt src dst) = liftIO $ overWriteWith createSymbolicLink src dst
   h (Link src dst) = liftIO $ overWriteWith createSymbolicLink src dst
   h (Copy src dst) = liftIO $ overWriteWith copyFile src dst
-  h (Compile cmp src dst) = liftIO $ compileWith cmp src dst
   h (Template src dst substitute) = do
     ts ← use templates
     liftIO $ overWriteWith (\s d → toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
@@ -203,14 +201,3 @@ execute' c = case c of
     createDirectoryIfMissing True $ dropFileName dst
     try (removeLink dst) ∷ IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
-
-  compileWith GHC src dst = do
-    (ifd,ofd) ← createPipe
-    ih ← fdToHandle ifd
-    oh ← fdToHandle ofd
-    r ← waitForProcess =<< runProcess "ghc" ["-O2", "--make", file, "-fforce-recomp", "-v0", "-o", dst] (Just dir) Nothing Nothing Nothing (Just oh)
-    case r of
-      ExitFailure _ → T.hGetContents ih >>= throwIO . CompilationFailure GHC src
-      _ → return ()
-   where
-    (dir, file) = splitFileName src

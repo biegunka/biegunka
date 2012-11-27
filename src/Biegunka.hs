@@ -8,7 +8,7 @@ module Biegunka
     -- * Profile layer
   , profile
     -- * File layer
-  , message, registerAt, copy, link, ghc, substitute
+  , message, registerAt, copy, link, substitute
   , shell
   , sudo, ignorant
     -- * Convenient type aliases
@@ -18,7 +18,7 @@ module Biegunka
 import Biegunka.DSL
   ( Script, Layer(..)
   , profile
-  , message, registerAt, copy, link, ghc, substitute
+  , message, registerAt, copy, link, substitute
   , shell
   , sudo, ignorant
   )

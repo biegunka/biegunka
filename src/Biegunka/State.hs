@@ -50,8 +50,6 @@ g (F a x) = h a >>= \t → F t <$> f x
     liftA2 Link (use source </> pure src) (use root </> pure dst)
   h (Copy src dst) =
     liftA2 Copy (use source </> pure src) (use root </> pure dst)
-  h (Compile cmp src dst) =
-    liftA2 (Compile cmp) (use source </> pure src) (use root </> pure dst)
   h (Template src dst substitute) =
     liftA2 (\s d → Template s d substitute) (use source </> pure src) (use root </> pure dst)
   h (Shell fp c as) = (\r → (Shell (r F.</> fp) c as)) <$> use source

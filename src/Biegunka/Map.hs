@@ -51,7 +51,6 @@ g (F a _) = do
   h (RegisterAt _ dst) = S.singleton dst
   h (Link _ dst) = S.singleton dst
   h (Copy _ dst) = S.singleton dst
-  h (Compile _ _ dst) = S.singleton dst
   h (Template _ dst _) = S.singleton dst
   h (Shell {}) = mempty
 g (W _ _) = return ()

@@ -10,7 +10,7 @@
 module Biegunka.DSL
   ( Script, Layer(..)
   , Command(..), Action(..), Wrapper(..), OnFail(..)
-  , Compiler(..), message, registerAt, copy, link, ghc, substitute, shell
+  , Compiler(..), message, registerAt, copy, link, substitute, shell
   , sudo, ignorant
   , profile
   , foldie, mfoldie, foldieM, foldieM_
@@ -69,7 +69,6 @@ data Action =
   | RegisterAt FilePath FilePath
   | Link FilePath FilePath
   | Copy FilePath FilePath
-  | Compile Compiler FilePath FilePath
   | Template FilePath FilePath (forall t. ToSElem t ⇒ t → String → Text)
   | Shell FilePath String [String]
 
@@ -119,16 +118,6 @@ link src dst = liftF $ F (Link src dst) ()
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy ∷ FilePath → FilePath → Script Files
 copy src dst = liftF $ F (Copy src dst) ()
-
-
--- | Compiles given file with ghc to specified filepath
---
--- > git "https://example.com/repo.git" "git/repo" $
--- >   compile GHC "you.hs" "we/need/you/here"
---
--- Compiles ${HOME}\/git\/repo\/you.hs to ${HOME}\/we\/need\/you\/here
-ghc ∷ FilePath → FilePath → Script Files
-ghc src dst = liftF $ F (Compile GHC src dst) ()
 
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
