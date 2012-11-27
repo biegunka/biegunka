@@ -3,7 +3,6 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -100,7 +99,7 @@ executeWith execution s = do
   let s' = infect home (flatten s)
       β = Map.construct s'
   α ← load s'
-  getEnv "SUDO_USER" >>= \case
+  getEnv "SUDO_USER" >>= \e → case e of
     Just sudo → runStateT (foldieM_ issue s') execution { _user = sudo }
     Nothing → runStateT (foldieM_ issue s') execution
   removeOrphanFiles α β
@@ -145,15 +144,15 @@ sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs
 -- | Single command execution and exception handling
 issue ∷ ToSElem t ⇒ Command l () (Free (Command l ()) ()) → StateT (Execution t) IO ()
 issue command = do
-  try (execute' command) >>= \case
+  try (execute' command) >>= \t → case t of
     Left (SomeException e) → do
       case command of
         S {} → pemis .= False
         _ → return ()
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      use onFailCurrent >>= \case
+      use onFailCurrent >>= \o → case o of
         Ignorant → return ()
-        Ask → fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \case
+        Ask → fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p → case p of
           "I" → return ()
           "R" → issue command
           "A" → liftIO $ throwIO (ExecutionAbortion)
@@ -166,7 +165,7 @@ issue command = do
 
 -- | Command execution
 execute' ∷ ToSElem t ⇒ Command l s a → StateT (Execution t) IO ()
-execute' = \case
+execute' c = case c of
   (S' {}) → pemis .= True
   s@(S {}) → f s
   command → use pemis >>= \p → when p $ f command
