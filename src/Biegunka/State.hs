@@ -30,17 +30,17 @@ makeLenses ''Infect
 -- * Path to root
 -- * Path to current source
 infect ∷ FilePath
-       → Free (Command l ()) ()
-       → Free (Command l ()) ()
+       → Free (Command l ()) a
+       → Free (Command l ()) a
 infect path cs = evalState (f cs) Infect { _root = path, _source = mempty }
 
 
-f ∷ Free (Command l ()) () → State Infect (Free (Command l ()) ())
+f ∷ Free (Command l ()) a → State Infect (Free (Command l ()) a)
 f (Free t) = Free <$> g t
-f (Pure ()) = return (Pure ())
+f (Pure x) = return (Pure x)
 
 
-g ∷ Command l () (Free (Command l ()) ()) → State Infect (Command l () (Free (Command l ()) ()))
+g ∷ Command l () (Free (Command l ()) a) → State Infect (Command l () (Free (Command l ()) a))
 g (F a x) = h a >>= \t → F t <$> f x
  where
   h m@(Message _) = return m
@@ -52,12 +52,11 @@ g (F a x) = h a >>= \t → F t <$> f x
     liftA2 Copy (use source </> pure src) (use root </> pure dst)
   h (Template src dst substitute) =
     liftA2 (\s d → Template s d substitute) (use source </> pure src) (use root </> pure dst)
-  h (Shell fp c as) = (\r → (Shell (r F.</> fp) c as)) <$> use source
+  h (Shell fp c) = (\r → (Shell (r F.</> fp) c)) <$> use source
 g (S url dst s update x) = do
   r ← use root
   source .= (r F.</> dst)
   liftA5 S (pure url) (use root </> pure dst) (pure s) (pure update) (f x)
-g (S' x) = S' <$> f x
 g (P n () x) = P n () <$> f x
 g (W w x) = W w <$> f x
 

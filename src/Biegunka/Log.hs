@@ -8,7 +8,6 @@ module Biegunka.Log (full) where
 import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Int (Int64)
-import Data.List (intercalate)
 import Data.Monoid ((<>), mempty)
 
 import           Control.Monad.Free (Free(..))
@@ -21,18 +20,17 @@ import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.DSL (Command(..), Action(..), Wrapper(..), mfoldie)
 
 
-full ∷ Free (Command l ()) () → Biegunka → Biegunka → Text
+full ∷ Free (Command l ()) a → Biegunka → Biegunka → Text
 full s α β = toLazyText $ install s <> uninstall α β
 
 
-install ∷ Free (Command l ()) () → Builder
+install ∷ Free (Command l ()) a → Builder
 install = mfoldie g
 
 
-g ∷ Command l () (Free (Command l ()) ()) → Builder
+g ∷ Command l () (Free (Command l ()) a) → Builder
 g (P name _ _) = "Setup profile " <> string name <> "\n"
 g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
-g (S' {}) = mempty
 g (F a _) = h a
  where
   h (Message m) = indent 4 <>
@@ -45,8 +43,8 @@ g (F a _) = h a
     "Copy file " <> string src <> " to " <> string dst <> "\n"
   h (Template src dst _) = indent 4 <>
     "Write " <> string src <> " with substituted templates to " <> string dst <> "\n"
-  h (Shell p c as) = indent 4 <>
-    "Shell `" <> string (intercalate " " (c:as)) <> "` from " <> string p <> "\n"
+  h (Shell p c) = indent 4 <>
+    "Shell `" <> string c <> "` from " <> string p <> "\n"
 g (W a _) = h a
  where
   h (Ignorance _) = mempty

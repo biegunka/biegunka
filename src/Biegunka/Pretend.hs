@@ -52,7 +52,7 @@ instance Show Stat where
 --   profile ...
 --   profile ...
 -- @
-pretend ∷ Script Profile → IO ()
+pretend ∷ Script Profile a → IO ()
 pretend script = do
   home ← getHomeDirectory
   let script' = infect home (flatten script)

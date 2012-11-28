@@ -33,7 +33,7 @@ import Biegunka.Execute (sourceFailure)
 --  * link ${HOME}\/git\/repository to ${HOME}\/some\/not\/so\/long\/path
 --
 --  * link ${HOME}\/git\/repository\/important.file to ${HOME}\/.config
-git ∷ String → FilePath → Script Files → Script Source
+git ∷ String → FilePath → Script Files () → Script Source ()
 git url path script = liftF $ S url path script (updateGit url) ()
 
 
@@ -45,7 +45,7 @@ git url path script = liftF $ S url path script (updateGit url) ()
 --  * clone repository from https:\/\/example.com\/repository.git to ${HOME}\/git\/repository
 --
 --  * pull from master
-git_ ∷ String → FilePath → Script Source
+git_ ∷ String → FilePath → Script Source ()
 git_ url path = git url path (return ())
 
 

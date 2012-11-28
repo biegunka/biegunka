@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka - configuration management library
 module Biegunka
@@ -15,13 +17,12 @@ module Biegunka
   , Script, Layer(..)
   ) where
 
-import Biegunka.DSL
-  ( Script, Layer(..)
-  , profile
-  , message, registerAt, copy, link, substitute
-  , shell
-  , sudo, ignorant
-  )
+import Data.Monoid (mempty)
+
+import Control.Monad.Free (Free(..), liftF)
+import Text.StringTemplate (newSTMP, render, setAttribute)
+
+import Biegunka.DSL (Script, Layer(..), Command(..), Action(..), Wrapper(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute
   ( execute, executeWith
@@ -29,3 +30,85 @@ import Biegunka.Execute
   , dropPriviledges, react, templates, defaultExecution
   )
 import Biegunka.Verify (verify)
+
+
+-- | Prints specified message to stdout
+--
+-- > message "hello!"
+--
+-- prints \"hello!\"
+message ∷ String → Script Files ()
+message m = liftF $ F (Message m) ()
+
+
+-- | Links source to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   registerAt "we/need/you/here"
+--
+-- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
+registerAt ∷ FilePath → Script Files ()
+registerAt dst = liftF $ F (RegisterAt mempty dst) ()
+
+
+-- | Links given file to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   link "you" "we/need/you/here"
+--
+-- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
+link ∷ FilePath → FilePath → Script Files ()
+link src dst = liftF $ F (Link src dst) ()
+
+
+-- | Copies given file to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   copy "you" "we/need/you/here"
+--
+-- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
+copy ∷ FilePath → FilePath → Script Files ()
+copy src dst = liftF $ F (Copy src dst) ()
+
+
+-- | Substitutes $template.X$ templates in given file and writes result to specified filepath
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   substitute "you.hs" "we/need/you/here"
+--
+-- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
+-- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
+substitute ∷ FilePath → FilePath → Script Files ()
+substitute src dst = liftF $
+  F (Template src dst (\b → render . setAttribute "template" b . newSTMP)) ()
+
+
+-- | Executes shell command with default shell
+--
+-- > git "https://example.com/repo.git" "git/repo" $
+-- >   shell "echo -n hello"
+--
+-- Prints "hello" (without a newline)
+shell ∷ String → Script Files ()
+shell c = liftF $ F (Shell mempty c) ()
+
+
+sudo ∷ String → Free (Command l s) () → Free (Command l s) ()
+sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
+
+
+ignorant ∷ Free (Command l s) () → Free (Command l s) ()
+ignorant cs = liftF (W (Ignorance True) ()) >> cs >> liftF (W (Ignorance False) ())
+
+
+-- | Configuration profile
+--
+-- Provides convenient sources grouping
+--
+-- > profile "mine" $ do
+-- >   git ...
+-- >   git ...
+-- > profile "friend's" $ do
+-- >   svn ...
+profile ∷ String → Script Source () → Script Profile ()
+profile name repo = liftF $ P name repo ()

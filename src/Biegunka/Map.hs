@@ -29,11 +29,11 @@ data Construct = Construct
 makeLenses ''Construct
 
 
-construct ∷ Free (Command l ()) () → Biegunka
+construct ∷ Free (Command l ()) a → Biegunka
 construct cs = execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka . to biegunize
 
 
-g ∷ Command l () (Free (Command l ()) ()) → State Construct ()
+g ∷ Command l () (Free (Command l ()) a) → State Construct ()
 g (P name _ _) = do
   profile .= name
   biegunka . at name .= Just mempty
@@ -41,7 +41,6 @@ g (S _ s _ _ _) = do
   p ← use profile
   source .= s
   biegunka . at p . traverse . at s .= Just mempty
-g (S' _) = return ()
 g (F a _) = do
   p ← use profile
   s ← use source

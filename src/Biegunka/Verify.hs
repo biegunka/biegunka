@@ -32,7 +32,7 @@ import Biegunka.State
 --   profile ...
 --   profile ...
 -- @
-verify ∷ Script Profile → IO ()
+verify ∷ Script Profile a → IO ()
 verify s = do
   home ← getHomeDirectory
   (verified, failures) ← runWriterT . f . infect home . flatten $ s
@@ -42,17 +42,16 @@ verify s = do
     else putStrLn $ failures ++ "\nFail!"
 
 
-f ∷ Free (Command l ()) () → WriterT String IO Bool
+f ∷ Free (Command l ()) a → WriterT String IO Bool
 f = foldie (|&&|) (return True) g
 
 
-g ∷ Command l () (Free (Command l ()) ()) → WriterT String IO Bool
+g ∷ Command l () (Free (Command l ()) a) → WriterT String IO Bool
 g (P _ _ _) = return True
 g (S u p _ _ _) = do
   sourceExists ← io $ doesDirectoryExist p
   unless sourceExists $ tellLn [indent 2, "Source ", u, " → ", p, " doesn't exist"]
   return sourceExists
-g (S' {}) = return True
 g (F a _) = h a
  where
   h (Message _) = return True

@@ -15,13 +15,12 @@ module Biegunka.Execute
 
 import Control.Applicative ((<$>))
 import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM_, unless)
 import Data.Char (toUpper)
-import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Function (fix, on)
 import Data.Typeable (Typeable)
-import Prelude hiding (print)
+import Prelude hiding (dropWhile)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 
@@ -39,18 +38,17 @@ import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
-import           System.Process (rawSystem)
+import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
 import           Biegunka.DB
-import           Biegunka.DSL
-  ( Script, Layer(..), Command(..), Action(..), Wrapper(..)
-  , foldieM_
-  , OnFail(..)
-  )
+import           Biegunka.DSL (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
 import           Biegunka.Flatten
 import qualified Biegunka.Map as Map
 import           Biegunka.State
+
+
+data OnFail = Ignorant | Ask | Abortive
 
 
 data Execution t = Execution
@@ -58,7 +56,6 @@ data Execution t = Execution
   , _onFail ∷ OnFail
   , _onFailCurrent ∷ OnFail
   , _templates ∷ t
-  , _pemis ∷ Bool
   , _user ∷ String
   }
 
@@ -72,7 +69,6 @@ defaultExecution = Execution
   , _onFail = Ask
   , _onFailCurrent = Ask
   , _templates = False
-  , _pemis = True
   , _user = []
   }
 
@@ -89,19 +85,19 @@ react f e@(Execution {_onFail = x}) = (\y → e {_onFail = y, _onFailCurrent = y
 --
 -- @
 -- main ∷ IO ()
--- main = executeWith (defaultExecution % react .~ Ignorant) $ do
+-- main = executeWith (defaultExecution & react .~ Ignorant) $ do
 --   profile ...
 --   profile ...
 -- @
-executeWith ∷ ToSElem t ⇒ Execution t → Script Profile → IO ()
+executeWith ∷ ToSElem t ⇒ Execution t → Script Profile a → IO ()
 executeWith execution s = do
   home ← getHomeDirectory
   let s' = infect home (flatten s)
       β = Map.construct s'
   α ← load s'
   getEnv "SUDO_USER" >>= \e → case e of
-    Just sudo → runStateT (foldieM_ issue s') execution { _user = sudo }
-    Nothing → runStateT (foldieM_ issue s') execution
+    Just sudo → runStateT (fold s') execution { _user = sudo }
+    Nothing → runStateT (fold s') execution
   removeOrphanFiles α β
   removeOrphanRepos α β
   save β
@@ -114,7 +110,7 @@ executeWith execution s = do
 
 
 -- | Execute interpreter with default options
-execute ∷ Script Profile → IO ()
+execute ∷ Script Profile () → IO ()
 execute = executeWith defaultExecution
 
 
@@ -141,33 +137,36 @@ sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs
 
 
 -- | Single command execution and exception handling
-issue ∷ ToSElem t ⇒ Command l () (Free (Command l ()) ()) → StateT (Execution t) IO ()
-issue command = do
+fold ∷ ToSElem t ⇒ Free (Command l ()) a → StateT (Execution t) IO ()
+fold (Free command) = do
   try (execute' command) >>= \t → case t of
     Left (SomeException e) → do
-      case command of
-        S {} → pemis .= False
-        _ → return ()
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
       use onFailCurrent >>= \o → case o of
-        Ignorant → return ()
+        Ignorant → ignore command
         Ask → fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p → case p of
-          "I" → return ()
-          "R" → issue command
-          "A" → liftIO $ throwIO (ExecutionAbortion)
+          "I" → ignore command
+          "R" → fold (Free command)
+          "A" → liftIO $ throwIO ExecutionAbortion
           _ → ask
-        Abortive → liftIO $ throwIO (ExecutionAbortion)
-    _ → return ()
+        Abortive → liftIO $ throwIO ExecutionAbortion
+    _ → fold (next command)
  where
   prompt msg = liftIO $ putStr msg >> hFlush stdout >> getLine
+
+  ignore S {} = fold (dropWhile skip (Free command))
+  ignore _    = fold (next command)
+
+  skip P {} = False
+  skip S {} = False
+  skip (W _ (Free x)) = skip x
+  skip _ = True
+fold (Pure _) = return ()
 
 
 -- | Command execution
 execute' ∷ ToSElem t ⇒ Command l s a → StateT (Execution t) IO ()
-execute' c = case c of
-  (S' {}) → pemis .= True
-  s@(S {}) → f s
-  command → use pemis >>= \p → when p $ f command
+execute' c = f c
  where
   f (S _ path _ update _) = liftIO $ update path
   f (F a _) = h a
@@ -184,13 +183,13 @@ execute' c = case c of
   h (Template src dst substitute) = do
     ts ← use templates
     liftIO $ overWriteWith (\s d → toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  h (Shell p sc as) = liftIO $ do
+  h (Shell p sc) = liftIO $ do
     d ← getCurrentDirectory
     setCurrentDirectory p
-    handle (\(SomeException _) → throwIO $ ShellCommandFailure (intercalate " " (sc:as))) $ do
-      e ← rawSystem sc as
+    handle (\(SomeException _) → throwIO $ ShellCommandFailure sc) $ do
+      e ← system sc
       case e of
-        ExitFailure _ → throwIO $ ShellCommandFailure (intercalate " " (sc:as))
+        ExitFailure _ → throwIO $ ShellCommandFailure sc
         _ → return ()
     setCurrentDirectory d
 
@@ -198,3 +197,10 @@ execute' c = case c of
     createDirectoryIfMissing True $ dropFileName dst
     try (removeLink dst) ∷ IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
+
+
+dropWhile ∷ (Command l s (Free (Command l s) b) → Bool) → Free (Command l s) b → Free (Command l s) b
+dropWhile f p@(Free c)
+  | f c = dropWhile f (next c)
+  | otherwise    = p
+dropWhile _ x@(Pure _) = x
