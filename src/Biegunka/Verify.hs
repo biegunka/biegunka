@@ -15,7 +15,7 @@ import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.DSL (Script, Layer(..), Command(..), Action(..), foldie)
+import Biegunka.Language (Script, Layer(..), Command(..), Action(..), foldie)
 import Biegunka.Flatten
 import Biegunka.State
 

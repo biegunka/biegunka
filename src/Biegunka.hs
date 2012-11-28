@@ -22,7 +22,7 @@ import Data.Monoid (mempty)
 import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
-import Biegunka.DSL (Script, Layer(..), Command(..), Action(..), Wrapper(..))
+import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute
   ( execute, executeWith

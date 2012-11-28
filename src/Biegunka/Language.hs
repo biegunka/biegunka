@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.DSL
+module Biegunka.Language
   ( Script, Layer(..)
   , Command(..), Action(..), Wrapper(..)
   , foldie, mfoldie, foldieM, foldieM_

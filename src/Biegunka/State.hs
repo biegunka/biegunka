@@ -13,7 +13,7 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (State, evalState)
 import qualified System.FilePath as F
 
-import Biegunka.DSL (Command(..), Action(..))
+import Biegunka.Language (Command(..), Action(..))
 
 
 data Infect = Infect

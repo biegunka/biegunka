@@ -16,7 +16,7 @@ import           Data.Set (Set)
 import qualified Data.Set as S
 
 import Biegunka.DB (Biegunka, biegunize)
-import Biegunka.DSL (Command(..), Action(..), foldieM_)
+import Biegunka.Language (Command(..), Action(..), foldieM_)
 
 
 data Construct = Construct

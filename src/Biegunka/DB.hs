@@ -29,7 +29,7 @@ import qualified Data.Set as S
 import           System.Directory (getHomeDirectory, removeFile)
 import           System.FilePath ((</>), (<.>))
 
-import Biegunka.DSL (Command(P), foldie)
+import Biegunka.Language (Command(P), foldie)
 
 
 newtype Biegunka = Biegunka

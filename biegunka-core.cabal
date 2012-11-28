@@ -27,7 +27,7 @@ Library
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
                    Biegunka.Source.Git
-                   Biegunka.DSL
+                   Biegunka.Language
   Other-Modules: Biegunka.DB
                  Biegunka.Execute
                  Biegunka.Pretend

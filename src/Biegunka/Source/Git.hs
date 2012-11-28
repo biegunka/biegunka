@@ -15,7 +15,7 @@ import           System.Exit (ExitCode(..))
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process (runProcess, waitForProcess)
 
-import Biegunka.DSL (Script, Layer(Files, Source), Command(S))
+import Biegunka.Language (Script, Layer(Files, Source), Command(S))
 import Biegunka.Execute (sourceFailure)
 
 

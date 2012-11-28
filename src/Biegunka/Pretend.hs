@@ -13,7 +13,7 @@ import           System.Directory (getHomeDirectory)
 import           System.IO (hFlush, stdout)
 
 import           Biegunka.DB (load, filepaths, sources)
-import           Biegunka.DSL (Script, Layer(..))
+import           Biegunka.Language (Script, Layer(..))
 import qualified Biegunka.Log as Log
 import qualified Biegunka.Map as Map
 import           Biegunka.Flatten

@@ -6,7 +6,7 @@
 module Biegunka.Flatten (flatten) where
 
 import Control.Monad.Free (Free(..), liftF)
-import Biegunka.DSL (Script, Layer(..), Command(..))
+import Biegunka.Language (Script, Layer(..), Command(..))
 
 
 flatten ∷ Script Profile a → Free (Command l ()) a

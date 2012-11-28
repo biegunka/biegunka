@@ -42,7 +42,7 @@ import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
 import           Biegunka.DB
-import           Biegunka.DSL (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
+import           Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
 import           Biegunka.Flatten
 import qualified Biegunka.Map as Map
 import           Biegunka.State

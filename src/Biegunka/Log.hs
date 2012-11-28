@@ -17,7 +17,7 @@ import qualified Data.Text.Lazy as T
 import           Data.Text.Lazy.Builder (Builder, fromLazyText, fromString, toLazyText)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.DSL (Command(..), Action(..), Wrapper(..), mfoldie)
+import Biegunka.Language (Command(..), Action(..), Wrapper(..), mfoldie)
 
 
 full ∷ Free (Command l ()) a → Biegunka → Biegunka → Text
