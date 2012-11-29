@@ -154,7 +154,7 @@ fold (Free command) = do
  where
   prompt msg = liftIO $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropWhile skip (Free command))
+  ignore S {} = fold (dropWhile skip (next command))
   ignore _    = fold (next command)
 
   skip P {} = False
