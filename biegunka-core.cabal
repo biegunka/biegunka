@@ -27,7 +27,6 @@ Library
                  HStringTemplate
   HS-Source-Dirs: src
   Exposed-Modules: Biegunka
-                   Biegunka.Source.Git
                    Biegunka.Source.Dummy
                    Biegunka.Language
   Other-Modules: Biegunka.DB

@@ -8,9 +8,9 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
   ( execute, executeWith
-  , sourceFailure
   , dropPriviledges, react, templates, defaultExecution
   , Execution, OnFail(..)
+  , BiegunkaException(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -130,10 +130,6 @@ instance Show BiegunkaException where
     pretty (SourceEmergingFailure up fp fs) =
       "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
 instance Exception BiegunkaException
-
-
-sourceFailure ∷ String → FilePath → Text → IO a
-sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs
 
 
 -- | Single command execution and exception handling
