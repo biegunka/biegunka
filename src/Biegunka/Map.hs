@@ -10,7 +10,6 @@ import Data.Monoid (Monoid(..))
 import           Control.Lens
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (State, execState)
-import           Data.Monoid.Lens ((<>=))
 import           Data.Map (Map)
 import           Data.Set (Set)
 import qualified Data.Set as S
