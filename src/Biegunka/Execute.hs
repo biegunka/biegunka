@@ -89,7 +89,7 @@ react f e@(Execution {_onFail = x}) = (\y -> e {_onFail = y, _onFailCurrent = y}
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ToSElem t ⇒ Execution t -> Script Profile a → IO ()
+executeWith :: ToSElem t => Execution t -> Script Profile a → IO ()
 executeWith execution s = do
   home <- getHomeDirectory
   let s' = infect home (flatten s)
@@ -133,7 +133,7 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: ToSElem t ⇒ Free (Command l ()) a -> StateT (Execution t) IO ()
+fold :: ToSElem t => Free (Command l ()) a -> StateT (Execution t) IO ()
 fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
@@ -161,7 +161,7 @@ fold (Pure _) = return ()
 
 
 -- | Command execution
-execute' :: ToSElem t ⇒ Command l s a -> StateT (Execution t) IO ()
+execute' :: ToSElem t => Command l s a -> StateT (Execution t) IO ()
 execute' c = f c
  where
   f (S _ path _ update _) = liftIO $ update path
