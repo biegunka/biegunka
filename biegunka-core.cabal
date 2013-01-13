@@ -39,3 +39,14 @@ library
                  Biegunka.Flatten
   ghc-options: -Wall
                -fno-warn-unused-do-bind
+
+test-suite spec
+  build-depends:     base >= 4 && < 5,
+                     biegunka-core,
+                     filepath,
+                     directory,
+                     directory-layout,
+                     hspec
+  hs-source-dirs:    tests
+  main-is:           Main.hs
+  type:              exitcode-stdio-1.0
