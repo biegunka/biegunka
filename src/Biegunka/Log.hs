@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Log (full) where
 
@@ -20,7 +19,7 @@ import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), mfoldie)
 
 
-full :: Free (Command l ()) a -> Biegunka → Biegunka → Text
+full :: Free (Command l ()) a -> Biegunka -> Biegunka -> Text
 full s α β = toLazyText $ install s <> uninstall α β
 
 
@@ -56,7 +55,7 @@ indent :: Int64 -> Builder
 indent n = fromLazyText $ T.replicate n " "
 
 
-uninstall :: Biegunka -> Biegunka → Builder
+uninstall :: Biegunka -> Biegunka -> Builder
 uninstall α β = (logNotElems `on` filepaths) α β <> (logNotElems `on` sources) α β
  where
   logNotElems xs ys = execWriter (forM_ xs $ \x -> unless (x `elem` ys) (tell $ "Delete " <> string x <> "\n"))

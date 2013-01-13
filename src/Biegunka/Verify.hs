@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Verify (verify) where
 
@@ -76,7 +75,7 @@ g (F a _) = h a
 g (W {}) = return True
 
 
-(|&&|) :: Applicative m => m Bool -> m Bool → m Bool
+(|&&|) :: Applicative m => m Bool -> m Bool -> m Bool
 (|&&|) = liftA2 (&&)
 infixr 3 |&&|
 

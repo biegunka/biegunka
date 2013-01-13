@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Map (construct) where
 

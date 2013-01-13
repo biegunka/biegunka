@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka - configuration management library
 module Biegunka
@@ -57,7 +56,7 @@ registerAt dst = liftF $ F (RegisterAt mempty dst) ()
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link :: FilePath -> FilePath → Script Files ()
+link :: FilePath -> FilePath -> Script Files ()
 link src dst = liftF $ F (Link src dst) ()
 
 
@@ -67,7 +66,7 @@ link src dst = liftF $ F (Link src dst) ()
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy :: FilePath -> FilePath → Script Files ()
+copy :: FilePath -> FilePath -> Script Files ()
 copy src dst = liftF $ F (Copy src dst) ()
 
 
@@ -78,7 +77,7 @@ copy src dst = liftF $ F (Copy src dst) ()
 --
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
-substitute :: FilePath -> FilePath → Script Files ()
+substitute :: FilePath -> FilePath -> Script Files ()
 substitute src dst = liftF $
   F (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 
@@ -93,7 +92,7 @@ shell :: String -> Script Files ()
 shell c = liftF $ F (Shell mempty c) ()
 
 
-sudo :: String -> Free (Command l s) () → Free (Command l s) ()
+sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
 sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
 
 
@@ -110,5 +109,5 @@ ignorant cs = liftF (W (Ignorance True) ()) >> cs >> liftF (W (Ignorance False) 
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile :: String -> Script Source () → Script Profile ()
+profile :: String -> Script Source () -> Script Profile ()
 profile name repo = liftF $ P name repo ()

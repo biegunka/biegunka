@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Biegunka.State (infect) where
 
@@ -61,9 +60,9 @@ g (P n () x) = P n () <$> f x
 g (W w x) = W w <$> f x
 
 
-(</>) :: State Infect FilePath -> State Infect FilePath → State Infect FilePath
+(</>) :: State Infect FilePath -> State Infect FilePath -> State Infect FilePath
 (</>) = liftA2 (F.</>)
 
 
-liftA5 :: Applicative m => (a -> b → c → d → e → f) → m a → m b → m c → m d → m e → m f
+liftA5 :: Applicative m => (a -> b -> c -> d -> e -> f) -> m a -> m b -> m c -> m d -> m e -> m f
 liftA5 h a b c d e = pure h <*> a <*> b <*> c <*> d <*> e

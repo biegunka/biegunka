@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UnicodeSyntax #-}
 -- | Biegunka.Source.Dummy - example Source using 'directory-layout'
 module Biegunka.Source.Dummy (dummy, dummy_, sourceFailure) where
 
@@ -39,5 +38,5 @@ dummy_ l p = dummy l p (return ())
 
 
 -- | Report 'Source' emerge failure to Biegunka.
-sourceFailure :: String -> FilePath → Text → IO a
+sourceFailure :: String -> FilePath -> Text -> IO a
 sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs

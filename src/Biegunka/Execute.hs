@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
   ( execute, executeWith
@@ -89,7 +88,7 @@ react f e@(Execution {_onFail = x}) = (\y -> e {_onFail = y, _onFailCurrent = y}
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ToSElem t => Execution t -> Script Profile a → IO ()
+executeWith :: ToSElem t => Execution t -> Script Profile a -> IO ()
 executeWith execution s = do
   home <- getHomeDirectory
   let s' = infect home (flatten s)
@@ -140,7 +139,7 @@ fold (Free command) = do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
       use onFailCurrent >>= \o -> case o of
         Ignorant -> ignore command
-        Ask -> fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p → case p of
+        Ask -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
           "R" -> fold (Free command)
           "A" -> liftIO $ throwIO ExecutionAbortion
@@ -195,7 +194,7 @@ execute' c = f c
     g src dst
 
 
-dropWhile :: (Command l s (Free (Command l s) b) -> Bool) → Free (Command l s) b → Free (Command l s) b
+dropWhile :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b
 dropWhile f p@(Free c)
   | f c = dropWhile f (next c)
   | otherwise    = p

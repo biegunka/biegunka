@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UnicodeSyntax #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Pretend (pretend) where
 
@@ -77,7 +76,7 @@ pretend script = do
   void $ putStrLn "Press any key to continue" >> getLine
  where
   countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
-  logNotElems xs ys = execState (ifNotElem (\m -> modify (\s → s ++ m ++ "\n")) xs ys) ""
+  logNotElems xs ys = execState (ifNotElem (\m -> modify (\s -> s ++ m ++ "\n")) xs ys) ""
   ifNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) (f x)
 
   query s = do
