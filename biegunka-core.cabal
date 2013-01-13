@@ -1,16 +1,16 @@
-Name: biegunka-core
-Version: 0.1.0.0
-Synopsis: DSL definitions, interpreters, templating
-License: MIT
-License-file: LICENSE
-Author: Matvey Aksenov
-Maintainer: Matvey Aksenov <matvey.aksenov@gmail.com>
-Category: System
-Cabal-Version: >= 1.8
-Build-Type: Simple
+name: biegunka-core
+version: 0.1.0.0
+synopsis: DSL definitions, interpreters, templating
+license: MIT
+license-file: LICENSE
+author: Matvey Aksenov
+maintainer: Matvey Aksenov <matvey.aksenov@gmail.com>
+category: System
+cabal-version: >= 1.8
+build-type: Simple
 
-Library
-  Build-Depends: base >= 3 && < 5,
+library
+  build-depends: base >= 3 && < 5,
                  filepath,
                  directory,
                  process,
@@ -25,11 +25,11 @@ Library
                  lens >= 3.0.2,
                  directory-layout,
                  HStringTemplate
-  HS-Source-Dirs: src
-  Exposed-Modules: Biegunka
+  hs-source-dirs: src
+  exposed-modules: Biegunka
                    Biegunka.Source.Dummy
                    Biegunka.Language
-  Other-Modules: Biegunka.DB
+  other-modules: Biegunka.DB
                  Biegunka.Execute
                  Biegunka.Pretend
                  Biegunka.Verify
@@ -37,5 +37,5 @@ Library
                  Biegunka.Map
                  Biegunka.State
                  Biegunka.Flatten
-  GHC-Options: -Wall
+  ghc-options: -Wall
                -fno-warn-unused-do-bind
