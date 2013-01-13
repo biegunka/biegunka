@@ -1,36 +1,36 @@
 {-# LANGUAGE DataKinds #-}
 module Main (main) where
 
-import Control.Exception (bracket)
-
 import Biegunka
-import System.FilePath ((</>))
-import System.Directory
-  ( createDirectory, removeDirectoryRecursive
-  , getHomeDirectory
-  , getCurrentDirectory, setCurrentDirectory
-  )
+import System.Directory (getHomeDirectory)
 import System.Directory.Layout
 import Test.Hspec
 
 
 main :: IO ()
 main = do
-  xs <- expect trivial_repo trivial_layout
+  as <- trivial_script `resultsIn` trivial_layout
+  bs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
   hspec $ do
     describe "Trivial biegunka script" $ do
-      it "should be trivial layout too" $ null xs
+      it "should be trivial layout too" $ null as
+    describe "Trivial biegunka profile script" $ do
+      it "should be trivial layout too" $ null bs
 
 
-expect :: Script Profile () -> Layout -> IO [DLCheckFailure]
-expect s l = do
+resultsIn :: Script Profile () -> Layout -> IO [DLCheckFailure]
+resultsIn s l = do
   execute s
   fp <- getHomeDirectory
   check l fp
 
 
-trivial_repo :: Script Profile ()
-trivial_repo = return ()
+trivial_script :: Script Profile ()
+trivial_script = return ()
+
+
+trivial_repo :: String -> Script Profile ()
+trivial_repo p = profile p $ return ()
 
 
 trivial_layout :: Layout
