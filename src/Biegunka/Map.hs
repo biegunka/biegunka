@@ -19,30 +19,30 @@ import Biegunka.Language (Command(..), Action(..), foldieM_)
 
 
 data Construct = Construct
-  { _profile ∷ String
-  , _source ∷ FilePath
-  , _biegunka ∷ Map String (Map FilePath (Set FilePath))
+  { _profile :: String
+  , _source :: FilePath
+  , _biegunka :: Map String (Map FilePath (Set FilePath))
   }
 
 
 makeLenses ''Construct
 
 
-construct ∷ Free (Command l ()) a → Biegunka
+construct :: Free (Command l ()) a -> Biegunka
 construct cs = execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka . to biegunize
 
 
-g ∷ Command l () (Free (Command l ()) a) → State Construct ()
+g :: Command l () (Free (Command l ()) a) -> State Construct ()
 g (P name _ _) = do
   profile .= name
   biegunka . at name .= Just mempty
 g (S _ s _ _ _) = do
-  p ← use profile
+  p <- use profile
   source .= s
   biegunka . at p . traverse . at s .= Just mempty
 g (F a _) = do
-  p ← use profile
-  s ← use source
+  p <- use profile
+  s <- use source
   biegunka . at p . traverse . at s . traverse <>= h a
  where
   h (Message _) = mempty

@@ -20,15 +20,15 @@ import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), mfoldie)
 
 
-full ∷ Free (Command l ()) a → Biegunka → Biegunka → Text
+full :: Free (Command l ()) a -> Biegunka → Biegunka → Text
 full s α β = toLazyText $ install s <> uninstall α β
 
 
-install ∷ Free (Command l ()) a → Builder
+install :: Free (Command l ()) a -> Builder
 install = mfoldie g
 
 
-g ∷ Command l () (Free (Command l ()) a) → Builder
+g :: Command l () (Free (Command l ()) a) -> Builder
 g (P name _ _) = "Setup profile " <> string name <> "\n"
 g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
 g (F a _) = h a
@@ -52,15 +52,15 @@ g (W a _) = h a
   h (User Nothing) = "--- * Do stuff from default user * ---"
 
 
-indent ∷ Int64 → Builder
+indent :: Int64 -> Builder
 indent n = fromLazyText $ T.replicate n " "
 
 
-uninstall ∷ Biegunka → Biegunka → Builder
+uninstall :: Biegunka -> Biegunka → Builder
 uninstall α β = (logNotElems `on` filepaths) α β <> (logNotElems `on` sources) α β
  where
-  logNotElems xs ys = execWriter (forM_ xs $ \x → unless (x `elem` ys) (tell $ "Delete " <> string x <> "\n"))
+  logNotElems xs ys = execWriter (forM_ xs $ \x -> unless (x `elem` ys) (tell $ "Delete " <> string x <> "\n"))
 
 
-string ∷ String → Builder
+string :: String -> Builder
 string = fromString

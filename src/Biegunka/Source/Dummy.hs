@@ -20,10 +20,10 @@ import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
 -- real ones.but it is easier to reason about because you
 -- don't depend on internet connection, installed libraries
 -- and so on.
-dummy ∷ Layout          -- ^ Layout to make
-      → FilePath        -- ^ Layout root (relative to user home directory)
-      → Script Files () -- ^ What to do with layout files
-      → Script Source ()
+dummy :: Layout          -- ^ Layout to make
+      -> FilePath        -- ^ Layout root (relative to user home directory)
+      -> Script Files () -- ^ What to do with layout files
+      -> Script Source ()
 dummy l p s = liftF $ S "localhost" p s (mapM_ print <=< make l) ()
 
 
@@ -32,12 +32,12 @@ dummy l p s = liftF $ S "localhost" p s (mapM_ print <=< make l) ()
 -- This may seem as a function without any purpose but
 -- it might be actually useful if you want just to
 -- download 'Source' somewhere
-dummy_ ∷ Layout   -- ^ Layout to make
-       → FilePath -- ^ Layout root (relative to user home directory)
-       → Script Source ()
+dummy_ :: Layout   -- ^ Layout to make
+       -> FilePath -- ^ Layout root (relative to user home directory)
+       -> Script Source ()
 dummy_ l p = dummy l p (return ())
 
 
 -- | Report 'Source' emerge failure to Biegunka.
-sourceFailure ∷ String → FilePath → Text → IO a
+sourceFailure :: String -> FilePath → Text → IO a
 sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs

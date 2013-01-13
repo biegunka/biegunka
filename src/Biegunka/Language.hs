@@ -23,7 +23,7 @@ import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
 
 
-type family Script (a ∷ Layer) ∷ * → *
+type family Script (a :: Layer) ∷ * -> *
 
 
 type instance (Script Files)   = Free (Command Files ())
@@ -34,11 +34,11 @@ type instance (Script Profile) = Free (Command Profile (Script Source ()))
 data Layer = Files | Source | Profile
 
 
-data Command (l ∷ Layer) s a where
-  F ∷ Action → a → Command l () a
-  S ∷ String → FilePath → s → (FilePath → IO ()) → a → Command l s a
-  P ∷ String → s → a → Command l s a
-  W ∷ Wrapper → a → Command l s a
+data Command (l :: Layer) s a where
+  F :: Action -> a → Command l () a
+  S :: String -> FilePath → s → (FilePath → IO ()) → a → Command l s a
+  P :: String -> s → a → Command l s a
+  W :: Wrapper -> a → Command l s a
 
 
 instance Functor (Command l s) where
@@ -49,7 +49,7 @@ instance Functor (Command l s) where
   {-# INLINE fmap #-}
 
 
-next ∷ Command l s a → a
+next :: Command l s a -> a
 next (F _ x)       = x
 next (S _ _ _ _ x) = x
 next (P _ _ x)     = x
@@ -62,7 +62,7 @@ data Action =
   | RegisterAt FilePath FilePath
   | Link FilePath FilePath
   | Copy FilePath FilePath
-  | Template FilePath FilePath (forall t. ToSElem t ⇒ t → String → Text)
+  | Template FilePath FilePath (forall t. ToSElem t ⇒ t -> String → Text)
   | Shell FilePath String
 
 
@@ -71,20 +71,20 @@ data Wrapper =
   | Ignorance Bool
 
 
-foldie ∷ (a → b → b) → b → (Command l s (Free (Command l s) c) → a) → (Free (Command l s) c) → b
+foldie :: (a -> b → b) → b → (Command l s (Free (Command l s) c) → a) → (Free (Command l s) c) → b
 foldie f a g (Free t) = g t `f` foldie f a g (next t)
 foldie _ a _ (Pure _) = a
 
 
-mfoldie ∷ Monoid m ⇒ (Command l s (Free (Command l s) c) → m) → (Free (Command l s) c) → m
+mfoldie :: Monoid m ⇒ (Command l s (Free (Command l s) c) -> m) → (Free (Command l s) c) → m
 mfoldie = foldie mappend mempty
 
 
-foldieM ∷ Monad m ⇒ (Command l s (Free (Command l s) c) → m a) → Free (Command l s) c → m ()
+foldieM :: Monad m ⇒ (Command l s (Free (Command l s) c) -> m a) → Free (Command l s) c → m ()
 foldieM = foldie (>>) (return ())
-{-# SPECIALIZE foldieM ∷ (Command l s (Free (Command l s) c) → IO a) → Free (Command l s) c → IO () #-}
+{-# SPECIALIZE foldieM :: (Command l s (Free (Command l s) c) -> IO a) → Free (Command l s) c → IO () #-}
 
 
-foldieM_ ∷ Monad m ⇒ (Command l s (Free (Command l s) c) → m ()) → Free (Command l s) c → m ()
+foldieM_ :: Monad m ⇒ (Command l s (Free (Command l s) c) -> m ()) → Free (Command l s) c → m ()
 foldieM_ = foldie (>>) (return ())
-{-# SPECIALIZE foldieM_ ∷ (Command l s (Free (Command l s) c) → IO ()) → Free (Command l s) c → IO () #-}
+{-# SPECIALIZE foldieM_ :: (Command l s (Free (Command l s) c) -> IO ()) → Free (Command l s) c → IO () #-}

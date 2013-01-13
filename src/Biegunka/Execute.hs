@@ -52,18 +52,18 @@ data OnFail = Ignorant | Ask | Abortive
 
 
 data Execution t = Execution
-  { _dropPriviledges ∷ Bool
-  , _onFail ∷ OnFail
-  , _onFailCurrent ∷ OnFail
-  , _templates ∷ t
-  , _user ∷ String
+  { _dropPriviledges :: Bool
+  , _onFail :: OnFail
+  , _onFailCurrent :: OnFail
+  , _templates :: t
+  , _user :: String
   }
 
 
 makeLenses ''Execution
 
 
-defaultExecution ∷ Execution Bool
+defaultExecution :: Execution Bool
 defaultExecution = Execution
   { _dropPriviledges = False
   , _onFail = Ask
@@ -73,8 +73,8 @@ defaultExecution = Execution
   }
 
 
-react ∷ Lens (Execution t) (Execution t) OnFail OnFail
-react f e@(Execution {_onFail = x}) = (\y → e {_onFail = y, _onFailCurrent = y}) <$> f x
+react :: Lens (Execution t) (Execution t) OnFail OnFail
+react f e@(Execution {_onFail = x}) = (\y -> e {_onFail = y, _onFailCurrent = y}) <$> f x
 
 
 -- | Execute Interpreter
@@ -84,20 +84,20 @@ react f e@(Execution {_onFail = x}) = (\y → e {_onFail = y, _onFailCurrent = y
 -- Supports some options
 --
 -- @
--- main ∷ IO ()
+-- main :: IO ()
 -- main = executeWith (defaultExecution & react .~ Ignorant) $ do
 --   profile ...
 --   profile ...
 -- @
-executeWith ∷ ToSElem t ⇒ Execution t → Script Profile a → IO ()
+executeWith :: ToSElem t ⇒ Execution t -> Script Profile a → IO ()
 executeWith execution s = do
-  home ← getHomeDirectory
+  home <- getHomeDirectory
   let s' = infect home (flatten s)
       β = Map.construct s'
-  α ← load s'
-  getEnv "SUDO_USER" >>= \e → case e of
-    Just sudo → runStateT (fold s') execution { _user = sudo }
-    Nothing → runStateT (fold s') execution
+  α <- load s'
+  getEnv "SUDO_USER" >>= \e -> case e of
+    Just sudo -> runStateT (fold s') execution { _user = sudo }
+    Nothing -> runStateT (fold s') execution
   removeOrphanFiles α β
   removeOrphanRepos α β
   save β
@@ -106,11 +106,11 @@ executeWith execution s = do
   removeOrphanRepos = removeOrphan removeDirectoryRecursive sources
 
   removeOrphan f g = removeIfNotElem f `on` g
-  removeIfNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) $ (try (f x) ∷ IO (Either SomeException ())) >> return ()
+  removeIfNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) $ (try (f x) :: IO (Either SomeException ())) >> return ()
 
 
 -- | Execute interpreter with default options
-execute ∷ Script Profile () → IO ()
+execute :: Script Profile () -> IO ()
 execute = executeWith defaultExecution
 
 
@@ -133,20 +133,20 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold ∷ ToSElem t ⇒ Free (Command l ()) a → StateT (Execution t) IO ()
+fold :: ToSElem t ⇒ Free (Command l ()) a -> StateT (Execution t) IO ()
 fold (Free command) = do
-  try (execute' command) >>= \t → case t of
-    Left (SomeException e) → do
+  try (execute' command) >>= \t -> case t of
+    Left (SomeException e) -> do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      use onFailCurrent >>= \o → case o of
-        Ignorant → ignore command
-        Ask → fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p → case p of
-          "I" → ignore command
-          "R" → fold (Free command)
-          "A" → liftIO $ throwIO ExecutionAbortion
-          _ → ask
-        Abortive → liftIO $ throwIO ExecutionAbortion
-    _ → fold (next command)
+      use onFailCurrent >>= \o -> case o of
+        Ignorant -> ignore command
+        Ask -> fix $ \ask → map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p → case p of
+          "I" -> ignore command
+          "R" -> fold (Free command)
+          "A" -> liftIO $ throwIO ExecutionAbortion
+          _ -> ask
+        Abortive -> liftIO $ throwIO ExecutionAbortion
+    _ -> fold (next command)
  where
   prompt msg = liftIO $ putStr msg >> hFlush stdout >> getLine
 
@@ -161,7 +161,7 @@ fold (Pure _) = return ()
 
 
 -- | Command execution
-execute' ∷ ToSElem t ⇒ Command l s a → StateT (Execution t) IO ()
+execute' :: ToSElem t ⇒ Command l s a -> StateT (Execution t) IO ()
 execute' c = f c
  where
   f (S _ path _ update _) = liftIO $ update path
@@ -177,25 +177,25 @@ execute' c = f c
   h (Link src dst) = liftIO $ overWriteWith createSymbolicLink src dst
   h (Copy src dst) = liftIO $ overWriteWith copyFile src dst
   h (Template src dst substitute) = do
-    ts ← use templates
-    liftIO $ overWriteWith (\s d → toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+    ts <- use templates
+    liftIO $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   h (Shell p sc) = liftIO $ do
-    d ← getCurrentDirectory
+    d <- getCurrentDirectory
     setCurrentDirectory p
-    handle (\(SomeException _) → throwIO $ ShellCommandFailure sc) $ do
-      e ← system sc
+    handle (\(SomeException _) -> throwIO $ ShellCommandFailure sc) $ do
+      e <- system sc
       case e of
-        ExitFailure _ → throwIO $ ShellCommandFailure sc
-        _ → return ()
+        ExitFailure _ -> throwIO $ ShellCommandFailure sc
+        _ -> return ()
     setCurrentDirectory d
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
-    try (removeLink dst) ∷ IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
+    try (removeLink dst) :: IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
 
-dropWhile ∷ (Command l s (Free (Command l s) b) → Bool) → Free (Command l s) b → Free (Command l s) b
+dropWhile :: (Command l s (Free (Command l s) b) -> Bool) → Free (Command l s) b → Free (Command l s) b
 dropWhile f p@(Free c)
   | f c = dropWhile f (next c)
   | otherwise    = p

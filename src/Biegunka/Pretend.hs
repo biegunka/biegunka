@@ -21,10 +21,10 @@ import           Biegunka.State
 
 
 data Stat = Stat
-  { addedFiles ∷ Int
-  , addedRepos ∷ Int
-  , deletedFiles ∷ Int
-  , deletedRepos ∷ Int
+  { addedFiles :: Int
+  , addedRepos :: Int
+  , deletedFiles :: Int
+  , deletedRepos :: Int
   } deriving (Eq, Ord)
 
 
@@ -47,16 +47,16 @@ instance Show Stat where
 -- Prints execution log if asked
 --
 -- @
--- main ∷ IO ()
+-- main :: IO ()
 -- main = pretend $ do
 --   profile ...
 --   profile ...
 -- @
-pretend ∷ Script Profile a → IO ()
+pretend :: Script Profile a -> IO ()
 pretend script = do
-  home ← getHomeDirectory
+  home <- getHomeDirectory
   let script' = infect home (flatten script)
-  α ← load script'
+  α <- load script'
   let β = Map.construct script'
       stat = Stat
         { addedFiles = (countNotElems `on` filepaths) β α
@@ -77,13 +77,13 @@ pretend script = do
   void $ putStrLn "Press any key to continue" >> getLine
  where
   countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
-  logNotElems xs ys = execState (ifNotElem (\m → modify (\s → s ++ m ++ "\n")) xs ys) ""
-  ifNotElem f xs ys = forM_ xs $ \x → unless (x `elem` ys) (f x)
+  logNotElems xs ys = execState (ifNotElem (\m -> modify (\s → s ++ m ++ "\n")) xs ys) ""
+  ifNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) (f x)
 
   query s = do
     putStr (s ++ " [y/N] ") >> hFlush stdout
     getLine
 
   whenM ma mb = do
-    p ← ma
+    p <- ma
     when p mb
