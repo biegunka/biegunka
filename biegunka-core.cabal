@@ -45,6 +45,7 @@ test-suite spec
                      biegunka-core,
                      directory,
                      directory-layout,
+                     lens,
                      hspec
   hs-source-dirs:    tests
   main-is:           Main.hs

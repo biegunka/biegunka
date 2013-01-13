@@ -3,11 +3,11 @@
 module Biegunka.Source.Dummy (dummy, dummy_, sourceFailure) where
 
 import Control.Exception.Lifted (throwIO)
-import Control.Monad ((<=<))
 
 import Control.Monad.Free (liftF)
 import Data.Text (Text)
-import System.Directory.Layout (Layout, make)
+import System.FilePath (takeDirectory, takeFileName)
+import System.Directory.Layout
 
 import Biegunka.Language (Script, Layer(Files, Source), Command(S))
 import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
@@ -23,7 +23,9 @@ dummy :: Layout          -- ^ Layout to make
       -> FilePath        -- ^ Layout root (relative to user home directory)
       -> Script Files () -- ^ What to do with layout files
       -> Script Source ()
-dummy l p s = liftF $ S "localhost" p s (mapM_ print <=< make l) ()
+dummy l p s = liftF $ S "localhost" p s updateDummy ()
+ where
+  updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
 
 
 -- | Make specified layout at given path and do nothing
