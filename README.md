@@ -54,4 +54,4 @@ After execution of the script user has cloned git repository at `/home/user/.dot
 ## More sophisticated example
 See [wiki][1].
 
- [1]: https://github.com/supki/biegunka/wiki/Examples
+ [1]: https://github.com/biegunka/biegunka-core/wiki/Examples
