@@ -14,10 +14,10 @@ module Biegunka.Execute
 
 import Control.Applicative ((<$>))
 import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
-import Control.Monad (forM_, unless)
 import Data.Char (toUpper)
+import Data.List ((\\))
 import Data.Monoid ((<>))
-import Data.Function (fix, on)
+import Data.Function (fix)
 import Data.Typeable (Typeable)
 import Prelude hiding (dropWhile)
 import System.Exit (ExitCode(..))
@@ -92,20 +92,17 @@ executeWith :: ToSElem t => Execution t -> Script Profile a -> IO ()
 executeWith execution s = do
   home <- getHomeDirectory
   let s' = infect home (flatten s)
-      β = Map.construct s'
-  α <- load s'
+      b = Map.construct s'
+  a <- load s'
   getEnv "SUDO_USER" >>= \e -> case e of
     Just sudo -> runStateT (fold s') execution { _user = sudo }
     Nothing -> runStateT (fold s') execution
-  removeOrphanFiles α β
-  removeOrphanRepos α β
-  save β
+  mapM (wrap removeFile) (filepaths a \\ filepaths b)
+  mapM (wrap removeDirectoryRecursive) (sources a \\ sources b)
+  save b
  where
-  removeOrphanFiles = removeOrphan removeFile filepaths
-  removeOrphanRepos = removeOrphan removeDirectoryRecursive sources
-
-  removeOrphan f g = removeIfNotElem f `on` g
-  removeIfNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) $ (try (f x) :: IO (Either IOError ())) >> return ()
+  wrap :: FilePath -> IO (Either IOError ())
+  wrap f = try . f
 
 
 -- | Execute interpreter with default options
