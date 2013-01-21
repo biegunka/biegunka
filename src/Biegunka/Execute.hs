@@ -105,7 +105,7 @@ executeWith execution s = do
   removeOrphanRepos = removeOrphan removeDirectoryRecursive sources
 
   removeOrphan f g = removeIfNotElem f `on` g
-  removeIfNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) $ (try (f x) :: IO (Either SomeException ())) >> return ()
+  removeIfNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) $ (try (f x) :: IO (Either IOError ())) >> return ()
 
 
 -- | Execute interpreter with default options
