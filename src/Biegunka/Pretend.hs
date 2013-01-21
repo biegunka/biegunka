@@ -9,10 +9,9 @@ import qualified Data.Text.Lazy.IO as T
 import           System.Directory (getHomeDirectory)
 import           System.IO
 
-import           Biegunka.DB (Biegunka, load, filepaths, sources)
+import           Biegunka.DB
 import           Biegunka.Language (Script, Layer(..))
 import qualified Biegunka.Log as Log
-import qualified Biegunka.Map as Map
 import           Biegunka.Flatten
 import           Biegunka.State
 
@@ -36,7 +35,7 @@ pretend script = do
   home <- getHomeDirectory
   let script' = infect home (flatten script)
   a <- load script'
-  let b = Map.construct script'
+  let b = construct script'
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
     T.putStrLn $ Log.full script' a b

@@ -1,23 +1,28 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Biegunka.DB
   ( Biegunka, biegunize
   , load, save
   , filepaths, sources
+  , construct
   ) where
 
 import Control.Applicative ((<$>), empty)
 import Control.Exception (Exception, SomeException, handle, throw)
-import Control.Lens hiding ((.=), (<.>))
 import Control.Monad ((<=<))
-import Control.Monad.Free (Free)
 import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(..))
 import Data.Typeable (Typeable)
 
+import           Control.Lens hiding ((.=), (<.>))
+import qualified Control.Lens as CL
+import           Control.Monad.Free (Free)
+import           Control.Monad.State (State, execState)
 import           Data.Aeson
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
@@ -28,7 +33,7 @@ import qualified Data.Set as S
 import           System.Directory (getHomeDirectory, removeFile)
 import           System.FilePath ((</>), (<.>))
 
-import Biegunka.Language (Command(P), foldie)
+import Biegunka.Language
 
 
 newtype Biegunka = Biegunka
@@ -43,6 +48,16 @@ biegunize = Biegunka
 
 
 data AesonFailedToDecode = AesonFailedToDecode deriving (Typeable, Show)
+
+
+data Construct = Construct
+  { _profile :: String
+  , _source :: FilePath
+  , _biegunka :: Map String (Map FilePath (Set FilePath))
+  }
+
+
+makeLenses ''Construct
 
 
 instance Exception AesonFailedToDecode
@@ -102,3 +117,29 @@ sources = M.keys <=< M.elems . unBiegunka
 
 fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
+
+
+construct :: Free (Command l ()) a -> Biegunka
+construct cs = execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka . to biegunize
+
+
+g :: Command l () (Free (Command l ()) a) -> State Construct ()
+g (P name _ _) = do
+  profile CL..= name
+  biegunka . at name CL..= Just mempty
+g (S _ s _ _ _) = do
+  p <- use profile
+  source CL..= s
+  biegunka . at p . traverse . at s CL..= Just mempty
+g (F a _) = do
+  p <- use profile
+  s <- use source
+  biegunka . at p . traverse . at s . traverse <>= h a
+ where
+  h (Message _) = mempty
+  h (RegisterAt _ dst) = S.singleton dst
+  h (Link _ dst) = S.singleton dst
+  h (Copy _ dst) = S.singleton dst
+  h (Template _ dst _) = S.singleton dst
+  h (Shell {}) = mempty
+g (W _ _) = return ()

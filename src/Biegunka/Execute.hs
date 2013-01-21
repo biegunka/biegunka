@@ -40,11 +40,10 @@ import           System.Posix.User (getUserEntryForName, userID, setEffectiveUse
 import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
-import           Biegunka.DB
-import           Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
-import           Biegunka.Flatten
-import qualified Biegunka.Map as Map
-import           Biegunka.State
+import Biegunka.DB
+import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
+import Biegunka.Flatten
+import Biegunka.State
 
 
 data OnFail = Ignorant | Ask | Abortive
@@ -92,17 +91,17 @@ executeWith :: ToSElem t => Execution t -> Script Profile a -> IO ()
 executeWith execution s = do
   home <- getHomeDirectory
   let s' = infect home (flatten s)
-      b = Map.construct s'
+      b = construct s'
   a <- load s'
   getEnv "SUDO_USER" >>= \e -> case e of
     Just sudo -> runStateT (fold s') execution { _user = sudo }
     Nothing -> runStateT (fold s') execution
-  mapM (wrap removeFile) (filepaths a \\ filepaths b)
-  mapM (wrap removeDirectoryRecursive) (sources a \\ sources b)
+  mapM (wrap . removeFile) (filepaths a \\ filepaths b)
+  mapM (wrap . removeDirectoryRecursive) (sources a \\ sources b)
   save b
  where
-  wrap :: FilePath -> IO (Either IOError ())
-  wrap f = try . f
+  wrap :: IO () -> IO (Either IOError ())
+  wrap = try
 
 
 -- | Execute interpreter with default options

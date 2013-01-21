@@ -34,7 +34,6 @@ library
                  Biegunka.Pretend
                  Biegunka.Verify
                  Biegunka.Log
-                 Biegunka.Map
                  Biegunka.State
                  Biegunka.Flatten
   ghc-options: -Wall
