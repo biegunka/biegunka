@@ -1,40 +1,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Pretend (pretend) where
+module Biegunka.Pretend (pause, pretend) where
 
-import Control.Applicative ((<$>))
-import Control.Monad (forM_, void, unless, when)
-import Data.Function (on)
+import Data.List ((\\))
+import Control.Monad (when)
 
-import           Control.Monad.State (execState, modify)
 import qualified Data.Text.Lazy.IO as T
 import           System.Directory (getHomeDirectory)
-import           System.IO (hFlush, stdout)
+import           System.IO
 
-import           Biegunka.DB (load, filepaths, sources)
+import           Biegunka.DB (Biegunka, load, filepaths, sources)
 import           Biegunka.Language (Script, Layer(..))
 import qualified Biegunka.Log as Log
 import qualified Biegunka.Map as Map
 import           Biegunka.Flatten
 import           Biegunka.State
-
-
-data Stat = Stat
-  { addedFiles :: Int
-  , addedRepos :: Int
-  , deletedFiles :: Int
-  , deletedRepos :: Int
-  } deriving (Eq, Ord)
-
-
-instance Show Stat where
-  show s = unlines $ map unwords
-    [ [show (addedFiles s), "files", "added"]
-    , [show (addedRepos s), "repositories", "added"]
-    , [show (deletedFiles s), "files", "deleted"]
-    , [show (deletedRepos s), "repositories", "deleted"]
-    , ["------------------"]
-    ]
 
 
 -- | Pretend interpreter
@@ -55,34 +35,60 @@ pretend :: Script Profile a -> IO ()
 pretend script = do
   home <- getHomeDirectory
   let script' = infect home (flatten script)
-  α <- load script'
-  let β = Map.construct script'
-      stat = Stat
-        { addedFiles = (countNotElems `on` filepaths) β α
-        , addedRepos = (countNotElems `on` sources) β α
-        , deletedFiles = (countNotElems `on` filepaths) α β
-        , deletedRepos = (countNotElems `on` sources) α β
-        }
-  putStr $ show stat
-  whenM ((== "y") <$> query "Do you want to see full stats?") $ putStr $ unlines
-    [ "Added files:", (logNotElems `on` filepaths) β α
-    , "Added repositories:", (logNotElems `on` sources) β α
-    , "Deleted files:", (logNotElems `on` filepaths) α β
-    , "Deleted repositories:", (logNotElems `on` sources) α β
-    , "------------------"
-    ]
-  whenM ((== "y") <$> query "Do you want to see full log?") $
-    T.putStrLn $ Log.full script' α β
-  void $ putStrLn "Press any key to continue" >> getLine
+  a <- load script'
+  let b = Map.construct script'
+  putStr . talk $ stats a b
+  whenM (query "Print full log?") $
+    T.putStrLn $ Log.full script' a b
  where
-  countNotElems xs ys = execState (ifNotElem (const $ modify succ) xs ys) 0
-  logNotElems xs ys = execState (ifNotElem (\m -> modify (\s -> s ++ m ++ "\n")) xs ys) ""
-  ifNotElem f xs ys = forM_ xs $ \x -> unless (x `elem` ys) (f x)
-
-  query s = do
-    putStr (s ++ " [y/N] ") >> hFlush stdout
-    getLine
-
   whenM ma mb = do
     p <- ma
     when p mb
+
+
+pause :: Script Profile a -> IO ()
+pause _ = putStrLn "Press any key to continue" >> getChar' >> return ()
+
+
+data Stats = Stats
+  { addedF, addedS, deletedF, deletedS :: [FilePath]
+  } deriving (Show, Read, Eq, Ord)
+
+
+stats :: Biegunka -> Biegunka -> Stats
+stats a b = Stats
+  { addedF   = filepaths b \\ filepaths a
+  , addedS   = sources b   \\ sources a
+  , deletedF = filepaths a \\ filepaths b
+  , deletedS = sources a   \\ sources b
+  }
+
+
+talk :: Stats -> String
+talk (Stats af as df ds) = concat
+  [ about "added files" af
+  , about "added sources" as
+  , about "deleted files" df
+  , about "deleted sources" ds
+  ]
+ where
+  about msg xs = let c = length xs in case c of
+    0 -> ""
+    _ -> msg ++ " (" ++ show c ++ "):\n" ++ unlines (map ("  " ++) xs)
+
+
+query :: String -> IO Bool
+query s = do
+  putStr (s ++ " [yN] ")
+  hFlush stdout
+  c <- getChar'
+  putStrLn ""
+  return (c == 'y')
+
+
+getChar' :: IO Char
+getChar' = do
+  hSetBuffering stdin NoBuffering
+  c <- getChar
+  hSetBuffering stdin LineBuffering
+  return c

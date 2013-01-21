@@ -3,7 +3,7 @@
 -- | Biegunka - configuration management library
 module Biegunka
   ( -- * Interpreters
-    pretend, execute, executeWith, verify
+    pretend, pause, execute, executeWith, verify
     -- * Interpreters related
   , OnFail(..), dropPriviledges, react, templates, defaultExecution
     -- * Profile layer
@@ -22,7 +22,7 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..))
-import Biegunka.Pretend (pretend)
+import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
   , OnFail(..)
