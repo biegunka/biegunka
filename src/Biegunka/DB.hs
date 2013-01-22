@@ -126,11 +126,11 @@ construct cs = execState (foldieM_ g cs) Construct { _profile = mempty, _source 
 g :: Command l () (Free (Command l ()) a) -> State Construct ()
 g (P name _ _) = do
   profile CL..= name
-  biegunka . at name CL..= Just mempty
+  biegunka . at name ?= mempty
 g (S _ s _ _ _) = do
   p <- use profile
   source CL..= s
-  biegunka . at p . traverse . at s CL..= Just mempty
+  biegunka . at p . traverse . at s ?= mempty
 g (F a _) = do
   p <- use profile
   s <- use source

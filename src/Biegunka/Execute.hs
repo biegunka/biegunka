@@ -7,8 +7,8 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
   ( execute, executeWith
-  , dropPriviledges, react, templates, defaultExecution
-  , Execution, OnFail(..)
+  , Execution, defaultExecution, templates, dropPriviledges
+  , OnFail(..), react, Volubility(..), volubility
   , BiegunkaException(..)
   ) where
 
@@ -23,7 +23,7 @@ import Prelude hiding (dropWhile)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 
-import           Control.Lens (Lens, makeLenses, (.=), assign, use)
+import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (liftIO)
@@ -41,6 +41,7 @@ import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
 import Biegunka.DB
+import Biegunka.Execute.Narrator
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
 import Biegunka.Flatten
 import Biegunka.State
@@ -55,6 +56,7 @@ data Execution t = Execution
   , _onFailCurrent :: OnFail
   , _templates :: t
   , _user :: String
+  , _volubility :: Volubility
   }
 
 
@@ -68,6 +70,7 @@ defaultExecution = Execution
   , _onFailCurrent = Ask
   , _templates = False
   , _user = []
+  , _volubility = Casual
   }
 
 
@@ -93,9 +96,10 @@ executeWith execution s = do
   let s' = infect home (flatten s)
       b = construct s'
   a <- load s'
+  n <- narrator (_volubility execution)
   getEnv "SUDO_USER" >>= \e -> case e of
-    Just sudo -> runStateT (fold s') execution { _user = sudo }
-    Nothing -> runStateT (fold s') execution
+    Just sudo -> runStateT (fold s') (n, execution { _user = sudo })
+    Nothing -> runStateT (fold s') (n, execution)
   mapM (wrap . removeFile) (filepaths a \\ filepaths b)
   mapM (wrap . removeDirectoryRecursive) (sources a \\ sources b)
   save b
@@ -128,12 +132,12 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: ToSElem t => Free (Command l ()) a -> StateT (Execution t) IO ()
+fold :: ToSElem t => Free (Command l ()) a -> StateT (Narrative, Execution t) IO ()
 fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      use onFailCurrent >>= \o -> case o of
+      use (_2 . onFailCurrent) >>= \o -> case o of
         Ignorant -> ignore command
         Ask -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
@@ -156,23 +160,27 @@ fold (Pure _) = return ()
 
 
 -- | Command execution
-execute' :: ToSElem t => Command l s a -> StateT (Execution t) IO ()
+execute' :: ToSElem t => Command l s a -> StateT (Narrative, Execution t) IO ()
 execute' c = f c
  where
-  f (S _ path _ update _) = liftIO $ update path
+  f :: ToSElem t => Command l s a -> StateT (Narrative, Execution t) IO ()
+  f (S url path _ update _) = do
+    narrate (Typical $ "Emerging source: " ++ url)
+    liftIO $ update path
   f (F a _) = h a
-  f (W (Ignorance True) _) = onFailCurrent .= Ignorant
-  f (W (Ignorance False) _) = use onFail >>= assign onFailCurrent
+  f (W (Ignorance True) _) = _2 . onFailCurrent .= Ignorant
+  f (W (Ignorance False) _) = use (_2 . onFail) >>= assign (_2 . onFailCurrent)
   f (W (User (Just name)) _) = liftIO $ getUserEntryForName name >>= setEffectiveUserID . userID
-  f (W (User Nothing) _) = use user >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
+  f (W (User Nothing) _) = use (_2 . user) >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
   f _ = return ()
 
+  h :: ToSElem t => Action -> StateT (Narrative, Execution t) IO ()
   h (Message m) = liftIO $ putStrLn m
   h (RegisterAt src dst) = liftIO $ overWriteWith createSymbolicLink src dst
   h (Link src dst) = liftIO $ overWriteWith createSymbolicLink src dst
   h (Copy src dst) = liftIO $ overWriteWith copyFile src dst
   h (Template src dst substitute) = do
-    ts <- use templates
+    ts <- use (_2 . templates)
     liftIO $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   h (Shell p sc) = liftIO $ do
     d <- getCurrentDirectory

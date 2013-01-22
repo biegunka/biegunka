@@ -31,6 +31,7 @@ library
                    Biegunka.Language
   other-modules: Biegunka.DB
                  Biegunka.Execute
+                 Biegunka.Execute.Narrator
                  Biegunka.Pretend
                  Biegunka.Verify
                  Biegunka.Log

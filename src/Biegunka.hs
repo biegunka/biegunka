@@ -5,7 +5,8 @@ module Biegunka
   ( -- * Interpreters
     pretend, pause, execute, executeWith, verify
     -- * Interpreters related
-  , OnFail(..), dropPriviledges, react, templates, defaultExecution
+  , defaultExecution, templates, dropPriviledges
+  , OnFail(..), react, Volubility(..), volubility
     -- * Profile layer
   , profile
     -- * File layer
@@ -25,8 +26,8 @@ import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
-  , OnFail(..)
-  , dropPriviledges, react, templates, defaultExecution
+  , defaultExecution, templates, dropPriviledges
+  , OnFail(..), react, Volubility(..), volubility
   )
 import Biegunka.Verify (verify)
 
