@@ -95,10 +95,12 @@ shell :: String -> Script Files
 shell c = liftF $ F (Shell mempty c) ()
 
 
+-- | Change effective user id for wrapped commands
 sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
 sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
 
 
+-- | Change reaction pattern for wrapped commands
 reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
 reacting r cs = liftF (W (Reacting (Just r)) ()) >> cs >> liftF (W (Reacting Nothing) ())
 
