@@ -1,4 +1,5 @@
 language: haskell
 install:
+ - cabal update
  - cabal install --force-reinstalls
 script: true
