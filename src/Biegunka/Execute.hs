@@ -49,13 +49,10 @@ import Biegunka.Execute.Narrator
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
-data Priviledges =
-    Drop
-  | Preserve
-    deriving (Show, Read, Eq, Ord)
+type Execution t a = StateT (Narrative, ExecutionState t) IO a
 
 
-data Execution t = Execution
+data ExecutionState t = ExecutionState
   { _priviledges :: Priviledges
   , _react :: React
   , _reactStack :: [React]
@@ -64,12 +61,15 @@ data Execution t = Execution
   , _volubility :: Volubility
   }
 
+data Priviledges =
+    Drop
+  | Preserve
+    deriving (Show, Read, Eq, Ord)
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
+makeLenses ''ExecutionState
 
-
-defaultExecution :: Execution Bool
-defaultExecution = Execution
+defaultExecution :: ExecutionState Bool
+defaultExecution = ExecutionState
   { _priviledges = Preserve
   , _react = Asking
   , _reactStack = []
@@ -77,9 +77,6 @@ defaultExecution = Execution
   , _userStack = []
   , _volubility = Casual
   }
-
-
-react :: Lens (Execution t) (Execution t) React React
 
 
 -- | Execute Interpreter
@@ -94,7 +91,7 @@ react :: Lens (Execution t) (Execution t) React React
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ToSElem t => Execution t -> Interpreter
+executeWith :: ToSElem t => ExecutionState t -> Interpreter
 executeWith execution = I $ \s -> do
   let b = construct s
   a <- load s
@@ -130,7 +127,7 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: ToSElem t => Free (Command l ()) a -> StateT (Narrative, Execution t) IO ()
+fold :: ToSElem t => Free (Command l ()) a -> Execution t ()
 fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
@@ -158,10 +155,10 @@ fold (Pure _) = return ()
 
 
 -- | Command execution
-execute' :: ToSElem t => Command l s a -> StateT (Narrative, Execution t) IO ()
+execute' :: ToSElem t => Command l s a -> Execution t ()
 execute' c = f c
  where
-  f :: ToSElem t => Command l s a -> StateT (Narrative, Execution t) IO ()
+  f :: ToSElem t => Command l s a -> Execution t ()
   f (S url path _ update _) = do
     narrate (Typical $ "Emerging source: " ++ url)
     io $ update path
@@ -172,7 +169,7 @@ execute' c = f c
   f (W (User Nothing) _)  = use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
   f _ = return ()
 
-  h :: ToSElem t => Action -> StateT (Narrative, Execution t) IO ()
+  h :: ToSElem t => Action -> Execution t ()
   h (Message m) = io $ putStrLn m
   h (RegisterAt src dst) = io $ overWriteWith createSymbolicLink src dst
   h (Link src dst) = io $ overWriteWith createSymbolicLink src dst
