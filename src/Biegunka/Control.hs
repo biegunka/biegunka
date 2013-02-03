@@ -50,8 +50,8 @@ instance Monoid Interpreter where
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
-biegunka :: Controls         -- ^ Common settings
-         -> Script Profile a -- ^ Script to interpret
-         -> Interpreter      -- ^ Combined interpreters
+biegunka :: Controls       -- ^ Common settings
+         -> Script Profile -- ^ Script to interpret
+         -> Interpreter    -- ^ Combined interpreters
          -> IO ()
 biegunka c s (I i) = i $ (c ^. root) `infect` flatten s

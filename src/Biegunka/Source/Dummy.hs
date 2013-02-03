@@ -19,10 +19,10 @@ import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
 -- real ones.but it is easier to reason about because you
 -- don't depend on internet connection, installed libraries
 -- and so on.
-dummy :: Layout          -- ^ Layout to make
-      -> FilePath        -- ^ Layout root (relative to user home directory)
-      -> Script Files () -- ^ What to do with layout files
-      -> Script Source ()
+dummy :: Layout       -- ^ Layout to make
+      -> FilePath     -- ^ Layout root (relative to user home directory)
+      -> Script Files -- ^ What to do with layout files
+      -> Script Source
 dummy l p s = liftF $ S "localhost" p s updateDummy ()
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
@@ -35,7 +35,7 @@ dummy l p s = liftF $ S "localhost" p s updateDummy ()
 -- download 'Source' somewhere
 dummy_ :: Layout   -- ^ Layout to make
        -> FilePath -- ^ Layout root (relative to user home directory)
-       -> Script Source ()
+       -> Script Source
 dummy_ l p = dummy l p (return ())
 
 

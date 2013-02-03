@@ -39,7 +39,7 @@ import Biegunka.Verify (verify)
 -- > message "hello!"
 --
 -- prints \"hello!\"
-message :: String -> Script Files ()
+message :: String -> Script Files
 message m = liftF $ F (Message m) ()
 
 
@@ -49,7 +49,7 @@ message m = liftF $ F (Message m) ()
 -- >   registerAt "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
-registerAt :: FilePath -> Script Files ()
+registerAt :: FilePath -> Script Files
 registerAt dst = liftF $ F (RegisterAt mempty dst) ()
 
 
@@ -59,7 +59,7 @@ registerAt dst = liftF $ F (RegisterAt mempty dst) ()
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link :: FilePath -> FilePath -> Script Files ()
+link :: FilePath -> FilePath -> Script Files
 link src dst = liftF $ F (Link src dst) ()
 
 
@@ -69,7 +69,7 @@ link src dst = liftF $ F (Link src dst) ()
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy :: FilePath -> FilePath -> Script Files ()
+copy :: FilePath -> FilePath -> Script Files
 copy src dst = liftF $ F (Copy src dst) ()
 
 
@@ -80,7 +80,7 @@ copy src dst = liftF $ F (Copy src dst) ()
 --
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
-substitute :: FilePath -> FilePath -> Script Files ()
+substitute :: FilePath -> FilePath -> Script Files
 substitute src dst = liftF $
   F (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 
@@ -91,7 +91,7 @@ substitute src dst = liftF $
 -- >   shell "echo -n hello"
 --
 -- Prints "hello" (without a newline)
-shell :: String -> Script Files ()
+shell :: String -> Script Files
 shell c = liftF $ F (Shell mempty c) ()
 
 
@@ -112,5 +112,5 @@ ignorant cs = liftF (W (Ignorance True) ()) >> cs >> liftF (W (Ignorance False) 
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile :: String -> Script Source () -> Script Profile ()
+profile :: String -> Script Source -> Script Profile
 profile name repo = liftF $ P name repo ()

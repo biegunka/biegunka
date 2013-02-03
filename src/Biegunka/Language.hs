@@ -22,12 +22,12 @@ import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
 
 
-type family Script (a :: Layer) :: * -> *
+type family Script (a :: Layer) :: *
 
 
-type instance (Script Files)   = Free (Command Files ())
-type instance (Script Source)  = Free (Command Source (Script Files ()))
-type instance (Script Profile) = Free (Command Profile (Script Source ()))
+type instance Script Files   = Free (Command Files ()) ()
+type instance Script Source  = Free (Command Source (Script Files)) ()
+type instance Script Profile = Free (Command Profile (Script Source)) ()
 
 
 data Layer = Files | Source | Profile
