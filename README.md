@@ -1,7 +1,6 @@
-# Biegunka
+# biegunka
 [![Build Status](https://secure.travis-ci.org/biegunka/biegunka-core.png?branch=master)](http://travis-ci.org/biegunka/biegunka-core)  
-This library provides tools to write configuration files management scripts.
-*Requires GHC 7.6*
+Configurations management library.
 
 ## Installing
 ```
@@ -9,47 +8,58 @@ cabal install
 ```
 
 ## Getting started
-The simplest yet meaningful Biegunka script
+The simplest yet meaningful biegunka script
 
 ```haskell
+import Data.Monoid
 import Biegunka
 import Biegunka.Source.Git
 
 main :: IO ()
-main = execute $
+main = biegunka def (pretend `mappend` execute) $
   profile "my-configs" $
     git "https://my.server.with.configs.com/dotfiles" "/home/user/.dotfiles" $
-	  link "xmonad.hs" ".xmonad/xmonad.hs"
+	  link "xmonad.hs" "/home/user/.xmonad/xmonad.hs"
 ```
-This example doesn't do very much but is useful to get high level intuition about what Biegunka scripts are. Let's start line by line.
+We use it as an example to get high level intuition about what `biegunka` is.
 
 ```haskell
+import Data.Monoid
 import Biegunka
 import Biegunka.Source.Git
 ```
-Needed imports. `Biegunka` imports infrastructure for scripts, `Biegunka.Source.Git` allows to use `git` function to clone and update git repository.
+
+Necessary imports:
+  * `Data.Monoid` contains `mappend` which is useful for composition
+  * `Biegunka` module contains core functionality such as copying or linking files from sources
+  * `Biegunka.Source.Git` enables git support
+
+Note: there are other `Source` modules like `Biegunka.Source.Darcs` or `Biegunka.Source.Tar` for different kinds of sources you may want to use.
 
 ```haskell
-main = execute $
+main = biegunka def (pretend `mappend` execute) $
 ```
-Any Biegunka script should be executed by some interpreter, `execute` is one of them: it does *real* work.
+Biegunka scripts are executed by interpreters. Here we see 2 of them:
+ * `pretend` assumes everything went without errors and prints script stats based on that assumption
+ * `execute` does real work of getting sources and moving files
+Note: interpreters compose with `Data.Monoid.mappend`.
 
 ```haskell
   profile "my-configs" $
 ```
-Profiles are useful for grouping repositories together. They don't have any meaning besides that (yet) and exist for clarity of the code.
+
+Profiles are groups of related sources. Each profile gets its own database, so changes in one Profile don't affect others.
 
 ```haskell
     git "https://my.server.with.configs.com/dotfiles" "/home/user/.dotfiles" $
 ```
-Okay, that's where things become interesting. This command creates `/home/user/.dotfiles` directory and clones `https://my.server.with.configs.com/dotfiles.git` there. By default it uses `origin` remote and `master` branch.
+
+Sources are "places with files". `git` takes git repository at `https://my.server.with.configs.com/dotfiles.git` and clones it to `/home/user/.dotfiles`
 
 ```haskell
-	  link "xmonad.hs" ".xmonad/xmonad.hs"
+	  link "xmonad.hs" "/hone/user/.xmonad/xmonad.hs"
 ```
-This command links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmonad.hs` creating necessary directories.
-
-After execution of the script user has cloned git repository at `/home/user/.dotfiles` and XMonad config at `/home/user/.xmonad/xmonad.hs` linked from it.
+File operations layer provides functions to work with sources files, for example, `link` links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmonad.hs`.
 
 ## More sophisticated example
 See [wiki][1].
