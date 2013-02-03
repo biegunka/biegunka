@@ -134,18 +134,18 @@ fold :: ToSElem t => Free (Command l ()) a -> StateT (Narrative, Execution t) IO
 fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
-      liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
+      io . T.putStrLn $ "FAIL: " <> T.pack (show e)
       liftA2 (<|>) (use (_2 . reactStack)) (return <$> use (_2 . react)) >>= \(o:_) -> case o of
         Ignorant -> ignore command
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
           "R" -> fold (Free command)
-          "A" -> liftIO $ throwIO ExecutionAbortion
+          "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
-        Abortive -> liftIO $ throwIO ExecutionAbortion
+        Abortive -> io $ throwIO ExecutionAbortion
     _ -> fold (next command)
  where
-  prompt msg = liftIO $ putStr msg >> hFlush stdout >> getLine
+  prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
   ignore S {} = fold (dropWhile skip (next command))
   ignore _    = fold (next command)
@@ -164,23 +164,23 @@ execute' c = f c
   f :: ToSElem t => Command l s a -> StateT (Narrative, Execution t) IO ()
   f (S url path _ update _) = do
     narrate (Typical $ "Emerging source: " ++ url)
-    liftIO $ update path
+    io $ update path
   f (F a _) = h a
   f (W (Reacting (Just r)) _) = _2 . reactStack %= (r :)
   f (W (Reacting Nothing) _)  = _2 . reactStack %= drop 1
-  f (W (User (Just n)) _) = liftIO getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
+  f (W (User (Just n)) _) = io getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
   f (W (User Nothing) _)  = use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
   f _ = return ()
 
   h :: ToSElem t => Action -> StateT (Narrative, Execution t) IO ()
-  h (Message m) = liftIO $ putStrLn m
-  h (RegisterAt src dst) = liftIO $ overWriteWith createSymbolicLink src dst
-  h (Link src dst) = liftIO $ overWriteWith createSymbolicLink src dst
-  h (Copy src dst) = liftIO $ overWriteWith copyFile src dst
+  h (Message m) = io $ putStrLn m
+  h (RegisterAt src dst) = io $ overWriteWith createSymbolicLink src dst
+  h (Link src dst) = io $ overWriteWith createSymbolicLink src dst
+  h (Copy src dst) = io $ overWriteWith copyFile src dst
   h (Template src dst substitute) = do
     ts <- use (_2 . templates)
-    liftIO $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  h (Shell p sc) = liftIO $ do
+    io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+  h (Shell p sc) = io $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
     handle (\(SomeException _) -> throwIO $ ShellCommandFailure sc) $ do
@@ -204,4 +204,8 @@ dropWhile _ x@(Pure _) = x
 
 
 setUser :: MonadIO m => String -> m ()
-setUser n = liftIO $ getUserEntryForName n >>= setEffectiveUserID . userID
+setUser n = io $ getUserEntryForName n >>= setEffectiveUserID . userID
+
+
+io :: MonadIO m => IO a -> m a
+io = liftIO
