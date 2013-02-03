@@ -13,7 +13,7 @@ module Biegunka
     -- * File layer
   , message, registerAt, copy, link, substitute
   , shell
-  , sudo, reacting, ignorant, asking, abortive
+  , sudo, reacting
     -- * Convenient type aliases
   , Script, Layer(..)
   ) where
@@ -101,11 +101,6 @@ sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) 
 
 reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
 reacting r cs = liftF (W (Reacting (Just r)) ()) >> cs >> liftF (W (Reacting Nothing) ())
-
-ignorant, asking, abortive :: Free (Command l s) () -> Free (Command l s) ()
-ignorant = reacting Ignorant
-asking   = reacting Asking
-abortive = reacting Abortive
 
 
 -- | Configuration profile
