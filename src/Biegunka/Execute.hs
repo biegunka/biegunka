@@ -8,11 +8,11 @@
 module Biegunka.Execute
   ( execute, executeWith
   , Execution, defaultExecution, templates, dropPriviledges
-  , OnFail(..), react, Volubility(..), volubility
+  , React(..), react, Volubility(..), volubility
   , BiegunkaException(..)
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
 import Data.Char (toUpper)
 import Data.List ((\\))
@@ -46,35 +46,34 @@ import Biegunka.Execute.Narrator
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), next)
 
 
-data OnFail = Ignorant | Ask | Abortive
+data React = Ignorant | Ask | Abortive
 
 
 data Execution t = Execution
   { _dropPriviledges :: Bool
-  , _onFail :: OnFail
-  , _onFailCurrent :: OnFail
+  , _react :: React
+  , _reactCurrent :: Maybe React
   , _templates :: t
   , _user :: String
   , _volubility :: Volubility
   }
 
 
-makeLenses ''Execution
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 
 defaultExecution :: Execution Bool
 defaultExecution = Execution
   { _dropPriviledges = False
-  , _onFail = Ask
-  , _onFailCurrent = Ask
+  , _react = Ask
+  , _reactCurrent = Nothing
   , _templates = False
   , _user = []
   , _volubility = Casual
   }
 
 
-react :: Lens (Execution t) (Execution t) OnFail OnFail
-react f e@(Execution {_onFail = x}) = (\y -> e {_onFail = y, _onFailCurrent = y}) <$> f x
+react :: Lens (Execution t) (Execution t) React React
 
 
 -- | Execute Interpreter
@@ -134,7 +133,7 @@ fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      use (_2 . onFailCurrent) >>= \o -> case o of
+      liftA2 (<|>) (use (_2 . reactCurrent)) (Just <$> use (_2 . react)) >>= \(Just o) -> case o of
         Ignorant -> ignore command
         Ask -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
@@ -165,8 +164,8 @@ execute' c = f c
     narrate (Typical $ "Emerging source: " ++ url)
     liftIO $ update path
   f (F a _) = h a
-  f (W (Ignorance True) _) = _2 . onFailCurrent .= Ignorant
-  f (W (Ignorance False) _) = use (_2 . onFail) >>= assign (_2 . onFailCurrent)
+  f (W (Ignorance True) _) = _2 . reactCurrent .= Just Ignorant
+  f (W (Ignorance False) _) = _2 . reactCurrent .= Nothing
   f (W (User (Just name)) _) = liftIO $ getUserEntryForName name >>= setEffectiveUserID . userID
   f (W (User Nothing) _) = use (_2 . user) >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
   f _ = return ()

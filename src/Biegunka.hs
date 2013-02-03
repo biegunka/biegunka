@@ -7,7 +7,7 @@ module Biegunka
   , pretend, pause, execute, executeWith, verify
     -- * Interpreters related
   , defaultExecution, templates, dropPriviledges
-  , OnFail(..), react, Volubility(..), volubility
+  , React(..), react, Volubility(..), volubility
     -- * Profile layer
   , profile
     -- * File layer
@@ -29,7 +29,7 @@ import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
   , defaultExecution, templates, dropPriviledges
-  , OnFail(..), react, Volubility(..), volubility
+  , React(..), react, Volubility(..), volubility
   )
 import Biegunka.Verify (verify)
 
