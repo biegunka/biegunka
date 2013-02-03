@@ -191,7 +191,7 @@ execute' c = f c
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
-    try (removeLink dst) :: IO (Either SomeException ()) -- needed because removeLink throws an unintended exception if file is absent
+    try (removeLink dst) :: IO (Either IOError ()) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
 
