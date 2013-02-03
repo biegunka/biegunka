@@ -1,9 +1,10 @@
 {-# LANGUAGE DataKinds #-}
-{-# OPTIONS_HADDOCK prune #-}
 -- | Biegunka - configuration management library
 module Biegunka
-  ( -- * Interpreters
-    pretend, pause, execute, executeWith, verify
+  ( -- * Interpreters control
+    biegunka, Controls, root
+    -- * Interpreters
+  , pretend, pause, execute, executeWith, verify
     -- * Interpreters related
   , defaultExecution, templates, dropPriviledges
   , OnFail(..), react, Volubility(..), volubility
@@ -22,6 +23,7 @@ import Data.Monoid (mempty)
 import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
+import Biegunka.Control (biegunka, Controls, root)
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..))
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute

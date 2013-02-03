@@ -6,10 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.DB
-  ( Biegunka, biegunize
-  , load, save
+  ( Biegunka
+  , load, save, construct
   , filepaths, sources
-  , construct
   ) where
 
 import Control.Applicative ((<$>), empty)
@@ -41,10 +40,6 @@ newtype Biegunka = Biegunka
 
 
 newtype Repos = Repos (Map FilePath (Set FilePath))
-
-
-biegunize :: Map String (Map FilePath (Set FilePath)) -> Biegunka
-biegunize = Biegunka
 
 
 data AesonFailedToDecode = AesonFailedToDecode deriving (Typeable, Show)
@@ -120,7 +115,8 @@ fromStrict = BL.fromChunks . return
 
 
 construct :: Free (Command l ()) a -> Biegunka
-construct cs = execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka . to biegunize
+construct cs = Biegunka $
+  execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka
 
 
 g :: Command l () (Free (Command l ()) a) -> State Construct ()

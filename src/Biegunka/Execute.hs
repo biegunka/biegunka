@@ -27,7 +27,7 @@ import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (liftIO)
-import           System.Directory (getCurrentDirectory, getHomeDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
+import           System.Directory (getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -40,11 +40,10 @@ import           System.Posix.User (getUserEntryForName, userID, setEffectiveUse
 import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
+import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Narrator
-import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), next)
-import Biegunka.Flatten
-import Biegunka.State
+import Biegunka.Language (Command(..), Action(..), Wrapper(..), next)
 
 
 data OnFail = Ignorant | Ask | Abortive
@@ -90,16 +89,14 @@ react f e@(Execution {_onFail = x}) = (\y -> e {_onFail = y, _onFailCurrent = y}
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ToSElem t => Execution t -> Script Profile a -> IO ()
-executeWith execution s = do
-  home <- getHomeDirectory
-  let s' = infect home (flatten s)
-      b = construct s'
-  a <- load s'
+executeWith :: ToSElem t => Execution t -> Interpreter
+executeWith execution = I $ \s -> do
+  let b = construct s
+  a <- load s
   n <- narrator (_volubility execution)
   getEnv "SUDO_USER" >>= \e -> case e of
-    Just sudo -> runStateT (fold s') (n, execution { _user = sudo })
-    Nothing -> runStateT (fold s') (n, execution)
+    Just sudo -> runStateT (fold s) (n, execution { _user = sudo })
+    Nothing -> runStateT (fold s) (n, execution)
   mapM (wrap . removeFile) (filepaths a \\ filepaths b)
   mapM (wrap . removeDirectoryRecursive) (sources a \\ sources b)
   save b
@@ -109,7 +106,7 @@ executeWith execution s = do
 
 
 -- | Execute interpreter with default options
-execute :: Script Profile () -> IO ()
+execute :: Interpreter
 execute = executeWith defaultExecution
 
 

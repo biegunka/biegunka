@@ -6,14 +6,11 @@ import Data.List ((\\))
 import Control.Monad (when)
 
 import qualified Data.Text.Lazy.IO as T
-import           System.Directory (getHomeDirectory)
 import           System.IO
 
 import           Biegunka.DB
-import           Biegunka.Language (Script, Layer(..))
 import qualified Biegunka.Log as Log
-import           Biegunka.Flatten
-import           Biegunka.State
+import           Biegunka.Control (Interpreter(..))
 
 
 -- | Pretend interpreter
@@ -30,23 +27,21 @@ import           Biegunka.State
 --   profile ...
 --   profile ...
 -- @
-pretend :: Script Profile a -> IO ()
-pretend script = do
-  home <- getHomeDirectory
-  let script' = infect home (flatten script)
-  a <- load script'
-  let b = construct script'
+pretend :: Interpreter
+pretend = I $ \s -> do
+  a <- load s
+  let b = construct s
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
-    T.putStrLn $ Log.full script' a b
+    T.putStrLn $ Log.full s a b
  where
   whenM ma mb = do
     p <- ma
     when p mb
 
 
-pause :: Script Profile a -> IO ()
-pause _ = putStrLn "Press any key to continue" >> getChar' >> return ()
+pause :: Interpreter
+pause = I $ \_ -> putStrLn "Press any key to continue" >> getChar' >> return ()
 
 
 data Stats = Stats

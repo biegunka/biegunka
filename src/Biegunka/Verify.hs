@@ -11,12 +11,11 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
-import           System.Directory (doesDirectoryExist, doesFileExist, getHomeDirectory)
+import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.Language (Script, Layer(..), Command(..), Action(..), foldie)
-import Biegunka.Flatten
-import Biegunka.State
+import Biegunka.Control (Interpreter(..))
+import Biegunka.Language (Command(..), Action(..), foldie)
 
 
 -- | Verify interpreter
@@ -31,10 +30,9 @@ import Biegunka.State
 --   profile ...
 --   profile ...
 -- @
-verify :: Script Profile a -> IO ()
-verify s = do
-  home <- getHomeDirectory
-  (verified, failures) <- runWriterT . f . infect home . flatten $ s
+verify :: Interpreter
+verify = I $ \s -> do
+  (verified, failures) <- runWriterT (f s)
   putStr "Verify… "
   if verified
     then putStrLn "OK"

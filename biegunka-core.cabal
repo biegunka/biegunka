@@ -24,12 +24,14 @@ library
                  free,
                  lens >= 3.0.2,
                  directory-layout,
+                 data-default,
                  HStringTemplate
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy
                    Biegunka.Language
   other-modules: Biegunka.DB
+                 Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Narrator
                  Biegunka.Pretend
