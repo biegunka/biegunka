@@ -22,7 +22,7 @@ library
                  mtl >= 2.1 && < 2.2,
                  lifted-base,
                  free,
-                 lens >= 3.8
+                 lens >= 3.8,
                  directory-layout,
                  data-default,
                  HStringTemplate

@@ -50,7 +50,7 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 data Execution t = Execution
   { _dropPriviledges :: Bool
   , _react :: React
-  , _reactCurrent :: [React]
+  , _reactStack :: [React]
   , _templates :: t
   , _user :: String
   , _volubility :: Volubility
@@ -64,7 +64,7 @@ defaultExecution :: Execution Bool
 defaultExecution = Execution
   { _dropPriviledges = False
   , _react = Asking
-  , _reactCurrent = []
+  , _reactStack = []
   , _templates = False
   , _user = []
   , _volubility = Casual
@@ -128,7 +128,7 @@ fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      liftA2 (<|>) (use (_2 . reactCurrent)) (return <$> use (_2 . react)) >>= \(o:_) -> case o of
+      liftA2 (<|>) (use (_2 . reactStack)) (return <$> use (_2 . react)) >>= \(o:_) -> case o of
         Ignorant -> ignore command
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
@@ -159,8 +159,8 @@ execute' c = f c
     narrate (Typical $ "Emerging source: " ++ url)
     liftIO $ update path
   f (F a _) = h a
-  f (W (Reacting (Just r)) _) = _2 . reactCurrent %= (r :)
-  f (W (Reacting Nothing) _)  = _2 . reactCurrent %= drop 1
+  f (W (Reacting (Just r)) _) = _2 . reactStack %= (r :)
+  f (W (Reacting Nothing) _)  = _2 . reactStack %= drop 1
   f (W (User (Just name)) _) = liftIO $ getUserEntryForName name >>= setEffectiveUserID . userID
   f (W (User Nothing) _) = use (_2 . user) >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
   f _ = return ()
