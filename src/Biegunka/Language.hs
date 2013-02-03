@@ -9,7 +9,7 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Language
   ( Script, Layer(..)
-  , Command(..), Action(..), Wrapper(..)
+  , Command(..), Action(..), Wrapper(..), React(..)
   , foldie, mfoldie, foldieM, foldieM_
   , next
   ) where
@@ -67,7 +67,10 @@ data Action =
 
 data Wrapper =
     User (Maybe String)
-  | Ignorance Bool
+  | Reacting (Maybe React)
+
+
+data React = Ignorant | Asking | Abortive
 
 
 foldie :: (a -> b -> b) -> b -> (Command l s (Free (Command l s) c) -> a) -> (Free (Command l s) c) -> b

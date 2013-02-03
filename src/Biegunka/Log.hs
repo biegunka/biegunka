@@ -46,7 +46,7 @@ g (F a _) = h a
     "Shell `" <> string c <> "` from " <> string p <> "\n"
 g (W a _) = h a
  where
-  h (Ignorance _) = mempty
+  h (Reacting _) = mempty
   h (User (Just user)) = "--- * Do stuff from user " <> string user <> " * ---"
   h (User Nothing) = "--- * Do stuff from default user * ---"
 

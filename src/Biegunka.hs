@@ -13,7 +13,7 @@ module Biegunka
     -- * File layer
   , message, registerAt, copy, link, substitute
   , shell
-  , sudo, ignorant
+  , sudo, reacting, ignorant, asking, abortive
     -- * Convenient type aliases
   , Script, Layer(..)
   ) where
@@ -24,12 +24,12 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root)
-import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..))
+import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
   , defaultExecution, templates, dropPriviledges
-  , React(..), react, Volubility(..), volubility
+  , react, Volubility(..), volubility
   )
 import Biegunka.Verify (verify)
 
@@ -99,8 +99,13 @@ sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
 sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
 
 
-ignorant :: Free (Command l s) () -> Free (Command l s) ()
-ignorant cs = liftF (W (Ignorance True) ()) >> cs >> liftF (W (Ignorance False) ())
+reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
+reacting r cs = liftF (W (Reacting (Just r)) ()) >> cs >> liftF (W (Reacting Nothing) ())
+
+ignorant, asking, abortive :: Free (Command l s) () -> Free (Command l s) ()
+ignorant = reacting Ignorant
+asking   = reacting Asking
+abortive = reacting Abortive
 
 
 -- | Configuration profile

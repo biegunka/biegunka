@@ -8,7 +8,7 @@
 module Biegunka.Execute
   ( execute, executeWith
   , Execution, defaultExecution, templates, dropPriviledges
-  , React(..), react, Volubility(..), volubility
+  , react, Volubility(..), volubility
   , BiegunkaException(..)
   ) where
 
@@ -44,16 +44,13 @@ import           Text.StringTemplate (ToSElem(..))
 import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Narrator
-import Biegunka.Language (Command(..), Action(..), Wrapper(..), next)
-
-
-data React = Ignorant | Ask | Abortive
+import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
 data Execution t = Execution
   { _dropPriviledges :: Bool
   , _react :: React
-  , _reactCurrent :: Maybe React
+  , _reactCurrent :: [React]
   , _templates :: t
   , _user :: String
   , _volubility :: Volubility
@@ -66,8 +63,8 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 defaultExecution :: Execution Bool
 defaultExecution = Execution
   { _dropPriviledges = False
-  , _react = Ask
-  , _reactCurrent = Nothing
+  , _react = Asking
+  , _reactCurrent = []
   , _templates = False
   , _user = []
   , _volubility = Casual
@@ -131,9 +128,9 @@ fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       liftIO . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      liftA2 (<|>) (use (_2 . reactCurrent)) (Just <$> use (_2 . react)) >>= \(Just o) -> case o of
+      liftA2 (<|>) (use (_2 . reactCurrent)) (return <$> use (_2 . react)) >>= \(o:_) -> case o of
         Ignorant -> ignore command
-        Ask -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
+        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
           "R" -> fold (Free command)
           "A" -> liftIO $ throwIO ExecutionAbortion
@@ -162,8 +159,8 @@ execute' c = f c
     narrate (Typical $ "Emerging source: " ++ url)
     liftIO $ update path
   f (F a _) = h a
-  f (W (Ignorance True) _) = _2 . reactCurrent .= Just Ignorant
-  f (W (Ignorance False) _) = _2 . reactCurrent .= Nothing
+  f (W (Reacting (Just r)) _) = _2 . reactCurrent %= (r :)
+  f (W (Reacting Nothing) _)  = _2 . reactCurrent %= drop 1
   f (W (User (Just name)) _) = liftIO $ getUserEntryForName name >>= setEffectiveUserID . userID
   f (W (User Nothing) _) = use (_2 . user) >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
   f _ = return ()
