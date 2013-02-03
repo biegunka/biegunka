@@ -1,13 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
+-- | Controlling biegunka interpreters and their composition
 module Biegunka.Control
-  ( -- * Start interpretation
-    biegunka
+  ( -- * Wrap/unwrap biegunka interpreters
+    biegunka, Interpreter(..)
     -- * Common interpreters controls
   , Controls, root
-    -- * Internal stuff
-  , Interpreter(..)
   ) where
 
 import Data.Monoid (Monoid(..))
@@ -26,7 +25,11 @@ data Controls = Controls
   { _root :: FilePath -- ^ Root path for 'Source' layer
   } deriving (Show, Read, Eq, Ord)
 
-makeLenses ''Controls
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
+
+
+-- | Root path for 'Source' layer lens
+root :: Lens' Controls FilePath
 
 instance Default Controls where
   def = Controls
