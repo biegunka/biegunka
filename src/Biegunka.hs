@@ -6,8 +6,8 @@ module Biegunka
     -- * Interpreters
   , pretend, pause, execute, executeWith, verify
     -- * Interpreters related
-  , defaultExecution, templates, dropPriviledges
-  , React(..), react, Volubility(..), volubility
+  , defaultExecution, templates
+  , React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
     -- * Profile layer
   , profile
     -- * File layer
@@ -28,8 +28,8 @@ import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
-  , defaultExecution, templates, dropPriviledges
-  , react, Volubility(..), volubility
+  , defaultExecution, templates
+  , react, Volubility(..), volubility, Priviledges(..), priviledges
   )
 import Biegunka.Verify (verify)
 
@@ -97,12 +97,12 @@ shell c = liftF $ F (Shell mempty c) ()
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
-sudo name cs = liftF (W (User (Just name)) ()) >> cs >> liftF (W (User Nothing) ())
+sudo n s = liftF (W (User (Just n)) ()) >> s >> liftF (W (User Nothing) ())
 
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
-reacting r cs = liftF (W (Reacting (Just r)) ()) >> cs >> liftF (W (Reacting Nothing) ())
+reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothing) ())
 
 
 -- | Configuration profile

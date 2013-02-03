@@ -7,16 +7,18 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
   ( execute, executeWith
-  , Execution, defaultExecution, templates, dropPriviledges
-  , react, Volubility(..), volubility
+  , Execution, defaultExecution, templates
+  , react, Volubility(..), volubility, Priviledges(..), priviledges
   , BiegunkaException(..)
   ) where
 
 import Control.Applicative
+import Control.Monad (when)
 import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
 import Data.Char (toUpper)
 import Data.List ((\\))
 import Data.Monoid ((<>))
+import Data.Foldable (traverse_)
 import Data.Function (fix)
 import Data.Typeable (Typeable)
 import Prelude hiding (dropWhile)
@@ -26,7 +28,7 @@ import System.IO (hFlush, stdout)
 import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
-import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Trans (MonadIO, liftIO)
 import           System.Directory (getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
@@ -37,7 +39,7 @@ import           System.FilePath (dropFileName)
 import           System.IO.Error (tryIOError)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
-import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
+import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
 import           Text.StringTemplate (ToSElem(..))
 
@@ -47,12 +49,18 @@ import Biegunka.Execute.Narrator
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
+data Priviledges =
+    Drop
+  | Preserve
+    deriving (Show, Read, Eq, Ord)
+
+
 data Execution t = Execution
-  { _dropPriviledges :: Bool
+  { _priviledges :: Priviledges
   , _react :: React
   , _reactStack :: [React]
   , _templates :: t
-  , _user :: String
+  , _userStack :: [String]
   , _volubility :: Volubility
   }
 
@@ -62,11 +70,11 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 defaultExecution :: Execution Bool
 defaultExecution = Execution
-  { _dropPriviledges = False
+  { _priviledges = Preserve
   , _react = Asking
   , _reactStack = []
   , _templates = False
-  , _user = []
+  , _userStack = []
   , _volubility = Casual
   }
 
@@ -91,9 +99,8 @@ executeWith execution = I $ \s -> do
   let b = construct s
   a <- load s
   n <- narrator (_volubility execution)
-  getEnv "SUDO_USER" >>= \e -> case e of
-    Just sudo -> runStateT (fold s) (n, execution { _user = sudo })
-    Nothing -> runStateT (fold s) (n, execution)
+  when (execution ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
+  runStateT (fold s) (n, execution)
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
@@ -161,8 +168,8 @@ execute' c = f c
   f (F a _) = h a
   f (W (Reacting (Just r)) _) = _2 . reactStack %= (r :)
   f (W (Reacting Nothing) _)  = _2 . reactStack %= drop 1
-  f (W (User (Just name)) _) = liftIO $ getUserEntryForName name >>= setEffectiveUserID . userID
-  f (W (User Nothing) _) = use (_2 . user) >>= liftIO . getUserEntryForName >>= liftIO . setEffectiveUserID . userID
+  f (W (User (Just n)) _) = liftIO getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
+  f (W (User Nothing) _)  = use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
   f _ = return ()
 
   h :: ToSElem t => Action -> StateT (Narrative, Execution t) IO ()
@@ -194,3 +201,7 @@ dropWhile f p@(Free c)
   | f c = dropWhile f (next c)
   | otherwise    = p
 dropWhile _ x@(Pure _) = x
+
+
+setUser :: MonadIO m => String -> m ()
+setUser n = liftIO $ getUserEntryForName n >>= setEffectiveUserID . userID
