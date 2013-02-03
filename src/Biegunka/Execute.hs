@@ -34,6 +34,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName)
+import           System.IO.Error (tryIOError)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
@@ -96,12 +97,9 @@ executeWith execution = I $ \s -> do
   getEnv "SUDO_USER" >>= \e -> case e of
     Just sudo -> runStateT (fold s) (n, execution { _user = sudo })
     Nothing -> runStateT (fold s) (n, execution)
-  mapM (wrap . removeFile) (filepaths a \\ filepaths b)
-  mapM (wrap . removeDirectoryRecursive) (sources a \\ sources b)
+  mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
+  mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
- where
-  wrap :: IO () -> IO (Either IOError ())
-  wrap = try
 
 
 -- | Execute interpreter with default options
@@ -190,7 +188,7 @@ execute' c = f c
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
-    try (removeLink dst) :: IO (Either IOError ()) -- needed because removeLink throws an unintended exception if file is absent
+    tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
 
