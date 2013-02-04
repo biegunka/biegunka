@@ -6,11 +6,11 @@ module Biegunka
     -- * Interpreters
   , pretend, pause, execute, executeWith, verify
     -- * Interpreters related
-  , defaultExecution, templates
-  , React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
-  , task
+  , Templates(..), templates, React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
     -- * Profile layer
   , profile
+    -- * Source layer
+  , task
     -- * File layer
   , message, registerAt, copy, link, substitute
   , shell
@@ -29,8 +29,7 @@ import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
   ( execute, executeWith
-  , defaultExecution, templates
-  , react, Volubility(..), volubility, Priviledges(..), priviledges
+  , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
   )
 import Biegunka.Verify (verify)
 

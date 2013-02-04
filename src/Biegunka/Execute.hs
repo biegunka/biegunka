@@ -1,14 +1,17 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
   ( execute, executeWith
-  , Execution, defaultExecution, templates
-  , react, Volubility(..), volubility, Priviledges(..), priviledges
+  , ExecutionState
+  , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
   , BiegunkaException(..)
   ) where
 
@@ -30,11 +33,12 @@ import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           System.Directory (getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
+import           Data.Default
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import           System.Directory (getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
 import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
@@ -49,14 +53,14 @@ import Biegunka.Execute.Narrator
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
-type Execution t a = StateT (Narrative, ExecutionState t) IO a
+type Execution a = StateT (Narrative, ExecutionState) IO a
 
 
-data ExecutionState t = ExecutionState
+data ExecutionState = ExecutionState
   { _priviledges :: Priviledges
   , _react :: React
   , _reactStack :: [React]
-  , _templates :: t
+  , _templates :: Templates
   , _userStack :: [String]
   , _volubility :: Volubility
   }
@@ -66,17 +70,20 @@ data Priviledges =
   | Preserve
     deriving (Show, Read, Eq, Ord)
 
+data Templates = forall t. (ToSElem t) => Templates t
+
+instance Default ExecutionState where
+  def = ExecutionState
+    { _priviledges = Preserve
+    , _react = Asking
+    , _reactStack = []
+    , _templates = Templates False
+    , _userStack = []
+    , _volubility = Casual
+    }
+
 makeLenses ''ExecutionState
 
-defaultExecution :: ExecutionState Bool
-defaultExecution = ExecutionState
-  { _priviledges = Preserve
-  , _react = Asking
-  , _reactStack = []
-  , _templates = False
-  , _userStack = []
-  , _volubility = Casual
-  }
 
 
 -- | Execute Interpreter
@@ -91,7 +98,7 @@ defaultExecution = ExecutionState
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ToSElem t => ExecutionState t -> Interpreter
+executeWith :: ExecutionState -> Interpreter
 executeWith execution = I $ \s -> do
   let b = construct s
   a <- load s
@@ -105,7 +112,7 @@ executeWith execution = I $ \s -> do
 
 -- | Execute interpreter with default options
 execute :: Interpreter
-execute = executeWith defaultExecution
+execute = executeWith def
 
 
 -- | Custom execptions
@@ -129,7 +136,7 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: ToSElem t => Free (Command l ()) a -> Execution t ()
+fold :: Free (Command l ()) a -> Execution ()
 fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
@@ -157,7 +164,7 @@ fold (Pure _) = return ()
 
 
 -- | Command execution
-execute' :: ToSElem t => Command l s a -> Execution t ()
+execute' :: Command l s a -> Execution ()
 execute' c = case c of
   S url path _ update _ -> do
     narrate (Typical $ "Emerging source: " ++ url)
@@ -168,7 +175,7 @@ execute' c = case c of
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do
-    ts <- use (_2 . templates)
+    Templates ts <- use (_2 . templates)
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
