@@ -14,7 +14,7 @@ module Biegunka.Execute
 
 import Control.Applicative
 import Control.Monad (when)
-import Control.Exception.Lifted (Exception, SomeException(..), handle, throwIO, try)
+import Control.Exception.Lifted (Exception, SomeException(..), throwIO, try)
 import Data.Char (toUpper)
 import Data.List ((\\))
 import Data.Monoid ((<>))
@@ -24,6 +24,7 @@ import Data.Typeable (Typeable)
 import Prelude hiding (dropWhile)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
+import System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
@@ -36,7 +37,6 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           System.Directory (copyFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName)
-import           System.IO.Error (tryIOError)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
@@ -120,9 +120,11 @@ instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
     pretty ExecutionAbortion = "Biegunka has aborted"
-    pretty (ShellCommandFailure t) = "Biegunka has failed to execute `" <> T.pack t <> "`"
+    pretty (ShellCommandFailure t) =
+      "Biegunka has failed to execute `" <> T.pack t <> "`"
     pretty (SourceEmergingFailure up fp fs) =
       "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
+
 instance Exception BiegunkaException
 
 
@@ -171,7 +173,7 @@ execute' c = case c of
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
-    handle (\(SomeException _) -> throwIO $ ShellCommandFailure sc) $ do
+    flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
       e <- system sc
       case e of
         ExitFailure _ -> throwIO $ ShellCommandFailure sc
