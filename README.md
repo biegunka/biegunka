@@ -1,13 +1,14 @@
-# biegunka
-[![Build Status](https://secure.travis-ci.org/biegunka/biegunka-core.png?branch=master)](http://travis-ci.org/biegunka/biegunka-core)  
+# biegunka [![Build Status](https://secure.travis-ci.org/biegunka/biegunka-core.png?branch=master)](http://travis-ci.org/biegunka/biegunka-core)
 Configurations management library.
 
-## Installing
+## Install
 ```
-cabal install
+% git clone git@github.com:biegunka/biegunka-core
+% git clone git@github.com:biegunka/biegunka-git
+% cabal[-dev] install biegunka-core/biegunka-core.cabal biegunka-git/biegunka-git.cabal
 ```
 
-## Getting started
+## Example
 The simplest yet meaningful biegunka script
 
 ```haskell
@@ -72,7 +73,7 @@ Sources are "places with files". `git` takes git repository at `https://my.serve
 ```
 File operations layer provides functions to work with sources files, for example, `link` links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmonad.hs`.
 
-## More sophisticated example
+## More sophisticated examples
 See [wiki][1].
 
  [1]: https://github.com/biegunka/biegunka-core/wiki/Examples
