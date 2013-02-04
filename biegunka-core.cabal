@@ -34,6 +34,7 @@ library
                  Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Narrator
+                 Biegunka.Execute.State
                  Biegunka.Pretend
                  Biegunka.Verify
                  Biegunka.Log

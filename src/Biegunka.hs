@@ -7,14 +7,14 @@ module Biegunka
   , pretend, pause, execute, verify
     -- * Interpreters related
   , Templates(..), templates, React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
+    -- * All layers
+  , sudo, reacting
     -- * Profile layer
   , profile
     -- * Source layer
   , task
     -- * File layer
-  , registerAt, copy, link, substitute
-  , shell
-  , sudo, reacting
+  , registerAt, copy, link, substitute, shell
     -- * Convenient type aliases
   , Script, Layer(..)
   ) where
@@ -27,10 +27,9 @@ import Text.StringTemplate (newSTMP, render, setAttribute)
 import Biegunka.Control (biegunka, Controls, root)
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
 import Biegunka.Pretend (pause, pretend)
-import Biegunka.Execute
-  ( execute
-  , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
-  )
+import Biegunka.Execute (execute)
+import Biegunka.Execute.Narrator (Volubility(..))
+import Biegunka.Execute.State (Templates(..), templates, react, volubility, Priviledges(..), priviledges)
 import Biegunka.Verify (verify)
 
 

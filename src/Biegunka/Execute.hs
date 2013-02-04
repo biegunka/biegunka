@@ -1,15 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Execute
-  ( execute, ExecutionState
-  , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
-  , BiegunkaException(..)
-  ) where
+module Biegunka.Execute (execute, ExecutionState, BiegunkaException(..)) where
 
 import Control.Applicative
 import Control.Monad (when)
@@ -28,7 +22,6 @@ import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (StateT, runStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Default
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -42,45 +35,15 @@ import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
-import           Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Narrator
+import Biegunka.Execute.State
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
 type Execution a = StateT (Narrative, ExecutionState) IO a
-
-
-data ExecutionState = ExecutionState
-  { _priviledges :: Priviledges
-  , _react       :: React
-  , _reactStack  :: [React]
-  , _templates   :: Templates
-  , _userStack   :: [String]
-  , _volubility  :: Volubility
-  }
-
-data Priviledges =
-    Drop
-  | Preserve
-    deriving (Show, Read, Eq, Ord)
-
-data Templates = forall t. (ToSElem t) => Templates t
-
-instance Default ExecutionState where
-  def = ExecutionState
-    { _priviledges = Preserve
-    , _react       = Asking
-    , _reactStack  = []
-    , _templates   = Templates False
-    , _userStack   = []
-    , _volubility  = Casual
-    }
-
-makeLenses ''ExecutionState
-
 
 
 -- | Execute Interpreter
