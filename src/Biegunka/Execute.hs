@@ -156,28 +156,19 @@ fold (Pure _) = return ()
 
 -- | Command execution
 execute' :: ToSElem t => Command l s a -> Execution t ()
-execute' c = f c
- where
-  f :: ToSElem t => Command l s a -> Execution t ()
-  f (S url path _ update _) = do
+execute' c = case c of
+  S url path _ update _ -> do
     narrate (Typical $ "Emerging source: " ++ url)
     io $ update path
-  f (F a _) = h a
-  f (W (Reacting (Just r)) _) = _2 . reactStack %= (r :)
-  f (W (Reacting Nothing) _)  = _2 . reactStack %= drop 1
-  f (W (User (Just n)) _) = io getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
-  f (W (User Nothing) _)  = use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
-  f _ = return ()
 
-  h :: ToSElem t => Action -> Execution t ()
-  h (Message m) = io $ putStrLn m
-  h (RegisterAt src dst) = io $ overWriteWith createSymbolicLink src dst
-  h (Link src dst) = io $ overWriteWith createSymbolicLink src dst
-  h (Copy src dst) = io $ overWriteWith copyFile src dst
-  h (Template src dst substitute) = do
+  F (Message m) _          -> io $ putStrLn m
+  F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
+  F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
+  F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
+  F (Template src dst substitute) _ -> do
     ts <- use (_2 . templates)
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  h (Shell p sc) = io $ do
+  F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
     handle (\(SomeException _) -> throwIO $ ShellCommandFailure sc) $ do
@@ -187,6 +178,13 @@ execute' c = f c
         _ -> return ()
     setCurrentDirectory d
 
+  W (Reacting (Just r)) _  -> _2 . reactStack %= (r :)
+  W (Reacting Nothing) _   -> _2 . reactStack %= drop 1
+  W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
+  W (User Nothing) _       -> use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
+
+  _ -> return ()
+ where
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
