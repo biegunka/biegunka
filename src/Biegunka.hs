@@ -8,6 +8,7 @@ module Biegunka
     -- * Interpreters related
   , defaultExecution, templates
   , React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
+  , task
     -- * Profile layer
   , profile
     -- * File layer
@@ -116,3 +117,10 @@ reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothi
 -- >   svn ...
 profile :: String -> Script Source -> Script Profile
 profile name repo = liftF $ P name repo ()
+
+
+-- | Concurrent task
+-- Runs in parallel with main thread if possible. Currently defunct
+task :: Script Source -> Script Source
+task = id
+{-# INLINE task #-}
