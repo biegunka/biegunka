@@ -42,7 +42,6 @@ f (Pure x) = return (Pure x)
 g :: Command l () (Free (Command l ()) a) -> State Infect (Command l () (Free (Command l ()) a))
 g (F a x) = h a >>= \t -> F t <$> f x
  where
-  h m@(Message _) = return m
   h (RegisterAt src dst) =
     liftA2 RegisterAt (use source </> pure src) (use root </> pure dst)
   h (Link src dst) =

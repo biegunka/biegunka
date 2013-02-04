@@ -1,16 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute
-  ( execute, executeWith
-  , ExecutionState
+  ( execute, ExecutionState
   , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
   , BiegunkaException(..)
   ) where
@@ -24,7 +20,6 @@ import Data.Monoid ((<>))
 import Data.Foldable (traverse_)
 import Data.Function (fix)
 import Data.Typeable (Typeable)
-import Prelude hiding (dropWhile)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
 import System.IO.Error (catchIOError, tryIOError)
@@ -38,8 +33,10 @@ import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import           System.Directory (getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory)
-import           System.Directory (copyFile, createDirectoryIfMissing)
+import           System.Directory
+  ( getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory
+  , copyFile, createDirectoryIfMissing
+  )
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
@@ -58,11 +55,11 @@ type Execution a = StateT (Narrative, ExecutionState) IO a
 
 data ExecutionState = ExecutionState
   { _priviledges :: Priviledges
-  , _react :: React
-  , _reactStack :: [React]
-  , _templates :: Templates
-  , _userStack :: [String]
-  , _volubility :: Volubility
+  , _react       :: React
+  , _reactStack  :: [React]
+  , _templates   :: Templates
+  , _userStack   :: [String]
+  , _volubility  :: Volubility
   }
 
 data Priviledges =
@@ -75,11 +72,11 @@ data Templates = forall t. (ToSElem t) => Templates t
 instance Default ExecutionState where
   def = ExecutionState
     { _priviledges = Preserve
-    , _react = Asking
-    , _reactStack = []
-    , _templates = Templates False
-    , _userStack = []
-    , _volubility = Casual
+    , _react       = Asking
+    , _reactStack  = []
+    , _templates   = Templates False
+    , _userStack   = []
+    , _volubility  = Casual
     }
 
 makeLenses ''ExecutionState
@@ -94,12 +91,12 @@ makeLenses ''ExecutionState
 --
 -- @
 -- main :: IO ()
--- main = executeWith (defaultExecution & react .~ Ignorant) $ do
+-- main = execute (def & react .~ Ignorant) $ do
 --   profile ...
 --   profile ...
 -- @
-executeWith :: ExecutionState -> Interpreter
-executeWith execution = I $ \s -> do
+execute :: ExecutionState -> Interpreter
+execute execution = I $ \s -> do
   let b = construct s
   a <- load s
   n <- narrator (_volubility execution)
@@ -108,11 +105,6 @@ executeWith execution = I $ \s -> do
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
-
-
--- | Execute interpreter with default options
-execute :: Interpreter
-execute = executeWith def
 
 
 -- | Custom execptions
@@ -153,7 +145,7 @@ fold (Free command) = do
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropWhile skip (next command))
+  ignore S {} = fold (dropCommands skip (next command))
   ignore _    = fold (next command)
 
   skip P {} = False
@@ -170,7 +162,6 @@ execute' c = case c of
     narrate (Typical $ "Emerging source: " ++ url)
     io $ update path
 
-  F (Message m) _          -> io $ putStrLn m
   F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
@@ -200,11 +191,11 @@ execute' c = case c of
     g src dst
 
 
-dropWhile :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b
-dropWhile f p@(Free c)
-  | f c = dropWhile f (next c)
+dropCommands :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b
+dropCommands f p@(Free c)
+  | f c = dropCommands f (next c)
   | otherwise    = p
-dropWhile _ x@(Pure _) = x
+dropCommands _ x@(Pure _) = x
 
 
 setUser :: MonadIO m => String -> m ()

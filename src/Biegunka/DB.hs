@@ -132,7 +132,6 @@ g (F a _) = do
   s <- use source
   biegunka . at p . traverse . at s . traverse <>= h a
  where
-  h (Message _) = mempty
   h (RegisterAt _ dst) = S.singleton dst
   h (Link _ dst) = S.singleton dst
   h (Copy _ dst) = S.singleton dst

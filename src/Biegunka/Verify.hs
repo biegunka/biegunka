@@ -51,7 +51,6 @@ g (S u p _ _ _) = do
   return sourceExists
 g (F a _) = h a
  where
-  h (Message _) = return True
   h (RegisterAt _ dst) = do
     repoExists <- io $ doesDirectoryExist dst
     unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]

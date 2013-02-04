@@ -57,8 +57,7 @@ next (W _ x)       = x
 
 
 data Action =
-    Message String
-  | RegisterAt FilePath FilePath
+    RegisterAt FilePath FilePath
   | Link FilePath FilePath
   | Copy FilePath FilePath
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)

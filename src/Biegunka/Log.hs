@@ -32,8 +32,6 @@ g (P name _ _) = "Setup profile " <> string name <> "\n"
 g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
 g (F a _) = h a
  where
-  h (Message m) = indent 4 <>
-    "Message: " <> string m <> "\n"
   h (RegisterAt src dst) = indent 4 <>
     "Link repository " <> string src <> " to " <> string dst <> "\n"
   h (Link src dst) = indent 4 <>

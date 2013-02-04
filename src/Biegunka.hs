@@ -4,7 +4,7 @@ module Biegunka
   ( -- * Interpreters control
     biegunka, Controls, root
     -- * Interpreters
-  , pretend, pause, execute, executeWith, verify
+  , pretend, pause, execute, verify
     -- * Interpreters related
   , Templates(..), templates, React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
     -- * Profile layer
@@ -12,7 +12,7 @@ module Biegunka
     -- * Source layer
   , task
     -- * File layer
-  , message, registerAt, copy, link, substitute
+  , registerAt, copy, link, substitute
   , shell
   , sudo, reacting
     -- * Convenient type aliases
@@ -28,19 +28,10 @@ import Biegunka.Control (biegunka, Controls, root)
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute
-  ( execute, executeWith
+  ( execute
   , Templates(..), templates, react, Volubility(..), volubility, Priviledges(..), priviledges
   )
 import Biegunka.Verify (verify)
-
-
--- | Prints specified message to stdout
---
--- > message "hello!"
---
--- prints \"hello!\"
-message :: String -> Script Files
-message m = liftF $ F (Message m) ()
 
 
 -- | Links source to specified filepath
