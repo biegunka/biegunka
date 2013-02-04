@@ -73,7 +73,11 @@ Sources are "places with files". `git` takes git repository at `https://my.serve
 ```
 File operations layer provides functions to work with sources files, for example, `link` links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmonad.hs`.
 
-## More sophisticated examples
-See [wiki][1].
+## More examples
+
+  * [Wiki][1] has a handful of examples
+  * biegunka [authors][2] [use][3] it themselves
 
  [1]: https://github.com/biegunka/biegunka-core/wiki/Examples
+ [2]: https://github.com/supki/.dotfiles/blob/master/manage/Main.hs
+ [3]: https://github.com/dmalikov/dotfiles/blob/master/install-biegunka.hs
