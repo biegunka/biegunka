@@ -66,16 +66,15 @@ execute e = I $ \s -> do
   let b = construct s
   a <- load s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  runTask e s
+  n <- narrator (_volubility e)
+  runTask e n s
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
 
 
-runTask :: EE -> Task l a -> IO ()
-runTask e s = do
-  n <- narrator (_volubility e)
-  (`evalStateT` def) $ (`runReaderT` (n, e)) (fold s)
+runTask :: EE -> Narrative -> Task l a -> IO ()
+runTask e n s = (`evalStateT` def) . (`runReaderT` (n, e)) $ fold s
 
 
 -- | Custom execptions
