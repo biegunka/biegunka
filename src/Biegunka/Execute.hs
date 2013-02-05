@@ -75,7 +75,7 @@ execute e = I $ \s -> do
 
 
 runTask :: EE -> Task l b -> IO ()
-runTask e s = reify e ((`evalStateT` def) . runE . asProxyOf (fold s))
+runTask e t = reify e ((`evalStateT` def) . runE . asProxyOf (task t))
 
 
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
@@ -103,8 +103,8 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: forall l b s. Reifies s EE => [Command l () b] -> Execution s ()
-fold (c:cs) = E $ do
+task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
+task (c:cs) = E $ do
   try (runE $ (execute' c :: Execution s ())) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
@@ -112,23 +112,23 @@ fold (c:cs) = E $ do
         Ignorant -> ignore c
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore c
-          "R" -> fold (c:cs)
+          "R" -> task (c:cs)
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> runE (fold cs :: Execution s ())
+    _ -> runE (task cs :: Execution s ())
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
   ignore :: Command l () b -> Execution s ()
-  ignore S {} = fold (dropCommands skip cs)
-  ignore _    = fold cs
+  ignore S {} = task (dropCommands skip cs)
+  ignore _    = task cs
 
   skip (P {} : _) = False
   skip (S {} : _) = False
   skip (W {} : cs') = skip cs'
   skip _ = True
-fold [] = return ()
+task [] = return ()
 
 -- | Command execution
 execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
