@@ -22,7 +22,6 @@ import System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
 import           Data.Default (def)
-import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Proxy
@@ -45,10 +44,10 @@ import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Narrator
 import Biegunka.Execute.State
-import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
+import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 
-type Task l a = Free (Command l ()) a
+type Task l b = [Command l () b]
 
 
 -- | Execute Interpreter
@@ -75,7 +74,7 @@ execute e = I $ \s -> do
   save b
 
 
-runTask :: EE -> Task l a -> IO ()
+runTask :: EE -> Task l b -> IO ()
 runTask e s = reify e ((`evalStateT` def) . runE . asProxyOf (fold s))
 
 
@@ -104,35 +103,35 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: forall l a s. Reifies s EE => Free (Command l ()) a -> Execution s ()
-fold (Free command) = E $ do
-  try (runE $ (execute' command :: Execution s ())) >>= \t -> case t of
+fold :: forall l b s. Reifies s EE => [Command l () b] -> Execution s ()
+fold (c:cs) = E $ do
+  try (runE $ (execute' c :: Execution s ())) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
       fmap (<|> [view react $ reflect (Proxy :: Proxy s)]) (use reactStack) >>= \(o:_) -> runE $ case o of
-        Ignorant -> ignore command
-        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \c -> case c of
-          "I" -> ignore command
-          "R" -> fold (Free command)
+        Ignorant -> ignore c
+        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
+          "I" -> ignore c
+          "R" -> fold (c:cs)
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> runE $ (fold (next command) :: Execution s ())
+    _ -> runE (fold cs :: Execution s ())
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore :: Command l () (Free (Command l ()) a) -> Execution s ()
-  ignore S {} = fold (dropCommands skip (next command))
-  ignore _    = fold (next command)
+  ignore :: Command l () b -> Execution s ()
+  ignore S {} = fold (dropCommands skip cs)
+  ignore _    = fold cs
 
-  skip P {} = False
-  skip S {} = False
-  skip (W _ (Free x)) = skip x
+  skip (P {} : _) = False
+  skip (S {} : _) = False
+  skip (W {} : cs') = skip cs'
   skip _ = True
-fold (Pure _) = return ()
+fold [] = return ()
 
 -- | Command execution
-execute' :: forall l a s t. Reifies s EE => Command l t (Free (Command l ()) a) -> Execution s ()
+execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
 execute' c = case c of
   S url path _ update _ -> do
     narrate (Typical $ "Emerging source: " ++ url)
@@ -167,11 +166,11 @@ execute' c = case c of
     g src dst
 
 
-dropCommands :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b
-dropCommands f p@(Free c)
-  | f c = dropCommands f (next c)
+dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
+dropCommands f p@(_:cs)
+  | f p = dropCommands f cs
   | otherwise    = p
-dropCommands _ x@(Pure _) = x
+dropCommands _ [] = []
 
 
 setUser :: MonadIO m => String -> m ()

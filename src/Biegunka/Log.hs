@@ -7,27 +7,26 @@ module Biegunka.Log (full) where
 import Control.Monad (forM_, unless)
 import Data.Function (on)
 import Data.Int (Int64)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid (Monoid(..), (<>))
 
-import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (execWriter, tell)
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import           Data.Text.Lazy.Builder (Builder, fromLazyText, fromString, toLazyText)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.Language (Command(..), Action(..), Wrapper(..), mfoldie)
+import Biegunka.Language (Command(..), Action(..), Wrapper(..))
 
 
-full :: Free (Command l ()) a -> Biegunka -> Biegunka -> Text
-full s α β = toLazyText $ install s <> uninstall α β
+full :: [Command l () b] -> Biegunka -> Biegunka -> Text
+full cs s t = toLazyText $ install cs <> uninstall s t
 
 
-install :: Free (Command l ()) a -> Builder
-install = mfoldie g
+install :: [Command l () b] -> Builder
+install = mconcat . map g
 
 
-g :: Command l () (Free (Command l ()) a) -> Builder
+g :: Command l () b -> Builder
 g (P name _ _) = "Setup profile " <> string name <> "\n"
 g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
 g (F a _) = h a

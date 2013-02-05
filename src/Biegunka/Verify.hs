@@ -7,7 +7,6 @@ import Control.Applicative
 import Control.Monad (unless)
 import Data.Monoid (mconcat)
 
-import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
 import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
@@ -15,7 +14,7 @@ import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.Control (Interpreter(..))
-import Biegunka.Language (Command(..), Action(..), foldie)
+import Biegunka.Language (Command(..), Action(..))
 
 
 -- | Verify interpreter
@@ -39,11 +38,11 @@ verify = I $ \s -> do
     else putStrLn $ failures ++ "\nFail!"
 
 
-f :: Free (Command l ()) a -> WriterT String IO Bool
-f = foldie (|&&|) (return True) g
+f :: [Command l () b] -> WriterT String IO Bool
+f = foldr (|&&|) (return True) . map g
 
 
-g :: Command l () (Free (Command l ()) a) -> WriterT String IO Bool
+g :: Command l () b -> WriterT String IO Bool
 g (P _ _ _) = return True
 g (S u p _ _ _) = do
   sourceExists <- io $ doesDirectoryExist p
