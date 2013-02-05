@@ -11,16 +11,29 @@ import Biegunka.Language (React(..))
 
 
 -- | 'Execution' state.
--- Denotes current failure reaction, effective user id, used templates and more
-data ExecutionState = ExecutionState
+-- Denotes current failure reaction, effective user id and more
+data ES = ES
+  { _reactStack  :: [React]
+  , _userStack   :: [String]
+  } deriving (Show, Read, Eq, Ord)
+
+instance Default ES where
+  def = ES
+    { _reactStack  = []
+    , _userStack   = []
+    }
+
+makeLenses ''ES
+
+
+-- | 'Execution' environment.
+-- Denotes default failure reaction, templates used and more
+data EE = EE
   { _priviledges :: Priviledges
   , _react       :: React
-  , _reactStack  :: [React]
   , _templates   :: Templates
-  , _userStack   :: [String]
   , _volubility  :: Volubility
   }
-
 
 -- | Priviledges control.
 -- Controls how to behave if started with sudo
@@ -29,20 +42,16 @@ data Priviledges =
   | Preserve -- ^ Preserve priviledges
     deriving (Show, Read, Eq, Ord)
 
-
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. (ToSElem t) => Templates t
 
-
-instance Default ExecutionState where
-  def = ExecutionState
+instance Default EE where
+  def = EE
     { _priviledges = Preserve
     , _react       = Asking
-    , _reactStack  = []
     , _templates   = Templates False
-    , _userStack   = []
     , _volubility  = Casual
     }
 
-makeLenses ''ExecutionState
+makeLenses ''EE

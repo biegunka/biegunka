@@ -69,7 +69,11 @@ data Wrapper =
   | Reacting (Maybe React)
 
 
-data React = Ignorant | Asking | Abortive
+data React =
+    Ignorant
+  | Asking
+  | Abortive
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 
 foldie :: (a -> b -> b) -> b -> (Command l s (Free (Command l s) c) -> a) -> (Free (Command l s) c) -> b

@@ -10,7 +10,9 @@ import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Control.Monad (forever)
 
 import Control.Lens
-import Control.Monad.State (StateT, liftIO)
+import Control.Monad.State (StateT)
+import Control.Monad.Reader (ReaderT)
+import Control.Monad.Trans (liftIO)
 
 
 type Narrative = Chan Statement
@@ -47,7 +49,7 @@ state Casual (Thorough _) = return ()
 state Taciturn _          = return ()
 
 
-narrate :: Statement -> StateT (Narrative, a) IO ()
+narrate :: Statement -> ReaderT (Narrative, a) (StateT b IO) ()
 narrate s = do
-  ch <- use _1
+  ch <- view _1
   liftIO $ writeChan ch s

@@ -5,8 +5,12 @@ module Biegunka
     biegunka, Controls, root
     -- * Interpreters
   , pretend, pause, execute, verify
-    -- * Interpreters related
-  , Templates(..), templates, React(..), react, Volubility(..), volubility, Priviledges(..), priviledges
+    -- * Execution environment hooks
+  , EE
+  , Priviledges(..), priviledges
+  , React(..), react
+  , Volubility(..), volubility
+  , Templates(..), templates
     -- * All layers
   , sudo, reacting
     -- * Profile layer
@@ -29,7 +33,7 @@ import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Narrator (Volubility(..))
-import Biegunka.Execute.State (Templates(..), templates, react, volubility, Priviledges(..), priviledges)
+import Biegunka.Execute.State
 import Biegunka.Verify (verify)
 
 

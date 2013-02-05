@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Execute (execute, ExecutionState, BiegunkaException(..)) where
+module Biegunka.Execute (execute, BiegunkaException(..)) where
 
 import Control.Applicative
 import Control.Monad (when)
@@ -19,8 +19,10 @@ import System.IO (hFlush, stdout)
 import System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
+import           Data.Default (def)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (StateT, runStateT)
+import           Control.Monad.Reader (ReaderT, runReaderT)
+import           Control.Monad.State (StateT, evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
@@ -43,7 +45,8 @@ import Biegunka.Execute.State
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
-type Execution a = StateT (Narrative, ExecutionState) IO a
+type Execution a = ReaderT (Narrative, EE) (StateT ES IO) a
+type Task l a = Free (Command l ()) a
 
 
 -- | Execute Interpreter
@@ -58,16 +61,21 @@ type Execution a = StateT (Narrative, ExecutionState) IO a
 --   profile ...
 --   profile ...
 -- @
-execute :: ExecutionState -> Interpreter
-execute execution = I $ \s -> do
+execute :: EE -> Interpreter
+execute e = I $ \s -> do
   let b = construct s
   a <- load s
-  n <- narrator (_volubility execution)
-  when (execution ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  runStateT (fold s) (n, execution)
+  when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
+  runTask e s
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
+
+
+runTask :: EE -> Task l a -> IO ()
+runTask e s = do
+  n <- narrator (_volubility e)
+  (`evalStateT` def) $ (`runReaderT` (n, e)) (fold s)
 
 
 -- | Custom execptions
@@ -96,7 +104,7 @@ fold (Free command) = do
   try (execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      liftA2 (<|>) (use (_2 . reactStack)) (return <$> use (_2 . react)) >>= \(o:_) -> case o of
+      liftA2 (<|>) (use reactStack) (return <$> view (_2 . react)) >>= \(o:_) -> case o of
         Ignorant -> ignore command
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore command
@@ -129,7 +137,7 @@ execute' c = case c of
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do
-    Templates ts <- use (_2 . templates)
+    Templates ts <- view (_2 . templates)
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
@@ -141,10 +149,10 @@ execute' c = case c of
         _ -> return ()
     setCurrentDirectory d
 
-  W (Reacting (Just r)) _  -> _2 . reactStack %= (r :)
-  W (Reacting Nothing) _   -> _2 . reactStack %= drop 1
-  W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> _2 . userStack %= (u :)
-  W (User Nothing) _       -> use (_2 . userStack) >>= \(u:us) -> setUser u >> _2 . userStack .= us
+  W (Reacting (Just r)) _  -> reactStack %= (r :)
+  W (Reacting Nothing) _   -> reactStack %= drop 1
+  W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> userStack %= (u :)
+  W (User Nothing) _       -> use userStack >>= \(u:us) -> setUser u >> userStack .= us
 
   _ -> return ()
  where
