@@ -23,6 +23,8 @@ library
                  lifted-base,
                  free,
                  lens >= 3.8,
+                 reflection,
+                 tagged,
                  directory-layout,
                  data-default,
                  HStringTemplate

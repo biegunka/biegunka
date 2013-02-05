@@ -12,6 +12,8 @@ import Control.Monad (forever)
 
 import Control.Lens
 import Control.Monad.Reader (MonadReader, MonadIO, liftIO)
+import Data.Proxy
+import Data.Reflection
 
 import Biegunka.Execute.State
 
@@ -44,7 +46,7 @@ state Casual (Thorough _) = return ()
 state Taciturn _          = return ()
 
 
-narrate :: (MonadReader (Narrative, a) m, MonadIO m) => Statement -> m ()
-narrate s = do
-  ch <- view _1
+narrate :: (Reifies s (Narrative, EE), MonadIO m) => Proxy s -> Statement -> m ()
+narrate p s = do
+  let ch = view _1 (reflect p)
   liftIO $ writeChan ch s

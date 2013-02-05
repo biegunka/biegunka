@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
@@ -24,6 +26,8 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Control.Monad.State (StateT, evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Proxy
+import           Data.Reflection
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -45,7 +49,7 @@ import Biegunka.Execute.State
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
-type Execution a = ReaderT (Narrative, EE) (StateT ES IO) a
+type Execution a = StateT ES IO a
 type Task l a = Free (Command l ()) a
 
 
@@ -74,7 +78,7 @@ execute e = I $ \s -> do
 
 
 runTask :: EE -> Narrative -> Task l a -> IO ()
-runTask e n s = (`evalStateT` def) . (`runReaderT` (n, e)) $ fold s
+runTask e n s = evalStateT (reify (n, e) (fold s)) def
 
 
 -- | Custom execptions
@@ -98,45 +102,45 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: Free (Command l ()) a -> Execution ()
-fold (Free command) = do
-  try (execute' command) >>= \t -> case t of
+fold :: Reifies s (Narrative, EE) => Free (Command l ()) a -> Proxy s -> Execution ()
+fold (Free command) p = do
+  try (execute' command p) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      liftA2 (<|>) (use reactStack) (return <$> view (_2 . react)) >>= \(o:_) -> case o of
+      fmap (<|> [view (_2 . react) $ reflect p]) (use reactStack) >>= \(o:_) -> case o of
         Ignorant -> ignore command
-        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
+        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \c -> case c of
           "I" -> ignore command
-          "R" -> fold (Free command)
+          "R" -> fold (Free command) p
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> fold (next command)
+    _ -> fold (next command) p
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropCommands skip (next command))
-  ignore _    = fold (next command)
+  ignore S {} = fold (dropCommands skip (next command)) p
+  ignore _    = fold (next command) p
 
   skip P {} = False
   skip S {} = False
   skip (W _ (Free x)) = skip x
   skip _ = True
-fold (Pure _) = return ()
+fold (Pure _) _ = return ()
 
 
 -- | Command execution
-execute' :: Command l s a -> Execution ()
-execute' c = case c of
+execute' :: Reifies s (Narrative, EE) => Command l t a -> Proxy s -> Execution ()
+execute' c p = case c of
   S url path _ update _ -> do
-    narrate (Typical $ "Emerging source: " ++ url)
+    narrate p (Typical $ "Emerging source: " ++ url)
     io $ update path
 
   F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do
-    Templates ts <- view (_2 . templates)
+    Templates ts <- return $ view (_2 . templates) (reflect p)
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
