@@ -10,11 +10,7 @@
 module Biegunka.Language
   ( Script, Layer(..)
   , Command(..), Action(..), Wrapper(..), React(..)
-  , foldie, mfoldie, foldieM, foldieM_
-  , next
   ) where
-
-import Data.Monoid (Monoid(..))
 
 import Control.Monad.Free (Free(..))
 import Data.Text.Lazy (Text)
@@ -48,14 +44,6 @@ instance Functor (Command l s) where
   {-# INLINE fmap #-}
 
 
-next :: Command l s a -> a
-next (F _ x)       = x
-next (S _ _ _ _ x) = x
-next (P _ _ x)     = x
-next (W _ x)       = x
-{-# INLINE next #-}
-
-
 data Action =
     RegisterAt FilePath FilePath
   | Link FilePath FilePath
@@ -74,22 +62,3 @@ data React =
   | Asking
   | Abortive
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-
-foldie :: (a -> b -> b) -> b -> (Command l s (Free (Command l s) c) -> a) -> (Free (Command l s) c) -> b
-foldie f a g (Free t) = g t `f` foldie f a g (next t)
-foldie _ a _ (Pure _) = a
-
-
-mfoldie :: Monoid m => (Command l s (Free (Command l s) c) -> m) -> (Free (Command l s) c) -> m
-mfoldie = foldie mappend mempty
-
-
-foldieM :: Monad m => (Command l s (Free (Command l s) c) -> m a) -> Free (Command l s) c -> m ()
-foldieM = foldie (>>) (return ())
-{-# SPECIALIZE foldieM :: (Command l s (Free (Command l s) c) -> IO a) -> Free (Command l s) c -> IO () #-}
-
-
-foldieM_ :: Monad m => (Command l s (Free (Command l s) c) -> m ()) -> Free (Command l s) c -> m ()
-foldieM_ = foldie (>>) (return ())
-{-# SPECIALIZE foldieM_ :: (Command l s (Free (Command l s) c) -> IO ()) -> Free (Command l s) c -> IO () #-}

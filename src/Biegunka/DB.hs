@@ -20,7 +20,6 @@ import Data.Typeable (Typeable)
 
 import           Control.Lens hiding ((.=), (<.>))
 import qualified Control.Lens as CL
-import           Control.Monad.Free (Free)
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
 import qualified Data.ByteString as B
@@ -75,8 +74,8 @@ instance ToJSON Repos where
     repoToJSON (k, v) = object ["path" .= k, "files" .= S.toList v]
 
 
-load :: Free (Command l s) c -> IO Biegunka
-load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . foldie (:) [] f
+load :: [Command l a b] -> IO Biegunka
+load = fmap (Biegunka . M.fromList) . mapM readProfile . catMaybes . map f
  where
   readProfile k = do
     h <- getHomeDirectory
@@ -114,12 +113,12 @@ fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
 
 
-construct :: Free (Command l ()) a -> Biegunka
-construct cs = Biegunka $
-  execState (foldieM_ g cs) Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka
+construct :: [Command l () b] -> Biegunka
+construct cs = Biegunka (execState (foldr (>>) (return ()) $ map g cs)
+  Construct { _profile = mempty, _source = mempty, _biegunka = mempty } ^. biegunka)
 
 
-g :: Command l () (Free (Command l ()) a) -> State Construct ()
+g :: Command l () b -> State Construct ()
 g (P name _ _) = do
   profile CL..= name
   biegunka . at name ?= mempty

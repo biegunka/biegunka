@@ -20,7 +20,6 @@ import System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
 import           Data.Default (def)
-import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Control.Monad.State (StateT, evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
@@ -42,11 +41,11 @@ import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Narrator
 import Biegunka.Execute.State
-import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
+import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 
 type Execution a = ReaderT (Narrative, EE) (StateT ES IO) a
-type Task l a = Free (Command l ()) a
+type Task l a = [Command l () a]
 
 
 -- | Execute Interpreter
@@ -99,31 +98,31 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: Free (Command l ()) a -> Execution ()
-fold (Free command) = do
-  try (execute' command) >>= \t -> case t of
+fold :: [Command l () b] -> Execution ()
+fold (c:cs) = do
+  try (execute' c) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
       liftA2 (<|>) (use reactStack) (return <$> view (_2 . react)) >>= \(o:_) -> case o of
-        Ignorant -> ignore command
+        Ignorant -> ignore c
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
-          "I" -> ignore command
-          "R" -> fold (Free command)
+          "I" -> ignore c
+          "R" -> fold (c:cs)
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> fold (next command)
+    _ -> fold cs
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropCommands skip (next command))
-  ignore _    = fold (next command)
+  ignore S {} = fold (dropCommands skip cs)
+  ignore _    = fold cs
 
-  skip P {} = False
-  skip S {} = False
-  skip (W _ (Free x)) = skip x
+  skip (P {} : _) = False
+  skip (S {} : _) = False
+  skip (W {} : cs') = skip cs'
   skip _ = True
-fold (Pure _) = return ()
+fold [] = return ()
 
 
 -- | Command execution
@@ -162,11 +161,11 @@ execute' c = case c of
     g src dst
 
 
-dropCommands :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b
-dropCommands f p@(Free c)
-  | f c = dropCommands f (next c)
+dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
+dropCommands f p@(_:cs)
+  | f p = dropCommands f cs
   | otherwise    = p
-dropCommands _ x@(Pure _) = x
+dropCommands _ [] = []
 
 
 setUser :: MonadIO m => String -> m ()

@@ -12,7 +12,6 @@ module Biegunka.Control
 import Data.Monoid (Monoid(..))
 
 import Control.Lens
-import Control.Monad.Free (Free)
 import Data.Default
 
 import Biegunka.Flatten (flatten)
@@ -39,7 +38,7 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes a 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: forall a l. Free (Command l ()) a -> IO ()
+  { interpret :: forall l b. [Command l () b] -> IO ()
   }
 
 -- | Empty 'Interpreter' does nothing. Two 'Interpreter's combined
