@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Biegunka.Execute.Narrator
   ( -- * Narrator settings
     Volubility(..), Statement(..)
@@ -10,9 +11,7 @@ import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Control.Monad (forever)
 
 import Control.Lens
-import Control.Monad.State (StateT)
-import Control.Monad.Reader (ReaderT)
-import Control.Monad.Trans (liftIO)
+import Control.Monad.Reader (MonadReader, MonadIO, liftIO)
 
 import Biegunka.Execute.State
 
@@ -45,7 +44,7 @@ state Casual (Thorough _) = return ()
 state Taciturn _          = return ()
 
 
-narrate :: Statement -> ReaderT (Narrative, a) (StateT b IO) ()
+narrate :: (MonadReader (Narrative, a) m, MonadIO m) => Statement -> m ()
 narrate s = do
   ch <- view _1
   liftIO $ writeChan ch s
