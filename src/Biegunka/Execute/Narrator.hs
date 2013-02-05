@@ -14,15 +14,11 @@ import Control.Monad.State (StateT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.Trans (liftIO)
 
+import Biegunka.Execute.State
+
 
 type Narrative = Chan Statement
 
--- | Narrator volubility: how verbose are her reports?
-data Volubility =
-    Talkative -- ^ Says everything you told her
-  | Casual    -- ^ Casual narrator
-  | Taciturn  -- ^ Doesn't say anything
-    deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 -- | Statement thoroughness
 data Statement =

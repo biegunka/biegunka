@@ -6,7 +6,6 @@ import Control.Lens
 import Data.Default
 import Text.StringTemplate (ToSElem(..))
 
-import Biegunka.Execute.Narrator
 import Biegunka.Language (React(..))
 
 
@@ -41,6 +40,13 @@ data Priviledges =
     Drop     -- ^ Drop priviledges
   | Preserve -- ^ Preserve priviledges
     deriving (Show, Read, Eq, Ord)
+
+-- | Narrator volubility: how verbose are her reports?
+data Volubility =
+    Talkative -- ^ Says everything you told her
+  | Casual    -- ^ Casual narrator
+  | Taciturn  -- ^ Doesn't say anything
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
 -- Existence of that wrapper is what made 'Default' instance possible

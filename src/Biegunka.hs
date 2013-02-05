@@ -32,7 +32,6 @@ import Biegunka.Control (biegunka, Controls, root)
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
 import Biegunka.Pretend (pause, pretend)
 import Biegunka.Execute (execute)
-import Biegunka.Execute.Narrator (Volubility(..))
 import Biegunka.Execute.State
 import Biegunka.Verify (verify)
 
