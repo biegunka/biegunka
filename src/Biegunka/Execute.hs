@@ -23,7 +23,6 @@ import System.IO.Error (catchIOError, tryIOError)
 import           Control.Lens hiding (Action)
 import           Data.Default (def)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Control.Monad.State (StateT, evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Proxy
@@ -71,14 +70,14 @@ execute e = I $ \s -> do
   a <- load s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
-  runTask e n s
+  runTask e { _narrative = Just n } s
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
 
 
-runTask :: EE -> Narrative -> Task l a -> IO ()
-runTask e n s = evalStateT (reify (n, e) (fold s)) def
+runTask :: EE -> Task l a -> IO ()
+runTask e s = evalStateT (reify e (fold s)) def
 
 
 -- | Custom execptions
@@ -102,12 +101,12 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: Reifies s (Narrative, EE) => Free (Command l ()) a -> Proxy s -> Execution ()
+fold :: Reifies s EE => Free (Command l ()) a -> Proxy s -> Execution ()
 fold (Free command) p = do
   try (execute' command p) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      fmap (<|> [view (_2 . react) $ reflect p]) (use reactStack) >>= \(o:_) -> case o of
+      fmap (<|> [view react $ reflect p]) (use reactStack) >>= \(o:_) -> case o of
         Ignorant -> ignore command
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \c -> case c of
           "I" -> ignore command
@@ -130,7 +129,7 @@ fold (Pure _) _ = return ()
 
 
 -- | Command execution
-execute' :: Reifies s (Narrative, EE) => Command l t a -> Proxy s -> Execution ()
+execute' :: Reifies s EE => Command l t a -> Proxy s -> Execution ()
 execute' c p = case c of
   S url path _ update _ -> do
     narrate p (Typical $ "Emerging source: " ++ url)
@@ -140,7 +139,7 @@ execute' c p = case c of
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do
-    Templates ts <- return $ view (_2 . templates) (reflect p)
+    Templates ts <- return $ view templates (reflect p)
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory

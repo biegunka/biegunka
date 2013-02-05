@@ -3,6 +3,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.Execute.State where
 
+import Control.Concurrent.Chan (Chan)
+
 import Control.Lens
 import Data.Default
 import Text.StringTemplate (ToSElem(..))
@@ -33,6 +35,7 @@ data EE = EE
   , _react       :: React
   , _templates   :: Templates
   , _volubility  :: Volubility
+  , _narrative   :: Maybe Narrative
   }
 
 -- | Priviledges control.
@@ -49,6 +52,14 @@ data Volubility =
   | Taciturn  -- ^ Doesn't say anything
     deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
+type Narrative = Chan Statement
+
+-- | Statement thoroughness
+data Statement =
+    Thorough { text :: String } -- ^ Highly verbose statement with lots of details
+  | Typical  { text :: String } -- ^ Typical report with minimum information
+    deriving (Show, Read, Eq, Ord)
+
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. (ToSElem t) => Templates t
@@ -59,6 +70,7 @@ instance Default EE where
     , _react       = Asking
     , _templates   = Templates False
     , _volubility  = Casual
+    , _narrative   = Nothing
     }
 
 makeLenses ''EE

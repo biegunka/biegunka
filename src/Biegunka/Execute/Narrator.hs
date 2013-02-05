@@ -7,25 +7,16 @@ module Biegunka.Execute.Narrator
   ) where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
+import Control.Concurrent.Chan (newChan, readChan, writeChan)
 import Control.Monad (forever)
+import Data.Foldable (for_)
 
 import Control.Lens
-import Control.Monad.Reader (MonadReader, MonadIO, liftIO)
+import Control.Monad.Reader (MonadIO, liftIO)
 import Data.Proxy
 import Data.Reflection
 
 import Biegunka.Execute.State
-
-
-type Narrative = Chan Statement
-
-
--- | Statement thoroughness
-data Statement =
-    Thorough { text :: String } -- ^ Highly verbose statement with lots of details
-  | Typical  { text :: String } -- ^ Typical report with minimum information
-    deriving (Show, Read, Eq, Ord)
 
 
 -- | Start narrator in separate thread awaiting reports
@@ -46,7 +37,5 @@ state Casual (Thorough _) = return ()
 state Taciturn _          = return ()
 
 
-narrate :: (Reifies s (Narrative, EE), MonadIO m) => Proxy s -> Statement -> m ()
-narrate p s = do
-  let ch = view _1 (reflect p)
-  liftIO $ writeChan ch s
+narrate :: (Reifies s EE, MonadIO m) => Proxy s -> Statement -> m ()
+narrate p s = liftIO . for_ (view narrative (reflect p)) $ flip writeChan s
