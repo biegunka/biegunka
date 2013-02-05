@@ -48,7 +48,6 @@ import Biegunka.Execute.State
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..), next)
 
 
-type Execution a = StateT ES IO a
 type Task l a = Free (Command l ()) a
 
 
@@ -77,7 +76,11 @@ execute e = I $ \s -> do
 
 
 runTask :: EE -> Task l a -> IO ()
-runTask e s = evalStateT (reify e (fold s)) def
+runTask e s = reify e (\p -> evalStateT (asProxyOf (fold s) p) def)
+
+
+asProxyOf :: Execution s () -> Proxy s -> StateT ES IO ()
+asProxyOf a _ = runE a
 
 
 -- | Custom execptions
@@ -101,67 +104,66 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: Reifies s EE => Free (Command l ()) a -> Proxy s -> Execution ()
-fold (Free command) p = do
-  try (execute' command p) >>= \t -> case t of
+fold :: forall l a s. Reifies s EE => Free (Command l ()) a -> Execution s ()
+fold (Free command) = E $ do
+  try (runE $ execute' command) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      fmap (<|> [view react $ reflect p]) (use reactStack) >>= \(o:_) -> case o of
+      fmap (<|> [view react $ reflect (Proxy :: Proxy s)]) (use reactStack) >>= \(o:_) -> runE $ case o of
         Ignorant -> ignore command
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \c -> case c of
           "I" -> ignore command
-          "R" -> fold (Free command) p
+          "R" -> fold (Free command) :: Execution s ()
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> fold (next command) p
+    _ -> runE $ (fold (next command) :: Execution s ())
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropCommands skip (next command)) p
-  ignore _    = fold (next command) p
+  ignore S {} = fold (dropCommands skip (next command)) :: Execution s ()
+  ignore _    = fold (next command) :: Execution s ()
 
   skip P {} = False
   skip S {} = False
   skip (W _ (Free x)) = skip x
   skip _ = True
-fold (Pure _) _ = return ()
 
+  -- | Command execution
+  execute' :: Reifies s EE => Command l t (Free (Command l ()) a) -> Execution s ()
+  execute' c = case c of
+    S url path _ update _ -> do
+      narrate (Typical $ "Emerging source: " ++ url)
+      io $ update path
 
--- | Command execution
-execute' :: Reifies s EE => Command l t a -> Proxy s -> Execution ()
-execute' c p = case c of
-  S url path _ update _ -> do
-    narrate p (Typical $ "Emerging source: " ++ url)
-    io $ update path
+    F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
+    F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
+    F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
+    F (Template src dst substitute) _ -> do
+      Templates ts <- return $ view templates (reflect (Proxy :: Proxy s))
+      io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+    F (Shell p sc) _         -> io $ do
+      d <- getCurrentDirectory
+      setCurrentDirectory p
+      flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
+        e <- system sc
+        case e of
+          ExitFailure _ -> throwIO $ ShellCommandFailure sc
+          _ -> return ()
+      setCurrentDirectory d
 
-  F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
-  F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
-  F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
-  F (Template src dst substitute) _ -> do
-    Templates ts <- return $ view templates (reflect p)
-    io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  F (Shell p sc) _         -> io $ do
-    d <- getCurrentDirectory
-    setCurrentDirectory p
-    flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
-      e <- system sc
-      case e of
-        ExitFailure _ -> throwIO $ ShellCommandFailure sc
-        _ -> return ()
-    setCurrentDirectory d
+    W (Reacting (Just r)) _  -> reactStack %= (r :)
+    W (Reacting Nothing) _   -> reactStack %= drop 1
+    W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> userStack %= (u :)
+    W (User Nothing) _       -> use userStack >>= \(u:us) -> setUser u >> userStack .= us
 
-  W (Reacting (Just r)) _  -> reactStack %= (r :)
-  W (Reacting Nothing) _   -> reactStack %= drop 1
-  W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> userStack %= (u :)
-  W (User Nothing) _       -> use userStack >>= \(u:us) -> setUser u >> userStack .= us
-
-  _ -> return ()
- where
-  overWriteWith g src dst = do
-    createDirectoryIfMissing True $ dropFileName dst
-    tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
-    g src dst
+    _ -> return ()
+   where
+    overWriteWith g src dst = do
+      createDirectoryIfMissing True $ dropFileName dst
+      tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
+      g src dst
+fold (Pure _) = return ()
 
 
 dropCommands :: (Command l s (Free (Command l s) b) -> Bool) -> Free (Command l s) b -> Free (Command l s) b

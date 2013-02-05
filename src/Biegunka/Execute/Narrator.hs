@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Biegunka.Execute.Narrator
   ( -- * Narrator settings
     Volubility(..), Statement(..)
@@ -37,5 +38,5 @@ state Casual (Thorough _) = return ()
 state Taciturn _          = return ()
 
 
-narrate :: (Reifies s EE, MonadIO m) => Proxy s -> Statement -> m ()
-narrate p s = liftIO . for_ (view narrative (reflect p)) $ flip writeChan s
+narrate :: forall s. (Reifies s EE) => Statement -> Execution s ()
+narrate s = E $ liftIO . for_ (view narrative (reflect (Proxy :: Proxy s))) $ flip writeChan s

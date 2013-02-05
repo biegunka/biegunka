@@ -1,15 +1,23 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.Execute.State where
 
 import Control.Concurrent.Chan (Chan)
 
 import Control.Lens
+import Control.Monad.State (MonadState, StateT)
+import Control.Monad.Trans (MonadIO)
 import Data.Default
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
+
+
+newtype Execution s a =
+    E { runE :: StateT ES IO a }
+    deriving (Functor, Monad, MonadState ES, MonadIO)
 
 
 -- | 'Execution' state.
