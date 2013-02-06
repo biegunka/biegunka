@@ -104,31 +104,40 @@ instance Exception BiegunkaException
 
 -- | Single command execution and exception handling
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
-task (c:cs) = E $ do
-  try (runE $ (execute' c :: Execution s ())) >>= \t -> case t of
-    Left (SomeException e) -> do
-      io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      fmap (<|> [view react $ reflect (Proxy :: Proxy s)]) (use reactStack) >>= \(o:_) -> runE $ case o of
-        Ignorant -> ignore c
-        Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
-          "I" -> ignore c
-          "R" -> task (c:cs)
-          "A" -> io $ throwIO ExecutionAbortion
-          _ -> ask
-        Abortive -> io $ throwIO ExecutionAbortion
-    _ -> runE (task cs :: Execution s ())
+task t@(c:cs) = do
+  e <- E $ try (runE $ (execute' c :: Execution s ())) -- FIXME
+  case e of
+    Left (SomeException e') -> do
+      io . T.putStrLn $ "FAIL: " <> T.pack (show e')
+      reaction >>= respond t
+    _ -> task cs
+task [] = return ()
+
+reaction :: forall s. Reifies s EE => Execution s React
+reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
+
+respond :: forall l b s. Reifies s EE => Task l b -> React -> Execution s ()
+respond t Ignorant = task $ ignore t
+respond _ Abortive = io $ throwIO ExecutionAbortion
+respond t Asking   = fix $ \ask ->
+  map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
+    "I" -> task $ ignore t
+    "A" -> io $ throwIO ExecutionAbortion
+    "R" -> task t
+    _ -> ask
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore :: Command l () b -> Execution s ()
-  ignore S {} = task (dropCommands skip cs)
-  ignore _    = task cs
-
+ignore :: Task l b -> Task l b
+ignore (S {} : cs) = dropCommands skip cs
+ where
   skip (P {} : _) = False
   skip (S {} : _) = False
   skip (W {} : cs') = skip cs'
   skip _ = True
-task [] = return ()
+ignore (_ : cs)    = cs
+ignore [] = error "Should not been here."
+
 
 -- | Command execution
 execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
