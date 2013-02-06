@@ -21,8 +21,11 @@ library
                  aeson,
                  mtl >= 2.1 && < 2.2,
                  lifted-base,
+                 monad-control,
                  free,
                  lens >= 3.8,
+                 reflection,
+                 tagged,
                  directory-layout,
                  data-default,
                  HStringTemplate

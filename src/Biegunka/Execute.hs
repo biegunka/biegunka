@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
@@ -20,9 +22,10 @@ import System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
 import           Data.Default (def)
-import           Control.Monad.Reader (ReaderT, runReaderT)
-import           Control.Monad.State (StateT, evalStateT)
+import           Control.Monad.State (evalStateT)
 import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Proxy
+import           Data.Reflection
 import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -44,8 +47,7 @@ import Biegunka.Execute.State
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 
-type Execution a = ReaderT (Narrative, EE) (StateT ES IO) a
-type Task l a = [Command l () a]
+type Task l b = [Command l () b]
 
 
 -- | Execute Interpreter
@@ -65,16 +67,19 @@ execute e = I $ \s -> do
   let b = construct s
   a <- load s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  runTask e s
+  n <- narrator (_volubility e)
+  runTask e { _narrative = Just n } s
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save b
 
 
-runTask :: EE -> Task l a -> IO ()
-runTask e s = do
-  n <- narrator (_volubility e)
-  (`evalStateT` def) $ (`runReaderT` (n, e)) (fold s)
+runTask :: EE -> Task l b -> IO ()
+runTask e t = reify e ((`evalStateT` def) . runE . asProxyOf (task t))
+
+
+asProxyOf :: Execution s () -> Proxy s -> Execution s ()
+asProxyOf a _ = a
 
 
 -- | Custom execptions
@@ -98,35 +103,35 @@ instance Exception BiegunkaException
 
 
 -- | Single command execution and exception handling
-fold :: [Command l () b] -> Execution ()
-fold (c:cs) = do
-  try (execute' c) >>= \t -> case t of
+task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
+task (c:cs) = E $ do
+  try (runE $ (execute' c :: Execution s ())) >>= \t -> case t of
     Left (SomeException e) -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e)
-      liftA2 (<|>) (use reactStack) (return <$> view (_2 . react)) >>= \(o:_) -> case o of
+      fmap (<|> [view react $ reflect (Proxy :: Proxy s)]) (use reactStack) >>= \(o:_) -> runE $ case o of
         Ignorant -> ignore c
         Asking -> fix $ \ask -> map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
           "I" -> ignore c
-          "R" -> fold (c:cs)
+          "R" -> task (c:cs)
           "A" -> io $ throwIO ExecutionAbortion
           _ -> ask
         Abortive -> io $ throwIO ExecutionAbortion
-    _ -> fold cs
+    _ -> runE (task cs :: Execution s ())
  where
   prompt msg = io $ putStr msg >> hFlush stdout >> getLine
 
-  ignore S {} = fold (dropCommands skip cs)
-  ignore _    = fold cs
+  ignore :: Command l () b -> Execution s ()
+  ignore S {} = task (dropCommands skip cs)
+  ignore _    = task cs
 
   skip (P {} : _) = False
   skip (S {} : _) = False
   skip (W {} : cs') = skip cs'
   skip _ = True
-fold [] = return ()
-
+task [] = return ()
 
 -- | Command execution
-execute' :: Command l s a -> Execution ()
+execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
 execute' c = case c of
   S url path _ update _ -> do
     narrate (Typical $ "Emerging source: " ++ url)
@@ -136,7 +141,7 @@ execute' c = case c of
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do
-    Templates ts <- view (_2 . templates)
+    Templates ts <- return $ view templates (reflect (Proxy :: Proxy s))
     io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   F (Shell p sc) _         -> io $ do
     d <- getCurrentDirectory
