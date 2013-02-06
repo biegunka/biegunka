@@ -6,21 +6,22 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
-import Control.Applicative
-import Control.Monad (when)
-import Control.Exception.Lifted (Exception, SomeException(..), throwIO, try)
-import Data.Char (toUpper)
-import Data.List ((\\))
-import Data.Monoid ((<>))
-import Data.Foldable (traverse_)
-import Data.Typeable (Typeable)
-import System.Exit (ExitCode(..))
-import System.IO (hFlush, stdout)
-import System.IO.Error (catchIOError, tryIOError)
+import           Control.Applicative
+import           Control.Monad (when)
+import           Control.Exception (Exception, SomeException(..), throwIO)
+import qualified Control.Exception as E
+import           Data.Char (toUpper)
+import           Data.List ((\\))
+import           Data.Monoid ((<>))
+import           Data.Foldable (traverse_)
+import           Data.Typeable (Typeable)
+import           System.Exit (ExitCode(..))
+import           System.IO (hFlush, stdout)
+import           System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
 import           Data.Default (def)
-import           Control.Monad.State (evalStateT)
+import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Proxy
 import           Data.Reflection
@@ -106,16 +107,25 @@ instance Exception BiegunkaException
 -- notified about errors if not
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task t@(c:cs) = do
-  e <- E $ try (runE $ (execute' c :: Execution s ())) -- FIXME
+  e <- try (execute' c)
   t' <- case e of
     Left (SomeException e') -> do
-      io . T.putStrLn $ "FAIL: " <> T.pack (show e')
+      io . putStrLn $ "FAIL: " ++ show e'
       reaction >>= io . respond t
     _ -> return cs
   task t'
 task [] = return ()
 
+-- | If only I could come up with MonadBaseControl instance for Execution
+try :: Exception e => Execution s a -> Execution s (Either e a)
+try (E ex) = do
+  eeas <- io . E.try . runStateT ex =<< get
+  case eeas of
+    Left e       ->          return (Left e)
+    Right (a, s) -> put s >> return (Right a)
+
 -- | Get current reaction setting from environment
+-- 'head' is safe here because list is always non-empty
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 

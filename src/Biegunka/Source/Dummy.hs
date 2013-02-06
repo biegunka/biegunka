@@ -2,7 +2,7 @@
 -- | Biegunka.Source.Dummy - example Source using 'directory-layout'
 module Biegunka.Source.Dummy (dummy, dummy_, sourceFailure) where
 
-import Control.Exception.Lifted (throwIO)
+import Control.Exception (throwIO)
 
 import Control.Monad.Free (liftF)
 import Data.Text (Text)

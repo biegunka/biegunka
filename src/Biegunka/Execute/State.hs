@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.Execute.State where
 
+import Control.Applicative
 import Control.Concurrent.Chan (Chan)
 
 import Control.Lens
@@ -17,7 +18,7 @@ import Biegunka.Language (React(..))
 
 newtype Execution s a =
     E { runE :: StateT ES IO a }
-    deriving (Functor, Monad, MonadState ES, MonadIO)
+    deriving (Functor, Applicative, Monad, MonadState ES, MonadIO)
 
 
 -- | 'Execution' state.
