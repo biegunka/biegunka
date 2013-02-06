@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
 import Control.Applicative
@@ -73,18 +72,20 @@ execute e = I $ \s -> do
   save b
 
 
+-- | Run single task with supplied environment
 runTask :: EE -> Task l b -> IO ()
 runTask e t = reify e ((`evalStateT` def) . runE . asProxyOf (task t))
 
 
+-- | Thread `s' parameter to 'task' function
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
 asProxyOf a _ = a
 
 
 -- | Custom execptions
 data BiegunkaException =
-    ShellCommandFailure String -- ^ Shell reports errors
-  | SourceEmergingFailure String FilePath Text -- ^ Source emerging routine reports errors
+    ShellCommandFailure String
+  | SourceEmergingFailure String FilePath Text
     deriving (Typeable)
 
 
@@ -99,7 +100,10 @@ instance Show BiegunkaException where
 instance Exception BiegunkaException
 
 
--- | Single command execution and exception handling
+-- | Run single task command by command
+-- Complexity comes from responding to errors. User may control reaction via
+-- 'react' lens to 'EE'. Here he would be asked for prompt if needed or just
+-- notified about errors if not
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task t@(c:cs) = do
   e <- E $ try (runE $ (execute' c :: Execution s ())) -- FIXME
@@ -111,9 +115,11 @@ task t@(c:cs) = do
   task t'
 task [] = return ()
 
+-- | Get current reaction setting from environment
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
+-- | Respond to failure
 respond :: Task l b -> React -> IO (Task l b)
 respond t Ignorant = return $ ignore t
 respond _ Abortive = return []
@@ -126,6 +132,8 @@ respond t Asking   =
  where
   prompt msg = putStr msg >> hFlush stdout >> getLine
 
+-- | If failure happens to be in emerging 'Source' then we need to skip
+-- all related 'Files' operations too.
 ignore :: Task l b -> Task l b
 ignore (S {} : cs) = dropCommands skip cs
  where
@@ -137,7 +145,7 @@ ignore (_ : cs)    = cs
 ignore [] = error "Should not been here."
 
 
--- | Command execution
+-- | Single command execution
 execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
 execute' c = case c of
   S url path _ update _ -> do
