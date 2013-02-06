@@ -14,7 +14,6 @@ import Data.Char (toUpper)
 import Data.List ((\\))
 import Data.Monoid ((<>))
 import Data.Foldable (traverse_)
-import Data.Function (fix)
 import Data.Typeable (Typeable)
 import System.Exit (ExitCode(..))
 import System.IO (hFlush, stdout)
@@ -86,14 +85,12 @@ asProxyOf a _ = a
 data BiegunkaException =
     ShellCommandFailure String -- ^ Shell reports errors
   | SourceEmergingFailure String FilePath Text -- ^ Source emerging routine reports errors
-  | ExecutionAbortion -- ^ User aborts script
     deriving (Typeable)
 
 
 instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
-    pretty ExecutionAbortion = "Biegunka has aborted"
     pretty (ShellCommandFailure t) =
       "Biegunka has failed to execute `" <> T.pack t <> "`"
     pretty (SourceEmergingFailure up fp fs) =
@@ -106,27 +103,28 @@ instance Exception BiegunkaException
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task t@(c:cs) = do
   e <- E $ try (runE $ (execute' c :: Execution s ())) -- FIXME
-  case e of
+  t' <- case e of
     Left (SomeException e') -> do
       io . T.putStrLn $ "FAIL: " <> T.pack (show e')
-      reaction >>= respond t
-    _ -> task cs
+      reaction >>= io . respond t
+    _ -> return cs
+  task t'
 task [] = return ()
 
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
-respond :: forall l b s. Reifies s EE => Task l b -> React -> Execution s ()
-respond t Ignorant = task $ ignore t
-respond _ Abortive = io $ throwIO ExecutionAbortion
-respond t Asking   = fix $ \ask ->
-  map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort? " >>= \p -> case p of
-    "I" -> task $ ignore t
-    "A" -> io $ throwIO ExecutionAbortion
-    "R" -> task t
-    _ -> ask
+respond :: Task l b -> React -> IO (Task l b)
+respond t Ignorant = return $ ignore t
+respond _ Abortive = return []
+respond t Asking   =
+  map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort task? " >>= \p -> case p of
+    "R" -> return t
+    "I" -> return $ ignore t
+    "A" -> return []
+    _ -> respond t Asking
  where
-  prompt msg = io $ putStr msg >> hFlush stdout >> getLine
+  prompt msg = putStr msg >> hFlush stdout >> getLine
 
 ignore :: Task l b -> Task l b
 ignore (S {} : cs) = dropCommands skip cs
