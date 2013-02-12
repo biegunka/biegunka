@@ -77,7 +77,7 @@ instance Default EE where
   def = EE
     { _priviledges = Preserve
     , _react       = Asking
-    , _templates   = Templates False
+    , _templates   = Templates ()
     , _volubility  = Casual
     , _narrative   = Nothing
     }
