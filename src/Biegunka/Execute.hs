@@ -39,7 +39,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
 
-import Biegunka.Control (Interpreter(..))
+import Biegunka.Control (Interpreter(..), root)
 import Biegunka.DB
 import Biegunka.Execute.Narrator
 import Biegunka.Execute.State
@@ -62,15 +62,15 @@ type Task l b = [Command l () b]
 --   profile ...
 -- @
 execute :: EE -> Interpreter
-execute e = I $ \s -> do
+execute e = I $ \c s -> do
   let b = construct s
-  a <- load s
+  a <- load (c ^. root) s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
   runTask e { _narrative = Just n } s
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
-  save b
+  save (c ^. root) b
 
 
 -- | Run single task with supplied environment

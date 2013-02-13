@@ -30,7 +30,7 @@ import Biegunka.Language (Command(..), Action(..))
 --   profile ...
 -- @
 verify :: Interpreter
-verify = I $ \s -> do
+verify = I $ \_ s -> do
   (verified, failures) <- runWriterT (f s)
   putStr "Verify… "
   if verified

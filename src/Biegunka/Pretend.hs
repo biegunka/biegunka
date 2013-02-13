@@ -5,12 +5,13 @@ module Biegunka.Pretend (pause, pretend) where
 import Data.List ((\\))
 import Control.Monad (when)
 
+import           Control.Lens
 import qualified Data.Text.Lazy.IO as T
 import           System.IO
 
 import           Biegunka.DB
 import qualified Biegunka.Log as Log
-import           Biegunka.Control (Interpreter(..))
+import           Biegunka.Control (Interpreter(..), root)
 
 
 -- | Pretend interpreter
@@ -28,8 +29,8 @@ import           Biegunka.Control (Interpreter(..))
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \s -> do
-  a <- load s
+pretend = I $ \c s -> do
+  a <- load (c ^. root) s
   let b = construct s
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
@@ -41,7 +42,7 @@ pretend = I $ \s -> do
 
 
 pause :: Interpreter
-pause = I $ \_ -> putStrLn "Press any key to continue" >> getChar' >> return ()
+pause = I $ \_ _ -> putStrLn "Press any key to continue" >> getChar' >> return ()
 
 
 data Stats = Stats
