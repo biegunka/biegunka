@@ -63,7 +63,7 @@ load r = fmap (Biegunka . M.fromList . catMaybes) . mapM readProfile . mapMaybe 
   readProfile k = flip catchIOError (\_ -> return Nothing) $
     (parseMaybe (parser k) <=< decode . fromStrict) <$> B.readFile (r </> ".biegunka" <.> k)
 
-  parser k (Object o) = (,) k .  M.fromList <$> (mapM repo =<< o .: "repos")
+  parser k (Object o) = (,) k .  M.fromList <$> (mapM repo =<< o .: "sources")
    where
     repo z = do
       n <- z .: "path"
@@ -81,7 +81,7 @@ save r (Biegunka b) = traverseWithKey_ b $ \k v ->
  where
   traverseWithKey_ m f = itraverse f m >> return ()
 
-  unparser t = object ["repos" .= map repo (M.toList t)]
+  unparser t = object ["sources" .= map repo (M.toList t)]
    where
     repo (k, v) = object ["path" .= k, "files" .= S.toList v]
 
