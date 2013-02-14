@@ -23,7 +23,7 @@ dummy :: Layout       -- ^ Layout to make
       -> FilePath     -- ^ Layout root (relative to user home directory)
       -> Script Files -- ^ What to do with layout files
       -> Script Sources
-dummy l p s = liftF $ S "localhost" p s updateDummy ()
+dummy l p s = liftF $ S "dummy" "localhost" p s updateDummy ()
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
 

@@ -31,16 +31,16 @@ data Layer = Files | Sources | Profiles
 
 data Command (l :: Layer) s a where
   F :: Action -> a -> Command l () a
-  S :: String -> FilePath -> s -> (FilePath -> IO ()) -> a -> Command l s a
+  S :: String -> String -> FilePath -> s -> (FilePath -> IO ()) -> a -> Command l s a
   P :: String -> s -> a -> Command l s a
   W :: Wrapper -> a -> Command l s a
 
 
 instance Functor (Command l s) where
-  fmap f (F a x)       = F a (f x)
-  fmap f (S u p s h x) = S u p s h (f x)
-  fmap f (P n s x)     = P n s (f x)
-  fmap f (W s x)       = W s (f x)
+  fmap f (F a x)         = F a (f x)
+  fmap f (S t u p s h x) = S t u p s h (f x)
+  fmap f (P n s x)       = P n s (f x)
+  fmap f (W s x)         = W s (f x)
   {-# INLINE fmap #-}
 
 

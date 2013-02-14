@@ -15,9 +15,9 @@ flatten (Pure _)         = []
 
 
 flatten' :: Script Sources -> [Command l () ()]
-flatten' (Free (S u p s f x)) = S u p () f () : flatten'' s ++ flatten' x
-flatten' (Free (W w x))       = W w () : flatten' x
-flatten' (Pure _)             = []
+flatten' (Free (S t u p s f x)) = S t u p () f () : flatten'' s ++ flatten' x
+flatten' (Free (W w x))         = W w () : flatten' x
+flatten' (Pure _)               = []
 
 
 flatten'' :: Script Files -> [Command l () ()]

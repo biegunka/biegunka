@@ -117,9 +117,9 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
   g (P name _ _) = do
     profile CL..= name
     biegunka . at name ?= mempty
-  g (S src dst _ _ _) = do
+  g (S t src dst _ _ _) = do
     p <- use profile
-    let s = R { recordtype = "M", base = src, location = dst }
+    let s = R { recordtype = t, base = src, location = dst }
     source CL..= s
     biegunka . at p . traverse . at s ?= mempty
   g (F a _) = do

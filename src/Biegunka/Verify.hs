@@ -44,7 +44,7 @@ f = foldr (|&&|) (return True) . map g
 
 g :: Command l () b -> WriterT String IO Bool
 g (P _ _ _) = return True
-g (S u p _ _ _) = do
+g (S _ u p _ _ _) = do
   sourceExists <- io $ doesDirectoryExist p
   unless sourceExists $ tellLn [indent 2, "Source ", u, " -> ", p, " doesn't exist"]
   return sourceExists

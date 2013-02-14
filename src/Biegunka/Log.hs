@@ -28,7 +28,7 @@ install = mconcat . map g
 
 g :: Command l () b -> Builder
 g (P name _ _) = "Setup profile " <> string name <> "\n"
-g (S u p _ _ _) = indent 2 <> "Setup repository " <> string u <> " at " <> string p <> "\n"
+g (S t u p _ _ _) = indent 2 <> "Setup " <> string t <> " repository " <> string u <> " at " <> string p <> "\n"
 g (F a _) = h a
  where
   h (RegisterAt src dst) = indent 4 <>

@@ -158,7 +158,7 @@ ignore [] = error "Should not been here."
 -- | Single command execution
 execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
 execute' c = case c of
-  S url path _ update _ -> do
+  S _ url path _ update _ -> do
     narrate (Typical $ "Emerging source: " ++ url)
     io $ update path
 

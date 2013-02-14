@@ -41,11 +41,11 @@ f (F a x : cs) = h a >>= \b -> (F b x :) <$> f cs
   h (Copy s d)       = liftA2 Copy (use source </> pure s) (use root </> pure d)
   h (Template s d t) = liftA2 (\s' d' -> Template s' d' t) (use source </> pure s) (use root </> pure d)
   h (Shell fp c)     = (\r -> (Shell (r F.</> fp) c)) <$> use source
-f (S u d s a z : cs) = do
+f (S t u d s a z : cs) = do
   r <- use root
   source .= (r F.</> d)
   d' <- use root </> pure d
-  (S u d' s a z :) <$> f cs
+  (S t u d' s a z :) <$> f cs
 f (P n y z : cs) = (P n y z :) <$> f cs
 f (W w z : cs) = (W w z :) <$> f cs
 f [] = return []
