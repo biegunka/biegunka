@@ -27,7 +27,6 @@ import qualified Data.ByteString.Lazy as BL
 import           Data.Default
 import           Data.Map (Map)
 import qualified Data.Map as M
-import qualified Data.Set as S
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (removeFile)
@@ -37,7 +36,7 @@ import Biegunka.Language
 
 
 newtype Biegunka = Biegunka
-  { unBiegunka :: Map String (Map R [R])
+  { unBiegunka :: Map String (Map R (Map FilePath R))
   } deriving (Show, Read, Eq, Ord, Monoid)
 
 
@@ -58,7 +57,7 @@ instance ToJSON R where
 data Construct = Construct
   { _profile :: String
   , _source :: R
-  , _biegunka :: Map String (Map R [R])
+  , _biegunka :: Map String (Map R (Map FilePath R))
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
@@ -81,7 +80,7 @@ load r = fmap (Biegunka . M.fromList . catMaybes) . mapM readProfile . mapMaybe 
     repo z = do
       n <- z .: "info"
       fs <- z .: "files" >>= mapM parseJSON
-      return (n, fs)
+      return (n, M.fromList fs)
   parser _ _ = empty
 
 
@@ -96,11 +95,11 @@ save r (Biegunka b) = traverseWithKey_ b $ \k v ->
 
   unparser t = object ["sources" .= map repo (M.toList t)]
    where
-    repo (k, v) = object ["info" .= k, "files" .= map toJSON v]
+    repo (k, v) = object ["info" .= k, "files" .= map toJSON (M.toList v)]
 
 
 filepaths :: Biegunka -> [FilePath]
-filepaths = S.toList . S.fromList . map location <=< M.elems <=< M.elems . unBiegunka
+filepaths = M.keys <=< M.elems <=< M.elems . unBiegunka
 
 
 sources :: Biegunka -> [FilePath]
@@ -122,15 +121,15 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
     p <- use profile
     let s = R { recordtype = "M", base = src, location = dst }
     source CL..= s
-    biegunka . at p . traverse . at s ?= []
+    biegunka . at p . traverse . at s ?= mempty
   g (F a _) = do
     p <- use profile
     s <- use source
     biegunka . at p . traverse . at s . traverse <>= h a
    where
-    h (RegisterAt src dst) = [R { recordtype = "sourcelink", base = src, location = dst }]
-    h (Link src dst)       = [R { recordtype = "link",       base = src, location = dst }]
-    h (Copy src dst)       = [R { recordtype = "copy",       base = src, location = dst }]
-    h (Template src dst _) = [R { recordtype = "template",   base = src, location = dst }]
-    h (Shell {})           = []
+    h (RegisterAt src dst) = M.singleton dst R { recordtype = "sourcelink", base = src, location = dst }
+    h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
+    h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
+    h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
+    h (Shell {})           = mempty
   g (W _ _) = return ()
