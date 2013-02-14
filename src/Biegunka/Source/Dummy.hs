@@ -9,7 +9,7 @@ import Data.Text (Text)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
-import Biegunka.Language (Script, Layer(Files, Source), Command(S))
+import Biegunka.Language (Script, Layer(Files, Sources), Command(S))
 import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
 
 
@@ -22,7 +22,7 @@ import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
 dummy :: Layout       -- ^ Layout to make
       -> FilePath     -- ^ Layout root (relative to user home directory)
       -> Script Files -- ^ What to do with layout files
-      -> Script Source
+      -> Script Sources
 dummy l p s = liftF $ S "localhost" p s updateDummy ()
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
@@ -35,7 +35,7 @@ dummy l p s = liftF $ S "localhost" p s updateDummy ()
 -- download 'Source' somewhere
 dummy_ :: Layout   -- ^ Layout to make
        -> FilePath -- ^ Layout root (relative to user home directory)
-       -> Script Source
+       -> Script Sources
 dummy_ l p = dummy l p (return ())
 
 

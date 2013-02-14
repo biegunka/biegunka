@@ -107,12 +107,12 @@ reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothi
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile :: String -> Script Source -> Script Profile
+profile :: String -> Script Sources -> Script Profiles
 profile name repo = liftF $ P name repo ()
 
 
 -- | Concurrent task
 -- Runs in parallel with main thread if possible. Currently defunct
-task :: Script Source -> Script Source
+task :: Script Sources -> Script Sources
 task = id
 {-# INLINE task #-}

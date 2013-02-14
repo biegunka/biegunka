@@ -22,11 +22,11 @@ type family Script (a :: Layer) :: *
 
 
 type instance Script Files   = Free (Command Files ()) ()
-type instance Script Source  = Free (Command Source (Script Files)) ()
-type instance Script Profile = Free (Command Profile (Script Source)) ()
+type instance Script Sources  = Free (Command Sources (Script Files)) ()
+type instance Script Profiles = Free (Command Profiles (Script Sources)) ()
 
 
-data Layer = Files | Source | Profile
+data Layer = Files | Sources | Profiles
 
 
 data Command (l :: Layer) s a where
