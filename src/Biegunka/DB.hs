@@ -10,7 +10,7 @@ module Biegunka.DB
   , filepaths, sources
   ) where
 
-import Control.Applicative ((<$>), empty)
+import Control.Applicative
 import Control.Monad ((<=<))
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Monoid (Monoid(..))
@@ -27,7 +27,6 @@ import qualified Data.ByteString.Lazy as BL
 import           Data.Default
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
@@ -38,15 +37,29 @@ import Biegunka.Language
 
 
 newtype Biegunka = Biegunka
-  { unBiegunka :: Map String (Map FilePath (Set FilePath))
-  } deriving (Show, Eq, Monoid)
+  { unBiegunka :: Map String (Map String [FR])
+  } deriving (Show, Read, Eq, Ord, Monoid)
+
+
+data FR = FR
+  { filetype :: String
+  , base :: FilePath
+  , location :: FilePath
+  } deriving (Show, Read, Eq, Ord)
+
+instance FromJSON FR where
+  parseJSON (Object o) = liftA3 FR (o .: "filetype") (o .: "base") (o .: "location")
+  parseJSON _          = empty
+
+instance ToJSON FR where
+  toJSON FR { filetype = ft, base = bs, location = lc } = object [ "filetype" .= ft, "base" .= bs, "location" .= lc ]
 
 
 data Construct = Construct
   { _profile :: String
   , _source :: FilePath
-  , _biegunka :: Map String (Map FilePath (Set FilePath))
-  }
+  , _biegunka :: Map String (Map String [FR])
+  } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
   def = Construct mempty mempty mempty
@@ -67,8 +80,8 @@ load r = fmap (Biegunka . M.fromList . catMaybes) . mapM readProfile . mapMaybe 
    where
     repo z = do
       n <- z .: "path"
-      fs <- z .: "files"
-      return (n, S.fromList fs)
+      fs <- z .: "files" >>= mapM parseJSON
+      return (n, fs)
   parser _ _ = empty
 
 
@@ -83,11 +96,11 @@ save r (Biegunka b) = traverseWithKey_ b $ \k v ->
 
   unparser t = object ["sources" .= map repo (M.toList t)]
    where
-    repo (k, v) = object ["path" .= k, "files" .= S.toList v]
+    repo (k, v) = object ["path" .= k, "files" .= map toJSON v]
 
 
 filepaths :: Biegunka -> [FilePath]
-filepaths = S.toList <=< M.elems <=< M.elems . unBiegunka
+filepaths = S.toList . S.fromList . map location <=< M.elems <=< M.elems . unBiegunka
 
 
 sources :: Biegunka -> [FilePath]
@@ -108,15 +121,15 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
   g (S _ s _ _ _) = do
     p <- use profile
     source CL..= s
-    biegunka . at p . traverse . at s ?= mempty
+    biegunka . at p . traverse . at s ?= []
   g (F a _) = do
     p <- use profile
     s <- use source
     biegunka . at p . traverse . at s . traverse <>= h a
    where
-    h (RegisterAt _ dst) = S.singleton dst
-    h (Link _ dst) = S.singleton dst
-    h (Copy _ dst) = S.singleton dst
-    h (Template _ dst _) = S.singleton dst
-    h (Shell {}) = mempty
+    h (RegisterAt src dst) = [FR { filetype = "sourcelink", base = src, location = dst }]
+    h (Link src dst)       = [FR { filetype = "link",       base = src, location = dst }]
+    h (Copy src dst)       = [FR { filetype = "copy",       base = src, location = dst }]
+    h (Template src dst _) = [FR { filetype = "template",   base = src, location = dst }]
+    h (Shell {})           = []
   g (W _ _) = return ()
