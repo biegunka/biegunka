@@ -37,32 +37,32 @@ import Biegunka.Language
 
 
 newtype Biegunka = Biegunka
-  { unBiegunka :: Map String (Map String [FR])
+  { unBiegunka :: Map String (Map R [R])
   } deriving (Show, Read, Eq, Ord, Monoid)
 
 
-data FR = FR
-  { filetype :: String
+data R = R
+  { recordtype :: String
   , base :: FilePath
   , location :: FilePath
   } deriving (Show, Read, Eq, Ord)
 
-instance FromJSON FR where
-  parseJSON (Object o) = liftA3 FR (o .: "filetype") (o .: "base") (o .: "location")
+instance FromJSON R where
+  parseJSON (Object o) = liftA3 R (o .: "recordtype") (o .: "base") (o .: "location")
   parseJSON _          = empty
 
-instance ToJSON FR where
-  toJSON FR { filetype = ft, base = bs, location = lc } = object [ "filetype" .= ft, "base" .= bs, "location" .= lc ]
+instance ToJSON R where
+  toJSON R { recordtype = ft, base = bs, location = lc } = object [ "recordtype" .= ft, "base" .= bs, "location" .= lc ]
 
 
 data Construct = Construct
   { _profile :: String
-  , _source :: FilePath
-  , _biegunka :: Map String (Map String [FR])
+  , _source :: R
+  , _biegunka :: Map String (Map R [R])
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
-  def = Construct mempty mempty mempty
+  def = Construct mempty (R "" "" "") mempty
 
 makeLenses ''Construct
 
@@ -79,7 +79,7 @@ load r = fmap (Biegunka . M.fromList . catMaybes) . mapM readProfile . mapMaybe 
   parser k (Object o) = (,) k .  M.fromList <$> (mapM repo =<< o .: "sources")
    where
     repo z = do
-      n <- z .: "path"
+      n <- z .: "info"
       fs <- z .: "files" >>= mapM parseJSON
       return (n, fs)
   parser _ _ = empty
@@ -96,7 +96,7 @@ save r (Biegunka b) = traverseWithKey_ b $ \k v ->
 
   unparser t = object ["sources" .= map repo (M.toList t)]
    where
-    repo (k, v) = object ["path" .= k, "files" .= map toJSON v]
+    repo (k, v) = object ["info" .= k, "files" .= map toJSON v]
 
 
 filepaths :: Biegunka -> [FilePath]
@@ -104,7 +104,7 @@ filepaths = S.toList . S.fromList . map location <=< M.elems <=< M.elems . unBie
 
 
 sources :: Biegunka -> [FilePath]
-sources = M.keys <=< M.elems . unBiegunka
+sources = map location . M.keys <=< M.elems . unBiegunka
 
 
 fromStrict :: B.ByteString -> BL.ByteString
@@ -118,8 +118,9 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
   g (P name _ _) = do
     profile CL..= name
     biegunka . at name ?= mempty
-  g (S _ s _ _ _) = do
+  g (S src dst _ _ _) = do
     p <- use profile
+    let s = R { recordtype = "M", base = src, location = dst }
     source CL..= s
     biegunka . at p . traverse . at s ?= []
   g (F a _) = do
@@ -127,9 +128,9 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
     s <- use source
     biegunka . at p . traverse . at s . traverse <>= h a
    where
-    h (RegisterAt src dst) = [FR { filetype = "sourcelink", base = src, location = dst }]
-    h (Link src dst)       = [FR { filetype = "link",       base = src, location = dst }]
-    h (Copy src dst)       = [FR { filetype = "copy",       base = src, location = dst }]
-    h (Template src dst _) = [FR { filetype = "template",   base = src, location = dst }]
+    h (RegisterAt src dst) = [R { recordtype = "sourcelink", base = src, location = dst }]
+    h (Link src dst)       = [R { recordtype = "link",       base = src, location = dst }]
+    h (Copy src dst)       = [R { recordtype = "copy",       base = src, location = dst }]
+    h (Template src dst _) = [R { recordtype = "template",   base = src, location = dst }]
     h (Shell {})           = []
   g (W _ _) = return ()
