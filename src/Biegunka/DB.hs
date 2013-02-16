@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.DB
-  ( Biegunka
+  ( Biegunka(..)
   , load, save, construct
   , filepaths, sources
   ) where

@@ -31,8 +31,8 @@ library
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy
                    Biegunka.Language
-  other-modules: Biegunka.DB
-                 Biegunka.Control
+                   Biegunka.DB
+  other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Narrator
                  Biegunka.Execute.State
