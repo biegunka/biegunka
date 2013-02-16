@@ -21,7 +21,7 @@ import Text.StringTemplate.GenericStandard ()
 type family Script (a :: Layer) :: *
 
 
-type instance Script Files   = Free (Command Files ()) ()
+type instance Script Files    = Free (Command Files ()) ()
 type instance Script Sources  = Free (Command Sources (Script Files)) ()
 type instance Script Profiles = Free (Command Profiles (Script Sources)) ()
 
@@ -58,6 +58,5 @@ data Wrapper =
 
 data React =
     Ignorant
-  | Asking
   | Abortive
     deriving (Show, Read, Eq, Ord, Enum, Bounded)

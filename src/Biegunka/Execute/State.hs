@@ -26,12 +26,14 @@ newtype Execution s a =
 data ES = ES
   { _reactStack  :: [React]
   , _userStack   :: [String]
+  , _retryCount  :: Int
   } deriving (Show, Read, Eq, Ord)
 
 instance Default ES where
   def = ES
-    { _reactStack  = []
-    , _userStack   = []
+    { _reactStack = []
+    , _userStack  = []
+    , _retryCount = 0
     }
 
 makeLenses ''ES
@@ -45,6 +47,7 @@ data EE = EE
   , _templates   :: Templates
   , _volubility  :: Volubility
   , _narrative   :: Maybe Narrative
+  , _retries     :: Int
   }
 
 -- | Priviledges control.
@@ -76,10 +79,11 @@ data Templates = forall t. (ToSElem t) => Templates t
 instance Default EE where
   def = EE
     { _priviledges = Preserve
-    , _react       = Asking
+    , _react       = Ignorant
     , _templates   = Templates ()
     , _volubility  = Casual
     , _narrative   = Nothing
+    , _retries     = 1
     }
 
 makeLenses ''EE

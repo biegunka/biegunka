@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
@@ -10,13 +11,11 @@ import           Control.Applicative
 import           Control.Monad (when)
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
-import           Data.Char (toUpper)
 import           Data.List ((\\))
 import           Data.Monoid ((<>))
 import           Data.Foldable (traverse_)
 import           Data.Typeable (Typeable)
 import           System.Exit (ExitCode(..))
-import           System.IO (hFlush, stdout)
 import           System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Lens hiding (Action)
@@ -108,12 +107,9 @@ instance Exception BiegunkaException
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task t@(c:cs) = do
   e <- try (execute' c)
-  t' <- case e of
-    Left (SomeException e') -> do
-      io . putStrLn $ "FAIL: " ++ show e'
-      reaction >>= io . respond t
-    _ -> return cs
-  task t'
+  case e of
+    Left e' -> respond e' t >>= task
+    Right _ -> task cs
 task [] = return ()
 
 -- | If only I could come up with MonadBaseControl instance for Execution
@@ -124,23 +120,27 @@ try (E ex) = do
     Left e       ->          return (Left e)
     Right (a, s) -> put s >> return (Right a)
 
+-- | Get response from task failure processing
+respond :: forall l b s. Reifies s EE
+        => SomeException -> Task l b -> Execution s (Task l b)
+respond e t = do
+  io . putStrLn $ "FAIL: " ++ show e
+  rc <- use retryCount
+  if rc < view retries (reflect (Proxy :: Proxy s)) then do
+    io . putStrLn $ "Retry: " ++ show (rc + 1)
+    retryCount += 1
+    return t
+  else do
+    retryCount .= 0
+    r <- reaction
+    return $ case r of
+      Ignorant -> ignore t
+      Abortive -> []
+
 -- | Get current reaction setting from environment
 -- 'head' is safe here because list is always non-empty
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
-
--- | Respond to failure
-respond :: Task l b -> React -> IO (Task l b)
-respond t Ignorant = return $ ignore t
-respond _ Abortive = return []
-respond t Asking   =
-  map toUpper <$> prompt "[I]gnore, [R]etry, [A]bort task? " >>= \p -> case p of
-    "R" -> return t
-    "I" -> return $ ignore t
-    "A" -> return []
-    _ -> respond t Asking
- where
-  prompt msg = putStr msg >> hFlush stdout >> getLine
 
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
