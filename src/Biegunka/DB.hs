@@ -5,8 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.DB
-  ( Biegunka(..)
-  , load, save, construct
+  ( Biegunka(..), R(..)
+  , load, loadProfile, save, construct
   , filepaths, sources
   ) where
 
@@ -67,21 +67,23 @@ makeLenses ''Construct
 
 
 load :: FilePath -> [Command l a b] -> IO Biegunka
-load r = fmap (Biegunka . M.fromList . catMaybes) . mapM readProfile . mapMaybe profiles
+load r = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile r) . mapMaybe profiles
  where
   profiles (P name _ _) = Just name
-  profiles _ = Nothing
+  profiles _            = Nothing
 
-  readProfile k = flip catchIOError (\_ -> return Nothing) $
-    (parseMaybe (parser k) <=< decode . fromStrict) <$> B.readFile (r </> ".biegunka" <.> k)
 
-  parser k (Object o) = (,) k .  M.fromList <$> (mapM repo =<< o .: "sources")
+loadProfile :: FilePath -> String -> IO (Maybe (String, Map R (Map FilePath R)))
+loadProfile r n = flip catchIOError (\_ -> return Nothing) $
+  (parseMaybe parser <=< decode . fromStrict) <$> B.readFile (r </> ".biegunka" <.> n)
+ where
+  parser (Object o) = (,) n .  M.fromList <$> (mapM repo =<< o .: "sources")
    where
     repo z = do
-      n <- z .: "info"
+      t <- z .: "info"
       fs <- z .: "files" >>= mapM parseJSON
-      return (n, M.fromList fs)
-  parser _ _ = empty
+      return (t, M.fromList fs)
+  parser _ = empty
 
 
 save :: FilePath -> Biegunka -> IO ()
