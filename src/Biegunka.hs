@@ -41,9 +41,9 @@ import Biegunka.Verify (verify)
 -- > git "https://example.com/repo.git" "git/repo" $
 -- >   registerAt "we/need/you/here"
 --
--- Links ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
+-- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Files
-registerAt dst = liftF $ F (RegisterAt mempty dst) ()
+registerAt dst = liftF $ F (Link mempty dst) ()
 
 
 -- | Links given file to specified filepath

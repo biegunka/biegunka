@@ -50,10 +50,6 @@ g (S _ u p _ _ _) = do
   return sourceExists
 g (F a _) = h a
  where
-  h (RegisterAt _ dst) = do
-    repoExists <- io $ doesDirectoryExist dst
-    unless repoExists $ tellLn [indent 4, "Repository link at ", dst, " does not exist"]
-    return repoExists
   h (Link src dst) = do
     src' <- io $ readSymbolicLink dst
     dstExists <- io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))

@@ -36,7 +36,6 @@ infect path cs = evalState (f cs) Infect { _root = path, _source = mempty }
 f :: [Command l a b] -> State Infect [Command l a b]
 f (F a x : cs) = h a >>= \b -> (F b x :) <$> f cs
  where
-  h (RegisterAt s d) = liftA2 RegisterAt (use source </> pure s) (use root </> pure d)
   h (Link s d)       = liftA2 Link (use source </> pure s) (use root </> pure d)
   h (Copy s d)       = liftA2 Copy (use source </> pure s) (use root </> pure d)
   h (Template s d t) = liftA2 (\s' d' -> Template s' d' t) (use source </> pure s) (use root </> pure d)

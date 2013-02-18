@@ -162,7 +162,6 @@ execute' c = case c of
     narrate (Typical $ "Emerging source: " ++ url)
     io $ update path
 
-  F (RegisterAt src dst) _ -> io $ overWriteWith createSymbolicLink src dst
   F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
   F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
   F (Template src dst substitute) _ -> do

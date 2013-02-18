@@ -127,7 +127,6 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
     s <- use source
     biegunka . at p . traverse . at s . traverse <>= h a
    where
-    h (RegisterAt src dst) = M.singleton dst R { recordtype = "sourcelink", base = src, location = dst }
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }

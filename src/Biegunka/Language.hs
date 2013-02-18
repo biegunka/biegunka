@@ -45,8 +45,7 @@ instance Functor (Command l s) where
 
 
 data Action =
-    RegisterAt FilePath FilePath
-  | Link FilePath FilePath
+    Link FilePath FilePath
   | Copy FilePath FilePath
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
   | Shell FilePath String

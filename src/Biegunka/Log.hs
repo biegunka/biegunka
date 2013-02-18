@@ -31,8 +31,6 @@ g (P name _ _) = "Setup profile " <> string name <> "\n"
 g (S t u p _ _ _) = indent 2 <> "Setup " <> string t <> " repository " <> string u <> " at " <> string p <> "\n"
 g (F a _) = h a
  where
-  h (RegisterAt src dst) = indent 4 <>
-    "Link repository " <> string src <> " to " <> string dst <> "\n"
   h (Link src dst) = indent 4 <>
     "Link file " <> string src <> " to " <> string dst <> "\n"
   h (Copy src dst) = indent 4 <>
