@@ -28,9 +28,9 @@ import Data.Monoid (mempty)
 import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
-import Biegunka.Control (biegunka, Controls, root)
+import Biegunka.Control (biegunka, Controls, root, pause)
 import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
-import Biegunka.Pretend (pause, pretend)
+import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.State
 import Biegunka.Verify (verify)

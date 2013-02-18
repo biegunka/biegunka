@@ -7,9 +7,12 @@ module Biegunka.Control
     biegunka, Interpreter(..)
     -- * Common interpreters controls
   , Controls, root
+    -- * Generic interpreters
+  , pause
   ) where
 
 import Data.Monoid (Monoid(..))
+import System.IO
 
 import Control.Lens
 import Data.Default
@@ -54,3 +57,13 @@ biegunka :: Controls        -- ^ Common settings
          -> Interpreter     -- ^ Combined interpreters
          -> IO ()
 biegunka c s (I f) = f c $ (c ^. root) `infect` flatten s
+
+
+-- | Simple interpreter example that just waits user to press any key
+pause :: Interpreter
+pause = I $ \_ _ -> putStrLn "Press any key to continue" >> getch
+ where
+  getch = do
+    hSetBuffering stdin NoBuffering
+    _ <- getChar
+    hSetBuffering stdin LineBuffering

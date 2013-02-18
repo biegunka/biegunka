@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Pretend (pause, pretend) where
+module Biegunka.Pretend (pretend) where
 
 import Data.List ((\\))
 import Control.Monad (when)
@@ -39,10 +39,6 @@ pretend = I $ \c s -> do
   whenM ma mb = do
     p <- ma
     when p mb
-
-
-pause :: Interpreter
-pause = I $ \_ _ -> putStrLn "Press any key to continue" >> getChar' >> return ()
 
 
 data Stats = Stats
