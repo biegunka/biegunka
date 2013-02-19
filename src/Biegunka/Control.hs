@@ -4,7 +4,7 @@
 -- | Controlling biegunka interpreters and their composition
 module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter(..)
+    biegunka, Interpreter(..), Task
     -- * Common interpreters controls
   , Controls, root
     -- * Generic interpreters
@@ -17,7 +17,7 @@ import System.IO
 import Control.Lens
 import Data.Default
 
-import Biegunka.Flatten (flatten)
+import Biegunka.Flatten (tasks)
 import Biegunka.Language (Script, Layer(..), Command)
 import Biegunka.Infect (infect)
 
@@ -41,8 +41,10 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: forall l b. Controls -> [Command l () b] -> IO ()
+  { interpret :: forall l b. Controls -> [Task l b] -> IO ()
   }
+
+type Task l b = [Command l () b]
 
 -- | Empty 'Interpreter' does nothing. Two 'Interpreter's combined
 -- take the same 'Script' and do things one after another
@@ -56,7 +58,7 @@ biegunka :: Controls        -- ^ Common settings
          -> Script Profiles -- ^ Script to interpret
          -> Interpreter     -- ^ Combined interpreters
          -> IO ()
-biegunka c s (I f) = f c $ (c ^. root) `infect` flatten s
+biegunka c s (I f) = f c $ map ((c ^. root) `infect`) (tasks s)
 
 
 -- | Simple interpreter example that just waits user to press any key

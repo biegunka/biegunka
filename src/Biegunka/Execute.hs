@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
 import           Control.Applicative
@@ -38,14 +39,11 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
 
-import Biegunka.Control (Interpreter(..), root)
+import Biegunka.Control (Interpreter(..), Task, root)
 import Biegunka.DB
 import Biegunka.Execute.Narrator
 import Biegunka.Execute.Control
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
-
-
-type Task l b = [Command l () b]
 
 
 -- | Execute Interpreter
@@ -61,7 +59,7 @@ type Task l b = [Command l () b]
 --   profile ...
 -- @
 execute :: EE -> Interpreter
-execute e = I $ \c s -> do
+execute e = I $ \c (concat -> s) -> do
   let b = construct s
   a <- load (c ^. root) s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser

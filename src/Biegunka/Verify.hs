@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Verify (verify) where
@@ -30,7 +31,7 @@ import Biegunka.Language (Command(..), Action(..))
 --   profile ...
 -- @
 verify :: Interpreter
-verify = I $ \_ s -> do
+verify = I $ \_ (concat -> s) -> do
   (verified, failures) <- runWriterT (f s)
   putStr "Verify… "
   if verified

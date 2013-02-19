@@ -48,6 +48,8 @@ data EE = EE
   , _volubility  :: Volubility
   , _narrative   :: Maybe Narrative
   , _retries     :: Int
+  , _jobs        :: Int
+  , _parallel    :: Bool
   }
 
 -- | Priviledges control.
@@ -84,6 +86,8 @@ instance Default EE where
     , _volubility  = Casual
     , _narrative   = Nothing
     , _retries     = 1
+    , _jobs        = 1
+    , _parallel    = True
     }
 
 makeLenses ''EE

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Pretend (pretend) where
 
@@ -29,7 +30,7 @@ import           Biegunka.Control (Interpreter(..), root)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c s -> do
+pretend = I $ \c (concat -> s) -> do
   a <- load (c ^. root) s
   let b = construct s
   putStr . talk $ stats a b
