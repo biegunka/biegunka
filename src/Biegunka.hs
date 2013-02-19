@@ -11,7 +11,7 @@ module Biegunka
   , React(..), react
   , Volubility(..), volubility
   , Templates(..), templates
-  , retries, jobs, parallel
+  , retries, parallel
     -- * All layers
   , sudo, reacting
     -- * Profile layer

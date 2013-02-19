@@ -19,10 +19,11 @@ import           Data.Typeable (Typeable)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (catchIOError, tryIOError)
 
+import           Control.Concurrent.Async
 import           Control.Lens hiding (Action)
-import           Data.Default (def)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
 import           Data.Text (Text)
@@ -59,12 +60,12 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 --   profile ...
 -- @
 execute :: EE -> Interpreter
-execute e = I $ \c (concat -> s) -> do
-  let b = construct s
-  a <- load (c ^. root) s
+execute e = I $ \c s -> do
+  let b = construct (concat s)
+  a <- load (c ^. root) (concat s)
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
-  runTask e { _narrative = Just n } s
+  mapConcurrently (runTask e { _narrative = Just n }) $ if e ^. parallel then s else [concat s]
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save (c ^. root) b

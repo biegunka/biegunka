@@ -26,6 +26,7 @@ library
                  tagged,
                  directory-layout,
                  data-default,
+                 async,
                  HStringTemplate >= 0.7
   hs-source-dirs: src
   exposed-modules: Biegunka
