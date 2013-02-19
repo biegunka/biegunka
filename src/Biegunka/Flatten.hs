@@ -4,18 +4,24 @@
 {-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Flatten (tasks) where
 
-import Control.Monad.Free (Free(..))
-import Biegunka.Language (Script, Layer(..), Command(..))
+import Data.Foldable (toList)
+
+import           Data.Sequence (Seq)
+import qualified Data.Sequence as Q
+import           Control.Monad.Free (Free(..))
+import           Biegunka.Language
 
 
 tasks :: Script Profiles -> [[Command l () ()]]
-tasks p = loop [] p 0
+tasks = go [] Q.empty
  where
-  loop _ (Pure _)         _ = []
-  loop a (Free (W w x))   z = loop (a ++ [W w ()]) x (z + 1)
-  loop a (Free (P n s x)) z = pool (a ++ P n () () : flatten s) x z
-  pool a t                0 = a : loop [] t 0
-  pool a (Free (W w x))   z = pool (a ++ [W w ()]) x (z - 1)
+  go :: [Command l () ()] -> Seq [Command l () ()] -> Script Profiles -> [[Command l () ()]]
+  go _ q (Pure _)                         = toList q
+  go a q (Free (W (User     (Just u)) x)) = go (W (User     (Just u)) () : a) q x
+  go a q (Free (W (Reacting (Just r)) x)) = go (W (Reacting (Just r)) () : a) q x
+  go a q (Free (W (User     Nothing)  x)) = go (drop 1 a) q x
+  go a q (Free (W (Reacting Nothing)  x)) = go (drop 1 a) q x
+  go a q (Free (P n s x))                 = go a (q Q.|> (reverse a ++ P n () () : flatten s)) x
 
 
 flatten :: Script Sources -> [Command l () ()]
