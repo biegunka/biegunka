@@ -35,11 +35,11 @@ library
   other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Narrator
-                 Biegunka.Execute.State
+                 Biegunka.Execute.Control
                  Biegunka.Pretend
                  Biegunka.Verify
                  Biegunka.Log
-                 Biegunka.State
+                 Biegunka.Infect
                  Biegunka.Flatten
   ghc-options: -Wall
                -fno-warn-unused-do-bind

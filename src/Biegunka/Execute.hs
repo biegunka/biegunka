@@ -41,7 +41,7 @@ import           System.Process (system)
 import Biegunka.Control (Interpreter(..), root)
 import Biegunka.DB
 import Biegunka.Execute.Narrator
-import Biegunka.Execute.State
+import Biegunka.Execute.Control
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 

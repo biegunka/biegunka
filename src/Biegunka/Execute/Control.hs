@@ -2,7 +2,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Biegunka.Execute.State where
+module Biegunka.Execute.Control where
 
 import Control.Applicative
 import Control.Concurrent.Chan (Chan)

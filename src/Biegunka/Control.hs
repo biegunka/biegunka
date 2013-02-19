@@ -19,7 +19,7 @@ import Data.Default
 
 import Biegunka.Flatten (flatten)
 import Biegunka.Language (Script, Layer(..), Command)
-import Biegunka.State (infect)
+import Biegunka.Infect (infect)
 
 
 -- | Common interpreters controls

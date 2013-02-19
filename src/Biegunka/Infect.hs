@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Biegunka.State (infect) where
+module Biegunka.Infect (infect) where
 
 import Control.Applicative
 import Data.Monoid (mempty)

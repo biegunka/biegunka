@@ -17,7 +17,7 @@ import Control.Monad.Reader (MonadIO, liftIO)
 import Data.Proxy
 import Data.Reflection
 
-import Biegunka.Execute.State
+import Biegunka.Execute.Control
 
 
 -- | Start narrator in separate thread awaiting reports
