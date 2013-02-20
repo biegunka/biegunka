@@ -25,14 +25,14 @@ newtype Execution s a =
 -- Denotes current failure reaction, effective user id and more
 data ES = ES
   { _reactStack  :: [React]
-  , _userStack   :: [String]
+  , _usersStack  :: [String]
   , _retryCount  :: Int
   } deriving (Show, Read, Eq, Ord)
 
 instance Default ES where
   def = ES
     { _reactStack = []
-    , _userStack  = []
+    , _usersStack = []
     , _retryCount = 0
     }
 

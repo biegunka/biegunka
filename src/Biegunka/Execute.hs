@@ -9,7 +9,7 @@
 module Biegunka.Execute (execute, BiegunkaException(..)) where
 
 import           Control.Applicative
-import           Control.Monad (when)
+import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
 import           Data.List ((\\))
@@ -37,7 +37,8 @@ import           System.Directory
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
-import           System.Posix.User (getEffectiveUserName, getUserEntryForName, userID, setEffectiveUserID)
+import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
+import           System.Posix.Process
 import           System.Process (system)
 
 import Biegunka.Control (Interpreter(..), Task, root)
@@ -105,7 +106,7 @@ instance Exception BiegunkaException
 -- notified about errors if not
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task t@(c:cs) = do
-  e <- try (execute' c)
+  e <- try (command c)
   case e of
     Left e' -> respond e' t >>= task
     Right _ -> task cs
@@ -155,18 +156,34 @@ ignore [] = error "Should not been here."
 
 
 -- | Single command execution
-execute' :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
-execute' c = case c of
-  S _ url path _ update _ -> do
-    narrate (Typical $ "Emerging source: " ++ url)
-    io $ update path
-
-  F (Link src dst) _       -> io $ overWriteWith createSymbolicLink src dst
-  F (Copy src dst) _       -> io $ overWriteWith copyFile src dst
-  F (Template src dst substitute) _ -> do
-    Templates ts <- return $ view templates (reflect (Proxy :: Proxy s))
-    io $ overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  F (Shell p sc) _         -> io $ do
+command :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
+command (W (Reacting (Just r)) _) = reactStack %= (r :)
+command (W (Reacting Nothing)  _) = reactStack %= drop 1
+command (W (User     (Just u)) _) = usersStack %= (u :)
+command (W (User     Nothing)  _) = usersStack %= drop 1
+command c = do
+  xs <- use usersStack
+  o  <- action c
+  io $ case xs of
+    []  -> o
+    u:_ -> do
+      u' <- userID <$> getUserEntryForName u
+      pid <- forkProcess $ setEffectiveUserID u' >> o
+      mps <- getProcessStatus True True pid
+      case mps of
+        Just (Exited ExitSuccess) -> return ()
+        _ -> ioError $ userError "Command failure"
+ where
+  action (S _ src dst _ update _) = do
+    narrate (Typical $ "Emerging source: " ++ src)
+    return $ update dst
+  action (F (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
+  action (F (Copy src dst) _) = return $ overWriteWith copyFile src dst
+  action (F (Template src dst substitute) _) = do
+    let ts = view templates $ reflect (Proxy :: Proxy s)
+    return $ case ts of
+      Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+  action (F (Shell p sc) _) = return $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
     flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
@@ -175,14 +192,8 @@ execute' c = case c of
         ExitFailure _ -> throwIO $ ShellCommandFailure sc
         _ -> return ()
     setCurrentDirectory d
+  action _ = return $ return ()
 
-  W (Reacting (Just r)) _  -> reactStack %= (r :)
-  W (Reacting Nothing) _   -> reactStack %= drop 1
-  W (User (Just n)) _      -> io getEffectiveUserName >>= \u -> setUser n >> userStack %= (u :)
-  W (User Nothing) _       -> use userStack >>= \(u:us) -> setUser u >> userStack .= us
-
-  _ -> return ()
- where
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
