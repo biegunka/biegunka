@@ -20,6 +20,7 @@ import           System.Exit (ExitCode(..))
 import           System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Concurrent.Async
+import           Control.Concurrent.STM
 import           Control.Lens hiding (Action)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
@@ -37,8 +38,7 @@ import           System.Directory
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
-import           System.Posix.User (getUserEntryForName, userID, setEffectiveUserID)
-import           System.Posix.Process
+import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
 
 import Biegunka.Control (Interpreter(..), Task, root)
@@ -126,7 +126,7 @@ respond :: forall l b s. Reifies s EE
 respond e t = do
   io . putStrLn $ "FAIL: " ++ show e
   rc <- use retryCount
-  if rc < view retries (reflect (Proxy :: Proxy s)) then do
+  if rc < _retries (reflect (Proxy :: Proxy s)) then do
     io . putStrLn $ "Retry: " ++ show (rc + 1)
     retryCount += 1
     return t
@@ -140,7 +140,7 @@ respond e t = do
 -- | Get current reaction setting from environment
 -- 'head' is safe here because list is always non-empty
 reaction :: forall s. Reifies s EE => Execution s React
-reaction = head . (++ [view react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
+reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
@@ -162,17 +162,25 @@ command (W (Reacting Nothing)  _) = reactStack %= drop 1
 command (W (User     (Just u)) _) = usersStack %= (u :)
 command (W (User     Nothing)  _) = usersStack %= drop 1
 command c = do
+  let sudoingTV = _sudoing $ reflect (Proxy :: Proxy s)
+      runningTV = _running $ reflect (Proxy :: Proxy s)
   xs <- use usersStack
   o  <- action c
   io $ case xs of
-    []  -> o
+    []  -> do
+      atomically $ readTVar sudoingTV >>= \s -> if s then retry else writeTVar runningTV True
+      o
+      atomically $ writeTVar runningTV False
     u:_ -> do
-      u' <- userID <$> getUserEntryForName u
-      pid <- forkProcess $ setEffectiveUserID u' >> o
-      mps <- getProcessStatus True True pid
-      case mps of
-        Just (Exited ExitSuccess) -> return ()
-        _ -> ioError $ userError "Command failure"
+      atomically $ do
+        [s, r] <- mapM readTVar [sudoingTV, runningTV]
+        if s || r then retry else writeTVar sudoingTV True
+      uid  <- getEffectiveUserID
+      uid' <- userID <$> getUserEntryForName u
+      setEffectiveUserID uid'
+      o
+      setEffectiveUserID uid
+      atomically $ writeTVar sudoingTV False
  where
   action (S _ src dst _ update _) = do
     narrate (Typical $ "Emerging source: " ++ src)
@@ -180,7 +188,7 @@ command c = do
   action (F (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
   action (F (Copy src dst) _) = return $ overWriteWith copyFile src dst
   action (F (Template src dst substitute) _) = do
-    let ts = view templates $ reflect (Proxy :: Proxy s)
+    let ts = _templates $ reflect (Proxy :: Proxy s)
     return $ case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   action (F (Shell p sc) _) = return $ do

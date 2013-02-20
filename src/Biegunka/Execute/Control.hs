@@ -2,11 +2,24 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Biegunka.Execute.Control where
+module Biegunka.Execute.Control
+  ( -- * Execution facade type
+    Execution(..)
+    -- * Execution thread state
+  , ES(..), reactStack, usersStack, retryCount
+    -- * Execution environment
+  , EE(..)
+  , priviledges, react, templates, volubility
+  , narrative, retries, parallel, running, sudoing
+    -- * Misc
+  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..)
+  ) where
 
 import Control.Applicative
 import Control.Concurrent.Chan (Chan)
+import System.IO.Unsafe (unsafePerformIO)
 
+import Control.Concurrent.STM.TVar
 import Control.Lens
 import Control.Monad.State (MonadState, StateT)
 import Control.Monad.Trans (MonadIO)
@@ -21,7 +34,7 @@ newtype Execution s a =
     deriving (Functor, Applicative, Monad, MonadState ES, MonadIO)
 
 
--- | 'Execution' state.
+-- | 'Execution' thread state.
 -- Denotes current failure reaction, effective user id and more
 data ES = ES
   { _reactStack  :: [React]
@@ -49,6 +62,8 @@ data EE = EE
   , _narrative   :: Maybe Narrative
   , _retries     :: Int
   , _parallel    :: Bool
+  , _running     :: TVar Bool
+  , _sudoing     :: TVar Bool
   }
 
 -- | Priviledges control.
@@ -75,7 +90,19 @@ data Statement =
 
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
 -- Existence of that wrapper is what made 'Default' instance possible
-data Templates = forall t. (ToSElem t) => Templates t
+data Templates = forall t. ToSElem t => Templates t
+
+
+-- | Execution context TVar. True if sudoed operation is in progress.
+sudo :: TVar Bool
+sudo = unsafePerformIO $ newTVarIO False
+{-# NOINLINE sudo #-}
+
+-- | Execution context TVar. True if simple operation is in progress.
+run :: TVar Bool
+run = unsafePerformIO $ newTVarIO False
+{-# NOINLINE run #-}
+
 
 instance Default EE where
   def = EE
@@ -86,6 +113,8 @@ instance Default EE where
     , _narrative   = Nothing
     , _retries     = 1
     , _parallel    = False
+    , _running     = run
+    , _sudoing     = sudo
     }
 
 makeLenses ''EE

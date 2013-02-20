@@ -26,6 +26,7 @@ library
                  tagged,
                  directory-layout,
                  data-default,
+                 stm,
                  async,
                  HStringTemplate >= 0.7
   hs-source-dirs: src
