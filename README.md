@@ -70,7 +70,7 @@ Sources are "places with files". `git` takes git repository at `https://my.serve
 --
 
 ```haskell
-      link "xmonad.hs" "/hone/user/.xmonad/xmonad.hs"
+      link "xmonad.hs" "/home/user/.xmonad/xmonad.hs"
 ```
 File operations layer provides functions to work with sources files, for example, `link` links `/home/user/.xmonad/xmonad.hs` to `/home/user/.dotfiles/xmonad.hs`.
 
