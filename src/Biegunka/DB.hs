@@ -29,8 +29,8 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
-import           System.Directory (removeFile)
-import           System.FilePath ((</>), (<.>))
+import           System.Directory (createDirectoryIfMissing, getAppUserDataDirectory, removeFile)
+import           System.FilePath ((</>))
 
 import Biegunka.Language
 
@@ -66,16 +66,18 @@ instance Default Construct where
 makeLenses ''Construct
 
 
-load :: FilePath -> [Command l a b] -> IO Biegunka
-load r = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile r) . mapMaybe profiles
+load :: [Command l a b] -> IO Biegunka
+load = fmap (Biegunka . M.fromList . catMaybes) . mapM loadProfile . mapMaybe profiles
  where
   profiles (P name _ _) = Just name
   profiles _            = Nothing
 
 
-loadProfile :: FilePath -> String -> IO (Maybe (String, Map R (Map FilePath R)))
-loadProfile r n = flip catchIOError (\_ -> return Nothing) $
-  (parseMaybe parser <=< decode . fromStrict) <$> B.readFile (r </> ".biegunka" <.> n)
+loadProfile :: String -> IO (Maybe (String, Map R (Map FilePath R)))
+loadProfile n = do
+  appDirectory <- getAppUserDataDirectory "biegunka"
+  flip catchIOError (\_ -> return Nothing) $
+    (parseMaybe parser <=< decode . fromStrict) <$> B.readFile (appDirectory </> n)
  where
   parser (Object o) = (,) n .  M.fromList <$> (mapM repo =<< o .: "sources")
    where
@@ -86,12 +88,15 @@ loadProfile r n = flip catchIOError (\_ -> return Nothing) $
   parser _ = empty
 
 
-save :: FilePath -> Biegunka -> IO ()
-save r (Biegunka b) = traverseWithKey_ b $ \k v ->
-  let n = r </> ".biegunka" <.> k in
-  if M.null v
-    then removeFile n `catchIOError` \_ -> return ()
-    else BL.writeFile n . T.encodeUtf8 . T.toLazyText . fromValue $ unparser v
+save :: Biegunka -> IO ()
+save (Biegunka b) = do
+  appDirectory <- getAppUserDataDirectory "biegunka"
+  createDirectoryIfMissing False appDirectory
+  traverseWithKey_ b $ \k v ->
+    let n = appDirectory </> k in
+    if M.null v
+      then removeFile n `catchIOError` \_ -> return ()
+      else BL.writeFile n . T.encodeUtf8 . T.toLazyText . fromValue $ unparser v
  where
   traverseWithKey_ m f = itraverse f m >> return ()
 

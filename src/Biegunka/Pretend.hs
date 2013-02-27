@@ -6,13 +6,12 @@ module Biegunka.Pretend (pretend) where
 import Data.List ((\\))
 import Control.Monad (when)
 
-import           Control.Lens
 import qualified Data.Text.Lazy.IO as T
 import           System.IO
 
 import           Biegunka.DB
 import qualified Biegunka.Log as Log
-import           Biegunka.Control (Interpreter(..), root)
+import           Biegunka.Control (Interpreter(..))
 
 
 -- | Pretend interpreter
@@ -30,8 +29,8 @@ import           Biegunka.Control (Interpreter(..), root)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c (concat -> s) -> do
-  a <- load (c ^. root) s
+pretend = I $ \_ (concat -> s) -> do
+  a <- load s
   let b = construct s
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
