@@ -61,8 +61,7 @@ biegunka :: Controls        -- ^ Common settings
          -> IO ()
 biegunka c s (I f) = do
   d <- c ^! root . act subst
-  let c' = c & root .~ d
-  f c' $ map ((c' ^. root) `infect`) (tasks s)
+  f (c & root .~ d) $ map (d `infect`) (tasks s)
  where
   subst x = do
     es <- wordexp' (nosubst <> noundef) x
