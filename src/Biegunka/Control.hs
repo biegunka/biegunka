@@ -11,7 +11,7 @@ module Biegunka.Control
   , pause
   ) where
 
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..), (<>))
 import System.IO
 
 import Control.Lens
@@ -65,10 +65,10 @@ biegunka c s (I f) = do
   f c' $ map ((c' ^. root) `infect`) (tasks s)
  where
   subst x = do
-    es <- wordexp x mempty
+    es <- wordexp' (nosubst <> noundef) x
     return $ case es of
-      []    -> x
-      (e:_) -> e
+      Right (e:_) -> e
+      _           -> x
 
 
 -- | Simple interpreter example that just waits user to press any key
