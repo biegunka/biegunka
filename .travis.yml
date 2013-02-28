@@ -1,7 +1,7 @@
 language: haskell
 install:
  - cabal update
- - git clone git@github.com:supki/wordexp
+ - git clone git://github.com/supki/wordexp.git wordexp
  - cabal install wordexp/wordexp.cabal
  - cabal install --force-reinstalls
 script: true
