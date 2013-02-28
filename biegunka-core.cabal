@@ -28,7 +28,8 @@ library
                  data-default,
                  stm,
                  async,
-                 HStringTemplate >= 0.7
+                 HStringTemplate >= 0.7,
+                 wordexp
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy

@@ -16,6 +16,7 @@ import System.IO
 
 import Control.Lens
 import Data.Default
+import System.Wordexp
 
 import Biegunka.Flatten (tasks)
 import Biegunka.Language (Script, Layer(..), Command)
@@ -58,7 +59,16 @@ biegunka :: Controls        -- ^ Common settings
          -> Script Profiles -- ^ Script to interpret
          -> Interpreter     -- ^ Combined interpreters
          -> IO ()
-biegunka c s (I f) = f c $ map ((c ^. root) `infect`) (tasks s)
+biegunka c s (I f) = do
+  d <- c ^! root . act subst
+  let c' = c & root .~ d
+  f c' $ map ((c' ^. root) `infect`) (tasks s)
+ where
+  subst x = do
+    es <- wordexp x mempty
+    return $ case es of
+      []    -> x
+      (e:_) -> e
 
 
 -- | Simple interpreter example that just waits user to press any key
