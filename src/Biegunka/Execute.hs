@@ -61,15 +61,15 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 --   profile ...
 -- @
 execute :: EE -> Interpreter
-execute e = I $ \_ s -> do
+execute e = I $ \c s -> do
   let b = construct (concat s)
-  a <- load (concat s)
+  a <- load c (concat s)
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
   mapConcurrently (runTask e { _narrative = Just n }) $ if e ^. parallel then s else [concat s]
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
-  save b
+  save c b
 
 
 -- | Run single task with supplied environment

@@ -6,7 +6,7 @@ module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), Task
     -- * Common interpreters controls
-  , Controls, root
+  , Controls, root, appData
     -- * Generic interpreters
   , pause
   ) where
@@ -25,7 +25,8 @@ import Biegunka.Infect (infect)
 
 -- | Common interpreters controls
 data Controls = Controls
-  { _root :: FilePath -- ^ Root path for 'Source' layer
+  { _root    :: FilePath -- ^ Root path for 'Source' layer
+  , _appData :: FilePath -- ^ Biegunka profile files path
   } deriving (Show, Read, Eq, Ord)
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
@@ -34,9 +35,13 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 -- | Root path for 'Source' layer lens
 root :: Lens' Controls FilePath
 
+-- | Biegunka profile files path
+appData :: Lens' Controls FilePath
+
 instance Default Controls where
   def = Controls
     { _root = "/"
+    , _appData = "~/.biegunka"
     }
 
 
@@ -60,14 +65,16 @@ biegunka :: Controls        -- ^ Common settings
          -> Interpreter     -- ^ Combined interpreters
          -> IO ()
 biegunka c s (I f) = do
-  d <- c ^! root . act subst
-  f (c & root .~ d) $ map (d `infect`) (tasks s)
- where
-  subst x = do
-    es <- wordexp (nosubst <> noundef) x
-    return $ case es of
-      Right [e] -> e
-      _         -> x
+  d <- c ^. root . to expand
+  e <- c ^. appData . to expand
+  f (c & root .~ d & appData .~ e) $ map (d `infect`) (tasks s)
+
+expand :: String -> IO String
+expand x = do
+  es <- wordexp (nosubst <> noundef) x
+  return $ case es of
+    Right [e] -> e
+    _         -> x
 
 
 -- | Simple interpreter example that just waits user to press any key

@@ -29,9 +29,10 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
-import           System.Directory (createDirectoryIfMissing, getAppUserDataDirectory, removeFile)
-import           System.FilePath ((</>))
+import           System.Directory (createDirectoryIfMissing, removeFile)
+import           System.FilePath.Lens
 
+import Biegunka.Control (Controls, appData)
 import Biegunka.Language
 
 
@@ -66,18 +67,18 @@ instance Default Construct where
 makeLenses ''Construct
 
 
-load :: [Command l a b] -> IO Biegunka
-load = fmap (Biegunka . M.fromList . catMaybes) . mapM loadProfile . mapMaybe profiles
+load :: Controls -> [Command l a b] -> IO Biegunka
+load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
  where
   profiles (P name _ _) = Just name
   profiles _            = Nothing
 
 
-loadProfile :: String -> IO (Maybe (String, Map R (Map FilePath R)))
-loadProfile n = do
-  appDirectory <- getAppUserDataDirectory "biegunka"
+loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
+loadProfile c n = do
+  let (z, _) = c & appData <</>~ n
   flip catchIOError (\_ -> return Nothing) $
-    (parseMaybe parser <=< decode . fromStrict) <$> B.readFile (appDirectory </> n)
+    (parseMaybe parser <=< decode . fromStrict) <$> B.readFile z
  where
   parser (Object o) = (,) n .  M.fromList <$> (mapM repo =<< o .: "sources")
    where
@@ -88,12 +89,11 @@ loadProfile n = do
   parser _ = empty
 
 
-save :: Biegunka -> IO ()
-save (Biegunka b) = do
-  appDirectory <- getAppUserDataDirectory "biegunka"
-  createDirectoryIfMissing False appDirectory
+save :: Controls -> Biegunka -> IO ()
+save c (Biegunka b) = do
+  createDirectoryIfMissing False (c ^. appData)
   traverseWithKey_ b $ \k v ->
-    let n = appDirectory </> k in
+    let (n, _) = c & appData <</>~ k in
     if M.null v
       then removeFile n `catchIOError` \_ -> return ()
       else BL.writeFile n . T.encodeUtf8 . T.toLazyText . fromValue $ unparser v

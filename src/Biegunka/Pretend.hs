@@ -29,8 +29,8 @@ import           Biegunka.Control (Interpreter(..))
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \_ (concat -> s) -> do
-  a <- load s
+pretend = I $ \c (concat -> s) -> do
+  a <- load c s
   let b = construct s
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
