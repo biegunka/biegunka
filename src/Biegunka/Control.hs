@@ -16,7 +16,7 @@ import System.IO
 
 import Control.Lens
 import Data.Default
-import System.Wordexp
+import System.Wordexp (wordexp, nosubst, noundef)
 
 import Biegunka.Flatten (tasks)
 import Biegunka.Language (Script, Layer(..), Command)
@@ -64,7 +64,7 @@ biegunka c s (I f) = do
   f (c & root .~ d) $ map (d `infect`) (tasks s)
  where
   subst x = do
-    es <- wordexp' (nosubst <> noundef) x
+    es <- wordexp (nosubst <> noundef) x
     return $ case es of
       Right (e:_) -> e
       _           -> x
