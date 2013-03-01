@@ -66,8 +66,8 @@ biegunka c s (I f) = do
   subst x = do
     es <- wordexp (nosubst <> noundef) x
     return $ case es of
-      Right (e:_) -> e
-      _           -> x
+      Right [e] -> e
+      _         -> x
 
 
 -- | Simple interpreter example that just waits user to press any key
