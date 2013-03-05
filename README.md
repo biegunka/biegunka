@@ -17,7 +17,7 @@ import Biegunka
 import Biegunka.Source.Git
 
 main :: IO ()
-main = biegunka def script (pretend `mappend` execute def)
+main = biegunka id script (pretend `mappend` execute id)
  where
   script = profile "my-configs" $
     git "https://my.server.with.configs.com/dotfiles" "/home/user/.dotfiles" $
@@ -43,7 +43,7 @@ Necessary imports:
 --
 
 ```haskell
-main = biegunka def script (pretend `mappend` execute def) $
+main = biegunka id script (pretend `mappend` execute id) $
 ```
 Biegunka scripts are executed by interpreters. Here we see 2 of them:
  * `pretend` assumes everything went without errors and prints script stats based on that assumption
