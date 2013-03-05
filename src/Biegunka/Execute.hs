@@ -77,7 +77,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 -- | Run single task with supplied environment
 runTask :: EE -> ES -> Task l b -> IO ()
-runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t))
+runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
 -- | Thread `s' parameter to 'task' function
@@ -110,8 +110,8 @@ instance Exception BiegunkaException
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task (W (Yielding True) _:cs) = do
   let (a, b) = yielding cs
-  newTask a
-  task b
+  newTask b
+  task a
 task t@(c:cs) = do
   e <- try (command c)
   case e of
@@ -225,6 +225,7 @@ yielding = go [] 1
   go acc n (x                        : xs) = go (x : acc) n xs
   go _   _ []                              = error "Broken Task structure!"
 
+
 newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 newTask t = do
   let e = reflect (Proxy :: Proxy s)
@@ -233,18 +234,21 @@ newTask t = do
 
 
 scheduler :: Chan Work -> Int -> IO ()
-scheduler j = go []
+scheduler j = go [] 0
  where
-  go as 0 = do
+  go as n 0 = do
     (a, _) <- waitAny as
-    go (delete a as) 1
-  go as k = do
-    t <- readChan j
-    case t of
-      Do w -> do
-        a <- async w
-        go (a : as) (k - 1)
-      Stop -> return ()
+    go (delete a as) n 1
+  go as n k
+    | n < 0 = return ()
+    | otherwise = do
+        t <- readChan j
+        case t of
+          Do w -> do
+            a <- async w
+            go (a : as) (n + 1) (k - 1)
+          Stop ->
+            go      as  (n - 1)  k
 
 
 dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
