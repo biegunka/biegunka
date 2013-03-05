@@ -60,7 +60,7 @@ data EE = EE
   , _react       :: React
   , _templates   :: Templates
   , _volubility  :: Volubility
-  , _narrative   :: Maybe (Chan Statement)
+  , _narrative   :: Chan Statement
   , _work        :: Chan Work
   , _retries     :: Int
   , _order       :: Order
@@ -121,7 +121,7 @@ instance Default EE where
     , _react       = Ignorant
     , _templates   = Templates ()
     , _volubility  = Casual
-    , _narrative   = Nothing      -- User doesn't have a chance to get here
+    , _narrative   = undefined    -- User doesn't have a chance to get here
     , _work        = undefined    -- User doesn't have a chance to get there
     , _order       = Sequential
     , _retries     = 1

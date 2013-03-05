@@ -10,7 +10,6 @@ module Biegunka.Execute.Narrator
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan (newChan, readChan, writeChan)
 import Control.Monad (forever)
-import Data.Foldable (for_)
 
 import Control.Lens
 import Control.Monad.Reader (MonadIO, liftIO)
@@ -39,4 +38,4 @@ state Taciturn _          = return ()
 
 
 narrate :: forall s. (Reifies s EE) => Statement -> Execution s ()
-narrate s = E $ liftIO . for_ (view narrative (reflect (Proxy :: Proxy s))) $ flip writeChan s
+narrate s = E . liftIO $ writeChan (view narrative (reflect (Proxy :: Proxy s))) s

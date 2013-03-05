@@ -68,7 +68,7 @@ execute (($ def) -> e) = I $ \c s -> do
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
   w <- newChan
-  writeChan w (Do $ runTask e { _narrative = Just n, _work = w } def s >> writeChan w Stop)
+  writeChan w (Do $ runTask e { _narrative = n, _work = w } def s >> writeChan w Stop)
   scheduler w (e ^. order)
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
