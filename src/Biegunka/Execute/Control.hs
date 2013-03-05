@@ -11,9 +11,9 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..)
   , priviledges, react, templates, volubility
-  , narrative, work, jobs, retries, running, sudoing
+  , narrative, work, order, retries, running, sudoing
     -- * Misc
-  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..), Work(..)
+  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
   ) where
 
 import Control.Applicative
@@ -63,7 +63,7 @@ data EE = EE
   , _narrative   :: Maybe (Chan Statement)
   , _work        :: Chan Work
   , _retries     :: Int
-  , _jobs        :: Int
+  , _order       :: Order
   , _running     :: TVar Bool
   , _sudoing     :: TVar Bool
   }
@@ -94,9 +94,15 @@ data Statement =
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. ToSElem t => Templates t
 
+-- | Workload
 data Work =
-    Do (IO ())
-  | Stop
+    Do (IO ()) -- ^ Task to come
+  | Stop       -- ^ Task is done
+
+-- | Tasks execution order
+data Order =
+    Sequential -- ^ Do all tasks sequentially
+  | Parallel   -- ^ Do all tasks in parallel
 
 -- | Execution context TVar. True if sudoed operation is in progress.
 sudo :: TVar Bool
@@ -115,9 +121,9 @@ instance Default EE where
     , _react       = Ignorant
     , _templates   = Templates ()
     , _volubility  = Casual
-    , _narrative   = Nothing
-    , _work        = undefined
-    , _jobs        = 1
+    , _narrative   = Nothing      -- User doesn't have a chance to get here
+    , _work        = undefined    -- User doesn't have a chance to get there
+    , _order       = Sequential
     , _retries     = 1
     , _running     = run
     , _sudoing     = sudo

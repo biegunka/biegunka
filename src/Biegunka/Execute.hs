@@ -69,7 +69,7 @@ execute (($ def) -> e) = I $ \c s -> do
   n <- narrator (_volubility e)
   w <- newChan
   writeChan w (Do $ runTask e { _narrative = Just n, _work = w } def s >> writeChan w Stop)
-  scheduler w (e ^. jobs)
+  scheduler w (e ^. order)
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -233,9 +233,12 @@ newTask t = do
   io $ writeChan (e ^. work) (Do $ runTask e s t)
 
 
-scheduler :: Chan Work -> Int -> IO ()
-scheduler j = go [] 0
+scheduler :: Chan Work -> Order -> IO ()
+scheduler j o = case o of
+  Sequential -> go [] 0 1
+  Parallel   -> go [] 0 maxBound
  where
+  go :: [Async ()] -> Int -> Int -> IO ()
   go as n 0 = do
     (a, _) <- waitAny as
     go (delete a as) n 1
