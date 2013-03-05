@@ -11,13 +11,11 @@ module Biegunka
   , React(..), react
   , Volubility(..), volubility
   , Templates(..), templates
-  , retries, parallel
+  , retries, jobs
     -- * All layers
-  , sudo, reacting
+  , sudo, reacting, yield
     -- * Profile layer
   , profile
-    -- * Source layer
-  , task
     -- * File layer
   , registerAt, copy, link, substitute, shell
     -- * Convenient type aliases
@@ -114,6 +112,6 @@ profile name repo = liftF $ P name repo ()
 
 -- | Concurrent task
 -- Runs in parallel with main thread if possible. Currently defunct
-task :: Script Sources -> Script Sources
-task = id
-{-# INLINE task #-}
+yield :: Free (Command l s) () -> Free (Command l s) ()
+yield s = liftF (W (Yielding True) ()) >> s >> liftF (W (Yielding False) ())
+{-# INLINE yield #-}

@@ -54,6 +54,8 @@ data Action =
 data Wrapper =
     User (Maybe String)
   | Reacting (Maybe React)
+  | Yielding Bool
+
 
 
 data React =

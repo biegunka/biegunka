@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -10,9 +11,9 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..)
   , priviledges, react, templates, volubility
-  , narrative, retries, parallel, running, sudoing
+  , narrative, work, jobs, retries, running, sudoing
     -- * Misc
-  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..)
+  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..), Work(..)
   ) where
 
 import Control.Applicative
@@ -59,9 +60,10 @@ data EE = EE
   , _react       :: React
   , _templates   :: Templates
   , _volubility  :: Volubility
-  , _narrative   :: Maybe Narrative
+  , _narrative   :: Maybe (Chan Statement)
+  , _work        :: Chan Work
   , _retries     :: Int
-  , _parallel    :: Bool
+  , _jobs        :: Int
   , _running     :: TVar Bool
   , _sudoing     :: TVar Bool
   }
@@ -92,6 +94,9 @@ data Statement =
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. ToSElem t => Templates t
 
+data Work =
+    Do (IO ())
+  | Stop
 
 -- | Execution context TVar. True if sudoed operation is in progress.
 sudo :: TVar Bool
@@ -111,8 +116,9 @@ instance Default EE where
     , _templates   = Templates ()
     , _volubility  = Casual
     , _narrative   = Nothing
+    , _work        = undefined
+    , _jobs        = 1
     , _retries     = 1
-    , _parallel    = False
     , _running     = run
     , _sudoing     = sudo
     }

@@ -18,7 +18,7 @@ import Control.Lens
 import Data.Default
 import System.Wordexp (wordexp, nosubst, noundef)
 
-import Biegunka.Flatten (tasks)
+import Biegunka.Flatten (flatten)
 import Biegunka.Language (Script, Layer(..), Command)
 import Biegunka.Infect (infect)
 
@@ -47,7 +47,7 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: forall l b. Controls -> [Task l b] -> IO ()
+  { interpret :: forall l b. Controls -> Task l b -> IO ()
   }
 
 type Task l b = [Command l () b]
@@ -67,7 +67,7 @@ biegunka :: Controls        -- ^ Common settings
 biegunka c s (I f) = do
   d <- c ^. root . to expand
   e <- c ^. appData . to expand
-  f (c & root .~ d & appData .~ e) $ map (d `infect`) (tasks s)
+  f (c & root .~ d & appData .~ e) $ (d `infect`) (flatten s)
 
 expand :: String -> IO String
 expand x = do

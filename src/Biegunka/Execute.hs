@@ -12,7 +12,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
-import           Data.List ((\\))
+import           Data.List ((\\), delete)
 import           Data.Monoid ((<>))
 import           Data.Foldable (traverse_)
 import           Data.Typeable (Typeable)
@@ -20,6 +20,7 @@ import           System.Exit (ExitCode(..))
 import           System.IO.Error (catchIOError, tryIOError)
 
 import           Control.Concurrent.Async
+import           Control.Concurrent.Chan
 import           Control.Concurrent.STM
 import           Control.Lens hiding (Action)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
@@ -62,19 +63,21 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 -- @
 execute :: EE -> Interpreter
 execute e = I $ \c s -> do
-  let b = construct (concat s)
-  a <- load c (concat s)
+  let b = construct s
+  a <- load c s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   n <- narrator (_volubility e)
-  mapConcurrently (runTask e { _narrative = Just n }) $ if e ^. parallel then s else [concat s]
+  w <- newChan
+  writeChan w (Do $ runTask e { _narrative = Just n, _work = w } def s >> writeChan w Stop)
+  scheduler w (e ^. jobs)
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
 
 
 -- | Run single task with supplied environment
-runTask :: EE -> Task l b -> IO ()
-runTask e t = reify e ((`evalStateT` def) . runE . asProxyOf (task t))
+runTask :: EE -> ES -> Task l b -> IO ()
+runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t))
 
 
 -- | Thread `s' parameter to 'task' function
@@ -105,6 +108,10 @@ instance Exception BiegunkaException
 -- 'react' lens to 'EE'. Here he would be asked for prompt if needed or just
 -- notified about errors if not
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
+task (W (Yielding True) _:cs) = do
+  let (a, b) = yielding cs
+  newTask a
+  task b
 task t@(c:cs) = do
   e <- try (command c)
   case e of
@@ -206,6 +213,38 @@ command c = do
     createDirectoryIfMissing True $ dropFileName dst
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
+
+
+yielding :: Task l b -> (Task l b, Task l b)
+yielding = go [] 1
+ where
+  go :: Task l b -> Int -> Task l b -> (Task l b, Task l b)
+  go acc 1 (   W (Yielding False) _  : xs) = (reverse acc, xs)
+  go acc n (x@(W (Yielding False) _) : xs) = go (x : acc) (n - 1) xs
+  go acc n (x@(W (Yielding True)  _) : xs) = go (x : acc) (n + 1) xs
+  go acc n (x                        : xs) = go (x : acc) n xs
+  go _   _ []                              = error "Broken Task structure!"
+
+newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()
+newTask t = do
+  let e = reflect (Proxy :: Proxy s)
+  s <- get
+  io $ writeChan (e ^. work) (Do $ runTask e s t)
+
+
+scheduler :: Chan Work -> Int -> IO ()
+scheduler j = go []
+ where
+  go as 0 = do
+    (a, _) <- waitAny as
+    go (delete a as) 1
+  go as k = do
+    t <- readChan j
+    case t of
+      Do w -> do
+        a <- async w
+        go (a : as) (k - 1)
+      Stop -> return ()
 
 
 dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
