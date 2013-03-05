@@ -61,8 +61,8 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 --   profile ...
 --   profile ...
 -- @
-execute :: EE -> Interpreter
-execute e = I $ \c s -> do
+execute :: (EE -> EE) -> Interpreter
+execute (($ def) -> e) = I $ \c s -> do
   let b = construct s
   a <- load c s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser

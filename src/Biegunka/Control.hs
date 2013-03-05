@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
 module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
@@ -60,11 +61,11 @@ instance Monoid Interpreter where
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
-biegunka :: Controls        -- ^ Common settings
-         -> Script Profiles -- ^ Script to interpret
-         -> Interpreter     -- ^ Combined interpreters
+biegunka :: (Controls -> Controls) -- ^ User defined settings
+         -> Script Profiles       -- ^ Script to interpret
+         -> Interpreter           -- ^ Combined interpreters
          -> IO ()
-biegunka c s (I f) = do
+biegunka (($ def) -> c) s (I f) = do
   d <- c ^. root . to expand
   e <- c ^. appData . to expand
   f (c & root .~ d & appData .~ e) $ (d `infect`) (flatten s)
