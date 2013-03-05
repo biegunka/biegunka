@@ -108,7 +108,7 @@ instance Exception BiegunkaException
 -- 'react' lens to 'EE'. Here he would be asked for prompt if needed or just
 -- notified about errors if not
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
-task (W (Yielding True) _:cs) = do
+task (W (Task True) _:cs) = do
   let (a, b) = yielding cs
   newTask b
   task a
@@ -219,11 +219,11 @@ yielding :: Task l b -> (Task l b, Task l b)
 yielding = go [] 1
  where
   go :: Task l b -> Int -> Task l b -> (Task l b, Task l b)
-  go acc 1 (   W (Yielding False) _  : xs) = (reverse acc, xs)
-  go acc n (x@(W (Yielding False) _) : xs) = go (x : acc) (n - 1) xs
-  go acc n (x@(W (Yielding True)  _) : xs) = go (x : acc) (n + 1) xs
-  go acc n (x                        : xs) = go (x : acc) n xs
-  go _   _ []                              = error "Broken Task structure!"
+  go acc 1 (   W (Task False) _  : xs) = (reverse acc, xs)
+  go acc n (x@(W (Task False) _) : xs) = go (x : acc) (n - 1) xs
+  go acc n (x@(W (Task True)  _) : xs) = go (x : acc) (n + 1) xs
+  go acc n (x                    : xs) = go (x : acc) n xs
+  go _   _ []                          = error "Broken Task structure!"
 
 
 newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()

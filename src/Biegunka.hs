@@ -13,7 +13,7 @@ module Biegunka
   , Templates(..), templates
   , retries, Order(..), order
     -- * All layers
-  , sudo, reacting, yield
+  , sudo, reacting, task
     -- * Profile layer
   , profile
     -- * File layer
@@ -111,7 +111,7 @@ profile name repo = liftF $ P name repo ()
 
 
 -- | Concurrent task
--- Runs in parallel with main thread if possible. Currently defunct
-yield :: Free (Command l s) () -> Free (Command l s) ()
-yield s = liftF (W (Yielding True) ()) >> s >> liftF (W (Yielding False) ())
-{-# INLINE yield #-}
+-- Runs in parallel with main thread if possible
+task :: Free (Command l s) () -> Free (Command l s) ()
+task s = liftF (W (Task True) ()) >> s >> liftF (W (Task False) ())
+{-# INLINE task #-}
