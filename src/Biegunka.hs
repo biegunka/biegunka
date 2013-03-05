@@ -43,6 +43,7 @@ import Biegunka.Verify (verify)
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Files
 registerAt dst = liftF $ F (Link mempty dst) ()
+{-# INLINE registerAt #-}
 
 
 -- | Links given file to specified filepath
@@ -53,6 +54,7 @@ registerAt dst = liftF $ F (Link mempty dst) ()
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Files
 link src dst = liftF $ F (Link src dst) ()
+{-# INLINE link #-}
 
 
 -- | Copies given file to specified filepath
@@ -63,6 +65,7 @@ link src dst = liftF $ F (Link src dst) ()
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Files
 copy src dst = liftF $ F (Copy src dst) ()
+{-# INLINE copy #-}
 
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -75,6 +78,7 @@ copy src dst = liftF $ F (Copy src dst) ()
 substitute :: FilePath -> FilePath -> Script Files
 substitute src dst = liftF $
   F (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
+{-# INLINE substitute #-}
 
 
 -- | Executes shell command with default shell
@@ -85,16 +89,19 @@ substitute src dst = liftF $
 -- Prints "hello" (without a newline)
 shell :: String -> Script Files
 shell c = liftF $ F (Shell mempty c) ()
+{-# INLINE shell #-}
 
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
 sudo n s = liftF (W (User (Just n)) ()) >> s >> liftF (W (User Nothing) ())
+{-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
 reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothing) ())
+{-# INLINE reacting #-}
 
 
 -- | Configuration profile
@@ -108,6 +115,7 @@ reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothi
 -- >   svn ...
 profile :: String -> Script Sources -> Script Profiles
 profile name repo = liftF $ P name repo ()
+{-# INLINE profile #-}
 
 
 -- | Concurrent task
