@@ -51,16 +51,12 @@ import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 -- | Execute Interpreter
 --
--- Execute script. Copy and links files, compiles stuff. You get the idea
+-- Biegunka workhorse. Does useful work: copy and links files, compiles stuff, anything else
 --
--- Supports some options
+-- Supports setting execution options via its first argument
 --
--- @
--- main :: IO ()
--- main = execute (def & react .~ Ignorant) $ do
---   profile ...
---   profile ...
--- @
+-- It's generally advised to use 'pretend' before 'execute': that way you can catch some
+-- bugs in your script before devastation is done.
 execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
   let b = construct s
@@ -73,9 +69,11 @@ execute (($ def) -> e) = I $ \c s -> do
   mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
+ where
+  setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
 
--- | Run single task with supplied environment
+-- | Run single task with supplied environment. Also signals to scheduler when work is done.
 runTask :: EE -> ES -> Task l b -> IO ()
 runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
@@ -83,6 +81,7 @@ runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeC
 -- | Thread `s' parameter to 'task' function
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
 asProxyOf a _ = a
+{-# INLINE asProxyOf #-}
 
 
 -- | Custom execptions
@@ -104,9 +103,11 @@ instance Exception BiegunkaException
 
 
 -- | Run single task command by command
--- Complexity comes from responding to errors. User may control reaction via
--- 'react' lens to 'EE'. Here he would be asked for prompt if needed or just
--- notified about errors if not
+--
+-- "Forks" on 'Task' 'True'.
+-- Note: current thread continues to execute what's inside task, but all the other stuff is queued
+--
+-- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 task (W (Task True) _:cs) = do
   let (a, b) = yielding cs
@@ -122,19 +123,21 @@ task [] = return ()
 -- | If only I could come up with MonadBaseControl instance for Execution
 try :: Exception e => Execution s a -> Execution s (Either e a)
 try (E ex) = do
-  eeas <- io . E.try . runStateT ex =<< get
+  eeas <- liftIO . E.try . runStateT ex =<< get
   case eeas of
     Left e       ->          return (Left e)
     Right (a, s) -> put s >> return (Right a)
 
 -- | Get response from task failure processing
+--
+-- Possible responses: retry command execution or ignore failure or abort task
 respond :: forall l b s. Reifies s EE
         => SomeException -> Task l b -> Execution s (Task l b)
 respond e t = do
-  io . putStrLn $ "FAIL: " ++ show e
+  liftIO . putStrLn $ "FAIL: " ++ show e
   rc <- use retryCount
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
-    io . putStrLn $ "Retry: " ++ show (rc + 1)
+    liftIO . putStrLn $ "Retry: " ++ show (rc + 1)
     retryCount += 1
     return t
   else do
@@ -145,7 +148,8 @@ respond e t = do
       Abortive -> []
 
 -- | Get current reaction setting from environment
--- 'head' is safe here because list is always non-empty
+--
+-- Note: 'head' is safe here because list is always non-empty
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
@@ -173,7 +177,7 @@ command c = do
       runningTV = _running $ reflect (Proxy :: Proxy s)
   xs <- use usersStack
   o  <- action c
-  io $ case xs of
+  liftIO $ case xs of
     []  -> do
       atomically $ readTVar sudoingTV >>= \s -> if s then retry else writeTVar runningTV True
       o
@@ -215,6 +219,7 @@ command c = do
     g src dst
 
 
+-- | Separate current task into two
 yielding :: Task l b -> (Task l b, Task l b)
 yielding = go [] 1
  where
@@ -225,14 +230,18 @@ yielding = go [] 1
   go acc n (x                    : xs) = go (x : acc) n xs
   go _   _ []                          = error "Broken Task structure!"
 
-
+-- | Queue next task in scheduler
 newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()
 newTask t = do
   let e = reflect (Proxy :: Proxy s)
   s <- get
-  io $ writeChan (e ^. work) (Do $ runTask e s t)
+  liftIO $ writeChan (e ^. work) (Do $ runTask e s t)
 
-
+-- | Task scheduler
+--
+-- Works a bit differently depending on 'Order'. 'Sequential' forces scheduler to have only one
+-- "working thread" that processes all the tasks. 'Parallel' order forces scheduler to "fork" on
+-- every coming workload
 scheduler :: Chan Work -> Order -> IO ()
 scheduler j o = case o of
   Sequential -> go [] 0 1
@@ -254,16 +263,9 @@ scheduler j o = case o of
             go      as  (n - 1)  k
 
 
+-- | Drop command by command depending on supplied predicate
 dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
 dropCommands f p@(_:cs)
   | f p = dropCommands f cs
   | otherwise    = p
 dropCommands _ [] = []
-
-
-setUser :: MonadIO m => String -> m ()
-setUser n = io $ getUserEntryForName n >>= setEffectiveUserID . userID
-
-
-io :: MonadIO m => IO a -> m a
-io = liftIO
