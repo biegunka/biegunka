@@ -144,7 +144,7 @@ respond e t = do
     retryCount .= 0
     r <- reaction
     return $ case r of
-      Ignorant -> ignore t
+      Ignorant -> ignoring t
       Abortive -> []
 
 -- | Get current reaction setting from environment
@@ -155,15 +155,20 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
-ignore :: Task l b -> Task l b
-ignore (S {} : cs) = dropCommands skip cs
+ignoring :: Task l b -> Task l b
+ignoring (S {} : cs) = go [] cs
  where
-  skip (P {} : _) = False
-  skip (S {} : _) = False
-  skip (W {} : cs') = skip cs'
-  skip _ = True
-ignore (_ : cs)    = cs
-ignore [] = error "Should not been here."
+  go ws cs'@(P {} : _)    = reverse ws ++ cs'
+  go ws cs'@(S {} : _)    = reverse ws ++ cs'
+  go ws (w@(W s _) : cs') = case s of
+    User     (Just _) -> go (w:ws) cs'
+    Reacting (Just _) -> go (w:ws) cs'
+    Task     True     -> go (w:ws) cs'
+    _                 -> go [] cs'
+  go _  (_    : cs')      = go [] cs'
+  go _  []                = []
+ignoring (_ : cs)    = cs
+ignoring [] = error "Should not been here."
 
 
 -- | Single command execution
@@ -262,10 +267,3 @@ scheduler j o = case o of
           Stop ->
             go      as  (n - 1)  k
 
-
--- | Drop command by command depending on supplied predicate
-dropCommands :: ([Command l a b] -> Bool) -> [Command l a b] -> [Command l a b]
-dropCommands f p@(_:cs)
-  | f p = dropCommands f cs
-  | otherwise    = p
-dropCommands _ [] = []
