@@ -66,8 +66,8 @@ execute (($ def) -> e) = I $ \c s -> do
   w <- newChan
   writeChan w (Do $ runTask e { _narrative = n, _work = w } def s >> writeChan w Stop)
   scheduler w (e ^. order)
-  mapM (tryIOError . removeFile) (filepaths a \\ filepaths b)
-  mapM (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
+  mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
+  mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
@@ -200,6 +200,7 @@ command c = do
  where
   action (S _ src dst _ update _) = do
     narrate (Typical $ "Emerging source: " ++ src)
+    liftIO $ createDirectoryIfMissing True $ dropFileName dst
     return $ update dst
   action (F (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
   action (F (Copy src dst) _) = return $ overWriteWith copyFile src dst
