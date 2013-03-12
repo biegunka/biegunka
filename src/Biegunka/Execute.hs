@@ -72,7 +72,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> EXS -> [IL] -> IO ()
+runTask :: EE -> ES -> [IL] -> IO ()
 runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
