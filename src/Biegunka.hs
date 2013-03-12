@@ -28,7 +28,7 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pause)
-import Biegunka.Language (Script, Layer(..), Command(..), Action(..), Wrapper(..), React(..))
+import Biegunka.Language.External (Script, Layer(..), EL(..), Action(..), Wrapper(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
@@ -93,13 +93,13 @@ shell c = liftF $ F (Shell mempty c) ()
 
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Free (Command l s) () -> Free (Command l s) ()
+sudo :: String -> Free (EL l s) () -> Free (EL l s) ()
 sudo n s = liftF (W (User (Just n)) ()) >> s >> liftF (W (User Nothing) ())
 {-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Free (Command l s) () -> Free (Command l s) ()
+reacting :: React -> Free (EL l s) () -> Free (EL l s) ()
 reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
@@ -120,6 +120,6 @@ profile name repo = liftF $ P name repo ()
 
 -- | Concurrent task
 -- Runs in parallel with main thread if possible
-task :: Free (Command l s) () -> Free (Command l s) ()
+task :: Free (EL l s) () -> Free (EL l s) ()
 task s = liftF (W (Task True) ()) >> s >> liftF (W (Task False) ())
 {-# INLINE task #-}

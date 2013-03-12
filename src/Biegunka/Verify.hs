@@ -14,7 +14,7 @@ import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.Control (Interpreter(..))
-import Biegunka.Language (Command(..), Action(..))
+import Biegunka.Language.External (EL(..), Action(..))
 
 
 -- | Verify interpreter
@@ -38,11 +38,11 @@ verify = I $ \_ s -> do
     else putStrLn $ failures ++ "\nFail!"
 
 
-f :: [Command l () b] -> WriterT String IO Bool
+f :: [EL l () b] -> WriterT String IO Bool
 f = foldr (|&&|) (return True) . map g
 
 
-g :: Command l () b -> WriterT String IO Bool
+g :: EL l () b -> WriterT String IO Bool
 g (P _ _ _) = return True
 g (S _ u p _ _ _) = do
   sourceExists <- io $ doesDirectoryExist p

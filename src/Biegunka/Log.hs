@@ -6,14 +6,14 @@ import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.Language (Command(..), Action(..), Wrapper(..))
+import Biegunka.Language.External (EL(..), Action(..), Wrapper(..))
 
 
-full :: [Command l () b] -> Biegunka -> Biegunka -> String
+full :: [EL l () b] -> Biegunka -> Biegunka -> String
 full cs s t = unlines $ mapMaybe install cs ++ uninstall s t
 
 
-install :: Command l () b -> Maybe String
+install :: EL l () b -> Maybe String
 install (P name _ _)    = Just $ "Setup profile [" ++ name ++ "]"
 install (S t u p _ _ _) = Just $ indent 2 ++ "Setup " ++ t ++ " repository " ++ u ++ " at " ++ p
 install (F a _)         = Just $ indent 4 ++ go a

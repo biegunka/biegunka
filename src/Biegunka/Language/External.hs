@@ -5,10 +5,10 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_HADDOCK prune #-}
-module Biegunka.Language
+-- | Specifies user side language primitives
+module Biegunka.Language.External
   ( Script, Layer(..)
-  , Command(..), Action(..), Wrapper(..), React(..)
+  , EL(..), Action(..), Wrapper(..), React(..)
   ) where
 
 import Control.Monad.Free (Free(..))
@@ -20,22 +20,22 @@ import Text.StringTemplate.GenericStandard ()
 type family Script (a :: Layer) :: *
 
 
-type instance Script Files    = Free (Command Files ()) ()
-type instance Script Sources  = Free (Command Sources (Script Files)) ()
-type instance Script Profiles = Free (Command Profiles (Script Sources)) ()
+type instance Script Files    = Free (EL Files ()) ()
+type instance Script Sources  = Free (EL Sources (Script Files)) ()
+type instance Script Profiles = Free (EL Profiles (Script Sources)) ()
 
 
 data Layer = Files | Sources | Profiles
 
 
-data Command (l :: Layer) s a where
-  F :: Action -> a -> Command l () a
-  S :: String -> String -> FilePath -> s -> (FilePath -> IO ()) -> a -> Command l s a
-  P :: String -> s -> a -> Command l s a
-  W :: Wrapper -> a -> Command l s a
+data EL (l :: Layer) s a where
+  F :: Action -> a -> EL l () a
+  S :: String -> String -> FilePath -> s -> (FilePath -> IO ()) -> a -> EL l s a
+  P :: String -> s -> a -> EL l s a
+  W :: Wrapper -> a -> EL l s a
 
 
-instance Functor (Command l s) where
+instance Functor (EL l s) where
   fmap f (F a x)         = F a (f x)
   fmap f (S t u p s h x) = S t u p s h (f x)
   fmap f (P n s x)       = P n s (f x)
@@ -54,7 +54,6 @@ data Wrapper =
     User (Maybe String)
   | Reacting (Maybe React)
   | Task Bool
-
 
 
 data React =

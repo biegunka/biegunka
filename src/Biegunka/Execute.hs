@@ -43,7 +43,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Narrator
-import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
+import Biegunka.Language.External (EL(..), Action(..), Wrapper(..), React(..))
 
 
 -- | Execute Interpreter
@@ -151,7 +151,7 @@ ignoring [] = error "Should not been here."
 
 
 -- | Single command execution
-command :: forall l b s. Reifies s EE => Command l () b -> Execution s ()
+command :: forall l b s. Reifies s EE => EL l () b -> Execution s ()
 command (W (Reacting (Just r)) _) = reactStack %= (r :)
 command (W (Reacting Nothing)  _) = reactStack %= drop 1
 command (W (User     (Just u)) _) = usersStack %= (u :)
@@ -183,9 +183,8 @@ command c = do
     return $ update dst
   action (F (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
   action (F (Copy src dst) _) = return $ overWriteWith copyFile src dst
-  action (F (Template src dst substitute) _) = do
-    let ts = _templates $ reflect (Proxy :: Proxy s)
-    return $ case ts of
+  action (F (Template src dst substitute) _) = return $
+    let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   action (F (Shell p sc) _) = return $ do
     d <- getCurrentDirectory

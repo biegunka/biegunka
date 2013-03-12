@@ -33,7 +33,7 @@ import           System.Directory (createDirectoryIfMissing, removeFile)
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language
+import Biegunka.Language.External
 
 
 newtype Biegunka = Biegunka
@@ -67,7 +67,7 @@ instance Default Construct where
 makeLenses ''Construct
 
 
-load :: Controls -> [Command l a b] -> IO Biegunka
+load :: Controls -> [EL l a b] -> IO Biegunka
 load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
  where
   profiles (P name _ _) = Just name
@@ -117,10 +117,10 @@ fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
 
 
-construct :: [Command l () b] -> Biegunka
+construct :: [EL l () b] -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
-  g :: Command l () b -> State Construct ()
+  g :: EL l () b -> State Construct ()
   g (P name _ _) = do
     profile CL..= name
     biegunka . at name ?= mempty

@@ -33,7 +33,7 @@ library
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy
-                   Biegunka.Language
+                   Biegunka.Language.External
                    Biegunka.DB
                    Biegunka.Execute.Exception
   other-modules: Biegunka.Control

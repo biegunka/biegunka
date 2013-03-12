@@ -11,7 +11,7 @@ import           Control.Lens
 import           Control.Monad.State (State, evalState)
 import qualified System.FilePath as F
 
-import Biegunka.Language (Command(..), Action(..))
+import Biegunka.Language.External (EL(..), Action(..))
 
 
 data Infect = Infect
@@ -28,12 +28,12 @@ makeLenses ''Infect
 -- * Path to root
 -- * Path to current source
 infect :: FilePath
-       -> [Command l a b]
-       -> [Command l a b]
+       -> [EL l a b]
+       -> [EL l a b]
 infect path cs = evalState (f cs) Infect { _root = path, _source = mempty }
 
 
-f :: [Command l a b] -> State Infect [Command l a b]
+f :: [EL l a b] -> State Infect [EL l a b]
 f (F a x : cs) = h a >>= \b -> (F b x :) <$> f cs
  where
   h (Link s d)       = liftA2 Link (use source </> pure s) (use root </> pure d)

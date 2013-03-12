@@ -20,7 +20,7 @@ import Data.Default
 import System.Wordexp (wordexp, nosubst, noundef)
 
 import Biegunka.Flatten (flatten)
-import Biegunka.Language (Script, Layer(..), Command)
+import Biegunka.Language.External (Script, Layer(..), EL)
 import Biegunka.Infect (infect)
 
 
@@ -51,7 +51,7 @@ newtype Interpreter = I
   { interpret :: forall l b. Controls -> Task l b -> IO ()
   }
 
-type Task l b = [Command l () b]
+type Task l b = [EL l () b]
 
 -- | Empty 'Interpreter' does nothing. Two 'Interpreter's combined
 -- take the same 'Script' and do things one after another
