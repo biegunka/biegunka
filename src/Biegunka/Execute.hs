@@ -1,21 +1,18 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
-module Biegunka.Execute (execute, BiegunkaException(..)) where
+module Biegunka.Execute (execute) where
 
 import           Control.Applicative
 import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
 import           Data.List ((\\), delete)
-import           Data.Monoid ((<>))
 import           Data.Foldable (traverse_)
-import           Data.Typeable (Typeable)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (catchIOError, tryIOError)
 
@@ -28,7 +25,6 @@ import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
-import           Data.Text (Text)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -44,8 +40,9 @@ import           System.Process (system)
 
 import Biegunka.Control (Interpreter(..), Task)
 import Biegunka.DB
-import Biegunka.Execute.Narrator
 import Biegunka.Execute.Control
+import Biegunka.Execute.Exception
+import Biegunka.Execute.Narrator
 import Biegunka.Language (Command(..), Action(..), Wrapper(..), React(..))
 
 
@@ -82,24 +79,6 @@ runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeC
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
 asProxyOf a _ = a
 {-# INLINE asProxyOf #-}
-
-
--- | Custom execptions
-data BiegunkaException =
-    ShellCommandFailure String
-  | SourceEmergingFailure String FilePath Text
-    deriving (Typeable)
-
-
-instance Show BiegunkaException where
-  show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
-   where
-    pretty (ShellCommandFailure t) =
-      "Biegunka has failed to execute `" <> T.pack t <> "`"
-    pretty (SourceEmergingFailure up fp fs) =
-      "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
-
-instance Exception BiegunkaException
 
 
 -- | Run single task command by command

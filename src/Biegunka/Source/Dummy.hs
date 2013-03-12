@@ -1,16 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 -- | Biegunka.Source.Dummy - example Source using 'directory-layout'
-module Biegunka.Source.Dummy (dummy, dummy_, sourceFailure) where
-
-import Control.Exception (throwIO)
+module Biegunka.Source.Dummy (dummy, dummy_) where
 
 import Control.Monad.Free (liftF)
-import Data.Text (Text)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
 import Biegunka.Language (Script, Layer(Files, Sources), Command(S))
-import Biegunka.Execute (BiegunkaException(SourceEmergingFailure))
 
 
 -- | Make specified layout and attack it with 'Files'
@@ -37,8 +33,3 @@ dummy_ :: Layout   -- ^ Layout to make
        -> FilePath -- ^ Layout root (relative to user home directory)
        -> Script Sources
 dummy_ l p = dummy l p (return ())
-
-
--- | Report 'Source' emerge failure to Biegunka.
-sourceFailure :: String -> FilePath -> Text -> IO a
-sourceFailure up fp fs = throwIO $ SourceEmergingFailure up fp fs

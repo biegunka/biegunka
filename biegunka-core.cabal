@@ -35,6 +35,7 @@ library
                    Biegunka.Source.Dummy
                    Biegunka.Language
                    Biegunka.DB
+                   Biegunka.Execute.Exception
   other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Narrator
