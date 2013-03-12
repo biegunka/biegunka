@@ -102,7 +102,7 @@ data Work =
 -- | Tasks execution order
 data Order =
     Sequential -- ^ Do all tasks sequentially
-  | Parallel   -- ^ Do all tasks in parallel
+  | Concurrent -- ^ Do all tasks concurrently
 
 -- | Execution context TVar. True if sudoed operation is in progress.
 sudo :: TVar Bool

@@ -225,12 +225,12 @@ newTask t = do
 -- | Task scheduler
 --
 -- Works a bit differently depending on 'Order'. 'Sequential' forces scheduler to have only one
--- "working thread" that processes all the tasks. 'Parallel' order forces scheduler to "fork" on
+-- "working thread" that processes all the tasks. 'Concurrent' order forces scheduler to "fork" on
 -- every coming workload
 scheduler :: Chan Work -> Order -> IO ()
 scheduler j o = case o of
   Sequential -> go [] 0 1
-  Parallel   -> go [] 0 maxBound
+  Concurrent -> go [] 0 maxBound
  where
   go :: [Async ()] -> Int -> Int -> IO ()
   go as n 0 = do
@@ -246,4 +246,3 @@ scheduler j o = case o of
             go (a : as) (n + 1) (k - 1)
           Stop ->
             go      as  (n - 1)  k
-
