@@ -13,8 +13,9 @@ import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.Control (Interpreter(..))
-import Biegunka.Language.External (EL(..), Action(..))
+import Biegunka.Control (Interpreter(..), Task)
+import Biegunka.Language.External (Action(..))
+import Biegunka.Language.Internal
 
 
 -- | Verify interpreter
@@ -38,33 +39,30 @@ verify = I $ \_ s -> do
     else putStrLn $ failures ++ "\nFail!"
 
 
-f :: [EL l () b] -> WriterT String IO Bool
+f :: Task -> WriterT String IO Bool
 f = foldr (|&&|) (return True) . map g
 
 
-g :: EL l () b -> WriterT String IO Bool
-g (EP _ _ _) = return True
-g (ES _ u p _ _ _) = do
+g :: IL -> WriterT String IO Bool
+g (IS p _ _ _ _ n) = do
   sourceExists <- io $ doesDirectoryExist p
-  unless sourceExists $ tellLn [indent 2, "Source ", u, " -> ", p, " doesn't exist"]
+  unless sourceExists $ tellLn [indent 2, "Source ", n, " -> ", p, " doesn't exist"]
   return sourceExists
-g (EF a _) = h a
- where
-  h (Link src dst) = do
+g (IA (Link src dst) _ _ _) = do
     src' <- io $ readSymbolicLink dst
     dstExists <- io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
     let correctLink = src == src' && dstExists
     unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
     return correctLink
-  h (Copy src dst) = do
+g (IA (Copy src dst) _ _ _) = do
     src' <- io $ B.readFile src
     dst' <- io $ B.readFile dst
     let same = src' == dst'
     unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
     return same
-  h (Template _ dst _) = io $ doesFileExist dst
-  h (Shell {}) = return True
-g (EW {}) = return True
+g (IA (Template _ dst _) _ _ _) = io $ doesFileExist dst
+g (IA (Shell {}) _ _ _) = return True
+g (IW {}) = return True
 
 
 (|&&|) :: Applicative m => m Bool -> m Bool -> m Bool

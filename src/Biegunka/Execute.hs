@@ -43,7 +43,8 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Narrator
-import Biegunka.Language.External (EL(..), Action(..), Wrapper(..), React(..))
+import Biegunka.Language.Internal
+import Biegunka.Language.External (Action(..), Wrapper(..), React(..))
 
 
 -- | Execute Interpreter
@@ -71,7 +72,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> EXS -> Task l b -> IO ()
+runTask :: EE -> EXS -> Task -> IO ()
 runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
@@ -87,8 +88,8 @@ asProxyOf a _ = a
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
-task (EW (Task True) _:cs) = do
+task :: forall s. Reifies s EE => Task -> Execution s ()
+task (IW (Task True) : cs) = do
   let (a, b) = yielding cs
   newTask b
   task a
@@ -110,8 +111,7 @@ try (E ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-respond :: forall l b s. Reifies s EE
-        => SomeException -> Task l b -> Execution s (Task l b)
+respond :: forall s. Reifies s EE => SomeException -> Task -> Execution s Task
 respond e t = do
   liftIO . putStrLn $ "FAIL: " ++ show e
   rc <- use retryCount
@@ -134,12 +134,11 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
-ignoring :: Task l b -> Task l b
-ignoring (ES {} : cs) = go [] cs
+ignoring :: Task -> Task
+ignoring (IS {} : cs) = go [] cs
  where
-  go ws cs'@(EP {} : _)    = reverse ws ++ cs'
-  go ws cs'@(ES {} : _)    = reverse ws ++ cs'
-  go ws (w@(EW s _) : cs') = case s of
+  go ws cs'@(IS {} : _)  = reverse ws ++ cs'
+  go ws (w@(IW s) : cs') = case s of
     User     (Just _) -> go (w:ws) cs'
     Reacting (Just _) -> go (w:ws) cs'
     Task     True     -> go (w:ws) cs'
@@ -151,11 +150,11 @@ ignoring [] = error "Should not been here."
 
 
 -- | Single command execution
-command :: forall l b s. Reifies s EE => EL l () b -> Execution s ()
-command (EW (Reacting (Just r)) _) = reactStack %= (r :)
-command (EW (Reacting Nothing)  _) = reactStack %= drop 1
-command (EW (User     (Just u)) _) = usersStack %= (u :)
-command (EW (User     Nothing)  _) = usersStack %= drop 1
+command :: forall s. Reifies s EE => IL -> Execution s ()
+command (IW (Reacting (Just r))) = reactStack %= (r :)
+command (IW (Reacting Nothing))  = reactStack %= drop 1
+command (IW (User     (Just u))) = usersStack %= (u :)
+command (IW (User     Nothing))  = usersStack %= drop 1
 command c = do
   let sudoingTV = _sudoing $ reflect (Proxy :: Proxy s)
       runningTV = _running $ reflect (Proxy :: Proxy s)
@@ -177,16 +176,16 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  action (ES _ src dst _ update _) = do
+  action (IS dst _ update _ _ src) = do
     narrate (Typical $ "Emerging source: " ++ src)
     liftIO $ createDirectoryIfMissing True $ dropFileName dst
-    return $ update dst
-  action (EF (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
-  action (EF (Copy src dst) _) = return $ overWriteWith copyFile src dst
-  action (EF (Template src dst substitute) _) = return $
+    return update
+  action (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst
+  action (IA (Copy src dst) _ _ _) = return $ overWriteWith copyFile src dst
+  action (IA (Template src dst substitute) _ _ _) = return $
     let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  action (EF (Shell p sc) _) = return $ do
+  action (IA (Shell p sc) _ _ _) = return $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
     flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
@@ -204,18 +203,18 @@ command c = do
 
 
 -- | Separate current task into two
-yielding :: Task l b -> (Task l b, Task l b)
+yielding :: Task -> (Task, Task)
 yielding = go [] 1
  where
-  go :: Task l b -> Int -> Task l b -> (Task l b, Task l b)
-  go acc 1 (   EW (Task False) _  : xs) = (reverse acc, xs)
-  go acc n (x@(EW (Task False) _) : xs) = go (x : acc) (n - 1) xs
-  go acc n (x@(EW (Task True)  _) : xs) = go (x : acc) (n + 1) xs
-  go acc n (x                     : xs) = go (x : acc) n xs
-  go _   _ []                           = error "Broken Task structure!"
+  go :: Task -> Int -> Task -> (Task, Task)
+  go acc 1 (   IW (Task False)  : xs) = (reverse acc, xs)
+  go acc n (x@(IW (Task False)) : xs) = go (x : acc) (n - 1) xs
+  go acc n (x@(IW (Task True) ) : xs) = go (x : acc) (n + 1) xs
+  go acc n (x                   : xs) = go (x : acc) n xs
+  go _   _ []                         = error "Broken Task structure!"
 
 -- | Queue next task in scheduler
-newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()
+newTask :: forall s. Reifies s EE => Task -> Execution s ()
 newTask t = do
   let e = reflect (Proxy :: Proxy s)
   s <- get

@@ -17,7 +17,6 @@ import Data.Monoid (Monoid(..))
 import System.IO.Error (catchIOError)
 
 import           Control.Lens hiding ((.=), (<.>))
-import qualified Control.Lens as CL
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
 import           Data.Aeson.Encode
@@ -33,7 +32,8 @@ import           System.Directory (createDirectoryIfMissing, removeFile)
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language.External
+import Biegunka.Language.External (Action(..))
+import Biegunka.Language.Internal
 
 
 newtype Biegunka = Biegunka
@@ -56,22 +56,21 @@ instance ToJSON R where
 
 
 data Construct = Construct
-  { _profile :: String
-  , _source :: R
+  { _source :: R
   , _biegunka :: Map String (Map R (Map FilePath R))
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
-  def = Construct mempty (R "" "" "") mempty
+  def = Construct (R "" "" "") mempty
 
 makeLenses ''Construct
 
 
-load :: Controls -> [EL l a b] -> IO Biegunka
+load :: Controls -> [IL] -> IO Biegunka
 load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
  where
-  profiles (EP name _ _) = Just name
-  profiles _             = Nothing
+  profiles (IS _ _ _ _ n _) = Just n
+  profiles _                = Nothing
 
 
 loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
@@ -117,25 +116,20 @@ fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
 
 
-construct :: [EL l () b] -> Biegunka
+construct :: [IL] -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
-  g :: EL l () b -> State Construct ()
-  g (EP name _ _) = do
-    profile CL..= name
-    biegunka . at name ?= mempty
-  g (ES t src dst _ _ _) = do
-    p <- use profile
-    let s = R { recordtype = t, base = src, location = dst }
-    source CL..= s
-    biegunka . at p . traverse . at s ?= mempty
-  g (EF a _) = do
-    p <- use profile
+  g :: IL -> State Construct ()
+  g (IS dst t _ _ pn sn) = do
+    let s = R { recordtype = t, base = sn, location = dst }
+    assign source s
+    biegunka . at pn . non mempty <>= M.singleton s mempty
+  g (IA a _ pn _) = do
     s <- use source
-    biegunka . at p . traverse . at s . traverse <>= h a
+    biegunka . at pn . traverse . at s . traverse <>= h a
    where
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
     h (Shell {})           = mempty
-  g (EW _ _) = return ()
+  g (IW _) = return ()

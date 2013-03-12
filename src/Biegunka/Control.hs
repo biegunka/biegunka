@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
@@ -19,8 +18,9 @@ import Control.Lens
 import Data.Default
 import System.Wordexp (wordexp, nosubst, noundef)
 
-import Biegunka.Preprocess (flatten, infect)
-import Biegunka.Language.External (Script, Layer(..), EL)
+import Biegunka.Language.External (Script, Layer(..))
+import Biegunka.Language.Internal
+import Biegunka.Preprocess (preprocess)
 
 
 -- | Common interpreters controls
@@ -47,10 +47,10 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: forall l b. Controls -> Task l b -> IO ()
+  { interpret :: Controls -> Task -> IO ()
   }
 
-type Task l b = [EL l () b]
+type Task = [IL]
 
 -- | Empty 'Interpreter' does nothing. Two 'Interpreter's combined
 -- take the same 'Script' and do things one after another
@@ -67,7 +67,7 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
 biegunka (($ def) -> c) s (I f) = do
   d <- c ^. root . to expand
   e <- c ^. appData . to expand
-  f (c & root .~ d & appData .~ e) $ (d `infect`) (flatten s)
+  f (c & root .~ d & appData .~ e) (preprocess s d)
 
 expand :: String -> IO String
 expand x = do
