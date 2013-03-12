@@ -1,17 +1,18 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_HADDOCK hide #-}
-module Biegunka.Infect (infect) where
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+module Biegunka.Preprocess (flatten, infect) where
 
 import Control.Applicative
 import Data.Monoid (mempty)
 
 import           Control.Lens
+import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (State, evalState)
 import qualified System.FilePath as F
 
-import Biegunka.Language.External (EL(..), Action(..))
+import Biegunka.Language.External
 
 
 data Infect = Infect
@@ -52,3 +53,21 @@ f [] = return []
 
 (</>) :: State Infect FilePath -> State Infect FilePath -> State Infect FilePath
 (</>) = liftA2 (F.</>)
+
+
+flatten :: Script Profiles -> [EL l () ()]
+flatten (Free (W t x))   = W t () : flatten x
+flatten (Free (P n s x)) = P n () () : flatten' s ++ flatten x
+flatten (Pure _)               = []
+
+
+flatten' :: Script Sources -> [EL l () ()]
+flatten' (Free (S t u p s f x)) = S t u p () f () : flatten'' s ++ flatten' x
+flatten' (Free (W w x))         = W w () : flatten' x
+flatten' (Pure _)               = []
+
+
+flatten'' :: Script Files -> [EL l () ()]
+flatten'' (Free (F a x)) = F a () : flatten'' x
+flatten'' (Free (W w x)) = W w () : flatten'' x
+flatten'' (Pure _) = []

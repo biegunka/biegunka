@@ -43,8 +43,7 @@ library
                  Biegunka.Pretend
                  Biegunka.Verify
                  Biegunka.Log
-                 Biegunka.Infect
-                 Biegunka.Flatten
+                 Biegunka.Preprocess
   ghc-options: -Wall
                -fno-warn-unused-do-bind
 

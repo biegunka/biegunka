@@ -19,9 +19,8 @@ import Control.Lens
 import Data.Default
 import System.Wordexp (wordexp, nosubst, noundef)
 
-import Biegunka.Flatten (flatten)
+import Biegunka.Preprocess (flatten, infect)
 import Biegunka.Language.External (Script, Layer(..), EL)
-import Biegunka.Infect (infect)
 
 
 -- | Common interpreters controls
