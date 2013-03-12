@@ -38,7 +38,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process (system)
 
-import Biegunka.Control (Interpreter(..), Task)
+import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
@@ -72,7 +72,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> EXS -> Task -> IO ()
+runTask :: EE -> EXS -> [IL] -> IO ()
 runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
@@ -88,7 +88,7 @@ asProxyOf a _ = a
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: forall s. Reifies s EE => Task -> Execution s ()
+task :: forall s. Reifies s EE => [IL] -> Execution s ()
 task (IW (Task True) : cs) = do
   let (a, b) = yielding cs
   newTask b
@@ -111,7 +111,7 @@ try (E ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-respond :: forall s. Reifies s EE => SomeException -> Task -> Execution s Task
+respond :: forall s. Reifies s EE => SomeException -> [IL] -> Execution s [IL]
 respond e t = do
   liftIO . putStrLn $ "FAIL: " ++ show e
   rc <- use retryCount
@@ -134,7 +134,7 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
-ignoring :: Task -> Task
+ignoring :: [IL] -> [IL]
 ignoring (IS {} : cs) = go [] cs
  where
   go ws cs'@(IS {} : _)  = reverse ws ++ cs'
@@ -203,10 +203,10 @@ command c = do
 
 
 -- | Separate current task into two
-yielding :: Task -> (Task, Task)
+yielding :: [IL] -> ([IL], [IL])
 yielding = go [] 1
  where
-  go :: Task -> Int -> Task -> (Task, Task)
+  go :: [IL] -> Int -> [IL] -> ([IL], [IL])
   go acc 1 (   IW (Task False)  : xs) = (reverse acc, xs)
   go acc n (x@(IW (Task False)) : xs) = go (x : acc) (n - 1) xs
   go acc n (x@(IW (Task True) ) : xs) = go (x : acc) (n + 1) xs
@@ -214,7 +214,7 @@ yielding = go [] 1
   go _   _ []                         = error "Broken Task structure!"
 
 -- | Queue next task in scheduler
-newTask :: forall s. Reifies s EE => Task -> Execution s ()
+newTask :: forall s. Reifies s EE => [IL] -> Execution s ()
 newTask t = do
   let e = reflect (Proxy :: Proxy s)
   s <- get

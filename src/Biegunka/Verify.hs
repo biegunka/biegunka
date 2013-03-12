@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
-import Biegunka.Control (Interpreter(..), Task)
+import Biegunka.Control (Interpreter(..))
 import Biegunka.Language.External (Action(..))
 import Biegunka.Language.Internal
 
@@ -39,7 +39,7 @@ verify = I $ \_ s -> do
     else putStrLn $ failures ++ "\nFail!"
 
 
-f :: Task -> WriterT String IO Bool
+f :: [IL] -> WriterT String IO Bool
 f = foldr (|&&|) (return True) . map g
 
 

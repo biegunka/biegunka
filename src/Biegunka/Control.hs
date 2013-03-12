@@ -4,7 +4,7 @@
 -- | Controlling biegunka interpreters and their composition
 module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter(..), Task
+    biegunka, Interpreter(..)
     -- * Common interpreters controls
   , Controls, root, appData
     -- * Generic interpreters
@@ -47,10 +47,8 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: Controls -> Task -> IO ()
+  { interpret :: Controls -> [IL] -> IO ()
   }
-
-type Task = [IL]
 
 -- | Empty 'Interpreter' does nothing. Two 'Interpreter's combined
 -- take the same 'Script' and do things one after another
