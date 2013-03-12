@@ -42,7 +42,7 @@ import Biegunka.Verify (verify)
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Files
-registerAt dst = liftF $ F (Link mempty dst) ()
+registerAt dst = liftF $ EF (Link mempty dst) ()
 {-# INLINE registerAt #-}
 
 
@@ -53,7 +53,7 @@ registerAt dst = liftF $ F (Link mempty dst) ()
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Files
-link src dst = liftF $ F (Link src dst) ()
+link src dst = liftF $ EF (Link src dst) ()
 {-# INLINE link #-}
 
 
@@ -64,7 +64,7 @@ link src dst = liftF $ F (Link src dst) ()
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Files
-copy src dst = liftF $ F (Copy src dst) ()
+copy src dst = liftF $ EF (Copy src dst) ()
 {-# INLINE copy #-}
 
 
@@ -77,7 +77,7 @@ copy src dst = liftF $ F (Copy src dst) ()
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute :: FilePath -> FilePath -> Script Files
 substitute src dst = liftF $
-  F (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
+  EF (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 {-# INLINE substitute #-}
 
 
@@ -88,19 +88,19 @@ substitute src dst = liftF $
 --
 -- Prints "hello" (without a newline)
 shell :: String -> Script Files
-shell c = liftF $ F (Shell mempty c) ()
+shell c = liftF $ EF (Shell mempty c) ()
 {-# INLINE shell #-}
 
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Free (EL l s) () -> Free (EL l s) ()
-sudo n s = liftF (W (User (Just n)) ()) >> s >> liftF (W (User Nothing) ())
+sudo n s = liftF (EW (User (Just n)) ()) >> s >> liftF (EW (User Nothing) ())
 {-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Free (EL l s) () -> Free (EL l s) ()
-reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothing) ())
+reacting r s = liftF (EW (Reacting (Just r)) ()) >> s >> liftF (EW (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 
@@ -114,12 +114,12 @@ reacting r s = liftF (W (Reacting (Just r)) ()) >> s >> liftF (W (Reacting Nothi
 -- > profile "friend's" $ do
 -- >   svn ...
 profile :: String -> Script Sources -> Script Profiles
-profile name repo = liftF $ P name repo ()
+profile name repo = liftF $ EP name repo ()
 {-# INLINE profile #-}
 
 
 -- | Concurrent task
 -- Runs in parallel with main thread if possible
 task :: Free (EL l s) () -> Free (EL l s) ()
-task s = liftF (W (Task True) ()) >> s >> liftF (W (Task False) ())
+task s = liftF (EW (Task True) ()) >> s >> liftF (EW (Task False) ())
 {-# INLINE task #-}

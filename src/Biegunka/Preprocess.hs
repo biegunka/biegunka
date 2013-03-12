@@ -35,19 +35,19 @@ infect path cs = evalState (f cs) Infect { _root = path, _source = mempty }
 
 
 f :: [EL l a b] -> State Infect [EL l a b]
-f (F a x : cs) = h a >>= \b -> (F b x :) <$> f cs
+f (EF a x : cs) = h a >>= \b -> (EF b x :) <$> f cs
  where
   h (Link s d)       = liftA2 Link (use source </> pure s) (use root </> pure d)
   h (Copy s d)       = liftA2 Copy (use source </> pure s) (use root </> pure d)
   h (Template s d t) = liftA2 (\s' d' -> Template s' d' t) (use source </> pure s) (use root </> pure d)
   h (Shell fp c)     = (\r -> (Shell (r F.</> fp) c)) <$> use source
-f (S t u d s a z : cs) = do
+f (ES t u d s a z : cs) = do
   r <- use root
   source .= (r F.</> d)
   d' <- use root </> pure d
-  (S t u d' s a z :) <$> f cs
-f (P n y z : cs) = (P n y z :) <$> f cs
-f (W w z : cs) = (W w z :) <$> f cs
+  (ES t u d' s a z :) <$> f cs
+f (EP n y z : cs) = (EP n y z :) <$> f cs
+f (EW w z : cs) = (EW w z :) <$> f cs
 f [] = return []
 
 
@@ -56,18 +56,18 @@ f [] = return []
 
 
 flatten :: Script Profiles -> [EL l () ()]
-flatten (Free (W t x))   = W t () : flatten x
-flatten (Free (P n s x)) = P n () () : flatten' s ++ flatten x
-flatten (Pure _)               = []
+flatten (Free (EW t x))   = EW t () : flatten x
+flatten (Free (EP n s x)) = EP n () () : flatten' s ++ flatten x
+flatten (Pure _)          = []
 
 
 flatten' :: Script Sources -> [EL l () ()]
-flatten' (Free (S t u p s f x)) = S t u p () f () : flatten'' s ++ flatten' x
-flatten' (Free (W w x))         = W w () : flatten' x
-flatten' (Pure _)               = []
+flatten' (Free (ES t u p s f x)) = ES t u p () f () : flatten'' s ++ flatten' x
+flatten' (Free (EW w x))         = EW w () : flatten' x
+flatten' (Pure _)                = []
 
 
 flatten'' :: Script Files -> [EL l () ()]
-flatten'' (Free (F a x)) = F a () : flatten'' x
-flatten'' (Free (W w x)) = W w () : flatten'' x
-flatten'' (Pure _) = []
+flatten'' (Free (EF a x)) = EF a () : flatten'' x
+flatten'' (Free (EW w x)) = EW w () : flatten'' x
+flatten'' (Pure _)        = []

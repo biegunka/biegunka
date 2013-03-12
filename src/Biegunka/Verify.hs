@@ -43,12 +43,12 @@ f = foldr (|&&|) (return True) . map g
 
 
 g :: EL l () b -> WriterT String IO Bool
-g (P _ _ _) = return True
-g (S _ u p _ _ _) = do
+g (EP _ _ _) = return True
+g (ES _ u p _ _ _) = do
   sourceExists <- io $ doesDirectoryExist p
   unless sourceExists $ tellLn [indent 2, "Source ", u, " -> ", p, " doesn't exist"]
   return sourceExists
-g (F a _) = h a
+g (EF a _) = h a
  where
   h (Link src dst) = do
     src' <- io $ readSymbolicLink dst
@@ -64,7 +64,7 @@ g (F a _) = h a
     return same
   h (Template _ dst _) = io $ doesFileExist dst
   h (Shell {}) = return True
-g (W {}) = return True
+g (EW {}) = return True
 
 
 (|&&|) :: Applicative m => m Bool -> m Bool -> m Bool

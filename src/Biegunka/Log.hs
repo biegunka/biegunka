@@ -14,15 +14,15 @@ full cs s t = unlines $ mapMaybe install cs ++ uninstall s t
 
 
 install :: EL l () b -> Maybe String
-install (P name _ _)    = Just $ "Setup profile [" ++ name ++ "]"
-install (S t u p _ _ _) = Just $ indent 2 ++ "Setup " ++ t ++ " repository " ++ u ++ " at " ++ p
-install (F a _)         = Just $ indent 4 ++ go a
+install (EP name _ _)    = Just $ "Setup profile [" ++ name ++ "]"
+install (ES t u p _ _ _) = Just $ indent 2 ++ "Setup " ++ t ++ " repository " ++ u ++ " at " ++ p
+install (EF a _)         = Just $ indent 4 ++ go a
  where
   go (Link src dst)       = "Link file " ++ src ++ " to " ++ dst
   go (Copy src dst)       = "Copy file " ++ src ++ " to " ++ dst
   go (Template src dst _) = "Write " ++ src ++ " with substituted templates to " ++ dst
   go (Shell p c)          = "Shell command `" ++ c ++ "` from " ++ p
-install (W a _)         = go a
+install (EW a _)         = go a
  where
   go (User (Just user)) = Just $ "--- * Do stuff from user " ++ user ++ " * ---"
   go (User Nothing)     = Just $ "--- * Do stuff from default user * ---"

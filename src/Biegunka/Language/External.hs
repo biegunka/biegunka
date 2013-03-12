@@ -29,17 +29,17 @@ data Layer = Files | Sources | Profiles
 
 
 data EL (l :: Layer) s a where
-  F :: Action -> a -> EL l () a
-  S :: String -> String -> FilePath -> s -> (FilePath -> IO ()) -> a -> EL l s a
-  P :: String -> s -> a -> EL l s a
-  W :: Wrapper -> a -> EL l s a
+  EF :: Action -> a -> EL l () a
+  ES :: String -> String -> FilePath -> s -> (FilePath -> IO ()) -> a -> EL l s a
+  EP :: String -> s -> a -> EL l s a
+  EW :: Wrapper -> a -> EL l s a
 
 
 instance Functor (EL l s) where
-  fmap f (F a x)         = F a (f x)
-  fmap f (S t u p s h x) = S t u p s h (f x)
-  fmap f (P n s x)       = P n s (f x)
-  fmap f (W s x)         = W s (f x)
+  fmap f (EF a x)         = EF a (f x)
+  fmap f (ES t u p s h x) = ES t u p s h (f x)
+  fmap f (EP n s x)       = EP n s (f x)
+  fmap f (EW s x)         = EW s (f x)
   {-# INLINE fmap #-}
 
 

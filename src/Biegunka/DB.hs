@@ -70,8 +70,8 @@ makeLenses ''Construct
 load :: Controls -> [EL l a b] -> IO Biegunka
 load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
  where
-  profiles (P name _ _) = Just name
-  profiles _            = Nothing
+  profiles (EP name _ _) = Just name
+  profiles _             = Nothing
 
 
 loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
@@ -121,15 +121,15 @@ construct :: [EL l () b] -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
   g :: EL l () b -> State Construct ()
-  g (P name _ _) = do
+  g (EP name _ _) = do
     profile CL..= name
     biegunka . at name ?= mempty
-  g (S t src dst _ _ _) = do
+  g (ES t src dst _ _ _) = do
     p <- use profile
     let s = R { recordtype = t, base = src, location = dst }
     source CL..= s
     biegunka . at p . traverse . at s ?= mempty
-  g (F a _) = do
+  g (EF a _) = do
     p <- use profile
     s <- use source
     biegunka . at p . traverse . at s . traverse <>= h a
@@ -138,4 +138,4 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
     h (Shell {})           = mempty
-  g (W _ _) = return ()
+  g (EW _ _) = return ()

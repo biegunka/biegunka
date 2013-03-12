@@ -71,7 +71,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> ES -> Task l b -> IO ()
+runTask :: EE -> EXS -> Task l b -> IO ()
 runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
@@ -88,7 +88,7 @@ asProxyOf a _ = a
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
 task :: forall l b s. Reifies s EE => Task l b -> Execution s ()
-task (W (Task True) _:cs) = do
+task (EW (Task True) _:cs) = do
   let (a, b) = yielding cs
   newTask b
   task a
@@ -135,11 +135,11 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 -- | If failure happens to be in emerging 'Source' then we need to skip
 -- all related 'Files' operations too.
 ignoring :: Task l b -> Task l b
-ignoring (S {} : cs) = go [] cs
+ignoring (ES {} : cs) = go [] cs
  where
-  go ws cs'@(P {} : _)    = reverse ws ++ cs'
-  go ws cs'@(S {} : _)    = reverse ws ++ cs'
-  go ws (w@(W s _) : cs') = case s of
+  go ws cs'@(EP {} : _)    = reverse ws ++ cs'
+  go ws cs'@(ES {} : _)    = reverse ws ++ cs'
+  go ws (w@(EW s _) : cs') = case s of
     User     (Just _) -> go (w:ws) cs'
     Reacting (Just _) -> go (w:ws) cs'
     Task     True     -> go (w:ws) cs'
@@ -152,10 +152,10 @@ ignoring [] = error "Should not been here."
 
 -- | Single command execution
 command :: forall l b s. Reifies s EE => EL l () b -> Execution s ()
-command (W (Reacting (Just r)) _) = reactStack %= (r :)
-command (W (Reacting Nothing)  _) = reactStack %= drop 1
-command (W (User     (Just u)) _) = usersStack %= (u :)
-command (W (User     Nothing)  _) = usersStack %= drop 1
+command (EW (Reacting (Just r)) _) = reactStack %= (r :)
+command (EW (Reacting Nothing)  _) = reactStack %= drop 1
+command (EW (User     (Just u)) _) = usersStack %= (u :)
+command (EW (User     Nothing)  _) = usersStack %= drop 1
 command c = do
   let sudoingTV = _sudoing $ reflect (Proxy :: Proxy s)
       runningTV = _running $ reflect (Proxy :: Proxy s)
@@ -177,16 +177,16 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  action (S _ src dst _ update _) = do
+  action (ES _ src dst _ update _) = do
     narrate (Typical $ "Emerging source: " ++ src)
     liftIO $ createDirectoryIfMissing True $ dropFileName dst
     return $ update dst
-  action (F (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
-  action (F (Copy src dst) _) = return $ overWriteWith copyFile src dst
-  action (F (Template src dst substitute) _) = return $
+  action (EF (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
+  action (EF (Copy src dst) _) = return $ overWriteWith copyFile src dst
+  action (EF (Template src dst substitute) _) = return $
     let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  action (F (Shell p sc) _) = return $ do
+  action (EF (Shell p sc) _) = return $ do
     d <- getCurrentDirectory
     setCurrentDirectory p
     flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
@@ -208,11 +208,11 @@ yielding :: Task l b -> (Task l b, Task l b)
 yielding = go [] 1
  where
   go :: Task l b -> Int -> Task l b -> (Task l b, Task l b)
-  go acc 1 (   W (Task False) _  : xs) = (reverse acc, xs)
-  go acc n (x@(W (Task False) _) : xs) = go (x : acc) (n - 1) xs
-  go acc n (x@(W (Task True)  _) : xs) = go (x : acc) (n + 1) xs
-  go acc n (x                    : xs) = go (x : acc) n xs
-  go _   _ []                          = error "Broken Task structure!"
+  go acc 1 (   EW (Task False) _  : xs) = (reverse acc, xs)
+  go acc n (x@(EW (Task False) _) : xs) = go (x : acc) (n - 1) xs
+  go acc n (x@(EW (Task True)  _) : xs) = go (x : acc) (n + 1) xs
+  go acc n (x                     : xs) = go (x : acc) n xs
+  go _   _ []                           = error "Broken Task structure!"
 
 -- | Queue next task in scheduler
 newTask :: forall l b s. Reifies s EE => Task l b -> Execution s ()
