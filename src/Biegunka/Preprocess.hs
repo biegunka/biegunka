@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 module Biegunka.Preprocess (preprocess) where
 
 import Control.Monad
