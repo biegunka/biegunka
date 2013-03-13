@@ -39,8 +39,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Narrator
-import Biegunka.Language.Internal
-import Biegunka.Language.External (A(..), W(..), React(..))
+import Biegunka.Language (IL(..), A(..), W(..), React(..))
 
 
 -- | Execute Interpreter

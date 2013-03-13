@@ -28,7 +28,7 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pause)
-import Biegunka.Language.External (Script, Layer(..), EL(..), A(..), W(..), React(..))
+import Biegunka.Language (Script, Layer(..), EL(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control

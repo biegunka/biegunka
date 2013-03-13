@@ -18,8 +18,7 @@ import Control.Lens
 import Data.Default
 import System.Wordexp (wordexp, nosubst, noundef)
 
-import Biegunka.Language.External (Script, Layer(..))
-import Biegunka.Language.Internal
+import Biegunka.Language
 import Biegunka.Transform (fromEL)
 
 

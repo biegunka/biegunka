@@ -29,8 +29,7 @@ import           System.Directory (createDirectoryIfMissing, removeFile)
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language.External (A(..))
-import Biegunka.Language.Internal
+import Biegunka.Language (IL(..), A(..))
 
 
 newtype Biegunka = Biegunka

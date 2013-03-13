@@ -12,8 +12,7 @@ import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 
 import Biegunka.Control (Interpreter(..))
-import Biegunka.Language.External (A(..))
-import Biegunka.Language.Internal
+import Biegunka.Language (IL(..), A(..))
 
 
 -- | Verify interpreter

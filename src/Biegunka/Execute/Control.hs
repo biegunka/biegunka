@@ -25,7 +25,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Default
 import Text.StringTemplate (ToSElem(..))
 
-import Biegunka.Language.External (React(..))
+import Biegunka.Language (React(..))
 
 
 newtype Execution s a =

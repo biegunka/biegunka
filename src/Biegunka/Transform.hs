@@ -12,8 +12,7 @@ import Control.Monad.State (State, evalState, get)
 import Data.Default
 import System.FilePath ((</>))
 
-import Biegunka.Language.External
-import Biegunka.Language.Internal
+import Biegunka.Language
 
 
 -- | Transformation state

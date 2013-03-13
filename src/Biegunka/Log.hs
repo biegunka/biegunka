@@ -4,8 +4,7 @@ import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 
 import Biegunka.DB (Biegunka, filepaths, sources)
-import Biegunka.Language.External (A(..), W(..))
-import Biegunka.Language.Internal
+import Biegunka.Language (IL(..), A(..), W(..))
 
 
 full :: [IL] -> Biegunka -> Biegunka -> String

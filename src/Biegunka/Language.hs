@@ -3,10 +3,10 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
--- | Specifies user side language primitives
-module Biegunka.Language.External
+-- | Specifies user side and library side language primitives
+module Biegunka.Language
   ( Script, Layer(..)
-  , EL(..), A(..), W(..)
+  , EL(..), IL(..), A(..), W(..)
   , React(..)
   ) where
 
@@ -33,13 +33,18 @@ data EL (l :: Layer) a where
   EP :: String                     -> Script Sources                      -> a -> EL Profiles a
   EW :: W                                                                -> a -> EL l a
 
-
 instance Functor (EL l) where
   fmap f (EA a x)         = EA a (f x)
   fmap f (ES t u p s h x) = ES t u p s h (f x)
   fmap f (EP n s x)       = EP n s (f x)
   fmap f (EW s x)         = EW s (f x)
   {-# INLINE fmap #-}
+
+
+data IL =
+    IA A Int String String
+  | IS FilePath String (IO ()) Int String String
+  | IW W
 
 
 data A =
@@ -55,7 +60,5 @@ data W =
   | Task Bool
 
 
-data React =
-    Ignorant
-  | Abortive
-    deriving (Show, Read, Eq, Ord, Enum, Bounded)
+data React = Ignorant | Abortive
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
