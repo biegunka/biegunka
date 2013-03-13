@@ -6,7 +6,7 @@ import Control.Monad.Free (liftF)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
-import Biegunka.Language.External (Script, Layer(Files, Sources), EL(ES))
+import Biegunka.Language.External (Script, Layer(Actions, Sources), EL(ES))
 
 
 -- | Make specified layout and attack it with 'Files'
@@ -15,9 +15,9 @@ import Biegunka.Language.External (Script, Layer(Files, Sources), EL(ES))
 -- real ones.but it is easier to reason about because you
 -- don't depend on internet connection, installed libraries
 -- and so on.
-dummy :: Layout       -- ^ Layout to make
-      -> FilePath     -- ^ Layout root (relative to user home directory)
-      -> Script Files -- ^ What to do with layout files
+dummy :: Layout         -- ^ Layout to make
+      -> FilePath       -- ^ Layout root (relative to user home directory)
+      -> Script Actions -- ^ What to do with layout files
       -> Script Sources
 dummy l p s = liftF $ ES "dummy" "localhost" p s updateDummy ()
  where

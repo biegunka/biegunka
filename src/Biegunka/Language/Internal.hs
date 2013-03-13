@@ -5,6 +5,6 @@ import Biegunka.Language.External
 
 
 data IL =
-    IA Action Int String String
+    IA A Int String String
   | IS FilePath String (IO ()) Int String String
-  | IW Wrapper
+  | IW W

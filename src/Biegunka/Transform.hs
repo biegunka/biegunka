@@ -66,20 +66,20 @@ stepS (ES t u d s a ()) = do
 stepS (EW w _) = return [IW w]
 
 -- | Transform Files layer
-stepF :: EL Files () -> State S IL
-stepF (EF (Link s d) ()) = do
+stepF :: EL Actions () -> State S IL
+stepF (EA (Link s d) ()) = do
   S r src pn sn o <- get
   order += 1
   return $ IA (Link (src </> s) (r </> d)) o pn sn
-stepF (EF (Copy s d) ()) = do
+stepF (EA (Copy s d) ()) = do
   S r src pn sn o <- get
   order += 1
   return $ IA (Copy (src </> s) (r </> d)) o pn sn
-stepF (EF (Template s d t) ()) = do
+stepF (EA (Template s d t) ()) = do
   S r src pn sn o <- get
   order += 1
   return $ IA (Template (src </> s) (r </> d) t) o pn sn
-stepF (EF (Shell d c) ()) = do
+stepF (EA (Shell d c) ()) = do
   S _ s pn sn o <- get
   order += 1
   return $ IA (Shell (s </> d) c) o pn sn
@@ -99,8 +99,8 @@ toListS (Free (EW w x))         = EW w ()         : toListS x
 toListS (Pure _)                = []
 
 -- | Folds Files layer
-toListF :: Script Files -> [EL Files ()]
-toListF (Free (EF a x)) = EF a () : toListF x
+toListF :: Script Actions -> [EL Actions ()]
+toListF (Free (EA a x)) = EA a () : toListF x
 toListF (Free (EW w x)) = EW w () : toListF x
 toListF (Pure _)        = []
 

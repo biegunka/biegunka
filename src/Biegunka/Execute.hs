@@ -15,7 +15,7 @@ import           System.IO.Error (catchIOError, tryIOError)
 import           Control.Concurrent.Async
 import           Control.Concurrent.Chan
 import           Control.Concurrent.STM
-import           Control.Lens hiding (Action)
+import           Control.Lens
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
@@ -40,7 +40,7 @@ import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Narrator
 import Biegunka.Language.Internal
-import Biegunka.Language.External (Action(..), Wrapper(..), React(..))
+import Biegunka.Language.External (A(..), W(..), React(..))
 
 
 -- | Execute Interpreter

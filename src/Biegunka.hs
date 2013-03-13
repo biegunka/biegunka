@@ -28,7 +28,7 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pause)
-import Biegunka.Language.External (Script, Layer(..), EL(..), Action(..), Wrapper(..), React(..))
+import Biegunka.Language.External (Script, Layer(..), EL(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
@@ -41,8 +41,8 @@ import Biegunka.Verify (verify)
 -- >   registerAt "we/need/you/here"
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
-registerAt :: FilePath -> Script Files
-registerAt dst = liftF $ EF (Link mempty dst) ()
+registerAt :: FilePath -> Script Actions
+registerAt dst = liftF $ EA (Link mempty dst) ()
 {-# INLINE registerAt #-}
 
 
@@ -52,8 +52,8 @@ registerAt dst = liftF $ EF (Link mempty dst) ()
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link :: FilePath -> FilePath -> Script Files
-link src dst = liftF $ EF (Link src dst) ()
+link :: FilePath -> FilePath -> Script Actions
+link src dst = liftF $ EA (Link src dst) ()
 {-# INLINE link #-}
 
 
@@ -63,8 +63,8 @@ link src dst = liftF $ EF (Link src dst) ()
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy :: FilePath -> FilePath -> Script Files
-copy src dst = liftF $ EF (Copy src dst) ()
+copy :: FilePath -> FilePath -> Script Actions
+copy src dst = liftF $ EA (Copy src dst) ()
 {-# INLINE copy #-}
 
 
@@ -75,9 +75,9 @@ copy src dst = liftF $ EF (Copy src dst) ()
 --
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
-substitute :: FilePath -> FilePath -> Script Files
+substitute :: FilePath -> FilePath -> Script Actions
 substitute src dst = liftF $
-  EF (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
+  EA (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 {-# INLINE substitute #-}
 
 
@@ -87,8 +87,8 @@ substitute src dst = liftF $
 -- >   shell "echo -n hello"
 --
 -- Prints "hello" (without a newline)
-shell :: String -> Script Files
-shell c = liftF $ EF (Shell mempty c) ()
+shell :: String -> Script Actions
+shell c = liftF $ EA (Shell mempty c) ()
 {-# INLINE shell #-}
 
 
