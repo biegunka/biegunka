@@ -25,12 +25,15 @@ library
                  lens >= 3.8,
                  reflection,
                  tagged,
+                 semigroups,
+                 wl-pprint-extras,
+                 wl-pprint-terminfo,
                  directory-layout,
                  data-default,
                  stm,
                  async,
                  HStringTemplate >= 0.7,
-                 wordexp
+                 wordexp >= 0.2
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy

@@ -3,11 +3,12 @@ module Biegunka.Pretend (pretend) where
 import Data.List ((\\))
 import Control.Monad (when)
 
+import Control.Lens
 import System.IO
 
 import           Biegunka.DB
 import qualified Biegunka.Log as Log
-import           Biegunka.Control (Interpreter(..))
+import           Biegunka.Control (Interpreter(..), logger)
 
 
 -- | Pretend interpreter
@@ -30,7 +31,7 @@ pretend = I $ \c s -> do
   let b = construct s
   putStr . talk $ stats a b
   whenM (query "Print full log?") $
-    putStrLn $ Log.full s a b
+    view logger c (Log.full s a b)
  where
   whenM ma mb = do
     p <- ma

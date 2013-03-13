@@ -3,7 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
--- | Specifies user side and library side language primitives
+-- | Specifies user side and library side languages primitives
 module Biegunka.Language
   ( Script, Layer(..)
   , EL(..), IL(..), A(..), W(..)
