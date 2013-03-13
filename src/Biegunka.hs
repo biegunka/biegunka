@@ -93,13 +93,13 @@ shell c = liftF $ EF (Shell mempty c) ()
 
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Free (EL l s) () -> Free (EL l s) ()
+sudo :: String -> Free (EL l) () -> Free (EL l) ()
 sudo n s = liftF (EW (User (Just n)) ()) >> s >> liftF (EW (User Nothing) ())
 {-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Free (EL l s) () -> Free (EL l s) ()
+reacting :: React -> Free (EL l) () -> Free (EL l) ()
 reacting r s = liftF (EW (Reacting (Just r)) ()) >> s >> liftF (EW (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
@@ -120,6 +120,6 @@ profile name repo = liftF $ EP name repo ()
 
 -- | Concurrent task
 -- Runs in parallel with main thread if possible
-task :: Free (EL l s) () -> Free (EL l s) ()
+task :: Free (EL l) () -> Free (EL l) ()
 task s = liftF (EW (Task True) ()) >> s >> liftF (EW (Task False) ())
 {-# INLINE task #-}

@@ -47,14 +47,14 @@ preprocess :: Script Profiles
 preprocess s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
 
 
-stepP :: EL l (Script Sources) () -> State S [IL]
+stepP :: EL Profiles () -> State S [IL]
 stepP (EP n s _) = do
   profile_name .= n
   xs <- concatMapM stepS $ toListS s
   return xs
 stepP (EW w _) = return [IW w]
 
-stepS :: EL l (Script Files) () -> State S [IL]
+stepS :: EL Sources () -> State S [IL]
 stepS (ES t u d s a ()) = do
   S r src pn sn o <- get
   source_name .= u
@@ -65,7 +65,7 @@ stepS (ES t u d s a ()) = do
   return $ IS (r </> d) t (a $ r </> d) o' pn u : xs
 stepS (EW w _) = return [IW w]
 
-stepF :: EL l () () -> State S IL
+stepF :: EL Files () -> State S IL
 stepF (EF (Link s d) ()) = do
   S r src pn sn o <- get
   order += 1
@@ -85,17 +85,17 @@ stepF (EF (Shell d c) ()) = do
 stepF (EW w _) = return $ IW w
 
 
-toListP :: Script Profiles -> [EL l (Script Sources) ()]
+toListP :: Script Profiles -> [EL Profiles ()]
 toListP (Free (EP n s x)) = EP n s () : toListP x
 toListP (Free (EW t x))   = EW t ()   : toListP x
 toListP (Pure _)          = []
 
-toListS :: Script Sources -> [EL l (Script Files) ()]
+toListS :: Script Sources -> [EL Sources ()]
 toListS (Free (ES t u p s f x)) = ES t u p s f () : toListS x
 toListS (Free (EW w x))         = EW w ()         : toListS x
 toListS (Pure _)                = []
 
-toListF :: Script Files -> [EL l () ()]
+toListF :: Script Files -> [EL Files ()]
 toListF (Free (EF a x)) = EF a () : toListF x
 toListF (Free (EW w x)) = EW w () : toListF x
 toListF (Pure _)        = []
