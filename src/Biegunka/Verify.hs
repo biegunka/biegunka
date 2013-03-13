@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Verify (verify) where
 
 import Control.Applicative

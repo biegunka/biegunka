@@ -1,5 +1,3 @@
-{-# LANGUAGE GADTs #-}
-{-# OPTIONS_HADDOCK hide #-}
 module Biegunka.Log (full) where
 
 import Data.List ((\\))

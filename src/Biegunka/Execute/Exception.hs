@@ -19,7 +19,7 @@ import qualified Data.Text as T
 
 -- | Custom exceptions
 data BiegunkaException =
-    ShellCommandFailure String                 -- ^ Various shell failures with output
+    ShellCommandFailure String         -- ^ Various shell failures with output
   | SourceFailure String FilePath Text -- ^ Source emerging failure with paths and output
     deriving (Data, Typeable)
 

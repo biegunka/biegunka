@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# OPTIONS_HADDOCK prune #-}
 module Biegunka.Pretend (pretend) where
 
 import Data.List ((\\))
