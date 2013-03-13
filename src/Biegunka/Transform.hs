@@ -1,7 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Biegunka.Preprocess (preprocess) where
+-- | Transform external language into internal one
+module Biegunka.Transform (fromEL) where
 
 import Control.Monad
 
@@ -15,12 +16,13 @@ import Biegunka.Language.External
 import Biegunka.Language.Internal
 
 
+-- | Transformation state
 data S = S
-  { _root         :: FilePath
-  , _source       :: FilePath
-  , _profile_name :: String
-  , _source_name  :: String
-  , _order        :: Int
+  { _root         :: FilePath -- ^ Biegunka root
+  , _source       :: FilePath -- ^ Source root
+  , _profile_name :: String   -- ^ Profile name
+  , _source_name  :: String   -- ^ Source name
+  , _order        :: Int      -- ^ Order number
   } deriving (Show, Read, Eq, Ord)
 
 instance Default S where
@@ -32,20 +34,19 @@ instance Default S where
     , _order        = 1
     }
 
-
 makeLenses ''S
 
 
--- | Infect free monad with state:
+-- | Given user defined biegunka script preprocess it into something usable
 --
--- * Path to root
--- * Path to current source
-preprocess :: Script Profiles
-           -> FilePath
-           -> [IL]
-preprocess s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
+-- Returns internal language "instructions" littered with information used later
+fromEL :: Script Profiles
+       -> FilePath
+       -> [IL]
+fromEL s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
 
 
+-- | Transform Profiles layer
 stepP :: EL Profiles () -> State S [IL]
 stepP (EP n s _) = do
   profile_name .= n
@@ -53,6 +54,7 @@ stepP (EP n s _) = do
   return xs
 stepP (EW w _) = return [IW w]
 
+-- | Transform Sources layer
 stepS :: EL Sources () -> State S [IL]
 stepS (ES t u d s a ()) = do
   S r src pn sn o <- get
@@ -64,6 +66,7 @@ stepS (ES t u d s a ()) = do
   return $ IS (r </> d) t (a $ r </> d) o' pn u : xs
 stepS (EW w _) = return [IW w]
 
+-- | Transform Files layer
 stepF :: EL Files () -> State S IL
 stepF (EF (Link s d) ()) = do
   S r src pn sn o <- get
@@ -84,21 +87,25 @@ stepF (EF (Shell d c) ()) = do
 stepF (EW w _) = return $ IW w
 
 
+-- | Folds Profile layer
 toListP :: Script Profiles -> [EL Profiles ()]
 toListP (Free (EP n s x)) = EP n s () : toListP x
 toListP (Free (EW t x))   = EW t ()   : toListP x
 toListP (Pure _)          = []
 
+-- | Folds Source layer
 toListS :: Script Sources -> [EL Sources ()]
 toListS (Free (ES t u p s f x)) = ES t u p s f () : toListS x
 toListS (Free (EW w x))         = EW w ()         : toListS x
 toListS (Pure _)                = []
 
+-- | Folds Files layer
 toListF :: Script Files -> [EL Files ()]
 toListF (Free (EF a x)) = EF a () : toListF x
 toListF (Free (EW w x)) = EW w () : toListF x
 toListF (Pure _)        = []
 
 
+-- | This isn't defined in Control.Monad
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 concatMapM f = liftM concat . mapM f

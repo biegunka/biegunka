@@ -20,7 +20,7 @@ import System.Wordexp (wordexp, nosubst, noundef)
 
 import Biegunka.Language.External (Script, Layer(..))
 import Biegunka.Language.Internal
-import Biegunka.Preprocess (preprocess)
+import Biegunka.Transform (fromEL)
 
 
 -- | Common interpreters controls
@@ -65,7 +65,7 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
 biegunka (($ def) -> c) s (I f) = do
   d <- c ^. root . to expand
   e <- c ^. appData . to expand
-  f (c & root .~ d & appData .~ e) (preprocess s d)
+  f (c & root .~ d & appData .~ e) (fromEL s d)
 
 expand :: String -> IO String
 expand x = do
