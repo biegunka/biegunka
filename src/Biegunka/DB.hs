@@ -88,14 +88,12 @@ loadProfile c n = do
 save :: Controls -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (c ^. appData)
-  traverseWithKey_ b $ \k v ->
+  ifor_ b $ \k v ->
     let (n, _) = c & appData <</>~ k in
     if M.null v
       then removeFile n `catchIOError` \_ -> return ()
       else BL.writeFile n . T.encodeUtf8 . T.toLazyText . fromValue $ unparser v
  where
-  traverseWithKey_ m f = itraverse f m >> return ()
-
   unparser t = object ["sources" .= map repo (M.toList t)]
    where
     repo (k, v) = object ["info" .= k, "files" .= map toJSON (M.toList v)]

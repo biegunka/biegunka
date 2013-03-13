@@ -2,6 +2,7 @@ module Biegunka.Verify (verify) where
 
 import Control.Applicative
 import Control.Monad (unless)
+import Data.List (foldl')
 import Data.Monoid (mconcat)
 
 import           Control.Monad.Writer (WriterT, runWriterT, tell)
@@ -31,44 +32,33 @@ verify :: Interpreter
 verify = I $ \_ s -> do
   (verified, failures) <- runWriterT (f s)
   putStr "Verify… "
-  if verified
-    then putStrLn "OK"
-    else putStrLn $ failures ++ "\nFail!"
+  putStrLn $ if verified then "OK" else failures ++ "\nFail!"
 
 
 f :: [IL] -> WriterT String IO Bool
-f = foldr (|&&|) (return True) . map g
+f = foldl' (\a -> liftA2 (&&) a . g) (return True)
 
 
 g :: IL -> WriterT String IO Bool
 g (IS p _ _ _ _ n) = do
-  sourceExists <- io $ doesDirectoryExist p
+  sourceExists <- liftIO $ doesDirectoryExist p
   unless sourceExists $ tellLn [indent 2, "Source ", n, " -> ", p, " doesn't exist"]
   return sourceExists
 g (IA (Link src dst) _ _ _) = do
-    src' <- io $ readSymbolicLink dst
-    dstExists <- io $ (liftA2 (||) (doesFileExist src') (doesDirectoryExist src'))
-    let correctLink = src == src' && dstExists
-    unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
-    return correctLink
+  src' <- liftIO $ readSymbolicLink dst
+  dstExists <- liftIO $ liftA2 (||) (doesFileExist src') (doesDirectoryExist src')
+  let correctLink = src == src' && dstExists
+  unless correctLink $ tellLn [indent 4, "Link at ", dst, " is broken"]
+  return correctLink
 g (IA (Copy src dst) _ _ _) = do
-    src' <- io $ B.readFile src
-    dst' <- io $ B.readFile dst
-    let same = src' == dst'
-    unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
-    return same
-g (IA (Template _ dst _) _ _ _) = io $ doesFileExist dst
+  src' <- liftIO $ B.readFile src
+  dst' <- liftIO $ B.readFile dst
+  let same = src' == dst'
+  unless same $ tellLn [indent 4, "Files at ", src, " and ", dst, " are not copies"]
+  return same
+g (IA (Template _ dst _) _ _ _) = liftIO $ doesFileExist dst
 g (IA (Shell {}) _ _ _) = return True
 g (IW {}) = return True
-
-
-(|&&|) :: Applicative m => m Bool -> m Bool -> m Bool
-(|&&|) = liftA2 (&&)
-infixr 3 |&&|
-
-
-io :: IO a -> WriterT String IO a
-io = liftIO
 
 
 tellLn :: [String] -> WriterT String IO ()

@@ -18,20 +18,20 @@ import Biegunka.Language.Internal
 
 -- | Transformation state
 data S = S
-  { _root         :: FilePath -- ^ Biegunka root
-  , _source       :: FilePath -- ^ Source root
-  , _profile_name :: String   -- ^ Profile name
-  , _source_name  :: String   -- ^ Source name
-  , _order        :: Int      -- ^ Order number
+  { _root        :: FilePath -- ^ Biegunka root
+  , _source      :: FilePath -- ^ Source root
+  , _profileName :: String   -- ^ Profile name
+  , _sourceName  :: String   -- ^ Source name
+  , _order       :: Int      -- ^ Order number
   } deriving (Show, Read, Eq, Ord)
 
 instance Default S where
   def = S
-    { _root         = def
-    , _source       = def
-    , _profile_name = def
-    , _source_name  = def
-    , _order        = 1
+    { _root        = def
+    , _source      = def
+    , _profileName = def
+    , _sourceName  = def
+    , _order       = 1
     }
 
 makeLenses ''S
@@ -49,7 +49,7 @@ fromEL s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
 -- | Transform Profiles layer
 stepP :: EL Profiles () -> State S [IL]
 stepP (EP n s _) = do
-  profile_name .= n
+  profileName .= n
   concatMapM stepS $ toListS s
 stepP (EW w _) = return [IW w]
 
@@ -57,7 +57,7 @@ stepP (EW w _) = return [IW w]
 stepS :: EL Sources () -> State S [IL]
 stepS (ES t u d s a ()) = do
   S r _ pn _ _ <- get
-  source_name .= u
+  sourceName .= u
   source .= r </> d
   order .= 1
   xs <- mapM stepF $ toListF s

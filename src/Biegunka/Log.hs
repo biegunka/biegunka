@@ -23,7 +23,7 @@ install (IA a _ _ _)     = Just $ indent 2 ++ go a
 install (IW a)           = go a
  where
   go (User (Just user)) = Just $ "--- * Do stuff from user " ++ user ++ " * ---"
-  go (User Nothing)     = Just $ "--- * Do stuff from default user * ---"
+  go (User Nothing)     = Just "--- * Do stuff from default user * ---"
   go _                  = Nothing
 
 indent :: Int -> String
