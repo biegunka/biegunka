@@ -2,7 +2,7 @@
 -- | Biegunka - configuration management library
 module Biegunka
   ( -- * Interpreters control
-    biegunka, Controls, root, appData
+    biegunka, Controls, root, appData, pretty, Pretty(..)
     -- * Interpreters
   , pretend, pause, execute, verify
     -- * Execution environment hooks
@@ -27,7 +27,7 @@ import Data.Monoid (mempty)
 import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
-import Biegunka.Control (biegunka, Controls, root, appData, pause)
+import Biegunka.Control (biegunka, Controls, root, appData, pretty, Pretty(..), pause)
 import Biegunka.Language (Script, Layer(..), EL(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)

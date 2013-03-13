@@ -6,11 +6,12 @@ module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..)
     -- * Common interpreters controls
-  , Controls, root, appData, logger
+  , Controls, root, appData, logger, pretty, Pretty(..)
     -- * Generic interpreters
   , pause
   ) where
 
+import Control.Applicative ((<$))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Control.Monad (forever)
@@ -20,8 +21,8 @@ import Control.Lens
 import Data.Default
 import Data.Semigroup (Semigroup(..), Monoid(..))
 import System.Wordexp (wordexp, nosubst, noundef)
-import System.Console.Terminfo.PrettyPrint (TermDoc, displayDoc)
-import Text.PrettyPrint.Free
+import System.Console.Terminfo.PrettyPrint (TermDoc, Effect(..), ScopedEffect(..), display)
+import Text.PrettyPrint.Free ((<//>), text, line)
 
 import Biegunka.Language
 import Biegunka.Transform (fromEL)
@@ -32,10 +33,13 @@ data Controls = Controls
   { _root    :: FilePath -- ^ Root path for 'Source' layer
   , _appData :: FilePath -- ^ Biegunka profile files path
   , _logger  :: (TermDoc -> IO ())
+  , _pretty  :: Pretty
   }
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
+data Pretty = Colors | Plain
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 
 -- | Root path for 'Source' layer lens
 root :: Lens' Controls FilePath
@@ -46,11 +50,15 @@ appData :: Lens' Controls FilePath
 -- | Logger channel
 logger :: Lens' Controls (TermDoc -> IO ())
 
+-- | Pretty printing
+pretty :: Lens' Controls Pretty
+
 instance Default Controls where
   def = Controls
     { _root    = "/"
     , _appData = "~/.biegunka"
     , _logger  = const (return ())
+    , _pretty  = Colors
     }
 
 
@@ -78,9 +86,12 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
 biegunka (($ def) -> c) s (I f) = do
   d <- c ^. root . to expand
   e <- c ^. appData . to expand
+  let z = case view pretty c of
+            Colors -> id
+            Plain  -> (Push Nop <$)
   l <- newChan
   forkIO $ loggerThread l
-  f (c & root .~ d & appData .~ e & logger .~ (writeChan l)) (fromEL s d)
+  f (c & root .~ d & appData .~ e & logger .~ (writeChan l . z)) (fromEL s d)
 
 expand :: String -> IO String
 expand x = do
@@ -102,4 +113,4 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 -- | Display supplied docs
 loggerThread :: Chan TermDoc -> IO ()
-loggerThread c = forever $ readChan c >>= displayDoc 0.6
+loggerThread c = forever $ readChan c >>= display
