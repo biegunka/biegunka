@@ -50,14 +50,13 @@ fromEL s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
 stepP :: EL Profiles () -> State S [IL]
 stepP (EP n s _) = do
   profile_name .= n
-  xs <- concatMapM stepS $ toListS s
-  return xs
+  concatMapM stepS $ toListS s
 stepP (EW w _) = return [IW w]
 
 -- | Transform Sources layer
 stepS :: EL Sources () -> State S [IL]
 stepS (ES t u d s a ()) = do
-  S r src pn sn o <- get
+  S r _ pn _ _ <- get
   source_name .= u
   source .= r </> d
   order .= 1
@@ -81,7 +80,7 @@ stepF (EF (Template s d t) ()) = do
   order += 1
   return $ IA (Template (src </> s) (r </> d) t) o pn sn
 stepF (EF (Shell d c) ()) = do
-  S r s pn sn o <- get
+  S _ s pn sn o <- get
   order += 1
   return $ IA (Shell (s </> d) c) o pn sn
 stepF (EW w _) = return $ IW w
