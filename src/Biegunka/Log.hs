@@ -34,4 +34,4 @@ install (IW a)           = go a
 
 uninstall :: Biegunka -> Biegunka -> [TermDoc]
 uninstall a b = map ("Delete" </>) $
-  map text (filepaths a \\ filepaths b) ++ map text (sources a \\ sources b)
+  map (yellow . text) (filepaths a \\ filepaths b) ++ map (magenta . text) (sources a \\ sources b)
