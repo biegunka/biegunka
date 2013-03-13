@@ -1,14 +1,20 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 module Biegunka.Pretend (pretend) where
 
-import Data.List ((\\))
 import Control.Monad (when)
+import Data.List ((\\))
+import Data.Maybe (mapMaybe)
+import Prelude hiding (log)
 
 import Control.Lens
+import System.Console.Terminfo.PrettyPrint
 import System.IO
+import Text.PrettyPrint.Free
 
-import           Biegunka.DB
-import qualified Biegunka.Log as Log
-import           Biegunka.Control (Interpreter(..), logger)
+import Biegunka.DB
+import Biegunka.Language (IL(..), A(..), W(..))
+import Biegunka.Control (Interpreter(..), logger)
 
 
 -- | Pretend interpreter
@@ -26,57 +32,63 @@ import           Biegunka.Control (Interpreter(..), logger)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c s -> do
+pretend = I $ \c@(view logger -> l) s -> do
   a <- load c s
   let b = construct s
-  putStr . talk $ stats a b
-  whenM (query "Print full log?") $
-    view logger c (Log.full s a b)
+  l $ stats a b
+  whenM (query l "Print full log?") $
+    l (log s a b)
  where
   whenM ma mb = do
     p <- ma
     when p mb
 
+  query l s = do
+    l (s </> "[yN]" <//> colon </> empty)
+    c <- getChar'
+    l line
+    return (c == 'y')
 
-data Stats = Stats
-  { addedF, addedS, deletedF, deletedS :: [FilePath]
-  } deriving (Show, Read, Eq, Ord)
-
-
-stats :: Biegunka -> Biegunka -> Stats
-stats a b = Stats
-  { addedF   = filepaths b \\ filepaths a
-  , addedS   = sources b   \\ sources a
-  , deletedF = filepaths a \\ filepaths b
-  , deletedS = sources a   \\ sources b
-  }
+  getChar' = do
+    hSetBuffering stdin NoBuffering
+    c <- getChar
+    hSetBuffering stdin LineBuffering
+    return c
 
 
-talk :: Stats -> String
-talk (Stats af as df ds) = concat
-  [ about "added files" af
-  , about "added sources" as
-  , about "deleted files" df
-  , about "deleted sources" ds
-  ]
+stats :: Biegunka -> Biegunka -> TermDoc
+stats a b = vcat $ mapMaybe about
+  [ ("added files",     map (yellow  . text) $ filepaths b \\ filepaths a)
+  , ("added sources",   map (magenta . text) $ sources b   \\ sources a)
+  , ("deleted files",   map (yellow  . text) $ filepaths a \\ filepaths b)
+  , ("deleted sources", map (magenta . text) $ sources a   \\ sources b)
+  ] ++ [empty]
  where
-  about msg xs = let c = length xs in case c of
-    0 -> ""
-    _ -> msg ++ " (" ++ show c ++ "):\n" ++ unlines (map ("  " ++) xs)
+  about (msg, xs) = case length xs of
+    0 -> Nothing
+    n -> Just $ nest 2 (msg </> parens (pretty n) <//> colon `above` vcat (xs ++ [empty]))
 
 
-query :: String -> IO Bool
-query s = do
-  putStr (s ++ " [yN] ")
-  hFlush stdout
-  c <- getChar'
-  putStrLn ""
-  return (c == 'y')
+log :: [IL] -> Biegunka -> Biegunka -> TermDoc
+log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
+ where
+  install :: IL -> Maybe TermDoc
+  install (IS p t _ _ _ u) =
+    Just $ text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
+  install (IA (Link src dst) _ _ _) = Just . indent 2 $
+    yellow (text dst) </> green "links" </> "to" </> magenta (text src)
+  install (IA (Copy src dst) _ _ _) = Just . indent 2 $
+    yellow (text dst) </> "is a" </> green "copy" </> "of" </> magenta (text src)
+  install (IA (Template src dst _) _ _ _) = Just . indent 2 $
+    yellow (text dst) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text src)
+  install (IA (Shell p c) _ _ _) = Just . indent 2 $
+    green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
+  install (IW w)           = go w
+   where
+    go (User (Just user)) = Just $ green "change user" </> "to" </> text user
+    go (User Nothing)     = Just $ green "change user" </> "back"
+    go _                  = Nothing
 
-
-getChar' :: IO Char
-getChar' = do
-  hSetBuffering stdin NoBuffering
-  c <- getChar
-  hSetBuffering stdin LineBuffering
-  return c
+  uninstall :: [TermDoc]
+  uninstall = map ("Delete" </>) $
+    map (yellow . text) (filepaths a \\ filepaths b) ++ map (magenta . text) (sources a \\ sources b)

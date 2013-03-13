@@ -92,7 +92,7 @@ expand x = do
 
 -- | Simple interpreter example that just waits user to press any key
 pause :: Interpreter
-pause = I $ \c _ -> view logger c (text "Press any key to continue") >> getch
+pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
  where
   getch = do
     hSetBuffering stdin NoBuffering
