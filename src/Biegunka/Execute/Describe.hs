@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- | Describe execution I/O actions
 module Biegunka.Execute.Describe
   ( describe
   ) where
