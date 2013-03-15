@@ -10,7 +10,7 @@ import qualified Control.Exception as E
 import           Data.List ((\\), delete)
 import           Data.Foldable (traverse_)
 import           System.Exit (ExitCode(..))
-import           System.IO.Error (catchIOError, tryIOError)
+import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.Async
 import           Control.Concurrent.Chan
@@ -25,14 +25,12 @@ import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import           System.Directory
-  ( getCurrentDirectory, removeDirectoryRecursive, removeFile, setCurrentDirectory
-  , copyFile, createDirectoryIfMissing
-  )
+  ( removeDirectoryRecursive, removeFile, copyFile, createDirectoryIfMissing )
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
-import           System.Process (system)
+import           System.Process
 
 import Biegunka.Control (Interpreter(..))
 import Biegunka.DB
@@ -181,14 +179,12 @@ command c = do
     let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   action (IA (Shell p sc) _ _ _) = return $ do
-    d <- getCurrentDirectory
-    setCurrentDirectory p
-    flip catchIOError (\_ -> throwIO $ ShellCommandFailure sc) $ do
-      e <- system sc
-      case e of
-        ExitFailure _ -> throwIO $ ShellCommandFailure sc
-        _ -> return ()
-    setCurrentDirectory d
+    (_, _, Just er, ph) <- createProcess $
+      (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
+    e <- waitForProcess ph
+    case e of
+      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sc
+      _ -> return ()
   action _ = return $ return ()
 
   overWriteWith g src dst = do
