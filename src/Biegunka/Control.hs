@@ -32,7 +32,7 @@ import Biegunka.Transform (fromEL)
 data Controls = Controls
   { _root    :: FilePath -- ^ Root path for 'Source' layer
   , _appData :: FilePath -- ^ Biegunka profile files path
-  , _logger  :: (TermDoc -> IO ())
+  , _logger  :: TermDoc -> IO ()
   , _pretty  :: Pretty
   }
 

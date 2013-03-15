@@ -1,41 +1,31 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Biegunka.Execute.Narrator
-  ( -- * Narrator settings
-    Volubility(..), Statement(..)
-    -- * Narrator control functions
-  , Narrative, narrator, narrate
+  ( describe
   ) where
 
-import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan (newChan, readChan, writeChan)
-import Control.Monad (forever)
+import Data.Monoid (mempty)
 
-import Control.Lens
-import Control.Monad.Reader (MonadIO, liftIO)
-import Data.Proxy
-import Data.Reflection
+import Text.PrettyPrint.Free
+import System.Console.Terminfo.PrettyPrint
 
-import Biegunka.Execute.Control
+import Biegunka.Language
 
 
--- | Start narrator in separate thread awaiting reports
--- to tell to biegunka user
-narrator :: Volubility -> IO Narrative
-narrator v = do
-  ch <- newChan
-  forkIO . forever $ readChan ch >>= state v
-  return ch
+-- | Describe current action and host where it happens
+describe :: IL -> TermDoc
+describe a = "[localhost]" </> action a
 
 
--- | Statement processing routine, describes narrator's behaviour
--- depending on volubility setting and statement thoroughness
-state :: Volubility -> Statement -> IO ()
-state Talkative m         = putStrLn (text m)
-state Casual (Typical  m) = putStrLn m
-state Casual (Thorough _) = return ()
-state Taciturn _          = return ()
-
-
-narrate :: forall s. (Reifies s EE) => Statement -> Execution s ()
-narrate s = E . liftIO $ writeChan (view narrative (reflect (Proxy :: Proxy s))) s
+-- | Describe current action
+action :: IL -> TermDoc
+action (IS p t _ _ _ u) =
+  green "emerge" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p) </> line
+action (IA (Link s d) _ _ _) = indent 2 $
+  green "link" </> yellow (text d) </> "to" </> magenta (text s) </> line
+action (IA (Copy s d) _ _ _) = indent 2 $
+  green "copy" </> yellow (text d) </> "to" </> magenta (text s) </> line
+action (IA (Template s d _) _ _ _) = indent 2 $
+  green "substitute" </> "templates in" </> magenta (text s) </> "and write to" </> yellow (text d) </> line
+action (IA (Shell p c) _ _ _) = indent 2 $
+  "execute" </> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p) </> line
+action _ = mempty

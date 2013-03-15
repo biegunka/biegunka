@@ -32,7 +32,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Interpreter(..))
+import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
@@ -53,9 +53,8 @@ execute (($ def) -> e) = I $ \c s -> do
   let b = construct s
   a <- load c s
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  n <- narrator (_volubility e)
   w <- newChan
-  writeChan w (Do $ runTask e { _narrative = n, _work = w } def s >> writeChan w Stop)
+  writeChan w (Do $ runTask e { _controls = c, _work = w } def s >> writeChan w Stop)
   scheduler w (e ^. order)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
@@ -149,13 +148,15 @@ command (IW (Reacting Nothing))  = reactStack %= drop 1
 command (IW (User     (Just u))) = usersStack %= (u :)
 command (IW (User     Nothing))  = usersStack %= drop 1
 command c = do
-  let sudoingTV = _sudoing $ reflect (Proxy :: Proxy s)
-      runningTV = _running $ reflect (Proxy :: Proxy s)
+  let sudoingTV = view sudoing $ reflect (Proxy :: Proxy s)
+      runningTV = view running $ reflect (Proxy :: Proxy s)
+      l         = view (controls . logger) $ reflect (Proxy :: Proxy s)
   xs <- use usersStack
   o  <- action c
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar sudoingTV >>= \s -> if s then retry else writeTVar runningTV True
+      l (describe c)
       o
       atomically $ writeTVar runningTV False
     u:_ -> do
@@ -165,12 +166,12 @@ command c = do
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
+      l (describe c)
       o
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  action (IS dst _ update _ _ src) = do
-    narrate (Typical $ "Emerging source: " ++ src)
+  action (IS dst _ update _ _ _) = do
     liftIO $ createDirectoryIfMissing True $ dropFileName dst
     return update
   action (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst

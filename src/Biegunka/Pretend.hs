@@ -74,7 +74,7 @@ log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
  where
   install :: IL -> Maybe TermDoc
   install (IS p t _ _ _ u) =
-    Just $ text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
+    Just $ green "emerge" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
   install (IA (Link src dst) _ _ _) = Just . indent 2 $
     yellow (text dst) </> green "links" </> "to" </> magenta (text src)
   install (IA (Copy src dst) _ _ _) = Just . indent 2 $

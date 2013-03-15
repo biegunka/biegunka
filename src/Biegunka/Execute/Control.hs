@@ -8,10 +8,10 @@ module Biegunka.Execute.Control
   , ES(..), reactStack, usersStack, retryCount
     -- * Execution environment
   , EE(..)
-  , priviledges, react, templates, volubility
-  , narrative, work, order, retries, running, sudoing
+  , priviledges, react, templates
+  , work, order, retries, running, sudoing, controls
     -- * Misc
-  , Volubility(..), Narrative, Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
+  , Narrative, Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
   ) where
 
 import Control.Applicative
@@ -26,6 +26,7 @@ import Data.Default
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
+import Biegunka.Control (Controls)
 
 
 newtype Execution s a =
@@ -57,13 +58,12 @@ data EE = EE
   { _priviledges :: Priviledges
   , _react       :: React
   , _templates   :: Templates
-  , _volubility  :: Volubility
-  , _narrative   :: Chan Statement
   , _work        :: Chan Work
   , _retries     :: Int
   , _order       :: Order
   , _running     :: TVar Bool
   , _sudoing     :: TVar Bool
+  , _controls    :: Controls
   }
 
 -- | Priviledges control.
@@ -72,13 +72,6 @@ data Priviledges =
     Drop     -- ^ Drop priviledges
   | Preserve -- ^ Preserve priviledges
     deriving (Show, Read, Eq, Ord)
-
--- | Narrator volubility: how verbose are her reports?
-data Volubility =
-    Talkative -- ^ Says everything you told her
-  | Casual    -- ^ Casual narrator
-  | Taciturn  -- ^ Doesn't say anything
-    deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 type Narrative = Chan Statement
 
@@ -118,13 +111,12 @@ instance Default EE where
     { _priviledges = Preserve
     , _react       = Ignorant
     , _templates   = Templates ()
-    , _volubility  = Casual
-    , _narrative   = undefined    -- User doesn't have a chance to get here
     , _work        = undefined    -- User doesn't have a chance to get there
     , _order       = Sequential
     , _retries     = 1
     , _running     = run
     , _sudoing     = sudo
+    , _controls    = def
     }
 
 makeLenses ''EE

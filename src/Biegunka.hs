@@ -9,7 +9,6 @@ module Biegunka
   , EE
   , Priviledges(..), priviledges
   , React(..), react
-  , Volubility(..), volubility
   , Templates(..), templates
   , retries, Order(..), order
     -- * All layers
