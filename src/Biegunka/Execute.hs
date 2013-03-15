@@ -171,9 +171,9 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  action (IS dst _ update _ _ _) = do
-    liftIO $ createDirectoryIfMissing True $ dropFileName dst
-    return update
+  action (IS dst _ update _ _ _) = return $ do
+    createDirectoryIfMissing True $ dropFileName dst
+    update
   action (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst
   action (IA (Copy src dst) _ _ _) = return $ overWriteWith copyFile src dst
   action (IA (Template src dst substitute) _ _ _) = return $
