@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Biegunka.Execute.Narrator
+module Biegunka.Execute.Describe
   ( describe
   ) where
 

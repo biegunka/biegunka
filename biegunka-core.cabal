@@ -42,7 +42,7 @@ library
                    Biegunka.Execute.Exception
   other-modules: Biegunka.Control
                  Biegunka.Execute
-                 Biegunka.Execute.Narrator
+                 Biegunka.Execute.Describe
                  Biegunka.Execute.Control
                  Biegunka.Pretend
                  Biegunka.Verify
