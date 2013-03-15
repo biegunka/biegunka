@@ -19,7 +19,7 @@ describe a = "[localhost]" </> action a
 -- | Describe current action
 action :: IL -> TermDoc
 action (IS p t _ _ _ u) =
-  green "emerge" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p) </> line
+  green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p) </> line
 action (IA (Link s d) _ _ _) = indent 2 $
   green "link" </> yellow (text d) </> "to" </> magenta (text s) </> line
 action (IA (Copy s d) _ _ _) = indent 2 $
