@@ -15,7 +15,7 @@ import           System.IO.Error (tryIOError)
 import           Control.Concurrent.Async
 import           Control.Concurrent.Chan
 import           Control.Concurrent.STM
-import           Control.Lens
+import           Control.Lens hiding (op)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
@@ -36,7 +36,7 @@ import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
-import Biegunka.Execute.Describe (describe)
+import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
 import Biegunka.Language (IL(..), A(..), W(..), React(..))
 
 
@@ -105,11 +105,11 @@ try (E ex) = do
 -- Possible responses: retry command execution or ignore failure or abort task
 respond :: forall s. Reifies s EE => SomeException -> [IL] -> Execution s [IL]
 respond e t = do
-  liftIO . putStrLn $ "FAIL: " ++ show e
-  rc <- use retryCount
+  let l = view (controls . logger) $ reflect (Proxy :: Proxy s)
+  liftIO . l . describe $ exception e
+  rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
-    liftIO . putStrLn $ "Retry: " ++ show (rc + 1)
-    retryCount += 1
+    liftIO . l . describe $ retryCounter (rc + 1)
     return t
   else do
     retryCount .= 0
@@ -152,11 +152,11 @@ command c = do
       runningTV = view running $ reflect (Proxy :: Proxy s)
       l         = view (controls . logger) $ reflect (Proxy :: Proxy s)
   xs <- use usersStack
-  o  <- action c
+  o  <- op c
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar sudoingTV >>= \s -> if s then retry else writeTVar runningTV True
-      l (describe c)
+      l (describe (action c))
       o
       atomically $ writeTVar runningTV False
     u:_ -> do
@@ -166,27 +166,27 @@ command c = do
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
-      l (describe c)
+      l (describe (action c))
       o
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  action (IS dst _ update _ _ _) = return $ do
+  op (IS dst _ update _ _ _) = return $ do
     createDirectoryIfMissing True $ dropFileName dst
     update
-  action (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst
-  action (IA (Copy src dst) _ _ _) = return $ overWriteWith copyFile src dst
-  action (IA (Template src dst substitute) _ _ _) = return $
+  op (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst
+  op (IA (Copy src dst) _ _ _) = return $ overWriteWith copyFile src dst
+  op (IA (Template src dst substitute) _ _ _) = return $
     let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  action (IA (Shell p sc) _ _ _) = return $ do
+  op (IA (Shell p sc) _ _ _) = return $ do
     (_, _, Just er, ph) <- createProcess $
       (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
     e <- waitForProcess ph
     case e of
       ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sc
       _ -> return ()
-  action _ = return $ return ()
+  op _ = return $ return ()
 
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
