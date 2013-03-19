@@ -28,7 +28,7 @@ action (IS p t _ _ _ u) =
 action (IA (Link s d) _ _ _) = indent 2 $
   green "link" </> yellow (text d) </> "to" </> magenta (text s) </> line
 action (IA (Copy s d) _ _ _) = indent 2 $
-  green "copy" </> yellow (text d) </> "to" </> magenta (text s) </> line
+  green "copy" </> magenta (text s) </> "to" </> yellow (text d) </> line
 action (IA (Template s d _) _ _ _) = indent 2 $
   green "substitute" </> "templates in" </> magenta (text s) </> "and write to" </> yellow (text d) </> line
 action (IA (Shell p c) _ _ _) = indent 2 $
