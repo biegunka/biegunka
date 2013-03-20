@@ -12,13 +12,15 @@ module Biegunka.Control
   ) where
 
 import Control.Applicative ((<$))
-import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
-import Control.Monad (forever)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan, writeTChan, isEmptyTChan)
+import Control.Monad (forever, unless)
 import System.IO
 
 import Control.Lens
 import Data.Default
+import Data.Function (fix)
 import Data.Semigroup (Semigroup(..), Monoid(..))
 import System.Wordexp (wordexp, nosubst, noundef)
 import System.Console.Terminfo.PrettyPrint (TermDoc, Effect(..), ScopedEffect(..), displayDoc)
@@ -89,9 +91,11 @@ biegunka (($ def) -> c) s (I f) = do
   let z = case view pretty c of
             Colors -> id
             Plain  -> (Push Nop <$)
-  l <- newChan
+  l <- newTChanIO
   forkIO $ loggerThread l
-  f (c & root .~ d & appData .~ e & logger .~ (writeChan l . z)) (fromEL s d)
+  f (c & root .~ d & appData .~ e & logger .~ (atomically . writeTChan l . z)) (fromEL s d)
+  fix $ \wait ->
+    atomically (isEmptyTChan l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
 expand :: String -> IO String
 expand x = do
@@ -112,5 +116,5 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 
 -- | Display supplied docs
-loggerThread :: Chan TermDoc -> IO ()
-loggerThread c = forever $ readChan c >>= displayDoc 0.9
+loggerThread :: TChan TermDoc -> IO ()
+loggerThread c = forever $ atomically (readTChan c) >>= displayDoc 0.9
