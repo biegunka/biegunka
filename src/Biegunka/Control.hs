@@ -21,7 +21,7 @@ import Control.Lens
 import Data.Default
 import Data.Semigroup (Semigroup(..), Monoid(..))
 import System.Wordexp (wordexp, nosubst, noundef)
-import System.Console.Terminfo.PrettyPrint (TermDoc, Effect(..), ScopedEffect(..), display)
+import System.Console.Terminfo.PrettyPrint (TermDoc, Effect(..), ScopedEffect(..), displayDoc)
 import Text.PrettyPrint.Free ((<//>), text, line)
 
 import Biegunka.Language
@@ -113,4 +113,4 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 -- | Display supplied docs
 loggerThread :: Chan TermDoc -> IO ()
-loggerThread c = forever $ readChan c >>= display
+loggerThread c = forever $ readChan c >>= displayDoc 0.9
