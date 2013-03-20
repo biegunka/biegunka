@@ -38,7 +38,7 @@ action _ = mempty
 
 -- | Describe handled exception
 exception :: SomeException -> TermDoc
-exception e = red "FAIL" <//> colon `above` text (show e)
+exception e = nest 3 $ red "FAIL" <//> colon `above` vcat (map text . lines $ show e) </> line
 
 
 -- | Describe retry counter
