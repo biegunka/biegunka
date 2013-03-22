@@ -40,27 +40,33 @@ verification = foldl' (\a -> liftA2 (&&) a . go) (return True)
 
 -- | Check single instruction correctness
 correct :: IL -> IO Bool
-correct (IS p _ _ _ _) = doesDirectoryExist p
-correct (IA (Link s d) _ _ _ _) = do
-  s' <- readSymbolicLink d
-  dfe <- doesFileExist s'
-  dde <- doesDirectoryExist s'
-  return $ s == s' && (dfe || dde)
-correct (IA (Copy s d) _ _ _ _) = do
-  s' <- B.readFile s
-  d' <- B.readFile d
-  return $ s' == d'
-correct (IA (Template _ d _) _ _ _ _) = doesFileExist d
-correct _ = return True
+correct il = case il of
+  IS p _ _ _ _ -> doesDirectoryExist p
+  IA a _ _ _ _ -> case a of
+    Link s d -> do
+      s' <- readSymbolicLink d
+      dfe <- doesFileExist s'
+      dde <- doesDirectoryExist s'
+      return $ s == s' && (dfe || dde)
+    Copy s d -> do
+      s' <- B.readFile s
+      d' <- B.readFile d
+      return $ s' == d'
+    Template _ d _ -> doesFileExist d
+    _ -> return True
+  _ -> return True
 
 -- | Log message on failure
 log :: IL -> Maybe TermDoc
-log (IS p t _ _ u) =
-  Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
-log (IA (Link src dst) _ _ _ _) =
-  Just . indent 2 $ yellow (text dst) </> "link to" </> magenta (text src) </> "is broken"
-log (IA (Copy src dst) _ _ _ _) = do
-  Just . indent 2 $ yellow (text dst) </> "is not a copy of" </> magenta (text src)
-log (IA (Template src dst _) _ _ _ _) =
-  Just . indent 2 $ yellow (text dst) </> "is not a templated copy teplates of" </> magenta (text src)
-log _ = Nothing
+log il = case il of
+  IS p t _ _ u ->
+    Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
+  IA a _ _ _ _ -> case a of
+    Link s d ->
+      Just . indent 2 $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
+    Copy s d ->
+      Just . indent 2 $ yellow (text d) </> "is not a copy of" </> magenta (text s)
+    Template s d _ ->
+      Just . indent 2 $ yellow (text d) </> "is not a templated copy of" </> magenta (text s)
+    _ -> Nothing
+  _ -> Nothing
