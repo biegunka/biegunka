@@ -29,7 +29,7 @@ instance Show BiegunkaException where
     pretty (ShellCommandFailure t o) =
       "Shell command `" <> T.pack t <> "` has failed\nFailures log:\n" <> o
     pretty (SourceFailure up fp fs) =
-      "Biegunka has failed to emerge source " <> T.pack up <> " in " <> T.pack fp <> "\nFailures log:\n" <> fs
+      "Biegunka has failed to update source " <> T.pack up <> " at " <> T.pack fp <> "\nFailures log:\n" <> fs
 
 instance Exception BiegunkaException
 
