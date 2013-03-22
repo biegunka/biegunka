@@ -86,14 +86,14 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
          -> Interpreter           -- ^ Combined interpreters
          -> IO ()
 biegunka (($ def) -> c) s (I f) = do
-  d <- c ^. root . to expand
-  e <- c ^. appData . to expand
+  r  <- c ^. root . to expand
+  ad <- c ^. appData . to expand
   let z = case view pretty c of
             Colors -> id
             Plain  -> (Push Nop <$)
   l <- newTChanIO
   forkIO $ loggerThread l
-  f (c & root .~ d & appData .~ e & logger .~ (atomically . writeTChan l . z)) (fromEL s d)
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTChan l . z)) (fromEL s r)
   fix $ \wait ->
     atomically (isEmptyTChan l) >>= \e -> unless e (threadDelay 10000 >> wait)
 

@@ -73,15 +73,15 @@ log :: [IL] -> Biegunka -> Biegunka -> TermDoc
 log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
  where
   install :: IL -> Maybe TermDoc
-  install (IS p t _ _ _ u) =
+  install (IS p t _ _ u) =
     Just $ green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
-  install (IA (Link src dst) _ _ _) = Just . indent 2 $
+  install (IA (Link src dst) _ _ _ _) = Just . indent 2 $
     yellow (text dst) </> green "links" </> "to" </> magenta (text src)
-  install (IA (Copy src dst) _ _ _) = Just . indent 2 $
+  install (IA (Copy src dst) _ _ _ _) = Just . indent 2 $
     yellow (text dst) </> "is a" </> green "copy" </> "of" </> magenta (text src)
-  install (IA (Template src dst _) _ _ _) = Just . indent 2 $
+  install (IA (Template src dst _) _ _ _ _) = Just . indent 2 $
     yellow (text dst) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text src)
-  install (IA (Shell p c) _ _ _) = Just . indent 2 $
+  install (IA (Shell p c) _ _ _ _) = Just . indent 2 $
     green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
   install (IW w)           = go w
    where

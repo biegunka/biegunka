@@ -40,27 +40,27 @@ verification = foldl' (\a -> liftA2 (&&) a . go) (return True)
 
 -- | Check single instruction correctness
 correct :: IL -> IO Bool
-correct (IS p _ _ _ _ _) = doesDirectoryExist p
-correct (IA (Link s d) _ _ _) = do
+correct (IS p _ _ _ _) = doesDirectoryExist p
+correct (IA (Link s d) _ _ _ _) = do
   s' <- readSymbolicLink d
   dfe <- doesFileExist s'
   dde <- doesDirectoryExist s'
   return $ s == s' && (dfe || dde)
-correct (IA (Copy s d) _ _ _) = do
+correct (IA (Copy s d) _ _ _ _) = do
   s' <- B.readFile s
   d' <- B.readFile d
   return $ s' == d'
-correct (IA (Template _ d _) _ _ _) = doesFileExist d
+correct (IA (Template _ d _) _ _ _ _) = doesFileExist d
 correct _ = return True
 
 -- | Log message on failure
 log :: IL -> Maybe TermDoc
-log (IS p t _ _ _ u) =
+log (IS p t _ _ u) =
   Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
-log (IA (Link src dst) _ _ _) =
+log (IA (Link src dst) _ _ _ _) =
   Just . indent 2 $ yellow (text dst) </> "link to" </> magenta (text src) </> "is broken"
-log (IA (Copy src dst) _ _ _) = do
+log (IA (Copy src dst) _ _ _ _) = do
   Just . indent 2 $ yellow (text dst) </> "is not a copy of" </> magenta (text src)
-log (IA (Template src dst _) _ _ _) =
+log (IA (Template src dst _) _ _ _ _) =
   Just . indent 2 $ yellow (text dst) </> "is not a templated copy teplates of" </> magenta (text src)
 log _ = Nothing

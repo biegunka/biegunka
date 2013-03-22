@@ -58,30 +58,31 @@ stepS (ES t u d s a ()) = do
   S r _ pn _ _ <- get
   sourceName .= u
   source .= r </> d
-  order .= 1
+  order .= 0
   xs <- mapM stepF $ toListF s
-  o' <- use order
-  return $ IS (r </> d) t (a $ r </> d) o' pn u : xs
+  om <- use order
+  let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
+  return $ IS (r </> d) t (a $ r </> d) pn u : ys
 stepS (EW w _) = return [IW w]
 
 -- | Transform Files layer
 stepF :: EL Actions () -> State S IL
 stepF (EA (Link s d) ()) = do
-  S r src pn sn o <- get
-  order += 1
-  return $ IA (Link (src </> s) (r </> d)) o pn sn
+  S r src pn sn _ <- get
+  o <- order <+= 1
+  return $ IA (Link (src </> s) (r </> d)) o 0 pn sn
 stepF (EA (Copy s d) ()) = do
-  S r src pn sn o <- get
-  order += 1
-  return $ IA (Copy (src </> s) (r </> d)) o pn sn
+  S r src pn sn _ <- get
+  o <- order <+= 1
+  return $ IA (Copy (src </> s) (r </> d)) o 0 pn sn
 stepF (EA (Template s d t) ()) = do
-  S r src pn sn o <- get
-  order += 1
-  return $ IA (Template (src </> s) (r </> d) t) o pn sn
+  S r src pn sn _ <- get
+  o <- order <+= 1
+  return $ IA (Template (src </> s) (r </> d) t) o 0 pn sn
 stepF (EA (Shell d c) ()) = do
-  S _ s pn sn o <- get
-  order += 1
-  return $ IA (Shell (s </> d) c) o pn sn
+  S _ s pn sn _ <- get
+  o <- order <+= 1
+  return $ IA (Shell (s </> d) c) o 0 pn sn
 stepF (EW w _) = return $ IW w
 
 

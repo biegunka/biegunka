@@ -171,15 +171,15 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  op (IS dst _ update _ _ _) = return $ do
+  op (IS dst _ update _ _) = return $ do
     createDirectoryIfMissing True $ dropFileName dst
     update
-  op (IA (Link src dst) _ _ _) = return $ overWriteWith createSymbolicLink src dst
-  op (IA (Copy src dst) _ _ _) = return $ overWriteWith copyFile src dst
-  op (IA (Template src dst substitute) _ _ _) = return $
+  op (IA (Link src dst) _ _ _ _) = return $ overWriteWith createSymbolicLink src dst
+  op (IA (Copy src dst) _ _ _ _) = return $ overWriteWith copyFile src dst
+  op (IA (Template src dst substitute) _ _ _ _) = return $
     let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  op (IA (Shell p sc) _ _ _) = return $ do
+  op (IA (Shell p sc) _ _ _ _) = return $ do
     (_, _, Just er, ph) <- createProcess $
       (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
     e <- waitForProcess ph

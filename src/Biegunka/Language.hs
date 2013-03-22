@@ -42,8 +42,8 @@ instance Functor (EL l) where
 
 
 data IL =
-    IA A Int String String
-  | IS FilePath String (IO ()) Int String String
+    IA A Int Int String String
+  | IS FilePath String (IO ()) String String
   | IW W
 
 
