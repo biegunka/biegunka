@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Specifies user side and library side languages primitives
 module Biegunka.Language
-  ( Script, Layer(..)
+  ( Script, Scope(..)
   , EL(..), IL(..), A(..), W(..)
   , React(..)
   ) where
@@ -16,7 +16,7 @@ import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
 
 
-type family Script (a :: Layer) :: *
+type family Script (a :: Scope) :: *
 
 
 type instance Script Actions  = Free (EL Actions) ()
@@ -24,16 +24,16 @@ type instance Script Sources  = Free (EL Sources) ()
 type instance Script Profiles = Free (EL Profiles) ()
 
 
-data Layer = Actions | Sources | Profiles
+data Scope = Actions | Sources | Profiles
 
 
-data EL (l :: Layer) a where
+data EL (sc :: Scope) a where
   EA :: A                                                                -> a -> EL Actions a
   ES :: String -> String -> FilePath -> Script Actions -> (FilePath -> IO ()) -> a -> EL Sources a
   EP :: String                     -> Script Sources                      -> a -> EL Profiles a
-  EW :: W                                                                -> a -> EL l a
+  EW :: W                                                                -> a -> EL sc a
 
-instance Functor (EL l) where
+instance Functor (EL sc) where
   fmap f (EA a x)         = EA a (f x)
   fmap f (ES t u p s h x) = ES t u p s h (f x)
   fmap f (EP n s x)       = EP n s (f x)

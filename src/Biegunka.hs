@@ -18,7 +18,7 @@ module Biegunka
     -- * File layer
   , registerAt, copy, link, substitute, shell
     -- * Convenient type aliases
-  , Script, Layer(..)
+  , Script, Scope(..)
   ) where
 
 import Data.Monoid (mempty)
@@ -27,7 +27,7 @@ import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pretty, Pretty(..), pause)
-import Biegunka.Language (Script, Layer(..), EL(..), A(..), W(..), React(..))
+import Biegunka.Language (Script, Scope(..), EL(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
@@ -92,13 +92,13 @@ shell c = liftF $ EA (Shell mempty c) ()
 
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Free (EL l) () -> Free (EL l) ()
+sudo :: String -> Free (EL sc) () -> Free (EL sc) ()
 sudo n s = liftF (EW (User (Just n)) ()) >> s >> liftF (EW (User Nothing) ())
 {-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Free (EL l) () -> Free (EL l) ()
+reacting :: React -> Free (EL sc) () -> Free (EL sc) ()
 reacting r s = liftF (EW (Reacting (Just r)) ()) >> s >> liftF (EW (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
@@ -121,6 +121,6 @@ profile name repo = liftF $ EP name repo ()
 -- Connects two tasks which forces them to run sequentially one after another.
 --
 -- Note: redundant if 'Order' is 'Sequential'
-chain :: Free (EL l) () -> Free (EL l) () -> Free (EL l) ()
+chain :: Free (EL sc) () -> Free (EL sc) () -> Free (EL sc) ()
 chain a b = a >> liftF (EW Chain ()) >> b
 {-# INLINE chain #-}
