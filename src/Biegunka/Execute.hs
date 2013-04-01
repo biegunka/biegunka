@@ -38,6 +38,7 @@ import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
 import Biegunka.Language (IL(..), A(..), W(..), React(..))
+import Biegunka.Transform (simplified)
 
 
 -- | Execute Interpreter
@@ -50,8 +51,9 @@ import Biegunka.Language (IL(..), A(..), W(..), React(..))
 -- bugs in your script before devastation is done.
 execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
-  let b = construct s
-  a <- load c s
+  let s' = simplified s
+      b = construct s'
+  a <- load c s'
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   w <- newChan
   writeChan w (Do $ runTask e { _controls = c, _work = w } def s >> writeChan w Stop)
@@ -81,10 +83,9 @@ asProxyOf a _ = a
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
 task :: forall s. Reifies s EE => [IL] -> Execution s ()
-task (IW (Task True) : cs) = do
-  let (a, b) = yielding cs
-  newTask b
-  task a
+task (IT xs : cs) = do
+  newTask cs
+  task xs
 task t@(c:cs) = do
   e <- try (command c)
   case e of
@@ -133,7 +134,6 @@ ignoring (IS {} : cs) = go [] cs
   go ws (w@(IW s) : cs') = case s of
     User     (Just _) -> go (w:ws) cs'
     Reacting (Just _) -> go (w:ws) cs'
-    Task     True     -> go (w:ws) cs'
     _                 -> go [] cs'
   go _  (_    : cs')      = go [] cs'
   go _  []                = []
@@ -193,17 +193,6 @@ command c = do
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-
--- | Separate current task into two
-yielding :: [IL] -> ([IL], [IL])
-yielding = go [] 1
- where
-  go :: [IL] -> Int -> [IL] -> ([IL], [IL])
-  go acc 1 (   IW (Task False)  : xs) = (reverse acc, xs)
-  go acc n (x@(IW (Task False)) : xs) = go (x : acc) (n - 1) xs
-  go acc n (x@(IW (Task True) ) : xs) = go (x : acc) (n + 1) xs
-  go acc n (x                   : xs) = go (x : acc) n xs
-  go _   _ []                         = error "Broken Task structure!"
 
 -- | Queue next task in scheduler
 newTask :: forall s. Reifies s EE => [IL] -> Execution s ()

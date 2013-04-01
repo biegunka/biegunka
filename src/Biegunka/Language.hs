@@ -45,6 +45,7 @@ data IL =
     IA A Int Int String String
   | IS FilePath String (IO ()) String String
   | IW W
+  | IT [IL]
 
 
 data A =
@@ -57,7 +58,6 @@ data A =
 data W =
     User (Maybe String)
   | Reacting (Maybe React)
-  | Task Bool
   | Chain
 
 

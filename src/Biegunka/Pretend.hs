@@ -15,6 +15,7 @@ import Text.PrettyPrint.Free
 import Biegunka.DB
 import Biegunka.Language (IL(..), A(..), W(..))
 import Biegunka.Control (Interpreter(..), logger)
+import Biegunka.Transform (simplified)
 
 
 -- | Pretend interpreter
@@ -32,7 +33,7 @@ import Biegunka.Control (Interpreter(..), logger)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c@(view logger -> l) s -> do
+pretend = I $ \c@(view logger -> l) (simplified -> s) -> do
   a <- load c s
   let b = construct s
   l $ stats a b
@@ -88,6 +89,7 @@ log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
     go (User (Just user)) = Just $ green "change user" </> "to" </> text user
     go (User Nothing)     = Just $ green "change user" </> "back"
     go _                  = Nothing
+  install (IT _) = error "Internal language invariant broken"
 
   uninstall :: [TermDoc]
   uninstall = map ("Delete" </>) $

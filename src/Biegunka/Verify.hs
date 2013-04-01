@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Verification interpreter
 module Biegunka.Verify (verify) where
 
@@ -18,6 +19,7 @@ import           System.Console.Terminfo.PrettyPrint
 
 import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.Language (IL(..), A(..))
+import Biegunka.Transform (simplified)
 
 
 -- | Verification interpreter
@@ -25,7 +27,7 @@ import Biegunka.Language (IL(..), A(..))
 -- Compares current filesystem layout and what script says it should be line by line.
 -- Outputs errors it find, otherwise prints OK. Is useful to check execution correctness.
 verify :: Interpreter
-verify = I $ \c s -> do
+verify = I $ \c (simplified -> s) -> do
   (verified, failures) <- runWriterT (verification s)
   view logger c $ (if verified then green "OK" else vcat failures) <> line
 

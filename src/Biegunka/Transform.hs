@@ -2,9 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Transform external language into internal one
-module Biegunka.Transform (fromEL) where
-
-import Control.Monad
+module Biegunka.Transform (fromEL, simplified) where
 
 import Control.Lens
 import Control.Monad.Free (Free(..))
@@ -39,21 +37,17 @@ makeLenses ''S
 -- | Given user defined biegunka script preprocess it into something usable
 --
 -- Returns internal language "instructions" littered with information used later
-fromEL :: Script Profiles
-       -> FilePath
-       -> [IL]
-fromEL s r = evalState (concatMapM stepP $ toListP s) (def & root .~ r)
+fromEL :: Script Profiles -> FilePath -> [IL]
+fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP toListP s
 
 
 -- | Transform Profiles layer
-stepP :: EL Profiles () -> State S [IL]
-stepP (EP n s _) = do
-  profileName .= n
-  concatMapM stepS $ toListS s
-stepP (EW w _) = return [IW w]
+stepP :: EL Profiles () -> State S IL
+stepP (EP n s _) = profileName .= n >> stepping stepS toListS s
+stepP (EW w _) = return $ IW w
 
 -- | Transform Sources layer
-stepS :: EL Sources () -> State S [IL]
+stepS :: EL Sources () -> State S IL
 stepS (ES t u d s a ()) = do
   S r _ pn _ _ <- get
   sourceName .= u
@@ -62,8 +56,8 @@ stepS (ES t u d s a ()) = do
   xs <- mapM stepF $ toListF s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
-  return $ IS (r </> d) t (a $ r </> d) pn u : ys
-stepS (EW w _) = return [IW w]
+  return $ IT (chained $ IS (r </> d) t (a $ r </> d) pn u : ys)
+stepS (EW w _) = return $ IW w
 
 -- | Transform Files layer
 stepF :: EL Actions () -> State S IL
@@ -105,6 +99,19 @@ toListF (Free (EW w x)) = EW w () : toListF x
 toListF (Pure _)        = []
 
 
--- | This isn't defined in Control.Monad
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-concatMapM f = liftM concat . mapM f
+-- | Transform external language instructions that can have subinstructions
+stepping :: Monad m => (a -> m IL) -> (t -> [a]) -> t -> m IL
+stepping step flatten s = do
+  xs <- mapM step $ flatten s
+  return $ IT (chained xs)
+
+-- | Merge chained instructions
+chained :: [IL] -> [IL]
+chained (IT xs : IW Chain : IT ys : zs) = chained $ IT (xs ++ ys) : zs -- Wrong associativity!
+chained (x : zs) = x : chained zs
+chained [] = []
+
+simplified :: [IL] -> [IL]
+simplified (IT xs : ys) = simplified xs ++ simplified ys
+simplified (x : xs) = x : simplified xs
+simplified [] = []

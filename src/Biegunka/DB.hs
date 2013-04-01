@@ -127,3 +127,4 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
     h (Shell {})           = mempty
   g (IW _) = return ()
+  g (IT _) = error "Internal language invariant broken"
