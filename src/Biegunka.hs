@@ -12,7 +12,7 @@ module Biegunka
   , Templates(..), templates
   , retries, Order(..), order
     -- * All layers
-  , sudo, reacting, chain
+  , sudo, reacting, chain, (~>>)
     -- * Profile layer
   , profile
     -- * File layer
@@ -32,6 +32,8 @@ import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
 import Biegunka.Verify (verify)
+
+infixr 7 `chain`, ~>>
 
 
 -- | Links source to specified filepath
@@ -124,3 +126,9 @@ profile name repo = liftF $ EP name repo ()
 chain :: Free (EL sc) () -> Free (EL sc) () -> Free (EL sc) ()
 chain a b = a >> liftF (EW Chain ()) >> b
 {-# INLINE chain #-}
+
+
+-- | Alias for 'chain'
+(~>>) :: Free (EL sc) () -> Free (EL sc) () -> Free (EL sc) ()
+(~>>) = chain
+{-# INLINE (~>>) #-}
