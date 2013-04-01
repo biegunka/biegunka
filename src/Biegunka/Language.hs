@@ -58,6 +58,7 @@ data W =
     User (Maybe String)
   | Reacting (Maybe React)
   | Task Bool
+  | Chain
 
 
 data React = Ignorant | Abortive

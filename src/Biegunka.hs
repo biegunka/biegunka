@@ -12,7 +12,7 @@ module Biegunka
   , Templates(..), templates
   , retries, Order(..), order
     -- * All layers
-  , sudo, reacting, task
+  , sudo, reacting, chain
     -- * Profile layer
   , profile
     -- * File layer
@@ -117,8 +117,10 @@ profile name repo = liftF $ EP name repo ()
 {-# INLINE profile #-}
 
 
--- | Concurrent task
--- Runs in parallel with main thread if possible
-task :: Free (EL l) () -> Free (EL l) ()
-task s = liftF (EW (Task True) ()) >> s >> liftF (EW (Task False) ())
-{-# INLINE task #-}
+-- | Chain tasks sequentially
+-- Connects two tasks which forces them to run sequentially one after another.
+--
+-- Note: redundant if 'Order' is 'Sequential'
+chain :: Free (EL l) () -> Free (EL l) () -> Free (EL l) ()
+chain a b = a >> liftF (EW Chain ()) >> b
+{-# INLINE chain #-}
