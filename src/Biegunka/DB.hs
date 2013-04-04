@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 module Biegunka.DB
   ( Biegunka(..), R(..)
   , load, loadProfile, save, construct
@@ -8,10 +9,9 @@ module Biegunka.DB
   ) where
 
 import Control.Applicative
-import Control.Monad ((<=<), mplus)
-import Data.Maybe (catMaybes, mapMaybe)
+import Control.Monad ((<=<), forM, mplus)
+import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(..))
-import System.IO.Error (catchIOError)
 
 import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad.State (State, execState)
@@ -63,28 +63,35 @@ makeLenses ''Construct
 
 
 load :: Controls -> [IL] -> IO Biegunka
-load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
- where
-  profiles (IP n ) = Just n
-  profiles _       = Nothing
+load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c)
 
 
-loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
-loadProfile c n = do
-  let (z, _) = c & appData <</>~ n
-  flip catchIOError (\_ -> return Nothing) $
-    (parseMaybe parser <=< decode . fromStrict) <$> B.readFile z
+-- | Load profile data from file
+--
+-- This may fail, on failure 'loadProfile' returns Nothing
+--
+-- Reasons to fail:
+--  * Passed instruction does not define profile
+--  * Cannot read from profile file (various reasons here)
+--  * Cannot parse profile file (wrong format)
+loadProfile :: Controls -> IL -> IO (Maybe (String, Map R (Map FilePath R)))
+loadProfile c (IP profile) = do
+  let (name, _) = c & appData <</>~ profile
+  (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
+ `mplus`
+  return Nothing
  where
-  parser (Object o) = (,) n .  M.fromList <$> (mapM repo =<< o .: "sources")
-   where
-    repo z = do
-      t <- z .: "info"
-      fs <- z .: "files" >>= mapM parseJSON
+  parser (Object o) = (profile, ) . M.fromList <$> do
+    ss <- o .: "sources"
+    forM ss $ \s -> do
+      t  <- s .: "info"
+      fs <- s .: "files" >>= mapM parseJSON
       return (t, M.fromList fs)
   parser _ = empty
+loadProfile _ _ = return Nothing
 
 
--- | Save profile information to files.
+-- | Save profiles data to files.
 --
 -- Each profile is mapped to a separate file in 'appData' directory.
 -- Mapping rules are simple: profile name is a relative path in 'appData'.
