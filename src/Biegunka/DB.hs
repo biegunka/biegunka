@@ -110,17 +110,17 @@ save :: Controls -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
   ifor_ b $ \profile sourceData -> do
-    let (name, _) = c & appData <</>~ profile -- | Map profile to file name
+    let (name, _) = c & appData <</>~ profile -- Map profile to file name
         dir = view directory name
         dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
     if M.null sourceData then do
-      removeFile name            -- | Since profile is empty no need having crap in the filesystem
-      mapM_ removeDirectory dirs -- | Also remove empty directories if possible
+      removeFile name            -- Since profile is empty no need having crap in the filesystem
+      mapM_ removeDirectory dirs -- Also remove empty directories if possible
      `mplus`
-      return ()                  -- | Ignore failures, they are not critical in any way here
+      return ()                  -- Ignore failures, they are not critical in any way here
     else do
-      createDirectoryIfMissing True dir      -- | Create missing directories for nested profile files
-      BL.writeFile name $ encode' sourceData -- | Finally encode profile as JSON
+      createDirectoryIfMissing True dir      -- Create missing directories for nested profile files
+      BL.writeFile name $ encode' sourceData -- Finally encode profile as JSON
  where
   encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
   unparser t  = object [             "sources" .= map repo   (M.toList t)]
