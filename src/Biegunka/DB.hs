@@ -8,7 +8,7 @@ module Biegunka.DB
   ) where
 
 import Control.Applicative
-import Control.Monad ((<=<), forM, mplus)
+import Control.Monad ((<=<), forM, mplus, unless)
 import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(..))
 
@@ -144,7 +144,7 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
   g :: IL -> State Construct ()
   g (IP n) =
-    biegunkaL . at n ?= mempty
+    use (biegunkaL . contains n) >>= \m -> unless m (biegunkaL . at n ?= mempty)
   g (IS dst t _ pn sn) = do
     let s = R { recordtype = t, base = sn, location = dst }
     assign sourceL s
