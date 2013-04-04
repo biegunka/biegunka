@@ -1,6 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 module Biegunka.DB
   ( Biegunka(..), R(..)
@@ -48,7 +47,11 @@ instance FromJSON R where
   parseJSON _          = empty
 
 instance ToJSON R where
-  toJSON R { recordtype = ft, base = bs, location = lc } = object [ "recordtype" .= ft, "base" .= bs, "location" .= lc ]
+  toJSON R { recordtype = ft, base = bs, location = lc } = object
+    [ "recordtype" .= ft
+    , "base" .= bs
+    , "location" .= lc
+    ]
 
 
 data Construct = Construct
@@ -59,7 +62,12 @@ data Construct = Construct
 instance Default Construct where
   def = Construct (R "" "" "") mempty
 
-makeLenses ''Construct
+
+sourceL :: Lens' Construct R
+sourceL f (Construct s b) = (\s' -> Construct s' b) <$> f s
+
+biegunkaL :: Lens' Construct (Map String (Map R (Map FilePath R)))
+biegunkaL f (Construct s b) = (\b' -> Construct s b') <$> f b
 
 
 load :: Controls -> [IL] -> IO Biegunka
@@ -136,14 +144,14 @@ construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
   g :: IL -> State Construct ()
   g (IP n) =
-    biegunka . at n ?= mempty
+    biegunkaL . at n ?= mempty
   g (IS dst t _ pn sn) = do
     let s = R { recordtype = t, base = sn, location = dst }
-    assign source s
-    biegunka . at pn . non mempty <>= M.singleton s mempty
+    assign sourceL s
+    biegunkaL . at pn . non mempty <>= M.singleton s mempty
   g (IA a _ _ pn _) = do
-    s <- use source
-    biegunka . at pn . traverse . at s . traverse <>= h a
+    s <- use sourceL
+    biegunkaL . at pn . traverse . at s . traverse <>= h a
    where
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
