@@ -38,12 +38,12 @@ makeLenses ''S
 --
 -- Returns internal language "instructions" littered with information used later
 fromEL :: Script Profiles -> FilePath -> [IL]
-fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP toListP s
+fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
 
 
 -- | Transform Profiles layer
 stepP :: EL Profiles () -> State S IL
-stepP (EP n s _) = profileName .= n >> stepping stepS toListS s
+stepP (EP n s _) = profileName .= n >> stepping stepS s
 stepP (EW w _) = return $ IW w
 
 -- | Transform Sources layer
@@ -53,7 +53,7 @@ stepS (ES t u d s a ()) = do
   sourceName .= u
   source .= r </> d
   order .= 0
-  xs <- mapM stepF $ toListF s
+  xs <- mapM stepF $ toList s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
   return $ IT (chained $ IS (r </> d) t (a $ r </> d) pn u : ys)
@@ -80,29 +80,29 @@ stepF (EA (Shell d c) ()) = do
 stepF (EW w _) = return $ IW w
 
 
--- | Folds Profile layer
-toListP :: Script Profiles -> [EL Profiles ()]
-toListP (Free (EP n s x)) = EP n s () : toListP x
-toListP (Free (EW t x))   = EW t ()   : toListP x
-toListP (Pure _)          = []
+class Folding s where
+  toList :: Script s -> [EL s ()]
 
--- | Folds Source layer
-toListS :: Script Sources -> [EL Sources ()]
-toListS (Free (ES t u p s f x)) = ES t u p s f () : toListS x
-toListS (Free (EW w x))         = EW w ()         : toListS x
-toListS (Pure _)                = []
+instance Folding Profiles where
+  toList (Free (EP n s x)) = EP n s () : toList x
+  toList (Free (EW t x))   = EW t ()   : toList x
+  toList (Pure _)          = []
 
--- | Folds Files layer
-toListF :: Script Actions -> [EL Actions ()]
-toListF (Free (EA a x)) = EA a () : toListF x
-toListF (Free (EW w x)) = EW w () : toListF x
-toListF (Pure _)        = []
+instance Folding Sources where
+  toList (Free (ES t u p s f x)) = ES t u p s f () : toList x
+  toList (Free (EW w x))         = EW w ()         : toList x
+  toList (Pure _)                = []
+
+instance Folding Actions where
+  toList (Free (EA a x)) = EA a () : toList x
+  toList (Free (EW w x)) = EW w () : toList x
+  toList (Pure _)        = []
 
 
 -- | Transform external language instructions that can have subinstructions
-stepping :: Monad m => (a -> m IL) -> (t -> [a]) -> t -> m IL
-stepping step flatten s = do
-  xs <- mapM step $ flatten s
+stepping :: (Folding s, Monad m) => (EL s () -> m IL) -> Script s -> m IL
+stepping step s = do
+  xs <- mapM step $ toList s
   return $ IT (chained xs)
 
 -- | Merge chained instructions
