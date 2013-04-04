@@ -8,7 +8,7 @@ module Biegunka.DB
   ) where
 
 import Control.Applicative
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), mplus)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Monoid (Monoid(..))
 import System.IO.Error (catchIOError)
@@ -25,7 +25,7 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
-import           System.Directory (createDirectoryIfMissing, removeFile)
+import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
@@ -84,18 +84,32 @@ loadProfile c n = do
   parser _ = empty
 
 
+-- | Save profile information to files.
+--
+-- Each profile is mapped to a separate file in 'appData' directory.
+-- Mapping rules are simple: profile name is a relative path in 'appData'.
+--
+-- For example, profile @dotfiles@ is located in @~/.biegunka/dotfiles@ by default
+-- and profile @my/dotfiles@ is located in @~/.biegunka.my/dotfiles@ by default
 save :: Controls -> Biegunka -> IO ()
 save c (Biegunka b) = do
-  createDirectoryIfMissing False (c ^. appData)
-  ifor_ b $ \k v ->
-    let (n, _) = c & appData <</>~ k in
-    if M.null v
-      then removeFile n `catchIOError` \_ -> return ()
-      else BL.writeFile n . T.encodeUtf8 . T.toLazyText . fromValue $ unparser v
+  createDirectoryIfMissing False (view appData c)
+  ifor_ b $ \profile sourceData -> do
+    let (name, _) = c & appData <</>~ profile -- | Map profile to file name
+        dir = view directory name
+        dirs = takeWhile (/= view appData c) $ iterate (view directory) dir
+    if M.null sourceData then do
+      removeFile name            -- | Since profile is empty no need having crap in the filesystem
+      mapM_ removeDirectory dirs -- | Also remove empty directories if possible
+     `mplus`
+      return ()                  -- | Ignore failures, they are not critical in any way here
+    else do
+      createDirectoryIfMissing True dir      -- | Create missing directories for nested profile files
+      BL.writeFile name $ encode' sourceData -- | Finally encode profile as JSON
  where
-  unparser t = object ["sources" .= map repo (M.toList t)]
-   where
-    repo (k, v) = object ["info" .= k, "files" .= map toJSON (M.toList v)]
+  encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
+  unparser t  = object [             "sources" .= map repo   (M.toList t)]
+  repo (k, v) = object ["info" .= k, "files"   .= map toJSON (M.toList v)]
 
 
 filepaths :: Biegunka -> [FilePath]
