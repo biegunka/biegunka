@@ -104,7 +104,7 @@ save c (Biegunka b) = do
   ifor_ b $ \profile sourceData -> do
     let (name, _) = c & appData <</>~ profile -- | Map profile to file name
         dir = view directory name
-        dirs = takeWhile (/= view appData c) $ iterate (view directory) dir
+        dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
     if M.null sourceData then do
       removeFile name            -- | Since profile is empty no need having crap in the filesystem
       mapM_ removeDirectory dirs -- | Also remove empty directories if possible
