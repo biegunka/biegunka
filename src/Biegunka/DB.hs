@@ -65,8 +65,8 @@ makeLenses ''Construct
 load :: Controls -> [IL] -> IO Biegunka
 load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . mapMaybe profiles
  where
-  profiles (IS _ _ _ n _) = Just n
-  profiles _              = Nothing
+  profiles (IP n ) = Just n
+  profiles _       = Nothing
 
 
 loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
@@ -128,6 +128,8 @@ construct :: [IL] -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
  where
   g :: IL -> State Construct ()
+  g (IP n) =
+    biegunka . at n ?= mempty
   g (IS dst t _ pn sn) = do
     let s = R { recordtype = t, base = sn, location = dst }
     assign source s

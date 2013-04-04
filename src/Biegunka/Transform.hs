@@ -4,6 +4,8 @@
 -- | Transform external language into internal one
 module Biegunka.Transform (fromEL, simplified) where
 
+import Control.Applicative
+
 import Control.Lens
 import Control.Monad.Free (Free(..))
 import Control.Monad.State (State, evalState, get)
@@ -39,11 +41,17 @@ makeLenses ''S
 -- Returns internal language "instructions" littered with information used later
 fromEL :: Script Profiles -> FilePath -> [IL]
 fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
+ where
+  stepping :: (Folding s, Applicative m) => (EL s () -> m IL) -> Script s -> m IL
+  stepping step = fmap (IT . chained) . traverse step . toList
 
 
 -- | Transform Profiles layer
 stepP :: EL Profiles () -> State S IL
-stepP (EP n s _) = profileName .= n >> stepping stepS s
+stepP (EP n s _) = do
+  profileName .= n
+  xs <- mapM stepS $ toList s
+  return $ IT (IP n : chained xs)
 stepP (EW w _) = return $ IW w
 
 -- | Transform Sources layer
@@ -97,13 +105,6 @@ instance Folding Actions where
   toList (Free (EA a x)) = EA a () : toList x
   toList (Free (EW w x)) = EW w () : toList x
   toList (Pure _)        = []
-
-
--- | Transform external language instructions that can have subinstructions
-stepping :: (Folding s, Monad m) => (EL s () -> m IL) -> Script s -> m IL
-stepping step s = do
-  xs <- mapM step $ toList s
-  return $ IT (chained xs)
 
 -- | Merge chained instructions
 chained :: [IL] -> [IL]

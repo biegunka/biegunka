@@ -44,6 +44,7 @@ instance Functor (EL sc) where
 data IL =
     IA A Int Int String String
   | IS FilePath String (IO ()) String String
+  | IP String
   | IW W
   | IT [IL]
 

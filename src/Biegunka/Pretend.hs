@@ -89,7 +89,8 @@ log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
     go (User (Just user)) = Just $ green "change user" </> "to" </> text user
     go (User Nothing)     = Just $ green "change user" </> "back"
     go _                  = Nothing
-  install (IT _) = error "Internal language invariant broken"
+  install (IT _) = Nothing
+  install (IP _) = Nothing
 
   uninstall :: [TermDoc]
   uninstall = map ("Delete" </>) $
