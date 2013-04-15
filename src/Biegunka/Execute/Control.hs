@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Biegunka.Execute.Control
   ( -- * Execution facade type
-    Execution(..)
+    Execution
     -- * Execution thread state
   , ES(..), reactStack, usersStack, retryCount
     -- * Execution environment
@@ -14,24 +14,21 @@ module Biegunka.Execute.Control
   , Narrative, Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
   ) where
 
-import Control.Applicative
 import Control.Concurrent.Chan (Chan)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Control.Concurrent.STM.TVar
 import Control.Lens
-import Control.Monad.State (MonadState, StateT)
-import Control.Monad.Trans (MonadIO)
+import Control.Monad.State (StateT)
 import Data.Default
+import Data.Tag
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
 import Biegunka.Control (Controls)
 
 
-newtype Execution s a =
-    E { runE :: StateT ES IO a }
-    deriving (Functor, Applicative, Monad, MonadState ES, MonadIO)
+type Execution s a = Tag s (StateT ES IO) a
 
 
 -- | 'Execution' thread state.

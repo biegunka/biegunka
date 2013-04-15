@@ -33,7 +33,8 @@ library
                  stm,
                  async,
                  HStringTemplate >= 0.7,
-                 wordexp >= 0.2
+                 wordexp >= 0.2,
+                 tag
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Source.Dummy

@@ -21,6 +21,7 @@ import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
+import           Data.Tag
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -67,7 +68,7 @@ execute (($ def) -> e) = I $ \c s -> do
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
 runTask :: EE -> ES -> [IL] -> IO ()
-runTask e s t = reify e ((`evalStateT` s) . runE . asProxyOf (task t)) >> writeChan (e ^. work) Stop
+runTask e s t = reify e ((`evalStateT` s) . untag . asProxyOf (task t)) >> writeChan (e ^. work) Stop
 
 
 -- | Thread `s' parameter to 'task' function
@@ -95,7 +96,7 @@ task [] = return ()
 
 -- | If only I could come up with MonadBaseControl instance for Execution
 try :: Exception e => Execution s a -> Execution s (Either e a)
-try (E ex) = do
+try (Tag ex) = do
   eeas <- liftIO . E.try . runStateT ex =<< get
   case eeas of
     Left e       ->          return (Left e)
