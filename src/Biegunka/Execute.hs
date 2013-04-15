@@ -107,7 +107,7 @@ try (Tag ex) = do
 -- Possible responses: retry command execution or ignore failure or abort task
 respond :: forall s. Reifies s EE => SomeException -> [IL] -> Execution s [IL]
 respond e t = do
-  let l = view (controls . logger) $ reflect (Proxy :: Proxy s)
+  l <- fmap (view (controls . logger)) reflected
   liftIO . l . describe $ exception e
   rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
@@ -149,9 +149,7 @@ command (IW (Reacting Nothing))  = reactStack %= drop 1
 command (IW (User     (Just u))) = usersStack %= (u :)
 command (IW (User     Nothing))  = usersStack %= drop 1
 command c = do
-  let sudoingTV = view sudoing $ reflect (Proxy :: Proxy s)
-      runningTV = view running $ reflect (Proxy :: Proxy s)
-      l         = view (controls . logger) $ reflect (Proxy :: Proxy s)
+  (sudoingTV, runningTV, l) <- fmap (\e -> (view sudoing e, view running e, view (controls . logger) e)) reflected
   xs <- use usersStack
   o  <- op c
   liftIO $ case xs of
@@ -198,7 +196,7 @@ command c = do
 -- | Queue next task in scheduler
 newTask :: forall s. Reifies s EE => [IL] -> Execution s ()
 newTask t = do
-  let e = reflect (Proxy :: Proxy s)
+  e <- reflected
   s <- get
   liftIO $ writeChan (e ^. work) (Do $ runTask e s t)
 
