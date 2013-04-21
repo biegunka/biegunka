@@ -10,7 +10,7 @@ module Biegunka
   , Priviledges(..), priviledges
   , React(..), react
   , Templates(..), templates
-  , retries, Order(..), order
+  , retries
     -- * All layers
   , sudo, reacting, chain, (~>>)
     -- * Profile layer

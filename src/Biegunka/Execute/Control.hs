@@ -9,9 +9,9 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..)
   , priviledges, react, templates
-  , work, order, retries, running, sudoing, controls
+  , work, retries, running, sudoing, controls
     -- * Misc
-  , Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
+  , Statement(..), Templates(..), Priviledges(..), Work(..)
   ) where
 
 import Control.Concurrent.STM.TQueue (TQueue)
@@ -57,7 +57,6 @@ data EE = EE
   , _templates   :: Templates
   , _work        :: TQueue Work
   , _retries     :: Int
-  , _order       :: Order
   , _running     :: TVar Bool
   , _sudoing     :: TVar Bool
   , _controls    :: Controls
@@ -85,11 +84,6 @@ data Work =
     Do (IO ()) -- ^ Task to come
   | Stop       -- ^ Task is done
 
--- | Tasks execution order
-data Order =
-    Sequential -- ^ Do all tasks sequentially
-  | Concurrent -- ^ Do all tasks concurrently
-
 -- | Execution context TVar. True if sudoed operation is in progress.
 sudo :: TVar Bool
 sudo = unsafePerformIO $ newTVarIO False
@@ -107,7 +101,6 @@ instance Default EE where
     , _react       = Ignorant
     , _templates   = Templates ()
     , _work        = undefined    -- User doesn't have a chance to get there
-    , _order       = Sequential
     , _retries     = 1
     , _running     = run
     , _sudoing     = sudo

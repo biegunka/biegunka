@@ -60,7 +60,7 @@ execute (($ def) -> e) = I $ \c s -> do
   w <- newTQueueIO
   atomically $ writeTQueue w
     (Do $ runTask e { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
-  scheduler w (e ^. order)
+  scheduler w
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -88,9 +88,7 @@ asProxyOf a _ = a
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
 task :: forall s. Reifies s EE => [IL] -> Execution s ()
-task (IT xs : cs) = do
-  newTask cs
-  task xs
+task (IT xs : cs) = newTask cs >> task xs
 task t@(c:cs) = do
   e <- try (command c)
   case e of
@@ -206,13 +204,10 @@ newTask t = do
 
 -- | Task scheduler
 --
--- Works a bit differently depending on 'Order'. 'Sequential' forces scheduler to have only one
--- "working thread" that processes all the tasks. 'Concurrent' order forces scheduler to "fork" on
--- every coming workload
-scheduler :: TQueue Work -> Order -> IO ()
-scheduler j o = case o of
-  Sequential -> go [] 0 1
-  Concurrent -> go [] 0 maxBound
+-- "Forks" on every incoming workload
+-- TODO: refactor since n is redundant now
+scheduler :: TQueue Work -> IO ()
+scheduler j = go [] 0 maxBound
  where
   go :: [Async ()] -> Int -> Int -> IO ()
   go as n 0 = do
