@@ -14,7 +14,7 @@ module Biegunka.Control
 import Control.Applicative ((<$))
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TChan (TChan, newTChanIO, readTChan, writeTChan, isEmptyTChan)
+import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import Control.Monad (forever, unless)
 import System.IO
 
@@ -91,11 +91,11 @@ biegunka (($ def) -> c) s (I f) = do
   let z = case view pretty c of
             Colors -> id
             Plain  -> (Push Nop <$)
-  l <- newTChanIO
+  l <- newTQueueIO
   forkIO $ loggerThread l
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTChan l . z)) (fromEL s r)
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z)) (fromEL s r)
   fix $ \wait ->
-    atomically (isEmptyTChan l) >>= \e -> unless e (threadDelay 10000 >> wait)
+    atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
 expand :: String -> IO String
 expand x = do
@@ -116,5 +116,5 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 
 -- | Display supplied docs
-loggerThread :: TChan TermDoc -> IO ()
-loggerThread c = forever $ atomically (readTChan c) >>= displayDoc 0.9
+loggerThread :: TQueue TermDoc -> IO ()
+loggerThread c = forever $ atomically (readTQueue c) >>= displayDoc 0.9

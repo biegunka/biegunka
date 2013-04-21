@@ -30,7 +30,7 @@ library
                  wl-pprint-terminfo,
                  directory-layout,
                  data-default,
-                 stm,
+                 stm >= 2.4,
                  async,
                  HStringTemplate >= 0.7,
                  wordexp >= 0.2,
