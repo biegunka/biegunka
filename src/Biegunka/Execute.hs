@@ -13,8 +13,9 @@ import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.Async
-import           Control.Concurrent.Chan
-import           Control.Concurrent.STM
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
+import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
+import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
@@ -56,8 +57,9 @@ execute (($ def) -> e) = I $ \c s -> do
       b = construct s'
   a <- load c s'
   when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  w <- newChan
-  writeChan w (Do $ runTask e { _controls = c, _work = w } def s >> writeChan w Stop)
+  w <- newTQueueIO
+  atomically $ writeTQueue w
+    (Do $ runTask e { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
   scheduler w (e ^. order)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
@@ -68,7 +70,9 @@ execute (($ def) -> e) = I $ \c s -> do
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
 runTask :: EE -> ES -> [IL] -> IO ()
-runTask e s t = reify e ((`evalStateT` s) . untag . asProxyOf (task t)) >> writeChan (e ^. work) Stop
+runTask e s t = do
+  reify e ((`evalStateT` s) . untag . asProxyOf (task t))
+  atomically (writeTQueue (e ^. work) Stop)
 
 
 -- | Thread `s' parameter to 'task' function
@@ -198,14 +202,14 @@ newTask :: forall s. Reifies s EE => [IL] -> Execution s ()
 newTask t = do
   e <- reflected
   s <- get
-  liftIO $ writeChan (e ^. work) (Do $ runTask e s t)
+  liftIO . atomically $ writeTQueue (e ^. work) (Do $ runTask e s t)
 
 -- | Task scheduler
 --
 -- Works a bit differently depending on 'Order'. 'Sequential' forces scheduler to have only one
 -- "working thread" that processes all the tasks. 'Concurrent' order forces scheduler to "fork" on
 -- every coming workload
-scheduler :: Chan Work -> Order -> IO ()
+scheduler :: TQueue Work -> Order -> IO ()
 scheduler j o = case o of
   Sequential -> go [] 0 1
   Concurrent -> go [] 0 maxBound
@@ -217,7 +221,7 @@ scheduler j o = case o of
   go as n k
     | n < 0 = return ()
     | otherwise = do
-        t <- readChan j
+        t <- atomically $ readTQueue j
         case t of
           Do w -> do
             a <- async w

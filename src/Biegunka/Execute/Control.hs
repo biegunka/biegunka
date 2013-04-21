@@ -11,10 +11,10 @@ module Biegunka.Execute.Control
   , priviledges, react, templates
   , work, order, retries, running, sudoing, controls
     -- * Misc
-  , Narrative, Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
+  , Statement(..), Templates(..), Priviledges(..), Work(..), Order(..)
   ) where
 
-import Control.Concurrent.Chan (Chan)
+import Control.Concurrent.STM.TQueue (TQueue)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Control.Concurrent.STM.TVar
@@ -55,7 +55,7 @@ data EE = EE
   { _priviledges :: Priviledges
   , _react       :: React
   , _templates   :: Templates
-  , _work        :: Chan Work
+  , _work        :: TQueue Work
   , _retries     :: Int
   , _order       :: Order
   , _running     :: TVar Bool
@@ -69,8 +69,6 @@ data Priviledges =
     Drop     -- ^ Drop priviledges
   | Preserve -- ^ Preserve priviledges
     deriving (Show, Read, Eq, Ord)
-
-type Narrative = Chan Statement
 
 -- | Statement thoroughness
 data Statement =
