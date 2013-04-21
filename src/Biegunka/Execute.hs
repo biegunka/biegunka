@@ -7,12 +7,12 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
-import           Data.List ((\\), delete)
+import           Data.List ((\\))
 import           Data.Foldable (traverse_)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
-import           Control.Concurrent.Async
+import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
@@ -205,21 +205,11 @@ newTask t = do
 -- | Task scheduler
 --
 -- "Forks" on every incoming workload
--- TODO: refactor since n is redundant now
 scheduler :: TQueue Work -> IO ()
-scheduler j = go [] 0 maxBound
+scheduler j = loop 0
  where
-  go :: [Async ()] -> Int -> Int -> IO ()
-  go as n 0 = do
-    (a, _) <- waitAny as
-    go (delete a as) n 1
-  go as n k
-    | n < 0 = return ()
-    | otherwise = do
-        t <- atomically $ readTQueue j
-        case t of
-          Do w -> do
-            a <- async w
-            go (a : as) (n + 1) (k - 1)
-          Stop ->
-            go      as  (n - 1)  k
+  loop n
+    | n < 0     = return ()
+    | otherwise = atomically (readTQueue j) >>= \t -> case t of
+        Do w -> forkIO w >> loop (n + 1)
+        Stop ->             loop (n - 1)

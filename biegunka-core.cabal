@@ -31,7 +31,6 @@ library
                  directory-layout,
                  data-default,
                  stm >= 2.4,
-                 async,
                  HStringTemplate >= 0.7,
                  wordexp >= 0.2,
                  tag
