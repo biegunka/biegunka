@@ -21,14 +21,14 @@ import Control.Concurrent.STM.TVar
 import Control.Lens
 import Control.Monad.State (StateT)
 import Data.Default
-import Data.Tag
+import Data.Functor.Trans.Tagged
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
 import Biegunka.Control (Controls)
 
 
-type Execution s a = Tag s (StateT ES IO) a
+type Execution s a = TaggedT s (StateT ES IO) a
 
 
 -- | 'Execution' thread state.

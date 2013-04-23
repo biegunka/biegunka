@@ -15,14 +15,14 @@ import           System.IO.Error (tryIOError)
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
-import           Control.Concurrent.STM (atomically, retry)
+import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
-import           Data.Tag
+import           Data.Functor.Trans.Tagged
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -60,7 +60,7 @@ execute (($ def) -> e) = I $ \c s -> do
   w <- newTQueueIO
   atomically $ writeTQueue w
     (Do $ runTask e { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
-  scheduler w
+  schedule w
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -98,7 +98,7 @@ task [] = return ()
 
 -- | If only I could come up with MonadBaseControl instance for Execution
 try :: Exception e => Execution s a -> Execution s (Either e a)
-try (Tag ex) = do
+try (TagT ex) = do
   eeas <- liftIO . E.try . runStateT ex =<< get
   case eeas of
     Left e       ->          return (Left e)
@@ -156,14 +156,15 @@ command c = do
   o  <- op c
   liftIO $ case xs of
     []  -> do
-      atomically $ readTVar sudoingTV >>= \s -> if s then retry else writeTVar runningTV True
+      atomically $ readTVar sudoingTV >>= \s -> guard (not s) >> writeTVar runningTV True
       l (describe (action c))
       o
       atomically $ writeTVar runningTV False
     u:_ -> do
       atomically $ do
         [s, r] <- mapM readTVar [sudoingTV, runningTV]
-        if s || r then retry else writeTVar sudoingTV True
+        guard (not $ s || r)
+        writeTVar sudoingTV True
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
@@ -202,11 +203,11 @@ newTask t = do
   s <- get
   liftIO . atomically $ writeTQueue (e ^. work) (Do $ runTask e s t)
 
--- | Task scheduler
+-- | Schedule tasks
 --
 -- "Forks" on every incoming workload
-scheduler :: TQueue Work -> IO ()
-scheduler j = loop 0
+schedule :: TQueue Work -> IO ()
+schedule j = loop (0 :: Int)
  where
   loop n
     | n < 0     = return ()
