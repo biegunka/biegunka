@@ -11,13 +11,13 @@ module Biegunka
   , React(..), react
   , Templates(..), templates
   , retries
-    -- * All layers
+    -- * All scopes
   , sudo, reacting, chain, (~>>)
-    -- * Profile layer
+    -- * Profile scope
   , profile
-    -- * File layer
+    -- * File scope
   , registerAt, copy, link, substitute, shell
-    -- * Convenient type aliases
+    -- * For user to be able to write type signatures
   , Script, Scope(..)
   ) where
 
