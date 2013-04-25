@@ -23,11 +23,10 @@ module Biegunka
 
 import Data.Monoid (mempty)
 
-import Control.Monad.Free (Free(..), liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pretty, Pretty(..), pause)
-import Biegunka.Language (Script, Scope(..), EL(..), A(..), W(..), React(..))
+import Biegunka.Language (Scope(..), Script(..), lift, EL(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
@@ -42,8 +41,8 @@ infixr 7 `chain`, ~>>
 -- >   registerAt "we/need/you/here"
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
-registerAt :: FilePath -> Script Actions
-registerAt dst = liftF $ EA (Link mempty dst) ()
+registerAt :: FilePath -> Script Actions ()
+registerAt dst = lift $ EA (Link mempty dst) ()
 {-# INLINE registerAt #-}
 
 
@@ -53,8 +52,8 @@ registerAt dst = liftF $ EA (Link mempty dst) ()
 -- >   link "you" "we/need/you/here"
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-link :: FilePath -> FilePath -> Script Actions
-link src dst = liftF $ EA (Link src dst) ()
+link :: FilePath -> FilePath -> Script Actions ()
+link src dst = lift $ EA (Link src dst) ()
 {-# INLINE link #-}
 
 
@@ -64,8 +63,8 @@ link src dst = liftF $ EA (Link src dst) ()
 -- >   copy "you" "we/need/you/here"
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
-copy :: FilePath -> FilePath -> Script Actions
-copy src dst = liftF $ EA (Copy src dst) ()
+copy :: FilePath -> FilePath -> Script Actions ()
+copy src dst = lift $ EA (Copy src dst) ()
 {-# INLINE copy #-}
 
 
@@ -76,8 +75,8 @@ copy src dst = liftF $ EA (Copy src dst) ()
 --
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
-substitute :: FilePath -> FilePath -> Script Actions
-substitute src dst = liftF $
+substitute :: FilePath -> FilePath -> Script Actions ()
+substitute src dst = lift $
   EA (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 {-# INLINE substitute #-}
 
@@ -88,20 +87,20 @@ substitute src dst = liftF $
 -- >   shell "echo -n hello"
 --
 -- Prints "hello" (without a newline)
-shell :: String -> Script Actions
-shell c = liftF $ EA (Shell mempty c) ()
+shell :: String -> Script Actions ()
+shell c = lift $ EA (Shell mempty c) ()
 {-# INLINE shell #-}
 
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Free (EL sc) () -> Free (EL sc) ()
-sudo n s = liftF (EW (User (Just n)) ()) >> s >> liftF (EW (User Nothing) ())
+sudo :: String -> Script sc () -> Script sc ()
+sudo n s = lift (EW (User (Just n)) ()) >> s >> lift (EW (User Nothing) ())
 {-# INLINE sudo #-}
 
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Free (EL sc) () -> Free (EL sc) ()
-reacting r s = liftF (EW (Reacting (Just r)) ()) >> s >> liftF (EW (Reacting Nothing) ())
+reacting :: React -> Script sc () -> Script sc ()
+reacting r s = lift (EW (Reacting (Just r)) ()) >> s >> lift (EW (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 
@@ -114,8 +113,8 @@ reacting r s = liftF (EW (Reacting (Just r)) ()) >> s >> liftF (EW (Reacting Not
 -- >   git ...
 -- > profile "friend's" $ do
 -- >   svn ...
-profile :: String -> Script Sources -> Script Profiles
-profile name repo = liftF $ EP name repo ()
+profile :: String -> Script Sources () -> Script Profiles ()
+profile name repo = lift $ EP name repo ()
 {-# INLINE profile #-}
 
 
@@ -123,12 +122,12 @@ profile name repo = liftF $ EP name repo ()
 -- Connects two tasks which forces them to run sequentially one after another.
 --
 -- Note: redundant if 'Order' is 'Sequential'
-chain :: Free (EL sc) () -> Free (EL sc) () -> Free (EL sc) ()
-chain a b = a >> liftF (EW Chain ()) >> b
+chain :: Script sc () -> Script sc () -> Script sc ()
+chain a b = a >> lift (EW Chain ()) >> b
 {-# INLINE chain #-}
 
 
 -- | Alias for 'chain'
-(~>>) :: Free (EL sc) () -> Free (EL sc) () -> Free (EL sc) ()
+(~>>) :: Script sc () -> Script sc () -> Script sc ()
 (~>>) = chain
 {-# INLINE (~>>) #-}

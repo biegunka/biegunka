@@ -39,10 +39,10 @@ makeLenses ''S
 -- | Given user defined biegunka script preprocess it into something usable
 --
 -- Returns internal language "instructions" littered with information used later
-fromEL :: Script Profiles -> FilePath -> [IL]
+fromEL :: Script Profiles () -> FilePath -> [IL]
 fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
  where
-  stepping :: (Folding s, Applicative m) => (EL s () -> m IL) -> Script s -> m IL
+  stepping :: (Folding s, Applicative m) => (EL s () -> m IL) -> Script s () -> m IL
   stepping step = fmap (IT . chained) . traverse step . toList
 
 
@@ -89,22 +89,31 @@ stepF (EW w _) = return $ IW w
 
 
 class Folding s where
-  toList :: Script s -> [EL s ()]
+  toList :: Script s a -> [EL s ()]
 
 instance Folding Profiles where
-  toList (Free (EP n s x)) = EP n s () : toList x
-  toList (Free (EW t x))   = EW t ()   : toList x
-  toList (Pure _)          = []
+  toList (Script m) = go m
+   where
+    go :: Free (EL Profiles) a -> [EL Profiles ()] -- to avoid non-exhaustive pattern match warning
+    go (Free (EP n s x)) = EP n s () : go x
+    go (Free (EW t x))   = EW t ()   : go x
+    go (Pure _)          = []
 
 instance Folding Sources where
-  toList (Free (ES t u p s f x)) = ES t u p s f () : toList x
-  toList (Free (EW w x))         = EW w ()         : toList x
-  toList (Pure _)                = []
+  toList (Script m) = go m
+   where
+    go :: Free (EL Sources) a -> [EL Sources ()]
+    go (Free (ES t u p s f x)) = ES t u p s f () : go x
+    go (Free (EW w x))         = EW w ()         : go x
+    go (Pure _)                = []
 
 instance Folding Actions where
-  toList (Free (EA a x)) = EA a () : toList x
-  toList (Free (EW w x)) = EW w () : toList x
-  toList (Pure _)        = []
+  toList (Script m) = go m
+   where
+    go :: Free (EL Actions) a -> [EL Actions ()]
+    go (Free (EA a x)) = EA a () : go x
+    go (Free (EW w x)) = EW w () : go x
+    go (Pure _)        = []
 
 -- | Merge chained instructions
 chained :: [IL] -> [IL]

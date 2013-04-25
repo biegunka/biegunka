@@ -82,7 +82,7 @@ instance Monoid Interpreter where
 
 -- | Common 'Interpreter's 'Controls' wrapper
 biegunka :: (Controls -> Controls) -- ^ User defined settings
-         -> Script Profiles       -- ^ Script to interpret
+         -> Script Profiles ()    -- ^ Script to interpret
          -> Interpreter           -- ^ Combined interpreters
          -> IO ()
 biegunka (($ def) -> c) s (I f) = do
