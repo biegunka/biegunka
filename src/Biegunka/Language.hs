@@ -41,6 +41,7 @@ instance Monad (Script sc) where
 -- | Lift DSL term to the 'Script'
 lift :: EL sc a -> Script sc a
 lift = Script . liftF
+{-# INLINE lift #-}
 
 
 data EL sc a where
