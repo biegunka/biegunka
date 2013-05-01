@@ -26,14 +26,14 @@ main = do
       it "should disappear after deletion" $ null ds
 
 
-resultsIn :: Script Profiles -> Layout -> IO [DLCheckFailure]
+resultsIn :: Script Profiles () -> Layout -> IO [LayoutException]
 resultsIn s l = do
   biegunka (set root "~") s (execute id)
   fp <- getHomeDirectory
   check l fp
 
 
-trivial_script :: Script Profiles
+trivial_script :: Script Profiles ()
 trivial_script = return ()
 
 
@@ -41,11 +41,11 @@ trivial_layout :: Layout
 trivial_layout = return ()
 
 
-trivial_repo :: String -> Script Profiles
+trivial_repo :: String -> Script Profiles ()
 trivial_repo p = profile p $ return ()
 
 
-simple_repo_0 :: Script Profiles
+simple_repo_0 :: Script Profiles ()
 simple_repo_0 =
   profile "biegunka-core-simple0" $
     dummy l "tmp/dummies/biegunka-core-simple0" $
