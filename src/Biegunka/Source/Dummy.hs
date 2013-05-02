@@ -6,7 +6,7 @@ import Control.Monad.Free (liftF)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
-import Biegunka.Language (Script(..), Scope(Actions, Sources), EL(ES))
+import Biegunka.Language (Script(..), Scope(Actions, Sources), EL(ES), S(..))
 
 
 -- | Make specified layout and attack it with 'Files'
@@ -19,7 +19,7 @@ dummy :: Layout            -- ^ Layout to make
       -> FilePath          -- ^ Layout root (relative to user home directory)
       -> Script Actions () -- ^ What to do with layout files
       -> Script Sources ()
-dummy l p s = Script . liftF $ ES "dummy" "localhost" p s updateDummy ()
+dummy l p s = Script . liftF $ ES (Source "dummy" "localhost" p updateDummy) s ()
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
 

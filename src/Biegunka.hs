@@ -26,7 +26,7 @@ import Data.Monoid (mempty)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Control (biegunka, Controls, root, appData, pretty, Pretty(..), pause)
-import Biegunka.Language (Scope(..), Script(..), lift, EL(..), A(..), W(..), React(..))
+import Biegunka.Language (Scope(..), Script(..), lift, EL(..), P(..), A(..), W(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
@@ -114,7 +114,7 @@ reacting r s = lift (EW (Reacting (Just r)) ()) >> s >> lift (EW (Reacting Nothi
 -- > profile "friend's" $ do
 -- >   svn ...
 profile :: String -> Script Sources () -> Script Profiles ()
-profile name repo = lift $ EP name repo ()
+profile n s = lift $ EP (Profile n) s ()
 {-# INLINE profile #-}
 
 

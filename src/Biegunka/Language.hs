@@ -4,11 +4,13 @@
 -- | Specifies user side and library side languages primitives
 module Biegunka.Language
   ( Scope(..), Script(..), lift
-  , EL(..), IL(..), A(..), W(..)
+  , EL(..), IL(..), A(..), S(..), P(..), W(..)
   , React(..)
   ) where
 
-import Control.Applicative(Applicative(..))
+import Control.Applicative(Applicative(..), (<$>))
+import Data.Foldable (Foldable(..))
+import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..), liftF)
 import Data.Text.Lazy (Text)
@@ -44,18 +46,65 @@ lift = Script . liftF
 {-# INLINE lift #-}
 
 
+-- | External language datatype. That's what user will
+-- construct with combinators from "Biegunka"
 data EL sc a where
+  EP :: P -> Script Sources () -> a -> EL Profiles a
+  ES :: S -> Script Actions () -> a -> EL Sources a
   EA :: A -> a -> EL Actions a
-  ES :: String -> String -> FilePath -> Script Actions () -> (FilePath -> IO ()) -> a -> EL Sources a
-  EP :: String -> Script Sources () -> a -> EL Profiles a
   EW :: W -> a -> EL sc a
 
 instance Functor (EL sc) where
-  fmap f (EA a x)         = EA a (f x)
-  fmap f (ES t u p s h x) = ES t u p s h (f x)
-  fmap f (EP n s x)       = EP n s (f x)
-  fmap f (EW s x)         = EW s (f x)
+  fmap = fmapDefault
   {-# INLINE fmap #-}
+
+instance Foldable (EL sc) where
+  foldMap = foldMapDefault
+  {-# INLINE foldMap #-}
+
+instance Traversable (EL sc) where
+  traverse f (EP p i x) = EP p i <$> f x
+  traverse f (ES s i x) = ES s i <$> f x
+  traverse f (EA a   x) = EA a   <$> f x
+  traverse f (EW w   x) = EW w   <$> f x
+  {-# INLINE traverse #-}
+
+
+-- | 'Profiles' scope data
+newtype P = Profile
+  { pname :: String -- ^ name
+  } deriving (Show, Read, Eq, Ord)
+
+-- | 'Sources' scope data
+data S = Source {
+  -- | Source type
+    stype :: String
+  -- | URI where source is located
+  , suri :: String
+  -- | Where to emerge source on FS (relative to Biegunka root setting)
+  , spath :: FilePath
+  -- | How to update source
+  , supdate :: (FilePath -> IO ())
+  }
+
+-- | 'Actions' scope data
+data A =
+    -- | Symbolic link
+    Link FilePath FilePath
+    -- | Verbatim copy
+  | Copy FilePath FilePath
+    -- | Copy with template substitutions
+  | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
+    -- | Shell command
+  | Shell FilePath String
+
+data W =
+    User (Maybe String)
+  | Reacting (Maybe React)
+  | Chain
+
+data React = Ignorant | Abortive
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 
 data IL =
@@ -64,20 +113,3 @@ data IL =
   | IP String
   | IW W
   | IT [IL]
-
-
-data A =
-    Link FilePath FilePath
-  | Copy FilePath FilePath
-  | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
-  | Shell FilePath String
-
-
-data W =
-    User (Maybe String)
-  | Reacting (Maybe React)
-  | Chain
-
-
-data React = Ignorant | Abortive
-  deriving (Show, Read, Eq, Ord, Enum, Bounded)

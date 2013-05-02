@@ -16,7 +16,7 @@ import Biegunka.Language
 
 
 -- | Transformation state
-data S = S
+data Transformation = Transformation
   { _root        :: FilePath -- ^ Biegunka root
   , _source      :: FilePath -- ^ Source root
   , _profileName :: String   -- ^ Profile name
@@ -24,8 +24,8 @@ data S = S
   , _order       :: Int      -- ^ Order number
   } deriving (Show, Read, Eq, Ord)
 
-instance Default S where
-  def = S
+instance Default Transformation where
+  def = Transformation
     { _root        = def
     , _source      = def
     , _profileName = def
@@ -33,7 +33,7 @@ instance Default S where
     , _order       = 1
     }
 
-makeLenses ''S
+makeLenses ''Transformation
 
 
 -- | Given user defined biegunka script preprocess it into something usable
@@ -47,17 +47,17 @@ fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
 
 
 -- | Transform Profiles layer
-stepP :: EL Profiles () -> State S IL
-stepP (EP n s _) = do
+stepP :: EL Profiles () -> State Transformation IL
+stepP (EP (Profile n) s _) = do
   profileName .= n
   xs <- mapM stepS $ toList s
   return $ IT (IP n : chained xs)
 stepP (EW w _) = return $ IW w
 
 -- | Transform Sources layer
-stepS :: EL Sources () -> State S IL
-stepS (ES t u d s a ()) = do
-  S r _ pn _ _ <- get
+stepS :: EL Sources () -> State Transformation IL
+stepS (ES (Source t u d a) s ()) = do
+  Transformation r _ pn _ _ <- get
   sourceName .= u
   source .= r </> d
   order .= 0
@@ -68,21 +68,21 @@ stepS (ES t u d s a ()) = do
 stepS (EW w _) = return $ IW w
 
 -- | Transform Files layer
-stepF :: EL Actions () -> State S IL
+stepF :: EL Actions () -> State Transformation IL
 stepF (EA (Link s d) ()) = do
-  S r src pn sn _ <- get
+  Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Link (src </> s) (r </> d)) o 0 pn sn
 stepF (EA (Copy s d) ()) = do
-  S r src pn sn _ <- get
+  Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Copy (src </> s) (r </> d)) o 0 pn sn
 stepF (EA (Template s d t) ()) = do
-  S r src pn sn _ <- get
+  Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Template (src </> s) (r </> d) t) o 0 pn sn
 stepF (EA (Shell d c) ()) = do
-  S _ s pn sn _ <- get
+  Transformation _ s pn sn _ <- get
   o <- order <+= 1
   return $ IA (Shell (s </> d) c) o 0 pn sn
 stepF (EW w _) = return $ IW w
@@ -95,17 +95,17 @@ instance Folding Profiles where
   toList (Script m) = go m
    where
     go :: Free (EL Profiles) a -> [EL Profiles ()] -- to avoid non-exhaustive pattern match warning
-    go (Free (EP n s x)) = EP n s () : go x
-    go (Free (EW t x))   = EW t ()   : go x
+    go (Free (EP p i x)) = EP p i () : go x
+    go (Free (EW t   x)) = EW t   () : go x
     go (Pure _)          = []
 
 instance Folding Sources where
   toList (Script m) = go m
    where
     go :: Free (EL Sources) a -> [EL Sources ()]
-    go (Free (ES t u p s f x)) = ES t u p s f () : go x
-    go (Free (EW w x))         = EW w ()         : go x
-    go (Pure _)                = []
+    go (Free (ES s i x)) = ES s i () : go x
+    go (Free (EW w   x)) = EW w   () : go x
+    go (Pure _)          = []
 
 instance Folding Actions where
   toList (Script m) = go m
