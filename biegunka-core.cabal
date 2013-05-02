@@ -29,7 +29,6 @@ library
                  semigroups,
                  wl-pprint-extras,
                  wl-pprint-terminfo,
-                 exceptions,
                  directory-layout >= 0.3.0.0,
                  data-default,
                  stm >= 2.4,
