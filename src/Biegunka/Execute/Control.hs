@@ -9,7 +9,7 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..)
   , priviledges, react, templates
-  , work, retries, running, sudoing, controls
+  , work, retries, running, sudoing, controls, repos
     -- * Misc
   , Statement(..), Templates(..), Priviledges(..), Work(..)
   ) where
@@ -22,6 +22,7 @@ import Control.Lens
 import Control.Monad.State (StateT)
 import Data.Default
 import Data.Functor.Trans.Tagged
+import Data.Set
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
@@ -60,6 +61,7 @@ data EE = EE
   , _running     :: TVar Bool
   , _sudoing     :: TVar Bool
   , _controls    :: Controls
+  , _repos       :: TVar (Set String)
   }
 
 -- | Priviledges control.
@@ -94,6 +96,9 @@ run :: TVar Bool
 run = unsafePerformIO $ newTVarIO False
 {-# NOINLINE run #-}
 
+repo :: TVar (Set String)
+repo = unsafePerformIO $ newTVarIO empty
+{-# NOINLINE repo #-}
 
 instance Default EE where
   def = EE
@@ -105,6 +110,7 @@ instance Default EE where
     , _running     = run
     , _sudoing     = sudo
     , _controls    = def
+    , _repos       = repo
     }
 
 makeLenses ''EE

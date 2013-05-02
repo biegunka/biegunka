@@ -23,6 +23,7 @@ import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
 import           Data.Functor.Trans.Tagged
+import           Data.Set (member, insert)
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -173,9 +174,19 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  op (IS dst _ update _ _) = return $ do
-    createDirectoryIfMissing True $ dropFileName dst
-    update
+  op (IS dst _ update _ r) = do
+    reposTV <- liftM (view repos) reflected
+    return $ do
+      unmentioned <- atomically $ do
+        rs <- readTVar reposTV
+        if r `member` rs
+          then return False
+          else do
+            writeTVar reposTV $ insert r rs
+            return True
+      when unmentioned $ do
+        createDirectoryIfMissing True $ dropFileName dst
+        update
   op (IA (Link src dst) _ _ _ _) = return $ overWriteWith createSymbolicLink src dst
   op (IA (Copy src dst) _ _ _ _) = return $ overWriteWith copyFile src dst
   op (IA (Template src dst substitute) _ _ _ _) = return $
