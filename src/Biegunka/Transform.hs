@@ -42,7 +42,7 @@ makeLenses ''Transformation
 fromEL :: Script Profiles () -> FilePath -> [IL]
 fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
  where
-  stepping :: (Folding s, Applicative m) => (EL s () -> m IL) -> Script s () -> m IL
+  stepping :: (Applicative m) => (EL s () -> m IL) -> Script s () -> m IL
   stepping step = fmap (IT . chained) . traverse step . toList
 
 
@@ -88,32 +88,16 @@ stepF (EA (Shell d c) ()) = do
 stepF (EW w _) = return $ IW w
 
 
-class Folding s where
-  toList :: Script s a -> [EL s ()]
+toList :: Script s a -> [EL s ()]
+toList = go . runScript
+ where
+  go :: Free (EL s) a -> [EL s ()]
+  go (Free (EP p i x)) = EP p i () : go x
+  go (Free (ES s i x)) = ES s i () : go x
+  go (Free (EW t   x)) = EW t   () : go x
+  go (Free (EA a x))   = EA a   () : go x
+  go (Pure _)          = []
 
-instance Folding Profiles where
-  toList (Script m) = go m
-   where
-    go :: Free (EL Profiles) a -> [EL Profiles ()] -- to avoid non-exhaustive pattern match warning
-    go (Free (EP p i x)) = EP p i () : go x
-    go (Free (EW t   x)) = EW t   () : go x
-    go (Pure _)          = []
-
-instance Folding Sources where
-  toList (Script m) = go m
-   where
-    go :: Free (EL Sources) a -> [EL Sources ()]
-    go (Free (ES s i x)) = ES s i () : go x
-    go (Free (EW w   x)) = EW w   () : go x
-    go (Pure _)          = []
-
-instance Folding Actions where
-  toList (Script m) = go m
-   where
-    go :: Free (EL Actions) a -> [EL Actions ()]
-    go (Free (EA a x)) = EA a () : go x
-    go (Free (EW w x)) = EW w () : go x
-    go (Pure _)        = []
 
 -- | Merge chained instructions
 chained :: [IL] -> [IL]
