@@ -29,7 +29,9 @@ import Biegunka.Transform (simplified)
 verify :: Interpreter
 verify = I $ \c (simplified -> s) -> do
   (verified, failures) <- runWriterT (verification s)
-  view logger c $ (if verified then green "OK" else vcat failures) <> line
+  view logger c $
+    text "Verification:" <> line <>
+    (if verified then green "OK" else vcat failures) <> line
 
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
@@ -37,7 +39,7 @@ verification :: [IL] -> WriterT [TermDoc] IO Bool
 verification = foldl' (\a -> liftA2 (&&) a . go) (return True)
  where
   go i = case log i of
-    Just l  -> liftIO (correct i `mplus` return False) >>= \c -> unless c (tell [l]) >> return c
+    Just l  -> liftIO (correct i `mplus` return False) >>= \c -> unless c (tell [describe l]) >> return c
     Nothing -> return True
 
 -- | Check single instruction correctness
@@ -58,17 +60,28 @@ correct il = case il of
     _ -> return True
   _ -> return True
 
+
+
+-- | Describe current action and host where it happens
+describe :: TermDoc -> TermDoc
+describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
+
+
 -- | Log message on failure
 log :: IL -> Maybe TermDoc
-log il = case il of
+log il = nest 1 <$> case il of
   IS p t _ _ u ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
-  IA a _ _ _ _ -> case a of
+  IA a _ _ _ n -> annotation (text n) <$> case a of
     Link s d ->
-      Just . indent 2 $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
+      Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
     Copy s d ->
-      Just . indent 2 $ yellow (text d) </> "is not a copy of" </> magenta (text s)
+      Just $ yellow (text d) </> "is not a copy of" </> magenta (text s)
     Template s d _ ->
-      Just . indent 2 $ yellow (text d) </> "is not a templated copy of" </> magenta (text s)
+      Just $ yellow (text d) </> "is not a templated copy of" </> magenta (text s)
     _ -> Nothing
   _ -> Nothing
+ where
+  -- | Annotate action description with source name
+  annotation :: TermDoc -> TermDoc -> TermDoc
+  annotation t doc = parens (cyan t) </> doc
