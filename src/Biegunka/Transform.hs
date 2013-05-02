@@ -88,8 +88,8 @@ toList = go . runScript
 
 -- | Merge chained instructions
 chained :: [IL] -> [IL]
-chained (IT xs : IW Chain : IT ys : zs) = chained $ IT (xs ++ ys) : zs -- Wrong associativity!
-chained (x : zs) = x : chained zs
+chained (IT xs : IW Chain : ys) = let (IT ws : zs) = chained ys in IT (xs ++ ws) : zs
+chained (x : ys) = x : chained ys
 chained [] = []
 
 simplified :: [IL] -> [IL]
