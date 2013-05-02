@@ -4,8 +4,6 @@
 -- | Transform external language into internal one
 module Biegunka.Transform (fromEL, simplified) where
 
-import Control.Applicative
-
 import Control.Lens
 import Control.Monad.Free (Free(..))
 import Control.Monad.State (State, evalState, get)
@@ -40,52 +38,41 @@ makeLenses ''Transformation
 --
 -- Returns internal language "instructions" littered with information used later
 fromEL :: Script Profiles () -> FilePath -> [IL]
-fromEL s r = return . (`evalState` (def & root .~ r)) $ stepping stepP s
- where
-  stepping :: (Applicative m) => (EL s () -> m IL) -> Script s () -> m IL
-  stepping step = fmap (IT . chained) . traverse step . toList
+fromEL s r = return . (`evalState` (def & root .~ r)) . fmap (IT . chained) . traverse step . toList $ s
 
 
 -- | Transform Profiles layer
-stepP :: EL Profiles () -> State Transformation IL
-stepP (EP (Profile n) s _) = do
+step :: EL s () -> State Transformation IL
+step (EP (Profile n) s _) = do
   profileName .= n
-  xs <- mapM stepS $ toList s
+  xs <- mapM step $ toList s
   return $ IT (IP n : chained xs)
-stepP (EW w _) = return $ IW w
-
--- | Transform Sources layer
-stepS :: EL Sources () -> State Transformation IL
-stepS (ES (Source t u d a) s ()) = do
+step (ES (Source t u d a) s ()) = do
   Transformation r _ pn _ _ <- get
   sourceName .= u
   source .= r </> d
   order .= 0
-  xs <- mapM stepF $ toList s
+  xs <- mapM step $ toList s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
   return $ IT (chained $ IS (r </> d) t (a $ r </> d) pn u : ys)
-stepS (EW w _) = return $ IW w
-
--- | Transform Files layer
-stepF :: EL Actions () -> State Transformation IL
-stepF (EA (Link s d) ()) = do
+step (EA (Link s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Link (src </> s) (r </> d)) o 0 pn sn
-stepF (EA (Copy s d) ()) = do
+step (EA (Copy s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Copy (src </> s) (r </> d)) o 0 pn sn
-stepF (EA (Template s d t) ()) = do
+step (EA (Template s d t) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Template (src </> s) (r </> d) t) o 0 pn sn
-stepF (EA (Shell d c) ()) = do
+step (EA (Shell d c) ()) = do
   Transformation _ s pn sn _ <- get
   o <- order <+= 1
   return $ IA (Shell (s </> d) c) o 0 pn sn
-stepF (EW w _) = return $ IW w
+step (EW w _) = return $ IW w
 
 
 toList :: Script s a -> [EL s ()]
