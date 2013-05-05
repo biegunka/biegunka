@@ -79,8 +79,11 @@ load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c)
 -- This may fail, on failure 'loadProfile' returns Nothing
 --
 -- Reasons to fail:
+--
 --  * Passed instruction does not define profile
+--
 --  * Cannot read from profile file (various reasons here)
+--
 --  * Cannot parse profile file (wrong format)
 loadProfile :: Controls -> IL -> IO (Maybe (String, Map R (Map FilePath R)))
 loadProfile c (IP profile) = do
@@ -104,8 +107,8 @@ loadProfile _ _ = return Nothing
 -- Each profile is mapped to a separate file in 'appData' directory.
 -- Mapping rules are simple: profile name is a relative path in 'appData'.
 --
--- For example, profile @dotfiles@ is located in @~/.biegunka/dotfiles@ by default
--- and profile @my/dotfiles@ is located in @~/.biegunka.my/dotfiles@ by default
+-- For example, profile @dotfiles@ is located in @~\/.biegunka\/dotfiles@ by default
+-- and profile @my\/dotfiles@ is located in @~\/.biegunka.my\/dotfiles@ by default.
 save :: Controls -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
