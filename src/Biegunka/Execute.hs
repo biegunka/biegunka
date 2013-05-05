@@ -174,15 +174,15 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar sudoingTV False
  where
-  op (IS dst _ update _ r) = do
+  op (IS dst _ update _ _) = do
     reposTV <- liftM (view repos) reflected
     return $ do
       unmentioned <- atomically $ do
         rs <- readTVar reposTV
-        if r `member` rs
+        if dst `member` rs
           then return False
           else do
-            writeTVar reposTV $ insert r rs
+            writeTVar reposTV $ insert dst rs
             return True
       when unmentioned $ do
         createDirectoryIfMissing True $ dropFileName dst
