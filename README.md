@@ -7,8 +7,7 @@ Configurations management library.
 ## Install
 ```
 % git clone git@github.com:biegunka/biegunka-core
-% git clone git@github.com:biegunka/biegunka-git
-% cabal[-dev] install biegunka-core/biegunka-core.cabal biegunka-git/biegunka-git.cabal
+% cabal[-dev] install biegunka-core/biegunka-core.cabal
 ```
 
 ## Example
