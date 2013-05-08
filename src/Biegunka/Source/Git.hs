@@ -29,7 +29,6 @@ import Biegunka.Language
 import Biegunka.Source
 
 
-
 -- | Git repository's settings
 data Git = Git
   { gitactions :: Script Actions () -- ^ Actions to run after repository update

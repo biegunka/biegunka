@@ -43,6 +43,7 @@ instance Monad (Script sc) where
 
 instance Default a => Default (Script sc a) where
   def = return def
+  {-# INLINE def #-}
 
 -- | Lift DSL term to the 'Script'
 lift :: EL sc a -> Script sc a
