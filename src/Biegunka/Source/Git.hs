@@ -3,7 +3,7 @@
 -- | Biegunka.Source.Git - support for git repositories as sources
 module Biegunka.Source.Git
   ( -- * Source layer
-    git, git'
+    (==>), git', git
     -- * Types
   , Git(..)
     -- ** Lenses
@@ -47,6 +47,8 @@ instance Default Git where
 
 instance Source Git where
   actions f x = f (gitactions x) <&> \as -> x { gitactions = as }
+
+  (==>) = git'
 
 -- | Remotes to merge on update
 remotes :: Lens' Git [Remote]
