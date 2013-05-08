@@ -5,7 +5,7 @@ module Biegunka.Source.Git
   ( -- * Source layer
     (==>), git', git, git_
     -- * Types
-  , Git(..)
+  , Git(..), defaultGit
     -- ** Lenses
   , actions, remotes, branch
     -- ** Type synonyms
@@ -37,18 +37,21 @@ data Git = Git
   , _branch    :: Branch            -- ^ Branch to track
   }
 
--- | Do nothing except pulling @origin/master@ into @master@
 instance Default Git where
-  def = Git
-    { gitactions = return ()
-    , _remotes   = ["origin"]
-    , _branch    = "master"
-    }
+  def = defaultGit
 
 instance Source Git where
   actions f x = f (gitactions x) <&> \as -> x { gitactions = as }
 
   (==>) = git'
+
+-- | Do nothing except pulling @origin/master@ into @master@
+defaultGit :: Git
+defaultGit = Git
+  { gitactions = def
+  , _remotes   = ["origin"]
+  , _branch    = "master"
+  }
 
 -- | Remotes to merge on update
 remotes :: Lens' Git [Remote]
