@@ -36,6 +36,7 @@ library
                  wordexp >= 0.2
   hs-source-dirs: src
   exposed-modules: Biegunka
+                   Biegunka.Source
                    Biegunka.Source.Dummy
                    Biegunka.Source.Git
                    Biegunka.Language

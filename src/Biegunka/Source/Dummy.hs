@@ -6,7 +6,7 @@ import Control.Monad.Free (liftF)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
-import Biegunka.Language (Script(..), Scope(Actions, Sources), EL(ES), S(..))
+import Biegunka.Language
 
 
 -- | Make specified layout and attack it with 'Files'
