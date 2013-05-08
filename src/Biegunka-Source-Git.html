@@ -82,55 +82,54 @@
 <a name="line-73"></a><a name="git'"></a><span class='hs-comment'>-- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:</span>
 <a name="line-74"></a><span class='hs-comment'>--</span>
 <a name="line-75"></a><span class='hs-comment'>-- @</span>
-<a name="line-76"></a><span class='hs-comment'>-- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\" def</span>
-<a name="line-77"></a><span class='hs-comment'>--   { remotes = [\"origin\", \"stream\"]</span>
-<a name="line-78"></a><span class='hs-comment'>--   , branch = \"develop\"</span>
-<a name="line-79"></a><span class='hs-comment'>--   , actions = do</span>
+<a name="line-76"></a><span class='hs-comment'>-- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\" $ def</span>
+<a name="line-77"></a><span class='hs-comment'>--   &amp; remotes .~ [\"origin\", \"stream\"]</span>
+<a name="line-78"></a><span class='hs-comment'>--   &amp; branch .~ \"develop\"</span>
+<a name="line-79"></a><span class='hs-comment'>--   &amp; actions .~ do</span>
 <a name="line-80"></a><span class='hs-comment'>--       link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\"</span>
-<a name="line-81"></a><span class='hs-comment'>--   }</span>
-<a name="line-82"></a><span class='hs-comment'>-- @</span>
-<a name="line-83"></a><span class='hs-comment'>--</span>
-<a name="line-84"></a><span class='hs-comment'>--  1. Clone repository from @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@</span>
-<a name="line-85"></a><span class='hs-comment'>--</span>
-<a name="line-86"></a><span class='hs-comment'>--  2. Merge @origin/develop@ into @develop@</span>
-<a name="line-87"></a><span class='hs-comment'>--</span>
-<a name="line-88"></a><span class='hs-comment'>--  3. Merge @stream/develop@ into @develop@</span>
-<a name="line-89"></a><span class='hs-comment'>--</span>
-<a name="line-90"></a><span class='hs-comment'>--  4. Checkout to @develop@</span>
-<a name="line-91"></a><span class='hs-comment'>--</span>
-<a name="line-92"></a><span class='hs-comment'>--  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@</span>
-<a name="line-93"></a><span class='hs-definition'>git'</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Git</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
-<a name="line-94"></a><span class='hs-definition'>git'</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-layout'>(</span><span class='hs-conid'>Git</span> <span class='hs-layout'>{</span> <span class='hs-varid'>gitactions</span><span class='hs-layout'>,</span> <span class='hs-sel'>_remotes</span><span class='hs-layout'>,</span> <span class='hs-sel'>_branch</span> <span class='hs-layout'>}</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span>
-<a name="line-95"></a>  <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>ES</span> <span class='hs-layout'>(</span><span class='hs-conid'>Source</span> <span class='hs-str'>"git"</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-layout'>(</span><span class='hs-varid'>updateGit</span> <span class='hs-varid'>u</span> <span class='hs-sel'>_remotes</span> <span class='hs-sel'>_branch</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-varid'>gitactions</span> <span class='hs-conid'>()</span>
-<a name="line-96"></a><span class='hs-comment'>{-# INLINE git' #-}</span>
-<a name="line-97"></a>
-<a name="line-98"></a><a name="git"></a><span class='hs-comment'>-- | Wrapper over 'git'' that provides easy specification of 'actions' field.</span>
-<a name="line-99"></a><span class='hs-definition'>git</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
-<a name="line-100"></a><span class='hs-definition'>git</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>git'</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>def</span> <span class='hs-layout'>{</span> <span class='hs-varid'>gitactions</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>s</span> <span class='hs-layout'>}</span>
-<a name="line-101"></a><span class='hs-comment'>{-# INLINE git #-}</span>
+<a name="line-81"></a><span class='hs-comment'>-- @</span>
+<a name="line-82"></a><span class='hs-comment'>--</span>
+<a name="line-83"></a><span class='hs-comment'>--  1. Clone repository from @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@</span>
+<a name="line-84"></a><span class='hs-comment'>--</span>
+<a name="line-85"></a><span class='hs-comment'>--  2. Merge @origin/develop@ into @develop@</span>
+<a name="line-86"></a><span class='hs-comment'>--</span>
+<a name="line-87"></a><span class='hs-comment'>--  3. Merge @stream/develop@ into @develop@</span>
+<a name="line-88"></a><span class='hs-comment'>--</span>
+<a name="line-89"></a><span class='hs-comment'>--  4. Checkout to @develop@</span>
+<a name="line-90"></a><span class='hs-comment'>--</span>
+<a name="line-91"></a><span class='hs-comment'>--  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@</span>
+<a name="line-92"></a><span class='hs-definition'>git'</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Git</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
+<a name="line-93"></a><span class='hs-definition'>git'</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-layout'>(</span><span class='hs-conid'>Git</span> <span class='hs-layout'>{</span> <span class='hs-varid'>gitactions</span><span class='hs-layout'>,</span> <span class='hs-sel'>_remotes</span><span class='hs-layout'>,</span> <span class='hs-sel'>_branch</span> <span class='hs-layout'>}</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span>
+<a name="line-94"></a>  <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>ES</span> <span class='hs-layout'>(</span><span class='hs-conid'>Source</span> <span class='hs-str'>"git"</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-layout'>(</span><span class='hs-varid'>updateGit</span> <span class='hs-varid'>u</span> <span class='hs-sel'>_remotes</span> <span class='hs-sel'>_branch</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-varid'>gitactions</span> <span class='hs-conid'>()</span>
+<a name="line-95"></a><span class='hs-comment'>{-# INLINE git' #-}</span>
+<a name="line-96"></a>
+<a name="line-97"></a><a name="git"></a><span class='hs-comment'>-- | Wrapper over 'git'' that provides easy specification of 'actions' field.</span>
+<a name="line-98"></a><span class='hs-definition'>git</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
+<a name="line-99"></a><span class='hs-definition'>git</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>git'</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>def</span> <span class='hs-layout'>{</span> <span class='hs-varid'>gitactions</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>s</span> <span class='hs-layout'>}</span>
+<a name="line-100"></a><span class='hs-comment'>{-# INLINE git #-}</span>
+<a name="line-101"></a>
 <a name="line-102"></a>
-<a name="line-103"></a>
-<a name="line-104"></a><a name="updateGit"></a><span class='hs-definition'>updateGit</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-keyglyph'>[</span><span class='hs-conid'>Remote</span><span class='hs-keyglyph'>]</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Branch</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span>
-<a name="line-105"></a><span class='hs-definition'>updateGit</span> <span class='hs-varid'>u</span> <span class='hs-varid'>rs</span> <span class='hs-varid'>br</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-106"></a>  <span class='hs-varid'>exists</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>doesDirectoryExist</span> <span class='hs-varid'>p</span>
-<a name="line-107"></a>  <span class='hs-keyword'>if</span> <span class='hs-varid'>exists</span>
-<a name="line-108"></a>    <span class='hs-keyword'>then</span> <span class='hs-keyword'>do</span>
-<a name="line-109"></a>      <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"remote"</span><span class='hs-layout'>,</span> <span class='hs-str'>"update"</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
-<a name="line-110"></a>      <span class='hs-varid'>forM_</span> <span class='hs-varid'>rs</span> <span class='hs-varop'>$</span> <span class='hs-keyglyph'>\</span><span class='hs-varid'>r</span> <span class='hs-keyglyph'>-&gt;</span>
-<a name="line-111"></a>        <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"merge"</span><span class='hs-layout'>,</span> <span class='hs-varid'>r</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>br</span><span class='hs-layout'>,</span> <span class='hs-varid'>br</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
-<a name="line-112"></a>    <span class='hs-keyword'>else</span>
-<a name="line-113"></a>      <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"clone"</span><span class='hs-layout'>,</span> <span class='hs-varid'>u</span><span class='hs-layout'>,</span> <span class='hs-varid'>p</span><span class='hs-keyglyph'>]</span> <span class='hs-conid'>Nothing</span>
-<a name="line-114"></a>  <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"checkout"</span><span class='hs-layout'>,</span> <span class='hs-varid'>br</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
-<a name="line-115"></a> <span class='hs-keyword'>where</span>
-<a name="line-116"></a>  <span class='hs-varid'>check</span> <span class='hs-varid'>ih</span> <span class='hs-layout'>(</span><span class='hs-conid'>ExitFailure</span> <span class='hs-keyword'>_</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-117"></a>    <span class='hs-varid'>l</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>T</span><span class='hs-varop'>.</span><span class='hs-varid'>hGetContents</span> <span class='hs-varid'>ih</span>
-<a name="line-118"></a>    <span class='hs-varid'>sourceFailure</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>l</span>
-<a name="line-119"></a>  <span class='hs-varid'>check</span> <span class='hs-keyword'>_</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>return</span> <span class='hs-conid'>()</span>
-<a name="line-120"></a>
-<a name="line-121"></a>  <span class='hs-varid'>gitie</span> <span class='hs-varid'>xs</span> <span class='hs-varid'>fp</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
-<a name="line-122"></a>    <span class='hs-layout'>(</span><span class='hs-varid'>ifd</span><span class='hs-layout'>,</span><span class='hs-varid'>ofd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>createPipe</span>
-<a name="line-123"></a>    <span class='hs-varid'>ih</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>ifd</span>
-<a name="line-124"></a>    <span class='hs-varid'>oh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>ofd</span>
-<a name="line-125"></a>    <span class='hs-varid'>check</span> <span class='hs-varid'>ih</span> <span class='hs-varop'>=&lt;&lt;</span> <span class='hs-varid'>waitForProcess</span> <span class='hs-varop'>=&lt;&lt;</span> <span class='hs-varid'>runProcess</span> <span class='hs-str'>"git"</span> <span class='hs-varid'>xs</span> <span class='hs-varid'>fp</span> <span class='hs-conid'>Nothing</span> <span class='hs-conid'>Nothing</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>oh</span><span class='hs-layout'>)</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>oh</span><span class='hs-layout'>)</span>
+<a name="line-103"></a><a name="updateGit"></a><span class='hs-definition'>updateGit</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-keyglyph'>[</span><span class='hs-conid'>Remote</span><span class='hs-keyglyph'>]</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Branch</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span>
+<a name="line-104"></a><span class='hs-definition'>updateGit</span> <span class='hs-varid'>u</span> <span class='hs-varid'>rs</span> <span class='hs-varid'>br</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
+<a name="line-105"></a>  <span class='hs-varid'>exists</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>doesDirectoryExist</span> <span class='hs-varid'>p</span>
+<a name="line-106"></a>  <span class='hs-keyword'>if</span> <span class='hs-varid'>exists</span>
+<a name="line-107"></a>    <span class='hs-keyword'>then</span> <span class='hs-keyword'>do</span>
+<a name="line-108"></a>      <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"remote"</span><span class='hs-layout'>,</span> <span class='hs-str'>"update"</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
+<a name="line-109"></a>      <span class='hs-varid'>forM_</span> <span class='hs-varid'>rs</span> <span class='hs-varop'>$</span> <span class='hs-keyglyph'>\</span><span class='hs-varid'>r</span> <span class='hs-keyglyph'>-&gt;</span>
+<a name="line-110"></a>        <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"merge"</span><span class='hs-layout'>,</span> <span class='hs-varid'>r</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>br</span><span class='hs-layout'>,</span> <span class='hs-varid'>br</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
+<a name="line-111"></a>    <span class='hs-keyword'>else</span>
+<a name="line-112"></a>      <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"clone"</span><span class='hs-layout'>,</span> <span class='hs-varid'>u</span><span class='hs-layout'>,</span> <span class='hs-varid'>p</span><span class='hs-keyglyph'>]</span> <span class='hs-conid'>Nothing</span>
+<a name="line-113"></a>  <span class='hs-varid'>gitie</span> <span class='hs-keyglyph'>[</span><span class='hs-str'>"checkout"</span><span class='hs-layout'>,</span> <span class='hs-varid'>br</span><span class='hs-keyglyph'>]</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>p</span><span class='hs-layout'>)</span>
+<a name="line-114"></a> <span class='hs-keyword'>where</span>
+<a name="line-115"></a>  <span class='hs-varid'>check</span> <span class='hs-varid'>ih</span> <span class='hs-layout'>(</span><span class='hs-conid'>ExitFailure</span> <span class='hs-keyword'>_</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
+<a name="line-116"></a>    <span class='hs-varid'>l</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-conid'>T</span><span class='hs-varop'>.</span><span class='hs-varid'>hGetContents</span> <span class='hs-varid'>ih</span>
+<a name="line-117"></a>    <span class='hs-varid'>sourceFailure</span> <span class='hs-varid'>u</span> <span class='hs-varid'>p</span> <span class='hs-varid'>l</span>
+<a name="line-118"></a>  <span class='hs-varid'>check</span> <span class='hs-keyword'>_</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>return</span> <span class='hs-conid'>()</span>
+<a name="line-119"></a>
+<a name="line-120"></a>  <span class='hs-varid'>gitie</span> <span class='hs-varid'>xs</span> <span class='hs-varid'>fp</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
+<a name="line-121"></a>    <span class='hs-layout'>(</span><span class='hs-varid'>ifd</span><span class='hs-layout'>,</span><span class='hs-varid'>ofd</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>createPipe</span>
+<a name="line-122"></a>    <span class='hs-varid'>ih</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>ifd</span>
+<a name="line-123"></a>    <span class='hs-varid'>oh</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>fdToHandle</span> <span class='hs-varid'>ofd</span>
+<a name="line-124"></a>    <span class='hs-varid'>check</span> <span class='hs-varid'>ih</span> <span class='hs-varop'>=&lt;&lt;</span> <span class='hs-varid'>waitForProcess</span> <span class='hs-varop'>=&lt;&lt;</span> <span class='hs-varid'>runProcess</span> <span class='hs-str'>"git"</span> <span class='hs-varid'>xs</span> <span class='hs-varid'>fp</span> <span class='hs-conid'>Nothing</span> <span class='hs-conid'>Nothing</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>oh</span><span class='hs-layout'>)</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>oh</span><span class='hs-layout'>)</span>
 </pre></body>
 </html>

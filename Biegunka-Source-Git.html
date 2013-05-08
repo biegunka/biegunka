@@ -10,12 +10,11 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka-Source-Git.ht
 </h1><div class="top"><p class="src"><a name="v:git" class="def">git</a> :: <a href="Biegunka-Source-Git.html#t:URI">URI</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Language.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> () -&gt; <a href="Biegunka-Language.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Sources">Sources</a> ()<a href="src/Biegunka-Source-Git.html#git" class="link">Source</a></p><div class="doc"><p>Wrapper over <code><a href="Biegunka-Source-Git.html#v:git-39-">git'</a></code> that provides easy specification of <code><a href="Biegunka-Source-Git.html#v:actions">actions</a></code> field.
 </p></div></div><div class="top"><p class="src"><a name="v:git-39-" class="def">git'</a> :: <a href="Biegunka-Source-Git.html#t:URI">URI</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Source-Git.html#t:Git">Git</a> -&gt; <a href="Biegunka-Language.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Sources">Sources</a> ()<a href="src/Biegunka-Source-Git.html#git%27" class="link">Source</a></p><div class="doc"><p>Clone repository from the url to the specified path using provided <code><a href="Biegunka-Source-Git.html#t:Git">Git</a></code> settings. Sample:
 </p><pre>
- git' &quot;git@github.com:edwinb/Idris-dev&quot; &quot;git/Idris-dev&quot; def
-   { remotes = [&quot;origin&quot;, &quot;stream&quot;]
-   , branch = &quot;develop&quot;
-   , actions = do
+ git' &quot;git@github.com:edwinb/Idris-dev&quot; &quot;git/Idris-dev&quot; $ def
+   &amp; remotes .~ [&quot;origin&quot;, &quot;stream&quot;]
+   &amp; branch .~ &quot;develop&quot;
+   &amp; actions .~ do
        link &quot;contribs/tool-support/vim&quot; &quot;.vim/bundle/idris-vim&quot;
-   }
 </pre><ol><li> Clone repository from <code>https://github.com/edwinb/Idris-dev.git</code> to <code>~/git/Idris-dev</code>
 </li><li> Merge <code>origin/develop</code> into <code>develop</code>
 </li><li> Merge <code>stream/develop</code> into <code>develop</code>
