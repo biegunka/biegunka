@@ -73,12 +73,11 @@ type URI = String
 -- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
 --
 -- @
--- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\" def
---   { remotes = [\"origin\", \"stream\"]
---   , branch = \"develop\"
---   , actions = do
+-- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\" $ def
+--   & remotes .~ [\"origin\", \"stream\"]
+--   & branch .~ \"develop\"
+--   & actions .~ do
 --       link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\"
---   }
 -- @
 --
 --  1. Clone repository from @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@
