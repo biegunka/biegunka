@@ -13,6 +13,7 @@ import Data.Foldable (Foldable(..))
 import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..), liftF)
+import Data.Default (Default(..))
 import Data.Text.Lazy (Text)
 import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
@@ -39,6 +40,9 @@ instance Monad (Script sc) where
   {-# INLINE return #-}
   Script m >>= f = Script (m >>= runScript . f)
   {-# INLINE (>>=) #-}
+
+instance Default a => Default (Script sc a) where
+  def = return def
 
 -- | Lift DSL term to the 'Script'
 lift :: EL sc a -> Script sc a

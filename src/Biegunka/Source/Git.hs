@@ -3,7 +3,7 @@
 -- | Biegunka.Source.Git - support for git repositories as sources
 module Biegunka.Source.Git
   ( -- * Source layer
-    (==>), git', git
+    (==>), git', git, git_
     -- * Types
   , Git(..)
     -- ** Lenses
@@ -96,10 +96,15 @@ git' u p (Git { gitactions, _remotes, _branch }) =
   lift $ ES (Source "git" u p (updateGit u _remotes _branch)) gitactions ()
 {-# INLINE git' #-}
 
--- | Wrapper over 'git'' that provides easy specification of 'actions' field.
+-- | Wrapper over 'git'' that provides easy specification of 'actions' field
 git :: URI -> FilePath -> Script Actions () -> Script Sources ()
 git u p s = git' u p def { gitactions = s }
 {-# INLINE git #-}
+
+-- | Wrapper over 'git' that does not provide anything
+git_ :: URI -> FilePath -> Script Sources ()
+git_ u p = git u p def
+{-# INLINE git_ #-}
 
 
 updateGit :: URI -> [Remote] -> Branch -> FilePath -> IO ()
