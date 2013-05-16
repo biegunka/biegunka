@@ -1,8 +1,9 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Biegunka.Source.Dummy - example Source using 'directory-layout'
 module Biegunka.Source.Dummy (dummy, dummy_) where
 
-import Control.Monad.Free (liftF)
+import Control.Monad.State (state)
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
@@ -19,7 +20,9 @@ dummy :: Layout            -- ^ Layout to make
       -> FilePath          -- ^ Layout root (relative to user home directory)
       -> Script Actions () -- ^ What to do with layout files
       -> Script Sources ()
-dummy l p s = Script . liftF $ ES (Source "dummy" "localhost" p updateDummy) s ()
+dummy l p s = do
+  (ast, st) <- state $ \st -> let (ast, (succ -> st')) = annotate s st in ((ast, st'), st')
+  liftS $ ES st (Source "dummy" "localhost" p updateDummy) ast ()
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
 

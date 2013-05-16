@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Biegunka.Source.Git - support for git repositories as sources
 module Biegunka.Source.Git
   ( -- * Source layer
@@ -17,6 +18,7 @@ import Control.Monad (forM_)
 import System.Exit (ExitCode(..))
 
 import           Control.Lens
+import           Control.Monad.State (state)
 import           Data.Default (Default(..))
 import qualified Data.Text.IO as T
 import           System.Directory (doesDirectoryExist)
@@ -94,8 +96,9 @@ type URI = String
 --
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Git -> Script Sources ()
-git' u p (Git { gitactions, _remotes, _branch }) =
-  lift $ ES (Source "git" u p (updateGit u _remotes _branch)) gitactions ()
+git' u p (Git { gitactions, _remotes, _branch }) = do
+  (ast, s) <- state $ \s -> let (ast, (succ -> s')) = annotate gitactions s in ((ast, s'), s')
+  liftS $ ES s (Source "git" u p (updateGit u _remotes _branch)) ast ()
 {-# INLINE git' #-}
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field

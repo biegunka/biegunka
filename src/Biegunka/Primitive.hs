@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Language primitives
 module Biegunka.Primitive
   ( -- * Profile layer primitives
@@ -11,9 +12,10 @@ module Biegunka.Primitive
 
 import Data.Monoid (mempty)
 
+import Control.Monad.State
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
-import Biegunka.Language (Scope(..), Script(..), lift, EL(..), P(..), A(..), W(..), React(..))
+import Biegunka.Language
 
 infixr 7 `chain`, ~>>
 
@@ -28,7 +30,9 @@ infixr 7 `chain`, ~>>
 -- > profile "friend's" $ do
 -- >   svn ...
 profile :: String -> Script Sources () -> Script Profiles ()
-profile n s = lift $ EP (Profile n) s ()
+profile n i = do
+  (ast, s) <- state $ \s -> let (ast, (succ -> s')) = annotate i s in ((ast, s'), s')
+  liftS $ EP s (Profile n) ast ()
 {-# INLINE profile #-}
 
 -- | Links source to specified filepath
@@ -38,7 +42,7 @@ profile n s = lift $ EP (Profile n) s ()
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Actions ()
-registerAt dst = lift $ EA (Link mempty dst) ()
+registerAt dst = liftS $ EA () (Link mempty dst) ()
 {-# INLINE registerAt #-}
 
 -- | Links given file to specified filepath
@@ -48,7 +52,7 @@ registerAt dst = lift $ EA (Link mempty dst) ()
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Actions ()
-link src dst = lift $ EA (Link src dst) ()
+link src dst = liftS $ EA () (Link src dst) ()
 {-# INLINE link #-}
 
 -- | Copies given file to specified filepath
@@ -58,7 +62,7 @@ link src dst = lift $ EA (Link src dst) ()
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Actions ()
-copy src dst = lift $ EA (Copy src dst) ()
+copy src dst = liftS $ EA () (Copy src dst) ()
 {-# INLINE copy #-}
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -69,8 +73,8 @@ copy src dst = lift $ EA (Copy src dst) ()
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute :: FilePath -> FilePath -> Script Actions ()
-substitute src dst = lift $
-  EA (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
+substitute src dst = liftS $
+  EA () (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
 {-# INLINE substitute #-}
 
 
@@ -81,17 +85,17 @@ substitute src dst = lift $
 --
 -- Prints "hello" (without a newline)
 shell :: String -> Script Actions ()
-shell c = lift $ EA (Shell mempty c) ()
+shell c = liftS $ EA () (Shell mempty c) ()
 {-# INLINE shell #-}
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script sc () -> Script sc ()
-sudo n s = lift (EW (User (Just n)) ()) >> s >> lift (EW (User Nothing) ())
+sudo n s = liftS (EW (User (Just n)) ()) >> s >> liftS (EW (User Nothing) ())
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Script sc () -> Script sc ()
-reacting r s = lift (EW (Reacting (Just r)) ()) >> s >> lift (EW (Reacting Nothing) ())
+reacting r s = liftS (EW (Reacting (Just r)) ()) >> s >> liftS (EW (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 -- | Chain tasks sequentially
@@ -99,8 +103,13 @@ reacting r s = lift (EW (Reacting (Just r)) ()) >> s >> lift (EW (Reacting Nothi
 --
 -- Note: redundant if 'Order' is 'Sequential'
 chain :: Script sc () -> Script sc () -> Script sc ()
-chain a b = a >> lift (EW Chain ()) >> b
-{-# INLINE chain #-}
+chain a b = do
+  (ast, ast') <- state $ \s ->
+    let (ast,  s')  = annotate a s
+        (ast', s'') = annotate b s
+    in ((ast, ast'), max s' s'')
+  Script (lift ast)
+  Script (lift ast')
 
 -- | Alias for 'chain'
 (~>>) :: Script sc () -> Script sc () -> Script sc ()
