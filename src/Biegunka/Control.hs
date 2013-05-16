@@ -12,13 +12,14 @@ module Biegunka.Control
   ) where
 
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import Control.Monad (forever, unless)
 import Prelude hiding (log)
 import System.IO
 
+import           Control.Concurrent.STM (atomically)
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import           Control.Lens
+import           Control.Monad.State (evalStateT)
 import           Data.Default
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
@@ -88,9 +89,10 @@ biegunka (($ def) -> c) (I f) s = do
   let z = if view colors c then id else plain
   q <- newTQueueIO
   forkIO $ log q
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue q . z)) (fromEL s r)
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue q . z)) (fromEL (flip evalStateT 0 (runScript s)) r)
   fix $ \wait ->
     atomically (isEmptyTQueue q) >>= \e -> unless e (threadDelay 10000 >> wait)
+
 
 expand :: String -> IO String
 expand x = do

@@ -41,17 +41,17 @@ makeLenses ''Transformation
 -- | Given user defined biegunka script preprocess it into something usable
 --
 -- Returns internal language "instructions" littered with information used later
-fromEL :: Script Profiles () -> FilePath -> [IL]
+fromEL :: Free (EL a Profiles) () -> FilePath -> [IL]
 fromEL s r = return . (`evalState` (def & root .~ r)) . fmap (IT . chained) . traverse step . toList $ s
 
 
 -- | Transform Profiles layer
-step :: EL s () -> State Transformation IL
-step (EP (Profile n) s _) = do
+step :: EL a s () -> State Transformation IL
+step (EP _ (Profile n) s _) = do
   profileName .= n
   xs <- mapM step $ toList s
   return $ IT (IP n : chained xs)
-step (ES (Source t u d a) s ()) = do
+step (ES _ (Source t u d a) s ()) = do
   Transformation r _ pn _ _ <- get
   sourceName .= u
   let df = constructDestinationFilepath r u d
@@ -60,20 +60,20 @@ step (ES (Source t u d a) s ()) = do
   xs <- mapM step $ toList s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
-  return $ IT (chained $ IS df t (a $ df) pn u : ys)
-step (EA (Link s d) ()) = do
+  return $ IT (chained $ IS (r </> d) t (a $ df) pn u : ys)
+step (EA _ (Link s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Link (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
-step (EA (Copy s d) ()) = do
+step (EA _ (Copy s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Copy (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
-step (EA (Template s d t) ()) = do
+step (EA _ (Template s d t) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
   return $ IA (Template (src </> s) (constructDestinationFilepath r s d) t) o 0 pn sn
-step (EA (Shell d c) ()) = do
+step (EA _ (Shell d c) ()) = do
   Transformation _ s pn sn _ <- get
   o <- order <+= 1
   return $ IA (Shell (s </> d) c) o 0 pn sn
@@ -87,15 +87,12 @@ constructDestinationFilepath r s d = execState ?? r $ do
     id </>= (s^.filename)
 
 
-toList :: Script s a -> [EL s ()]
-toList = go . runScript
- where
-  go :: Free (EL s) a -> [EL s ()]
-  go (Free (EP p i x)) = EP p i () : go x
-  go (Free (ES s i x)) = ES s i () : go x
-  go (Free (EW t   x)) = EW t   () : go x
-  go (Free (EA a x))   = EA a   () : go x
-  go (Pure _)          = []
+toList :: Free (EL a s) x -> [EL () s ()]
+toList (Free (EP _ p i x)) = EP () p i () : toList x
+toList (Free (ES _ s i x)) = ES () s i () : toList x
+toList (Free (EW   t   x)) = EW    t   () : toList x
+toList (Free (EA _ a x))   = EA () a   () : toList x
+toList (Pure _)          = []
 
 
 -- | Merge chained instructions
