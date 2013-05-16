@@ -8,6 +8,7 @@ import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
 import Biegunka.Language
+import Biegunka.Script
 
 
 -- | Make specified layout and attack it with 'Files'

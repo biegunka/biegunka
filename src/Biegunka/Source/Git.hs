@@ -28,6 +28,7 @@ import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.Execute.Exception
 import Biegunka.Language
+import Biegunka.Script
 import Biegunka.Source
 
 

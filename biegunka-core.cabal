@@ -37,6 +37,7 @@ library
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Primitive
+                   Biegunka.Script
                    Biegunka.Source
                    Biegunka.Source.Dummy
                    Biegunka.Source.Git

@@ -29,7 +29,8 @@ import Biegunka.Execute.Control
   , Templates(..), templates
   , retries
   )
-import Biegunka.Language (Scope(..), Script(..), React(..))
+import Biegunka.Language (Scope(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Primitive
+import Biegunka.Script (Script)
 import Biegunka.Verify (verify)

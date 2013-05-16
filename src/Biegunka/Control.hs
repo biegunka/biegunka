@@ -27,8 +27,9 @@ import qualified System.Console.Terminal.Size as Term
 import           System.Wordexp (wordexp, nosubst, noundef)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
-import           Biegunka.Language
-import           Biegunka.Transform (fromEL)
+import Biegunka.Language
+import Biegunka.Script
+import Biegunka.Transform (fromEL)
 
 
 -- | Common interpreters controls

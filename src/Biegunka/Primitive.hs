@@ -16,6 +16,7 @@ import Control.Monad.State
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
+import Biegunka.Script
 
 infixr 7 `chain`, ~>>
 

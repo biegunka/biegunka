@@ -6,6 +6,7 @@ module Biegunka.Source
 import Control.Lens
 
 import Biegunka.Language
+import Biegunka.Script
 
 
 -- | Common 'Sources' structure
