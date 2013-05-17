@@ -18,16 +18,16 @@ import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQue
 import Control.Monad (forever, unless)
 import System.IO
 
-import Control.Lens
-import Data.Default
-import Data.Function (fix)
-import Data.Semigroup (Semigroup(..), Monoid(..))
-import System.Wordexp (wordexp, nosubst, noundef)
-import Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
+import           Control.Lens
+import           Data.Default
+import           Data.Function (fix)
+import           Data.Semigroup (Semigroup(..), Monoid(..))
+import qualified System.Console.Terminal.Size as Term
+import           System.Wordexp (wordexp, nosubst, noundef)
+import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
 import           Biegunka.Language
 import           Biegunka.Transform (fromEL)
-import qualified Biegunka.Terminal.Utils as Term
 
 
 -- | Common interpreters controls

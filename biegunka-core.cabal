@@ -28,6 +28,7 @@ library
                  tagged-transformer >= 0.3,
                  semigroups,
                  ansi-wl-pprint,
+                 terminal-size,
                  directory-layout >= 0.3.0.0,
                  data-default,
                  stm >= 2.4,
@@ -42,7 +43,6 @@ library
                    Biegunka.Language
                    Biegunka.DB
                    Biegunka.Execute.Exception
-                   Biegunka.Terminal.Utils
   other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Describe
