@@ -27,8 +27,7 @@ library
                  tagged,
                  tagged-transformer >= 0.3,
                  semigroups,
-                 wl-pprint-extras,
-                 wl-pprint-terminfo,
+                 ansi-wl-pprint,
                  directory-layout >= 0.3.0.0,
                  data-default,
                  stm >= 2.4,
@@ -43,6 +42,7 @@ library
                    Biegunka.Language
                    Biegunka.DB
                    Biegunka.Execute.Exception
+                   Biegunka.Terminal.Utils
   other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Describe

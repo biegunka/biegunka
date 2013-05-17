@@ -10,43 +10,42 @@ module Biegunka.Execute.Describe
 import Control.Exception (SomeException)
 import Data.Monoid (mempty)
 
-import Text.PrettyPrint.Free
-import System.Console.Terminfo.PrettyPrint
+import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.Language
 
 
 -- | Describe current action and host where it happens
-describe :: TermDoc -> TermDoc
-describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
+describe :: Doc -> Doc
+describe d = let host = "[localhost]" :: String in nest (length host) (text host </> d) <> linebreak
 
 
 -- | Describe current action
-action :: IL -> TermDoc
+action :: IL -> Doc
 action il = nest 3 $ case il of
   IS p t _ _ u  -> annotation (text u) $
-    green "update" </> text t </> "source at" </> magenta (text p) </> line
-  IA a o om _ n -> annotation (text n) $ progress o om </> case a of
-    Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s) </> line
-    Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d) </> line
-    Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d) </> line
-    Shell p c      -> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p) </> line
+    green "update" </> text t </> "source at" </> magenta (text p)
+  IA a o om _ n -> annotation (text n) $ progress o om <$> case a of
+    Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
+    Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
+    Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
+    Shell p c      -> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p)
   _ -> mempty
  where
   -- | Annotate action description with source name
-  annotation :: TermDoc -> TermDoc -> TermDoc
+  annotation :: Doc -> Doc -> Doc
   annotation t doc = parens (cyan t) </> doc
 
   -- | Add progress to action description
-  progress :: Int -> Int -> TermDoc
+  progress :: Int -> Int -> Doc
   progress n mn = brackets (pretty n <> "/" <> pretty mn)
 
 
 -- | Describe handled exception
-exception :: SomeException -> TermDoc
-exception e = nest 3 $ red "FAIL" <//> colon `above` vcat (map text . lines $ show e) </> line
+exception :: SomeException -> Doc
+exception e = nest 3 $ (red "FAIL" <//> colon) <$> vcat (map text . lines $ show e)
 
 
 -- | Describe retry counter
-retryCounter :: Int -> TermDoc
-retryCounter n = yellow "Retry" <//> colon </> text (show n) <//> line
+retryCounter :: Int -> Doc
+retryCounter n = yellow "Retry" <//> colon </> text (show n)

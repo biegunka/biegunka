@@ -1,7 +1,7 @@
 -- | Biegunka - configuration development library
 module Biegunka
   ( -- * Interpreters control
-    biegunka, Controls, root, appData, pretty, Pretty(..)
+    biegunka, Controls, root, appData, colors
     -- * Interpreters
   , pretend, pause, execute, verify
     -- * Execution environment hooks
@@ -20,7 +20,7 @@ module Biegunka
   , Script, Scope(..)
   ) where
 
-import Biegunka.Control (biegunka, Controls, root, appData, pretty, Pretty(..), pause)
+import Biegunka.Control (biegunka, Controls, root, appData, colors, pause)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
   ( EE

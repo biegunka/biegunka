@@ -6,12 +6,12 @@ module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..)
     -- * Common interpreters controls
-  , Controls, root, appData, logger, pretty, Pretty(..)
+  , Controls, root, appData, logger, colors
     -- * Generic interpreters
   , pause
   ) where
 
-import Control.Applicative ((<$))
+import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
@@ -23,23 +23,20 @@ import Data.Default
 import Data.Function (fix)
 import Data.Semigroup (Semigroup(..), Monoid(..))
 import System.Wordexp (wordexp, nosubst, noundef)
-import System.Console.Terminfo.PrettyPrint (TermDoc, Effect(..), ScopedEffect(..), displayDoc)
-import Text.PrettyPrint.Free ((<//>), text, line)
+import Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
-import Biegunka.Language
-import Biegunka.Transform (fromEL)
+import           Biegunka.Language
+import           Biegunka.Transform (fromEL)
+import qualified Biegunka.Terminal.Utils as Term
 
 
 -- | Common interpreters controls
 data Controls = Controls
   { _root    :: FilePath -- ^ Root path for 'Source' layer
   , _appData :: FilePath -- ^ Biegunka profile files path
-  , _logger  :: TermDoc -> IO ()
-  , _pretty  :: Pretty
+  , _logger  :: Doc -> IO ()
+  , _colors  :: Bool
   }
-
-data Pretty = Colors | Plain
-  deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 
@@ -50,17 +47,17 @@ root :: Lens' Controls FilePath
 appData :: Lens' Controls FilePath
 
 -- | Logger channel
-logger :: Lens' Controls (TermDoc -> IO ())
+logger :: Lens' Controls (Doc -> IO ())
 
 -- | Pretty printing
-pretty :: Lens' Controls Pretty
+colors :: Lens' Controls Bool
 
 instance Default Controls where
   def = Controls
     { _root    = "/"
     , _appData = "~/.biegunka"
     , _logger  = const (return ())
-    , _pretty  = Colors
+    , _colors  = True
     }
 
 
@@ -88,9 +85,7 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
 biegunka (($ def) -> c) s (I f) = do
   r  <- c ^. root . to expand
   ad <- c ^. appData . to expand
-  let z = case view pretty c of
-            Colors -> id
-            Plain  -> (Push Nop <$)
+  let z = if view colors c then id else plain
   l <- newTQueueIO
   forkIO $ loggerThread l
   f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z)) (fromEL s r)
@@ -116,5 +111,7 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 
 -- | Display supplied docs
-loggerThread :: TQueue TermDoc -> IO ()
-loggerThread c = forever $ atomically (readTQueue c) >>= displayDoc 0.9
+loggerThread :: TQueue Doc -> IO ()
+loggerThread queue = forever $ do
+  w <- Term.width <$> Term.size
+  atomically (readTQueue queue) >>= displayIO stdout . renderPretty 0.9 w >> hFlush stdout

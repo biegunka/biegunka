@@ -8,9 +8,8 @@ import Data.Maybe (mapMaybe)
 import Prelude hiding (log)
 
 import Control.Lens
-import System.Console.Terminfo.PrettyPrint
 import System.IO
-import Text.PrettyPrint.Free
+import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
 import Biegunka.Language (IL(..), A(..), W(..))
@@ -57,7 +56,7 @@ pretend = I $ \c@(view logger -> l) (simplified -> s) -> do
     return c
 
 
-stats :: Biegunka -> Biegunka -> TermDoc
+stats :: Biegunka -> Biegunka -> Doc
 stats a b = vcat $ mapMaybe about
   [ ("added files",     map (yellow  . text) $ filepaths b \\ filepaths a)
   , ("added sources",   map (magenta . text) $ sources b   \\ sources a)
@@ -67,13 +66,13 @@ stats a b = vcat $ mapMaybe about
  where
   about (msg, xs) = case length xs of
     0 -> Nothing
-    n -> Just $ nest 2 (msg </> parens (pretty n) <//> colon `above` vcat (xs ++ [empty]))
+    n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <$> vcat (xs ++ [empty]))
 
 
-log :: [IL] -> Biegunka -> Biegunka -> TermDoc
+log :: [IL] -> Biegunka -> Biegunka -> Doc
 log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
  where
-  install :: IL -> Maybe TermDoc
+  install :: IL -> Maybe Doc
   install (IS p t _ _ u) =
     Just $ green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
   install (IA (Link src dst) _ _ _ _) = Just . indent 2 $
@@ -92,6 +91,6 @@ log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
   install (IT _) = Nothing
   install (IP _) = Nothing
 
-  uninstall :: [TermDoc]
+  uninstall :: [Doc]
   uninstall = map ("Delete" </>) $
     map (yellow . text) (filepaths a \\ filepaths b) ++ map (magenta . text) (sources a \\ sources b)

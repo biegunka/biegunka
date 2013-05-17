@@ -14,8 +14,8 @@ import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
-import           Text.PrettyPrint.Free
-import           System.Console.Terminfo.PrettyPrint
+import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.Language (IL(..), A(..))
@@ -35,7 +35,7 @@ verify = I $ \c (simplified -> s) -> do
 
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
-verification :: [IL] -> WriterT [TermDoc] IO Bool
+verification :: [IL] -> WriterT [Doc] IO Bool
 verification = foldl' (\a -> liftA2 (&&) a . go) (return True)
  where
   go i = case log i of
@@ -63,12 +63,12 @@ correct il = case il of
 
 
 -- | Describe current action and host where it happens
-describe :: TermDoc -> TermDoc
+describe :: Doc -> Doc
 describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
 
 
 -- | Log message on failure
-log :: IL -> Maybe TermDoc
+log :: IL -> Maybe Doc
 log il = nest 1 <$> case il of
   IS p t _ _ u ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
@@ -83,5 +83,5 @@ log il = nest 1 <$> case il of
   _ -> Nothing
  where
   -- | Annotate action description with source name
-  annotation :: TermDoc -> TermDoc -> TermDoc
-  annotation t doc = parens (cyan t) </> doc
+  annotation :: Doc -> Doc -> Doc
+  annotation t doc = parens (cyan t) L.<$> doc
