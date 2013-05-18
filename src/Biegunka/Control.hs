@@ -19,7 +19,6 @@ import System.IO
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import           Control.Lens
-import           Control.Monad.State (evalStateT)
 import           Data.Default
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
@@ -88,11 +87,11 @@ biegunka (($ def) -> c) (I f) s = do
   r  <- c ^. root . to expand
   ad <- c ^. appData . to expand
   let z = if view colors c then id else plain
-  q <- newTQueueIO
-  forkIO $ log q
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue q . z)) (fromEL (flip evalStateT 0 (runScript s)) r)
+  l <- newTQueueIO
+  forkIO $ log l
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z)) (fromEL (evalScript def s) r)
   fix $ \wait ->
-    atomically (isEmptyTQueue q) >>= \e -> unless e (threadDelay 10000 >> wait)
+    atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
 
 expand :: String -> IO String

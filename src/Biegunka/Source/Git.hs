@@ -19,7 +19,7 @@ import System.Exit (ExitCode(..))
 
 import           Control.Lens
 import           Control.Monad.Free (liftF)
-import           Control.Monad.State (lift, state)
+import           Control.Monad.State (lift)
 import           Data.Default (Default(..))
 import qualified Data.Text.IO as T
 import           System.Directory (doesDirectoryExist)
@@ -99,8 +99,10 @@ type URI = String
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Git -> Script Sources ()
 git' u p (Git { gitactions, _remotes, _branch }) = Script $ do
-  (ast, s) <- state $ \s -> let (ast, (succ -> s')) = annotate gitactions s in ((ast, s'), s')
-  lift . liftF $ ES s (Source "git" u p (updateGit u _remotes _branch)) ast ()
+  tok <- use token
+  ast <- annotate gitactions
+  lift . liftF $ ES tok (Source "git" u p (updateGit u _remotes _branch)) ast ()
+  token += 1
 {-# INLINE git' #-}
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field

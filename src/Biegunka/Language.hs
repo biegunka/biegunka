@@ -6,7 +6,7 @@ module Biegunka.Language
   ( Scope(..)
   , EL(..), IL(..), A(..), S(..), P(..), W(..)
   , React(..)
-  , zoom
+  , peek
   ) where
 
 import Control.Applicative((<$>))
@@ -46,11 +46,11 @@ instance Traversable (EL a s) where
   traverse f (EW   w   x) = EW   w   <$> f x
   {-# INLINE traverse #-}
 
-zoom :: EL a s x -> x
-zoom (EP _ _ _ x) = x
-zoom (ES _ _ _ x) = x
-zoom (EA _ _   x) = x
-zoom (EW   _   x) = x
+peek :: EL a s x -> x
+peek (EP _ _ _ x) = x
+peek (ES _ _ _ x) = x
+peek (EA _ _   x) = x
+peek (EW   _   x) = x
 
 
 -- | 'Profiles' scope data
