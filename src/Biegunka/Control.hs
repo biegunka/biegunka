@@ -79,10 +79,10 @@ instance Monoid Interpreter where
 
 -- | Common 'Interpreter's 'Controls' wrapper
 biegunka :: (Controls -> Controls) -- ^ User defined settings
-         -> Script Profiles ()    -- ^ Script to interpret
          -> Interpreter           -- ^ Combined interpreters
+         -> Script Profiles ()    -- ^ Script to interpret
          -> IO ()
-biegunka (($ def) -> c) s (I f) = do
+biegunka (($ def) -> c) (I f) s = do
   r  <- c ^. root . to expand
   ad <- c ^. appData . to expand
   let z = if view colors c then id else plain

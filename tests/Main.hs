@@ -28,7 +28,7 @@ main = do
 
 resultsIn :: Script Profiles () -> Layout -> IO [LayoutException]
 resultsIn s l = do
-  biegunka (set root "~") s (execute id)
+  biegunka (set root "~") (execute id) s
   fp <- getHomeDirectory
   check l fp
 

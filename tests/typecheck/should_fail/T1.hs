@@ -6,6 +6,5 @@ import Biegunka.Source.Git
 
 
 main :: IO ()
-main = biegunka id script (execute id)
- where
+main = biegunka id (execute id) $ do
   script = git_ "git@github.com:ghc/ghc" "ghc"
