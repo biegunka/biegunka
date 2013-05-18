@@ -13,6 +13,7 @@ module Biegunka.Primitive
 import Data.Monoid (mempty)
 
 import Control.Monad.State
+import Control.Monad.Free (liftF)
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
@@ -31,9 +32,9 @@ infixr 7 `chain`, ~>>
 -- > profile "friend's" $ do
 -- >   svn ...
 profile :: String -> Script Sources () -> Script Profiles ()
-profile n i = do
+profile n i = Script $ do
   (ast, s) <- state $ \s -> let (ast, (succ -> s')) = annotate i s in ((ast, s'), s')
-  liftS $ EP s (Profile n) ast ()
+  lift . liftF $ EP s (Profile n) ast ()
 {-# INLINE profile #-}
 
 -- | Links source to specified filepath
@@ -104,13 +105,13 @@ reacting r s = liftS (EW (Reacting (Just r)) ()) >> s >> liftS (EW (Reacting Not
 --
 -- Note: redundant if 'Order' is 'Sequential'
 chain :: Script sc () -> Script sc () -> Script sc ()
-chain a b = do
+chain a b = Script $ do
   (ast, ast') <- state $ \s ->
     let (ast,  s')  = annotate a s
         (ast', s'') = annotate b s
     in ((ast, ast'), max s' s'')
-  Script (lift ast)
-  Script (lift ast')
+  lift ast
+  lift ast'
 
 -- | Alias for 'chain'
 (~>>) :: Script sc () -> Script sc () -> Script sc ()

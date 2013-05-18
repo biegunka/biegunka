@@ -9,7 +9,7 @@ module Biegunka.Script
 import Control.Applicative (Applicative(..))
 
 import Control.Monad.Free (Free, iter, liftF)
-import Control.Monad.State (MonadState(..), StateT(..), lift)
+import Control.Monad.State (StateT(..), lift)
 import Data.Default (Default(..))
 
 import Biegunka.Language
@@ -38,14 +38,6 @@ instance Monad (Script s) where
   {-# INLINE return #-}
   Script m >>= f = Script (m >>= runScript . f)
   {-# INLINE (>>=) #-}
-
-instance MonadState Int (Script s) where
-  get = Script get
-  {-# INLINE get #-}
-  put = Script . put
-  {-# INLINE put #-}
-  state = Script . state
-  {-# INLINE state #-}
 
 instance Default a => Default (Script s a) where
   def = return def
