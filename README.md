@@ -83,4 +83,4 @@ File operations layer provides functions to work with sources files, for example
 
  [1]: https://github.com/biegunka/biegunka-core/wiki/Examples
  [2]: https://github.com/supki/.dotfiles/blob/master/biegunka/Main.hs
- [3]: https://github.com/dmalikov/dotfiles/blob/master/main.biegunka
+ [3]: https://github.com/dmalikov/dotfiles
