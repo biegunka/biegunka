@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ViewPatterns #-}
 -- | Language primitives
 module Biegunka.Primitive
   ( -- * Profile layer primitives
@@ -105,8 +104,6 @@ reacting r s = liftS (EW (Reacting (Just r)) ()) >> s >> liftS (EW (Reacting Not
 
 -- | Chain tasks sequentially
 -- Connects two tasks which forces them to run sequentially one after another.
---
--- Note: redundant if 'Order' is 'Sequential'
 chain :: Script sc () -> Script sc () -> Script sc ()
 chain a b = Script $ do
   s <- rewind token (annotate a >>= lift)
