@@ -14,15 +14,13 @@ module Biegunka.Execute.Control
   , Statement(..), Templates(..), Priviledges(..), Work(..)
   ) where
 
-import Control.Concurrent.STM.TQueue (TQueue)
-import System.IO.Unsafe (unsafePerformIO)
-
 import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM.TQueue (TQueue)
 import Control.Lens
 import Control.Monad.State (StateT)
 import Data.Default
 import Data.Functor.Trans.Tagged
-import Data.Set
+import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
@@ -58,9 +56,9 @@ data EE = EE
   , _templates   :: Templates
   , _work        :: TQueue Work
   , _retries     :: Int
-  , _running     :: TVar Bool
-  , _sudoing     :: TVar Bool
   , _controls    :: Controls
+  , _sudoing     :: TVar Bool -- ^ Whether sudoed operation is in progress.
+  , _running     :: TVar Bool -- ^ Whether any operation is in progress.
   , _repos       :: TVar (Set String)
   }
 
@@ -86,31 +84,17 @@ data Work =
     Do (IO ()) -- ^ Task to come
   | Stop       -- ^ Task is done
 
--- | Execution context TVar. True if sudoed operation is in progress.
-sudo :: TVar Bool
-sudo = unsafePerformIO $ newTVarIO False
-{-# NOINLINE sudo #-}
-
--- | Execution context TVar. True if simple operation is in progress.
-run :: TVar Bool
-run = unsafePerformIO $ newTVarIO False
-{-# NOINLINE run #-}
-
-repo :: TVar (Set String)
-repo = unsafePerformIO $ newTVarIO empty
-{-# NOINLINE repo #-}
-
 instance Default EE where
   def = EE
     { _priviledges = Preserve
     , _react       = Ignorant
     , _templates   = Templates ()
-    , _work        = undefined    -- User doesn't have a chance to get there
+    , _work        = undefined -- User doesn't have a chance to get there
     , _retries     = 1
-    , _running     = run
-    , _sudoing     = sudo
     , _controls    = def
-    , _repos       = repo
+    , _running     = undefined -- User doesn't have a chance to get there
+    , _sudoing     = undefined -- User doesn't have a chance to get there
+    , _repos       = undefined -- User doesn't have a chance to get there
     }
 
 makeLenses ''EE

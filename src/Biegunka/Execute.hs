@@ -7,14 +7,15 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
-import           Data.List ((\\))
 import           Data.Foldable (traverse_)
+import           Data.List ((\\))
+import           Data.Monoid (mempty)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
-import           Control.Concurrent.STM.TVar (readTVar, writeTVar)
+import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, writeTVar)
 import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
@@ -57,16 +58,27 @@ execute (($ def) -> e) = I $ \c s -> do
   let s' = simplified s
       b = construct s'
   a <- load c s'
-  when (e ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
+  e' <- initTVars e
+  when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   w <- newTQueueIO
   atomically $ writeTQueue w
-    (Do $ runTask e { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
+    (Do $ runTask e' { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
   schedule w
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
+
+initTVars :: EE -> IO EE
+initTVars e = do
+  a <- newTVarIO False
+  b <- newTVarIO False
+  c <- newTVarIO mempty
+  return $ e
+    & running .~ a
+    & sudoing .~ b
+    & repos .~ c
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
