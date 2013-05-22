@@ -11,7 +11,7 @@ module Biegunka.Execute.Control
   , priviledges, react, templates
   , work, retries, running, sudoing, controls, repos
     -- * Misc
-  , Statement(..), Templates(..), Priviledges(..), Work(..)
+  , Templates(..), Priviledges(..), Work(..)
   ) where
 
 import Control.Concurrent.STM.TVar
@@ -67,12 +67,6 @@ data EE = EE
 data Priviledges =
     Drop     -- ^ Drop priviledges
   | Preserve -- ^ Preserve priviledges
-    deriving (Show, Read, Eq, Ord)
-
--- | Statement thoroughness
-data Statement =
-    Thorough { text :: String } -- ^ Highly verbose statement with lots of details
-  | Typical  { text :: String } -- ^ Typical report with minimum information
     deriving (Show, Read, Eq, Ord)
 
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
