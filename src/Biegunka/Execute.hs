@@ -10,6 +10,7 @@ import qualified Control.Exception as E
 import           Data.Foldable (traverse_)
 import           Data.List ((\\))
 import           Data.Monoid (mempty)
+import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
@@ -60,10 +61,9 @@ execute (($ def) -> e) = I $ \c s -> do
   a <- load c s'
   e' <- initTVars e
   when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  w <- newTQueueIO
-  atomically $ writeTQueue w
-    (Do $ runTask e' { _controls = c, _work = w } def s >> atomically (writeTQueue w Stop))
-  schedule w
+  atomically $ writeTQueue (e'^.stm.work)
+    (Do $ runTask e' { _controls = c } def s >> atomically (writeTQueue (e'^.stm.work) Stop))
+  schedule (e'^.stm.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -72,20 +72,22 @@ execute (($ def) -> e) = I $ \c s -> do
 
 initTVars :: EE -> IO EE
 initTVars e = do
-  a <- newTVarIO False
+  a <- newTQueueIO
   b <- newTVarIO False
-  c <- newTVarIO mempty
+  c <- newTVarIO False
+  d <- newTVarIO mempty
   return $ e
-    & running .~ a
-    & sudoing .~ b
-    & repos .~ c
+    & stm.work .~ a
+    & stm.running .~ b
+    & stm.sudoing .~ c
+    & stm.repos .~ d
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
 runTask :: EE -> ES -> [IL] -> IO ()
 runTask e s t = do
   reify e ((`evalStateT` s) . untag . asProxyOf (task t))
-  atomically (writeTQueue (e ^. work) Stop)
+  atomically (writeTQueue (e^.stm.work) Stop)
 
 
 -- | Thread `s' parameter to 'task' function
@@ -121,12 +123,12 @@ try (TagT ex) = do
 --
 -- Possible responses: retry command execution or ignore failure or abort task
 respond :: forall s. Reifies s EE => SomeException -> [IL] -> Execution s [IL]
-respond e t = do
-  l <- fmap (view (controls . logger)) reflected
-  liftIO . l . describe $ exception e
+respond exc t = do
+  log <- fmap (\e -> e^.controls.logger) reflected
+  liftIO . log . describe $ exception exc
   rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
-    liftIO . l . describe $ retryCounter (rc + 1)
+    liftIO . log . describe $ retryCounter (rc + 1)
     return t
   else do
     retryCount .= 0
@@ -164,37 +166,40 @@ command (IW (Reacting Nothing))  = reactStack %= drop 1
 command (IW (User     (Just u))) = usersStack %= (u :)
 command (IW (User     Nothing))  = usersStack %= drop 1
 command c = do
-  (sudoingTV, runningTV, l) <- fmap (\e -> (view sudoing e, view running e, view (controls . logger) e)) reflected
+  e <- reflected
+  let stv = e^.stm.sudoing
+      rtv = e^.stm.running
+      log = e^.controls.logger
   xs <- use usersStack
   o  <- op c
   liftIO $ case xs of
     []  -> do
-      atomically $ readTVar sudoingTV >>= \s -> guard (not s) >> writeTVar runningTV True
-      l (describe (action c))
+      atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
+      log (describe (action c))
       o
-      atomically $ writeTVar runningTV False
+      atomically $ writeTVar rtv False
     u:_ -> do
       atomically $ do
-        [s, r] <- mapM readTVar [sudoingTV, runningTV]
+        [s, r] <- mapM readTVar [stv, rtv]
         guard (not $ s || r)
-        writeTVar sudoingTV True
+        writeTVar stv True
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
-      l (describe (action c))
+      log (describe (action c))
       o
       setEffectiveUserID uid
-      atomically $ writeTVar sudoingTV False
+      atomically $ writeTVar stv False
  where
   op (IS dst _ update _ _) = do
-    reposTV <- liftM (view repos) reflected
+    rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
       unmentioned <- atomically $ do
-        rs <- readTVar reposTV
+        rs <- readTVar rstv
         if dst `member` rs
           then return False
           else do
-            writeTVar reposTV $ insert dst rs
+            writeTVar rstv $ insert dst rs
             return True
       when unmentioned $ do
         createDirectoryIfMissing True $ dropFileName dst
@@ -224,7 +229,7 @@ newTask :: forall s. Reifies s EE => [IL] -> Execution s ()
 newTask t = do
   e <- reflected
   s <- get
-  liftIO . atomically $ writeTQueue (e ^. work) (Do $ runTask e s t)
+  liftIO . atomically $ writeTQueue (e^.stm.work) (Do $ runTask e s t)
 
 -- | Schedule tasks
 --
