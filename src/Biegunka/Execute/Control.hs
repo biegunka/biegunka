@@ -63,6 +63,14 @@ data Work =
 
 makeLenses ''STM
 
+instance Default STM where
+  def = STM
+    { _work = undefined
+    , _sudoing = undefined
+    , _running = undefined
+    , _repos = undefined
+    }
+
 -- | 'Execution' environment.
 -- Denotes default failure reaction, templates used and more
 data EE = EE
@@ -94,5 +102,5 @@ instance Default EE where
     , _templates   = Templates ()
     , _retries     = 1
     , _controls    = def
-    , _stm         = undefined -- User doesn't have a chance to get there
+    , _stm         = def -- User doesn't have a chance to get there
     }
