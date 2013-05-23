@@ -3,10 +3,7 @@
 -- | Biegunka.Source.Dummy - example Source using 'directory-layout'
 module Biegunka.Source.Dummy (dummy, dummy_) where
 
-import Control.Lens
-import Control.Monad.Free (liftF)
-import Control.Monad.State (lift)
-import System.FilePath ((</>), takeDirectory, takeFileName)
+import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout
 
 import Biegunka.Language
@@ -23,15 +20,8 @@ dummy :: Layout            -- ^ Layout to make
       -> FilePath          -- ^ Layout root (relative to user home directory)
       -> Script Actions () -- ^ What to do with layout files
       -> Script Sources ()
-dummy l p i = Script $ do
-  rfp <- use app
-  tok <- use token
-  ast <- annotate i
-  lift . liftF $ ES tok (Source "dummy" "localhost" (rfp </> p) updateDummy) ast ()
-  source .= (rfp </> p)
-  token += 1
- where
-  updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print
+dummy layout path script = sourced "dummy" "localhost" path script $ \dir ->
+  make (directory (takeFileName dir) layout) (takeDirectory dir) >>= mapM_ print
 
 
 -- | Make specified layout at given path and do nothing

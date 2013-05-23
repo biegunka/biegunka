@@ -18,8 +18,6 @@ import Control.Monad (forM_)
 import System.Exit (ExitCode(..))
 
 import           Control.Lens
-import           Control.Monad.Free (liftF)
-import           Control.Monad.State (lift)
 import           Data.Default (Default(..))
 import qualified Data.Text.IO as T
 import           System.Directory (doesDirectoryExist)
@@ -74,9 +72,6 @@ type Branch = String
 -- | Remote name (like @origin@ or @upstream@)
 type Remote = String
 
--- | Repository URI (like @git\@github.com:whoever/whatever.git@)
-type URI = String
-
 
 -- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
 --
@@ -98,13 +93,8 @@ type URI = String
 --
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Git -> Script Sources ()
-git' u p (Git { gitactions, _remotes, _branch }) = Script $ do
-  rfp <- use app
-  tok <- use token
-  ast <- annotate gitactions
-  lift . liftF $ ES tok (Source "git" u (rfp </> p) (updateGit u _remotes _branch)) ast ()
-  source .= rfp </> p
-  token += 1
+git' url path (Git { gitactions, _remotes, _branch }) =
+  sourced "git" url path gitactions (updateGit url _remotes _branch)
 {-# INLINE git' #-}
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field

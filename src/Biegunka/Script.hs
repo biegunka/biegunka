@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
-  ( Script(..), liftS, annotate, rewind
+  ( Script(..), liftS, annotate, rewind, URI, sourced
   , token, app, source
   , runScript, evalScript
   ) where
@@ -15,6 +15,7 @@ import Control.Lens
 import Control.Monad.Free (Free, iter, liftF)
 import Control.Monad.State (MonadState(..), StateT(..), lift, state)
 import Data.Default (Default(..))
+import System.FilePath ((</>))
 
 import Biegunka.Language
 
@@ -107,3 +108,17 @@ rewind l mb = do
   a' <- use l
   l .= a
   return a'
+
+-- | Repository URI (like @git\@github.com:whoever/whatever.git@)
+type URI = String
+
+-- | Abstract away all plumbing needed to make source
+sourced :: String -> URI -> FilePath
+        -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
+sourced ty url path script update = Script $ do
+  rfp <- use app
+  tok <- use token
+  ast <- annotate script
+  lift . liftF $ ES tok (Source ty url (rfp </> path) update) ast ()
+  source .= (rfp </> path)
+  token += 1
