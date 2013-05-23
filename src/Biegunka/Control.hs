@@ -11,11 +11,10 @@ module Biegunka.Control
   , pause
   ) where
 
-import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
-import Control.Monad (forever, unless)
+import Control.Monad (forever, mplus, unless)
 import System.IO
 
 import           Control.Lens
@@ -113,5 +112,5 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 -- | Display supplied docs
 loggerThread :: TQueue Doc -> IO ()
 loggerThread queue = forever $ do
-  w <- Term.width <$> Term.size
+  w <- fmap Term.width Term.size `mplus` return 80
   atomically (readTQueue queue) >>= displayIO stdout . renderPretty 0.9 w >> hFlush stdout
