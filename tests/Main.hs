@@ -5,7 +5,6 @@ module Main (main) where
 import Biegunka
 import Biegunka.Source.Dummy
 import Control.Lens
-import System.Directory (getHomeDirectory)
 import System.Directory.Layout
 import Test.Hspec
 
@@ -28,9 +27,8 @@ main = do
 
 resultsIn :: Script Profiles () -> Layout -> IO [LayoutException]
 resultsIn s l = do
-  biegunka (set root "~") (execute id) s
-  fp <- getHomeDirectory
-  check l fp
+  biegunka (set root "/tmp") (execute id) s
+  check l "/tmp"
 
 
 trivial_script :: Script Profiles ()
@@ -48,11 +46,11 @@ trivial_repo p = profile p $ return ()
 simple_repo_0 :: Script Profiles ()
 simple_repo_0 =
   profile "biegunka-core-simple0" $
-    dummy l "tmp/dummies/biegunka-core-simple0" $
-      copy "src0" "tmp/results/dst0"
+    dummy l "tmp/biegunka-core-simple0" $
+      copy "src0" "tmp/dst0"
  where
   l = file "src0" "thisiscontents\n"
 
 
 simple_layout_0 :: Layout
-simple_layout_0 = directory "tmp/results" $ file "dst0" "thisiscontents\n"
+simple_layout_0 = directory "tmp" $ file "dst0" "thisiscontents\n"
