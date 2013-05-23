@@ -99,9 +99,11 @@ type URI = String
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Git -> Script Sources ()
 git' u p (Git { gitactions, _remotes, _branch }) = Script $ do
+  rfp <- use app
   tok <- use token
   ast <- annotate gitactions
-  lift . liftF $ ES tok (Source "git" u p (updateGit u _remotes _branch)) ast ()
+  lift . liftF $ ES tok (Source "git" u (rfp </> p) (updateGit u _remotes _branch)) ast ()
+  source .= rfp </> p
   token += 1
 {-# INLINE git' #-}
 

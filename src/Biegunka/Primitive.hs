@@ -14,6 +14,7 @@ import Data.Monoid (mempty)
 import Control.Lens
 import Control.Monad.State
 import Control.Monad.Free (liftF)
+import System.FilePath ((</>))
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
@@ -46,7 +47,9 @@ profile n i = Script $ do
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Actions ()
-registerAt dst = liftS $ EA () (Link mempty dst) ()
+registerAt dst = Script $ do
+  rfp <- use app
+  lift . liftF $ EA () (Link mempty (rfp </> dst)) ()
 {-# INLINE registerAt #-}
 
 -- | Links given file to specified filepath
@@ -56,7 +59,10 @@ registerAt dst = liftS $ EA () (Link mempty dst) ()
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Actions ()
-link src dst = liftS $ EA () (Link src dst) ()
+link src dst = Script $ do
+  rfp <- use app
+  sfp <- use source
+  lift . liftF $ EA () (Link (sfp </> src) (rfp </> dst)) ()
 {-# INLINE link #-}
 
 -- | Copies given file to specified filepath
@@ -66,7 +72,10 @@ link src dst = liftS $ EA () (Link src dst) ()
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Actions ()
-copy src dst = liftS $ EA () (Copy src dst) ()
+copy src dst = Script $ do
+  rfp <- use app
+  sfp <- use source
+  lift . liftF $ EA () (Copy (sfp </> src) (rfp </> dst)) ()
 {-# INLINE copy #-}
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -77,8 +86,11 @@ copy src dst = liftS $ EA () (Copy src dst) ()
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute :: FilePath -> FilePath -> Script Actions ()
-substitute src dst = liftS $
-  EA () (Template src dst (\b -> render . setAttribute "template" b . newSTMP)) ()
+substitute src dst = Script $ do
+  rfp <- use app
+  sfp <- use source
+  lift . liftF $ EA ()
+    (Template (sfp </> src) (rfp </> dst) (\b -> render . setAttribute "template" b . newSTMP)) ()
 {-# INLINE substitute #-}
 
 
@@ -89,7 +101,9 @@ substitute src dst = liftS $
 --
 -- Prints "hello" (without a newline)
 shell :: String -> Script Actions ()
-shell c = liftS $ EA () (Shell mempty c) ()
+shell c = Script $ do
+  sfp <- use source
+  lift . liftF $ EA () (Shell sfp c) ()
 {-# INLINE shell #-}
 
 -- | Change effective user id for wrapped commands

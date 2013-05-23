@@ -89,7 +89,8 @@ biegunka (($ def) -> c) (I f) s = do
   let z = if view colors c then id else plain
   l <- newTQueueIO
   forkIO $ log l
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z)) (fromEL (evalScript def s) r)
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z))
+    (fromEL (evalScript (def & app .~ r) s))
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 

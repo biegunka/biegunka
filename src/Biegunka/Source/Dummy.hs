@@ -6,7 +6,7 @@ module Biegunka.Source.Dummy (dummy, dummy_) where
 import Control.Lens
 import Control.Monad.Free (liftF)
 import Control.Monad.State (lift)
-import System.FilePath (takeDirectory, takeFileName)
+import System.FilePath ((</>), takeDirectory, takeFileName)
 import System.Directory.Layout
 
 import Biegunka.Language
@@ -24,9 +24,11 @@ dummy :: Layout            -- ^ Layout to make
       -> Script Actions () -- ^ What to do with layout files
       -> Script Sources ()
 dummy l p i = Script $ do
+  rfp <- use app
   tok <- use token
   ast <- annotate i
-  lift . liftF $ ES tok (Source "dummy" "localhost" p updateDummy) ast ()
+  lift . liftF $ ES tok (Source "dummy" "localhost" (rfp </> p) updateDummy) ast ()
+  source .= (rfp </> p)
   token += 1
  where
   updateDummy dir = make (directory (takeFileName dir) l) (takeDirectory dir) >>= mapM_ print

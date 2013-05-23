@@ -4,33 +4,24 @@
 -- | Transform external language into internal one
 module Biegunka.Transform (fromEL, simplified) where
 
-import Control.Monad (when)
-import Data.List (isSuffixOf)
-
 import Control.Lens
 import Control.Monad.Free (Free(..))
-import Control.Monad.State (State, evalState, execState, get)
+import Control.Monad.State (State, evalState, get)
 import Data.Default
-import System.FilePath ((</>))
-import System.FilePath.Lens
 
 import Biegunka.Language
 
 
 -- | Transformation state
 data Transformation = Transformation
-  { _root        :: FilePath -- ^ Biegunka root
-  , _source      :: FilePath -- ^ Source root
-  , _profileName :: String   -- ^ Profile name
+  { _profileName :: String   -- ^ Profile name
   , _sourceName  :: String   -- ^ Source name
   , _order       :: Int      -- ^ Order number
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Transformation where
   def = Transformation
-    { _root        = def
-    , _source      = def
-    , _profileName = def
+    { _profileName = def
     , _sourceName  = def
     , _order       = 1
     }
@@ -41,8 +32,8 @@ makeLenses ''Transformation
 -- | Given user defined biegunka script preprocess it into something usable
 --
 -- Returns internal language "instructions" littered with information used later
-fromEL :: Free (EL a Profiles) () -> FilePath -> [IL]
-fromEL s r = return . (`evalState` (def & root .~ r)) . fmap (IT . chained) . traverse step . toList $ s
+fromEL :: Free (EL a Profiles) () -> [IL]
+fromEL = return . (`evalState` def) . fmap (IT . chained) . traverse step . toList
 
 
 -- | Transform Profiles layer
@@ -52,39 +43,30 @@ step (EP _ (Profile n) s _) = do
   xs <- mapM step $ toList s
   return $ IT (IP n : chained xs)
 step (ES _ (Source t u d a) s ()) = do
-  Transformation r _ pn _ _ <- get
+  Transformation pn _ _ <- get
   sourceName .= u
-  let df = constructDestinationFilepath r u d
-  source .= df
   order .= 0
   xs <- mapM step $ toList s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
-  return $ IT (chained $ IS (r </> d) t (a $ df) pn u : ys)
+  return $ IT (chained $ IS d t (a d) pn u : ys)
 step (EA _ (Link s d) ()) = do
-  Transformation r src pn sn _ <- get
+  Transformation pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Link (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
+  return $ IA (Link s d) o 0 pn sn
 step (EA _ (Copy s d) ()) = do
-  Transformation r src pn sn _ <- get
+  Transformation pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Copy (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
+  return $ IA (Copy s d) o 0 pn sn
 step (EA _ (Template s d t) ()) = do
-  Transformation r src pn sn _ <- get
+  Transformation pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Template (src </> s) (constructDestinationFilepath r s d) t) o 0 pn sn
+  return $ IA (Template s d t) o 0 pn sn
 step (EA _ (Shell d c) ()) = do
-  Transformation _ s pn sn _ <- get
+  Transformation pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Shell (s </> d) c) o 0 pn sn
+  return $ IA (Shell d c) o 0 pn sn
 step (EW w _) = return $ IW w
-
-
-constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
-constructDestinationFilepath r s d = execState ?? r $ do
-  id </>= d
-  when ("/" `isSuffixOf` d) $
-    id </>= (s^.filename)
 
 
 toList :: Free (EL a s) x -> [EL () s ()]

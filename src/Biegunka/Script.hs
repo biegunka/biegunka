@@ -5,7 +5,7 @@
 -- | User script type definitions
 module Biegunka.Script
   ( Script(..), liftS, annotate, rewind
-  , token
+  , token, app, source
   , runScript, evalScript
   ) where
 
@@ -59,16 +59,31 @@ evalScript = (fmap fst .) . runScript
 
 data SS = SS
   { _token :: Int
+  , _app :: FilePath
+  , _source :: FilePath
   } deriving (Show, Read)
 
 instance Default SS where
-  def = undefined &
-    token .~ 0
+  def = SS
+    { _token = 0
+    , _app = ""
+    , _source = ""
+    }
 
 -- | Unique token for each 'EP'/'ES'
 token :: Lens' SS Int
 token f s@(SS { _token = t }) = (\t' -> s { _token = t' }) <$> f t
 {-# INLINE token #-}
+
+-- | Application filepath root
+app :: Lens' SS FilePath
+app f s@(SS { _app = t }) = (\t' -> s { _app = t' }) <$> f t
+{-# INLINE app #-}
+
+-- | Current source filepath
+source :: Lens' SS FilePath
+source f s@(SS { _source = t }) = (\t' -> s { _source = t' }) <$> f t
+{-# INLINE source #-}
 
 
 -- | Lift DSL term to the 'Script'
