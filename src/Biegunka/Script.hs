@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
-  ( Script(..), liftS, annotate, rewind, URI, sourced
+  ( Script(..), liftS, annotate, rewind, URI, sourced, actioned
   , token, app, source
   , runScript, evalScript
   ) where
@@ -122,3 +122,10 @@ sourced ty url path script update = Script $ do
   lift . liftF $ ES tok (Source ty url (rfp </> path) update) ast ()
   source .= (rfp </> path)
   token += 1
+
+
+actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
+actioned f = Script $ do
+  rfp <- use app
+  sfp <- use source
+  lift . liftF $ EA () (f rfp sfp) ()

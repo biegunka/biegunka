@@ -47,9 +47,7 @@ profile n i = Script $ do
 --
 -- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
 registerAt :: FilePath -> Script Actions ()
-registerAt dst = Script $ do
-  rfp <- use app
-  lift . liftF $ EA () (Link mempty (rfp </> dst)) ()
+registerAt dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 {-# INLINE registerAt #-}
 
 -- | Links given file to specified filepath
@@ -59,10 +57,7 @@ registerAt dst = Script $ do
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Actions ()
-link src dst = Script $ do
-  rfp <- use app
-  sfp <- use source
-  lift . liftF $ EA () (Link (sfp </> src) (rfp </> dst)) ()
+link src dst = actioned (\rfp sfp -> Link (sfp </> src) (rfp </> dst))
 {-# INLINE link #-}
 
 -- | Copies given file to specified filepath
@@ -72,10 +67,7 @@ link src dst = Script $ do
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Actions ()
-copy src dst = Script $ do
-  rfp <- use app
-  sfp <- use source
-  lift . liftF $ EA () (Copy (sfp </> src) (rfp </> dst)) ()
+copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (rfp </> dst))
 {-# INLINE copy #-}
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -86,11 +78,8 @@ copy src dst = Script $ do
 -- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute :: FilePath -> FilePath -> Script Actions ()
-substitute src dst = Script $ do
-  rfp <- use app
-  sfp <- use source
-  lift . liftF $ EA ()
-    (Template (sfp </> src) (rfp </> dst) (\b -> render . setAttribute "template" b . newSTMP)) ()
+substitute src dst = actioned (\rfp sfp ->
+  Template (sfp </> src) (rfp </> dst) (\b -> render . setAttribute "template" b . newSTMP))
 {-# INLINE substitute #-}
 
 
@@ -101,9 +90,7 @@ substitute src dst = Script $ do
 --
 -- Prints "hello" (without a newline)
 shell :: String -> Script Actions ()
-shell c = Script $ do
-  sfp <- use source
-  lift . liftF $ EA () (Shell sfp c) ()
+shell c = actioned (\_ sfp -> Shell sfp c)
 {-# INLINE shell #-}
 
 -- | Change effective user id for wrapped commands
