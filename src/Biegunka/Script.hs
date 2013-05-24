@@ -118,9 +118,9 @@ sourced :: String -> URI -> FilePath
 sourced ty url path script update = Script $ do
   rfp <- use app
   tok <- use token
+  source .= (rfp </> path)
   ast <- annotate script
   lift . liftF $ ES tok (Source ty url (rfp </> path) update) ast ()
-  source .= (rfp </> path)
   token += 1
 
 
