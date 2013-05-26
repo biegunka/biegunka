@@ -14,7 +14,8 @@ module Biegunka.Control
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
-import Control.Monad (forever, mplus, unless)
+import Control.Monad (forever, unless)
+import Prelude hiding (log)
 import System.IO
 
 import           Control.Lens
@@ -85,11 +86,11 @@ biegunka (($ def) -> c) (I f) s = do
   r  <- c ^. root . to expand
   ad <- c ^. appData . to expand
   let z = if view colors c then id else plain
-  l <- newTQueueIO
-  forkIO $ loggerThread l
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z)) (fromEL s r)
+  q <- newTQueueIO
+  forkIO $ log q
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue q . z)) (fromEL s r)
   fix $ \wait ->
-    atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
+    atomically (isEmptyTQueue q) >>= \e -> unless e (threadDelay 10000 >> wait)
 
 expand :: String -> IO String
 expand x = do
@@ -110,7 +111,9 @@ pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >
 
 
 -- | Display supplied docs
-loggerThread :: TQueue Doc -> IO ()
-loggerThread queue = forever $ do
-  w <- fmap Term.width Term.size `mplus` return 80
-  atomically (readTQueue queue) >>= displayIO stdout . renderPretty 0.9 w >> hFlush stdout
+log :: TQueue Doc -> IO ()
+log q = forever $ do
+  w <- fmap (maybe 80 Term.width) Term.size
+  d <- atomically (readTQueue q)
+  displayIO stdout (renderPretty 0.9 w d)
+  hFlush stdout

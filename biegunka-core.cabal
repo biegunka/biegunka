@@ -28,7 +28,7 @@ library
                  tagged-transformer >= 0.3,
                  semigroups,
                  ansi-wl-pprint,
-                 terminal-size,
+                 terminal-size >= 0.2.0.0,
                  directory-layout >= 0.3.0.0,
                  data-default,
                  stm >= 2.4,
