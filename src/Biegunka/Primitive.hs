@@ -57,7 +57,7 @@ registerAt dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 --
 -- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 link :: FilePath -> FilePath -> Script Actions ()
-link src dst = actioned (\rfp sfp -> Link (sfp </> src) (rfp </> dst))
+link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE link #-}
 
 -- | Copies given file to specified filepath
@@ -67,7 +67,7 @@ link src dst = actioned (\rfp sfp -> Link (sfp </> src) (rfp </> dst))
 --
 -- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
 copy :: FilePath -> FilePath -> Script Actions ()
-copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (rfp </> dst))
+copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE copy #-}
 
 -- | Substitutes $template.X$ templates in given file and writes result to specified filepath
@@ -79,7 +79,8 @@ copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (rfp </> dst))
 -- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
 substitute :: FilePath -> FilePath -> Script Actions ()
 substitute src dst = actioned (\rfp sfp ->
-  Template (sfp </> src) (rfp </> dst) (\b -> render . setAttribute "template" b . newSTMP))
+  Template (sfp </> src) (constructDestinationFilepath rfp src dst)
+    (\b -> render . setAttribute "template" b . newSTMP))
 {-# INLINE substitute #-}
 
 

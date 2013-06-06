@@ -4,18 +4,20 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
-  ( Script(..), liftS, annotate, rewind, URI, sourced, actioned
+  ( Script(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source
   , runScript, evalScript
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
+import Control.Monad (when)
+import Data.List (isSuffixOf)
 
 import Control.Lens
 import Control.Monad.Free (Free, iter, liftF)
-import Control.Monad.State (MonadState(..), StateT(..), lift, state)
+import Control.Monad.State (MonadState(..), StateT(..), execState, lift, state)
 import Data.Default (Default(..))
-import System.FilePath ((</>))
+import System.FilePath.Lens
 
 import Biegunka.Language
 
@@ -118,14 +120,20 @@ sourced :: String -> URI -> FilePath
 sourced ty url path script update = Script $ do
   rfp <- use app
   tok <- use token
-  source .= (rfp </> path)
+  let df = constructDestinationFilepath rfp url path
+  source .= df
   ast <- annotate script
-  lift . liftF $ ES tok (Source ty url (rfp </> path) update) ast ()
+  lift . liftF $ ES tok (Source ty url df update) ast ()
   token += 1
-
 
 actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
 actioned f = Script $ do
   rfp <- use app
   sfp <- use source
   lift . liftF $ EA () (f rfp sfp) ()
+
+constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
+constructDestinationFilepath r s d = execState ?? r $ do
+  id </>= d
+  when ("/" `isSuffixOf` d) $
+    id </>= (s^.filename)
