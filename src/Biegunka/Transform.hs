@@ -4,11 +4,15 @@
 -- | Transform external language into internal one
 module Biegunka.Transform (fromEL, simplified) where
 
+import Control.Monad (when)
+import Data.List (isSuffixOf)
+
 import Control.Lens
 import Control.Monad.Free (Free(..))
-import Control.Monad.State (State, evalState, get)
+import Control.Monad.State (State, evalState, execState, get)
 import Data.Default
 import System.FilePath ((</>))
+import System.FilePath.Lens
 
 import Biegunka.Language
 
@@ -50,29 +54,37 @@ step (EP (Profile n) s _) = do
 step (ES (Source t u d a) s ()) = do
   Transformation r _ pn _ _ <- get
   sourceName .= u
-  source .= r </> d
+  let df = constructDestinationFilepath r u d
+  source .= df
   order .= 0
   xs <- mapM step $ toList s
   om <- use order
   let ys = map (\(IA a' o _ pn' sn) -> IA a' o om pn' sn) xs
-  return $ IT (chained $ IS (r </> d) t (a $ r </> d) pn u : ys)
+  return $ IT (chained $ IS df t (a $ df) pn u : ys)
 step (EA (Link s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Link (src </> s) (r </> d)) o 0 pn sn
+  return $ IA (Link (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
 step (EA (Copy s d) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Copy (src </> s) (r </> d)) o 0 pn sn
+  return $ IA (Copy (src </> s) (constructDestinationFilepath r s d)) o 0 pn sn
 step (EA (Template s d t) ()) = do
   Transformation r src pn sn _ <- get
   o <- order <+= 1
-  return $ IA (Template (src </> s) (r </> d) t) o 0 pn sn
+  return $ IA (Template (src </> s) (constructDestinationFilepath r s d) t) o 0 pn sn
 step (EA (Shell d c) ()) = do
   Transformation _ s pn sn _ <- get
   o <- order <+= 1
   return $ IA (Shell (s </> d) c) o 0 pn sn
 step (EW w _) = return $ IW w
+
+
+constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
+constructDestinationFilepath r s d = execState ?? r $ do
+  id </>= d
+  when ("/" `isSuffixOf` d) $
+    id </>= (s^.filename)
 
 
 toList :: Script s a -> [EL s ()]
