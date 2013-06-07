@@ -19,7 +19,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.Language (IL(..), A(..))
-import Biegunka.Transform (simplified)
+import Biegunka.Transform (fromEL, simplified)
 
 
 -- | Verification interpreter
@@ -27,7 +27,7 @@ import Biegunka.Transform (simplified)
 -- Compares current filesystem layout and what script says it should be line by line.
 -- Outputs errors it find, otherwise prints OK. Is useful to check execution correctness.
 verify :: Interpreter
-verify = I $ \c (simplified -> s) -> do
+verify = I $ \c (simplified . fromEL -> s) -> do
   (verified, failures) <- runWriterT (verification s)
   view logger c $
     text "Verification:" <> line <>

@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Describe execution I/O actions
 module Biegunka.Execute.Describe
@@ -12,6 +13,7 @@ import Control.Exception (SomeException)
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.Language
+import Biegunka.Script
 
 
 -- | Describe current action and host where it happens
@@ -20,11 +22,11 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 
 
 -- | Describe current action
-action :: IL -> Maybe Doc
-action il = fmap (nest 3) $ case il of
-  IS p t _ _ u  -> Just . annotation (text u) $
-    green "update" </> text t </> "source at" </> magenta (text p)
-  IA a o om _ n -> Just . annotation (text n) $ progress o om <$> case a of
+action :: EL (SA s) s a -> Maybe Doc
+action il = nest 3 `fmap` case il of
+  ES _ (Source t u d _) _ _  -> Just . annotation (text u) $
+    green "update" </> text t </> "source at" </> magenta (text d)
+  EA _ a _ -> Just . annotation (text "M") $ progress 4 7 <$> case a of
     Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
     Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
     Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)

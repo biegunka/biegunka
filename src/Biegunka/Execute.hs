@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.Execute (execute) where
@@ -13,12 +14,14 @@ import           Data.Monoid (mempty)
 import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
+import           Unsafe.Coerce (unsafeCoerce)
 
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
 import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
+import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (evalStateT, runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
@@ -42,8 +45,9 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
-import Biegunka.Language (IL(..), A(..), W(..), React(..))
-import Biegunka.Transform (simplified)
+import Biegunka.Language (EL(..), A(..), S(..), W(..), React(..), peek)
+import Biegunka.Script
+import Biegunka.Transform (fromEL, simplified)
 
 
 -- | Execute Interpreter
@@ -56,7 +60,7 @@ import Biegunka.Transform (simplified)
 -- bugs in your script before devastation is done.
 execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
-  let s' = simplified s
+  let s' = simplified $ fromEL s
       b = construct s'
   a <- load c s'
   e' <- initTVars e
@@ -84,7 +88,7 @@ initTVars e = do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> ES -> [IL] -> IO ()
+runTask :: EE -> ES -> Free (EL (SA s) s) a -> IO ()
 runTask e s t = do
   reify e ((`evalStateT` s) . untag . asProxyOf (task t))
   atomically (writeTQueue (e^.stm.work) Stop)
@@ -102,14 +106,35 @@ asProxyOf a _ = a
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: forall s. Reifies s EE => [IL] -> Execution s ()
-task (IT xs : cs) = newTask cs >> task xs
-task t@(c:cs) = do
+task :: Reifies t EE => Free (EL (SA s) s) a -> Execution t ()
+task (Free (EP _ _ b d)) = do
+  newTask d
+  task (unsafeCoerce b)
+task a@(Free c@(Biegunka.Language.ES _ _ b d)) = do
   e <- try (command c)
   case e of
-    Left e' -> respond e' t >>= task
-    Right _ -> task cs
-task [] = return ()
+    Left e' -> do
+      r <- retry e'
+      case r of
+        Retry    -> task a
+        Abortive -> return ()
+        Ignorant -> do
+          newTask d
+          task (unsafeCoerce b)
+    Right _ -> do
+      newTask d
+      task (unsafeCoerce b)
+task a@(Free c) = do
+  e <- try (command c)
+  case e of
+    Left e' -> do
+      r <- retry e'
+      case r of
+        Retry    -> task a
+        Abortive -> return ()
+        Ignorant -> task (peek c)
+    Right _ -> task (peek c)
+task (Pure _) = return ()
 
 
 -- | If only I could come up with MonadBaseControl instance for Execution
@@ -123,20 +148,17 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-respond :: forall s. Reifies s EE => SomeException -> [IL] -> Execution s [IL]
-respond exc t = do
+retry :: forall s. Reifies s EE => SomeException -> Execution s React
+retry exc = do
   log <- fmap (\e -> e^.controls.logger) reflected
   liftIO . log . describe $ exception exc
   rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
     liftIO . log . describe $ retryCounter (rc + 1)
-    return t
+    return Retry
   else do
     retryCount .= 0
-    r <- reaction
-    return $ case r of
-      Ignorant -> ignoring t
-      Abortive -> []
+    reaction
 
 -- | Get current reaction setting from environment
 --
@@ -144,28 +166,13 @@ respond exc t = do
 reaction :: forall s. Reifies s EE => Execution s React
 reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
--- | If failure happens to be in emerging 'Source' then we need to skip
--- all related 'Files' operations too.
-ignoring :: [IL] -> [IL]
-ignoring (IS {} : cs) = go [] cs
- where
-  go ws cs'@(IS {} : _)  = reverse ws ++ cs'
-  go ws (w@(IW s) : cs') = case s of
-    User     (Just _) -> go (w:ws) cs'
-    Reacting (Just _) -> go (w:ws) cs'
-    _                 -> go [] cs'
-  go _  (_    : cs')      = go [] cs'
-  go _  []                = []
-ignoring (_ : cs)    = cs
-ignoring [] = error "Should not been here."
-
 
 -- | Single command execution
-command :: forall s. Reifies s EE => IL -> Execution s ()
-command (IW (Reacting (Just r))) = reactStack %= (r :)
-command (IW (Reacting Nothing))  = reactStack %= drop 1
-command (IW (User     (Just u))) = usersStack %= (u :)
-command (IW (User     Nothing))  = usersStack %= drop 1
+command :: forall a s t. Reifies t EE => EL (SA s) s a -> Execution t ()
+command (EW (Reacting (Just r)) _) = reactStack %= (r :)
+command (EW (Reacting Nothing) _)  = reactStack %= drop 1
+command (EW (User     (Just u)) _) = usersStack %= (u :)
+command (EW (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
   let stv = e^.stm.sudoing
@@ -192,7 +199,8 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
  where
-  op (IS dst _ update _ _) = do
+  op :: EL (SA s) s a -> Execution t (IO ())
+  op (Biegunka.Language.ES _ (Source _ _ dst update) _ _) = do
     rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
       updated <- atomically $ do
@@ -204,15 +212,13 @@ command c = do
             return False
       unless updated $ do
         createDirectoryIfMissing True $ dropFileName dst
-        update
-     `E.onException`
-      atomically (modifyTVar rstv (S.delete dst))
-  op (IA (Link src dst) _ _ _ _) = return $ overWriteWith createSymbolicLink src dst
-  op (IA (Copy src dst) _ _ _ _) = return $ overWriteWith copyFile src dst
-  op (IA (Template src dst substitute) _ _ _ _) = return $
-    let ts = _templates $ reflect (Proxy :: Proxy s) in case ts of
+        update dst
+  op (EA _ (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
+  op (EA _ (Copy src dst) _) = return $ overWriteWith copyFile src dst
+  op (EA _ (Template src dst substitute) _) = return $
+    let ts = _templates $ reflect (Proxy :: Proxy t) in case ts of
       Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  op (IA (Shell p sc) _ _ _ _) = return $ do
+  op (EA _ (Shell p sc) _) = return $ do
     (_, _, Just er, ph) <- createProcess $
       (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
     e <- waitForProcess ph
@@ -228,7 +234,7 @@ command c = do
 
 
 -- | Queue next task in scheduler
-newTask :: forall s. Reifies s EE => [IL] -> Execution s ()
+newTask :: forall a s t. Reifies t EE => Free (EL (SA s) s) a -> Execution t ()
 newTask t = do
   e <- reflected
   s <- get

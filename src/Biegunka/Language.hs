@@ -86,7 +86,7 @@ data W =
   | Reacting (Maybe React)
   | Chain
 
-data React = Ignorant | Abortive
+data React = Ignorant | Abortive | Retry
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 

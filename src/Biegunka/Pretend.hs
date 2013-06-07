@@ -14,7 +14,7 @@ import Text.PrettyPrint.ANSI.Leijen
 import Biegunka.DB
 import Biegunka.Language (IL(..), A(..), W(..))
 import Biegunka.Control (Interpreter(..), logger)
-import Biegunka.Transform (simplified)
+import Biegunka.Transform (fromEL, simplified)
 
 
 -- | Pretend interpreter
@@ -32,7 +32,7 @@ import Biegunka.Transform (simplified)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c@(view logger -> l) (simplified -> s) -> do
+pretend = I $ \c@(view logger -> l) (simplified . fromEL -> s) -> do
   a <- load c s
   let b = construct s
   l $ stats a b

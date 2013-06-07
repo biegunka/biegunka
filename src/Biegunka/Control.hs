@@ -19,6 +19,7 @@ import System.IO
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import           Control.Lens
+import           Control.Monad.Free
 import           Data.Default
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
@@ -28,7 +29,6 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
 import Biegunka.Language
 import Biegunka.Script
-import Biegunka.Transform (fromEL)
 
 
 -- | Common interpreters controls
@@ -64,7 +64,7 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: Controls -> [IL] -> IO ()
+  { interpret :: Controls -> Free (EL (SA Profiles) Profiles) () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -90,7 +90,7 @@ biegunka (($ def) -> c) (I f) s = do
   l <- newTQueueIO
   forkIO $ log l
   f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z))
-    (fromEL (evalScript (def & app .~ r) s))
+    (evalScript (def & app .~ r) s)
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
