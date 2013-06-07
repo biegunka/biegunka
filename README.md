@@ -19,11 +19,10 @@ import Biegunka
 import Biegunka.Source.Git
 
 main :: IO ()
-main = biegunka id script (pretend `mappend` execute id)
- where
-  script = profile "my-configs" $
+main = biegunka id (pretend <> execute id) $
+  profile "my-configs" $
     git "https://my.server.with.configs.com/dotfiles" "/home/user/.dotfiles" $
-	  link "xmonad.hs" "/home/user/.xmonad/xmonad.hs"
+      link "xmonad.hs" "/home/user/.xmonad/xmonad.hs"
 ```
 We use it as an example to get high level intuition about what `biegunka` is.
 
@@ -36,7 +35,7 @@ import Biegunka.Source.Git
 ```
 
 Necessary imports:
-  * `Data.Monoid` contains `mappend` which is useful for composition
+  * `Data.Monoid` contains `(<>)` which is useful for composition
   * `Biegunka` module contains core functionality such as copying or linking files from sources
   * `Biegunka.Source.Git` enables git support
 
@@ -45,13 +44,13 @@ Necessary imports:
 --
 
 ```haskell
-main = biegunka id script (pretend `mappend` execute id) $
+main = biegunka id (pretend <> execute id) $
 ```
 Biegunka scripts are executed by interpreters. Here we see 2 of them:
  * `pretend` assumes everything went without errors and prints script stats based on that assumption
  * `execute` does real work of getting sources and moving files
 
-**Note**: interpreters compose with `Data.Monoid.mappend`.
+**Note**: interpreters compose with `(<>)`.
 
 --
 
