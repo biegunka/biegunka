@@ -4,8 +4,8 @@
 module Biegunka.Execute.Control
   ( -- * Execution facade type
     Execution
-    -- * Execution thread state
-  , ES(..), reactStack, usersStack, retryCount
+    -- * Execution thread state control
+  , EC(..), reactStack, usersStack, retryCount
     -- * Execution environment
   , EE(..)
   , priviledges, react, templates, retries
@@ -27,25 +27,26 @@ import Biegunka.Language (React(..))
 import Biegunka.Control (Controls)
 
 
-type Execution s a = TaggedT s (StateT ES IO) a
+-- | Stateful IO actions execution tagged with environment
+type Execution s a = TaggedT s (StateT EC IO) a
 
 
 -- | 'Execution' thread state.
 -- Denotes current failure reaction, effective user id and more
-data ES = ES
+data EC = EC
   { _reactStack  :: [React]
   , _usersStack  :: [String]
   , _retryCount  :: Int
   } deriving (Show, Read, Eq, Ord)
 
-instance Default ES where
-  def = ES
+instance Default EC where
+  def = EC
     { _reactStack = []
     , _usersStack = []
     , _retryCount = 0
     }
 
-makeLenses ''ES
+makeLenses ''EC
 
 
 -- | Concurrent parts of 'EE'

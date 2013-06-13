@@ -85,7 +85,7 @@ initTVars e = do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> ES -> Free (EL SA s) a -> IO ()
+runTask :: EE -> EC -> Free (EL SA s) a -> IO ()
 runTask e s t = do
   reify e ((`evalStateT` s) . untag . asProxyOf (task t))
   atomically (writeTQueue (e^.stm.work) Stop)
@@ -197,7 +197,7 @@ command c = do
       atomically $ writeTVar stv False
  where
   op :: EL SA s a -> Execution t (IO ())
-  op (Biegunka.Language.ES _ (S _ _ dst update) _ _) = do
+  op (ES _ (S _ _ dst update) _ _) = do
     rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
       updated <- atomically $ do
