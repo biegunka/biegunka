@@ -1,15 +1,18 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Verification interpreter
 module Biegunka.Verify (verify) where
 
 import Control.Applicative
-import Control.Monad (mplus, unless)
-import Data.List (foldl')
+import Control.Monad (mplus)
+import Data.Foldable (traverse_)
 import Prelude hiding (log)
 
 import           Control.Lens
-import           Control.Monad.Writer (WriterT, runWriterT, tell)
+import           Control.Monad.Free (Free(..))
+import           Control.Monad.Writer (WriterT, execWriterT, tell)
 import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist)
@@ -18,8 +21,8 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), logger)
-import Biegunka.Language (IL(..), A(..))
-import Biegunka.Transform (fromEL, simplified)
+import Biegunka.Language (EL(..), S(..), A(..), peek)
+import Biegunka.Script (SA(..))
 
 
 -- | Verification interpreter
@@ -27,26 +30,32 @@ import Biegunka.Transform (fromEL, simplified)
 -- Compares current filesystem layout and what script says it should be line by line.
 -- Outputs errors it find, otherwise prints OK. Is useful to check execution correctness.
 verify :: Interpreter
-verify = I $ \c (simplified . fromEL -> s) -> do
-  (verified, failures) <- runWriterT (verification s)
+verify = I $ \c s -> do
+  failures <- execWriterT (verification s)
   view logger c $
     text "Verification:" <> line <>
-    (if verified then green "OK" else vcat failures) <> line
+    (if null failures then green "OK" else vcat failures) <> line
 
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
-verification :: [IL] -> WriterT [Doc] IO Bool
-verification = foldl' (\a -> liftA2 (&&) a . go) (return True)
+verification :: Free (EL SA s) () -> WriterT [Doc] IO ()
+verification (Free c) = do
+  r <- liftIO (correct c `mplus` return False)
+  if r then case c of
+    EP _ _ i _ -> verification i
+    ES _ _ i _ -> verification i
+    _ -> return ()
+  else
+    traverse_ (tell . (:[])) (describe <$> log c)
+  verification (peek c)
  where
-  go i = case log i of
-    Just l  -> liftIO (correct i `mplus` return False) >>= \c -> unless c (tell [describe l]) >> return c
-    Nothing -> return True
+verification (Pure ()) = return ()
 
 -- | Check single instruction correctness
-correct :: IL -> IO Bool
+correct :: EL SA s a -> IO Bool
 correct il = case il of
-  IS p _ _ _ _ -> doesDirectoryExist p
-  IA a _ _ _ _ -> case a of
+  ES _ (Source { spath }) _ _ -> doesDirectoryExist spath
+  EA _ a _ -> case a of
     Link s d -> do
       s' <- readSymbolicLink d
       dfe <- doesFileExist s'
@@ -61,18 +70,16 @@ correct il = case il of
   _ -> return True
 
 
-
 -- | Describe current action and host where it happens
 describe :: Doc -> Doc
 describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
 
-
 -- | Log message on failure
-log :: IL -> Maybe Doc
+log :: EL SA s a -> Maybe Doc
 log il = nest 1 <$> case il of
-  IS p t _ _ u ->
-    Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text p)
-  IA a _ _ _ n -> annotation (text n) <$> case a of
+  ES _ (Source t u d _) _ _  ->
+    Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
+  EA _ a _ -> annotation (text "M") <$> case a of
     Link s d ->
       Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
     Copy s d ->
