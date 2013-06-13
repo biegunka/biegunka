@@ -212,9 +212,10 @@ command c = do
         update dst
   op (EA _ (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
   op (EA _ (Copy src dst) _) = return $ overWriteWith copyFile src dst
-  op (EA _ (Template src dst substitute) _) = return $
-    let ts = _templates $ reflect (Proxy :: Proxy t) in case ts of
-      Templates ts' -> overWriteWith (\s d -> toStrict . substitute ts' . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+  op (EA _ (Template src dst substitute) _) = do
+    Templates ts <- view templates <$> reflected
+    return $
+      overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   op (EA _ (Shell p sc) _) = return $ do
     (_, _, Just er, ph) <- createProcess $
       (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
