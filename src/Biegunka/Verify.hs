@@ -33,9 +33,11 @@ verify :: Interpreter
 verify = I $ \c s -> do
   failures <- execWriterT (verification s)
   view logger c $
-    text "Verification:" <> line <>
-    (if null failures then green "OK" else vcat failures) <> line
-
+       text "Verification: "
+    <> case failures of
+      [] -> green "OK"
+      _  -> line <> vcat failures
+    <> line
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
 verification :: Free (EL SA s) () -> WriterT [Doc] IO ()
