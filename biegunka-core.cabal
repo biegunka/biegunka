@@ -50,7 +50,6 @@ library
                  Biegunka.Execute.Control
                  Biegunka.Pretend
                  Biegunka.Verify
-                 Biegunka.Transform
   ghc-options: -Wall
                -fno-warn-unused-do-bind
 
