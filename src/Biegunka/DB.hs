@@ -5,13 +5,12 @@
 {-# LANGUAGE TupleSections #-}
 module Biegunka.DB
   ( Biegunka(..), R(..)
-  , load, loadProfile, save, construct
+  , load, loads, save, construct
   , filepaths, sources
   ) where
 
 import Control.Applicative
 import Control.Monad ((<=<), forM, mplus, unless)
-import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
@@ -75,7 +74,7 @@ biegunkaL f (Construct s b) = (\b' -> Construct s b') <$> f b
 
 
 load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
-load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . profiles
+load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (EL SA Profiles) a -> [String]
   profiles (Free (EP _ (Profile n) _ x)) = n : profiles x
@@ -89,17 +88,16 @@ load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . profi
 --
 -- Reasons to fail:
 --
---  * Passed instruction does not define profile
---
 --  * Cannot read from profile file (various reasons here)
 --
 --  * Cannot parse profile file (wrong format)
-loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
-loadProfile c p = do
+loads :: Controls -> [String] -> IO [(String, Map R (Map FilePath R))]
+loads c (p:ps) = do
   let (name, _) = c & appData <</>~ p
-  (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
+  Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
+  (v:) <$> loads c ps
  `mplus`
-  return Nothing
+  loads c ps
  where
   parser (Object o) = (p, ) . M.fromList <$> do
     ss <- o .: "sources"
@@ -108,6 +106,7 @@ loadProfile c p = do
       fs <- s .: "files" >>= mapM parseJSON
       return (t, M.fromList fs)
   parser _ = empty
+loads _ [] = return []
 
 
 -- | Save profiles data to files.
