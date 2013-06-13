@@ -46,7 +46,6 @@ import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
 import Biegunka.Language (EL(..), A(..), S(..), W(..), React(..), peek)
 import Biegunka.Script
-import Biegunka.Transform (fromEL, simplified)
 
 
 -- | Execute Interpreter
@@ -59,8 +58,7 @@ import Biegunka.Transform (fromEL, simplified)
 -- bugs in your script before devastation is done.
 execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
-  let s' = simplified $ fromEL s
-      b = construct s'
+  let b = construct s
   a <- load c s
   e' <- initTVars e
   when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser

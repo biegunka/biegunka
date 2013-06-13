@@ -10,7 +10,7 @@ module Biegunka.DB
   ) where
 
 import Control.Applicative
-import Control.Monad ((<=<), forM, mplus, unless)
+import Control.Monad ((<=<), forM, mplus)
 import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
@@ -30,7 +30,7 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language (Scope(..), EL(..), IL(..), P(..), A(..))
+import Biegunka.Language (Scope(..), EL(..), P(..), S(..), A(..))
 import Biegunka.Script (SA(..))
 
 
@@ -59,18 +59,21 @@ instance ToJSON R where
 
 data Construct = Construct
   { _source :: R
+  , _profile :: String
   , _biegunka :: Map String (Map R (Map FilePath R))
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
-  def = Construct (R "" "" "") mempty
+  def = Construct (R "" "" "") mempty mempty
 
+profileL :: Lens' Construct String
+profileL f (Construct s p b) = (\p' -> Construct s p' b) <$> f p
 
 sourceL :: Lens' Construct R
-sourceL f (Construct s b) = (\s' -> Construct s' b) <$> f s
+sourceL f (Construct s p b) = (\s' -> Construct s' p b) <$> f s
 
 biegunkaL :: Lens' Construct (Map String (Map R (Map FilePath R)))
-biegunkaL f (Construct s b) = (\b' -> Construct s b') <$> f b
+biegunkaL f (Construct s p b) = (\b' -> Construct s p b') <$> f b
 
 
 load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
@@ -149,23 +152,30 @@ fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
 
 
-construct :: [IL] -> Biegunka
-construct = Biegunka . _biegunka . (`execState` def) . mapM_ g
+construct :: Free (EL SA s) a -> Biegunka
+construct = Biegunka . _biegunka . (`execState` def) . go
  where
-  g :: IL -> State Construct ()
-  g (IP n) =
-    use (biegunkaL . contains n) >>= \m -> unless m (biegunkaL . at n ?= mempty)
-  g (IS dst t _ pn sn) = do
-    let s = R { recordtype = t, base = sn, location = dst }
+  go :: Free (EL SA s) a -> State Construct ()
+  go (Free (EP _ (Profile n) i z)) = do
+    biegunkaL . at n . anon mempty (const False) <>= mempty
+    assign profileL n
+    go i
+    go z
+  go (Free (ES _ (Source t u d _) i z)) = do
+    let s = R { recordtype = t, base = u, location = d }
+    n <- use profileL
     assign sourceL s
-    biegunkaL . at pn . non mempty <>= M.singleton s mempty
-  g (IA a _ _ pn _) = do
+    biegunkaL . at n . non mempty <>= M.singleton s mempty
+    go i
+    go z
+  go (Free (EA _ a z)) = do
+    n <- use profileL
     s <- use sourceL
-    biegunkaL . at pn . traverse . at s . traverse <>= h a
+    biegunkaL . at n . traverse . at s . traverse <>= h a
+    go z
    where
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
     h (Shell {})           = mempty
-  g (IW _) = return ()
-  g (IT _) = error "Internal language invariant broken"
+  go _ = return ()
