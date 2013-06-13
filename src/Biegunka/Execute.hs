@@ -14,7 +14,6 @@ import           Data.Monoid (mempty)
 import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
-import           Unsafe.Coerce (unsafeCoerce)
 
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
@@ -88,7 +87,7 @@ initTVars e = do
 
 
 -- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> ES -> Free (EL (SA s) s) a -> IO ()
+runTask :: EE -> ES -> Free (EL SA s) a -> IO ()
 runTask e s t = do
   reify e ((`evalStateT` s) . untag . asProxyOf (task t))
   atomically (writeTQueue (e^.stm.work) Stop)
@@ -106,10 +105,10 @@ asProxyOf a _ = a
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t EE => Free (EL (SA s) s) a -> Execution t ()
+task :: Reifies t EE => Free (EL SA s) a -> Execution t ()
 task (Free (EP _ _ b d)) = do
   newTask d
-  task (unsafeCoerce b)
+  task b
 task a@(Free c@(Biegunka.Language.ES _ _ b d)) = do
   e <- try (command c)
   case e of
@@ -120,10 +119,10 @@ task a@(Free c@(Biegunka.Language.ES _ _ b d)) = do
         Abortive -> return ()
         Ignorant -> do
           newTask d
-          task (unsafeCoerce b)
+          task b
     Right _ -> do
       newTask d
-      task (unsafeCoerce b)
+      task b
 task a@(Free c) = do
   e <- try (command c)
   case e of
@@ -168,7 +167,7 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 
 -- | Single command execution
-command :: forall a s t. Reifies t EE => EL (SA s) s a -> Execution t ()
+command :: forall a s t. Reifies t EE => EL SA s a -> Execution t ()
 command (EW (Reacting (Just r)) _) = reactStack %= (r :)
 command (EW (Reacting Nothing) _)  = reactStack %= drop 1
 command (EW (User     (Just u)) _) = usersStack %= (u :)
@@ -199,7 +198,7 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
  where
-  op :: EL (SA s) s a -> Execution t (IO ())
+  op :: EL SA s a -> Execution t (IO ())
   op (Biegunka.Language.ES _ (Source _ _ dst update) _ _) = do
     rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
@@ -234,7 +233,7 @@ command c = do
 
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t EE => Free (EL (SA s) s) a -> Execution t ()
+newTask :: forall a s t. Reifies t EE => Free (EL SA s) a -> Execution t ()
 newTask t = do
   e <- reflected
   s <- get

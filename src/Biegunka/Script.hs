@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
-  ( Script(..), SA, liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  ( Script(..), SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source
   , runScript, evalScript
   ) where
@@ -21,14 +21,14 @@ import System.FilePath.Lens
 
 import Biegunka.Language
 
-type family SA (sc :: Scope) :: *
-type instance SA Profiles = Int
-type instance SA Sources  = Int
-type instance SA Actions  = ()
+data family SA (sc :: Scope) :: *
+data instance SA Profiles = SAP Int
+data instance SA Sources  = SAS Int
+data instance SA Actions  = SAA ()
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
-newtype Script s a = Script { unScript :: StateT SS (Free (EL (SA s) s)) a }
+newtype Script s a = Script { unScript :: StateT SS (Free (EL SA s)) a }
 
 instance Functor (Script s) where
   fmap f (Script m) = Script (fmap f m)
@@ -51,12 +51,12 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: SS -> Script s a -> Free (EL (SA s) s) (a, SS)
+runScript :: SS -> Script s a -> Free (EL SA s) (a, SS)
 runScript s = (`runStateT` s) . unScript
 {-# INLINE runScript #-}
 
 -- | Get DSL from 'Script'
-evalScript :: SS -> Script s a -> Free (EL (SA s) s) a
+evalScript :: SS -> Script s a -> Free (EL SA s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
@@ -90,12 +90,12 @@ source f s@(SS { _source = t }) = (\t' -> s { _source = t' }) <$> f t
 
 
 -- | Lift DSL term to the 'Script'
-liftS :: EL (SA s) s a -> Script s a
+liftS :: EL SA s a -> Script s a
 liftS = Script . lift . liftF
 {-# INLINE liftS #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT SS (Free (EL (SA t) t)) (Free (EL (SA s) s) a)
+annotate :: Script s a -> StateT SS (Free (EL SA t)) (Free (EL SA s) a)
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r
@@ -123,14 +123,14 @@ sourced ty url path script update = Script $ do
   let df = constructDestinationFilepath rfp url path
   source .= df
   ast <- annotate script
-  lift . liftF $ ES tok (Source ty url df update) ast ()
+  lift . liftF $ ES (SAS tok) (Source ty url df update) ast ()
   token += 1
 
 actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
 actioned f = Script $ do
   rfp <- use app
   sfp <- use source
-  lift . liftF $ EA () (f rfp sfp) ()
+  lift . liftF $ EA (SAA ()) (f rfp sfp) ()
 
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do

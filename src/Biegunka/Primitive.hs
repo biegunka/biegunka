@@ -36,7 +36,7 @@ profile :: String -> Script Sources () -> Script Profiles ()
 profile n i = Script $ do
   tok <- use token
   ast <- annotate i
-  lift . liftF $ EP tok (Profile n) ast ()
+  lift . liftF $ EP (SAP tok) (Profile n) ast ()
   token += 1
 {-# INLINE profile #-}
 

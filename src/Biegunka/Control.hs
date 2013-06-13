@@ -64,7 +64,7 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: Controls -> Free (EL (SA Profiles) Profiles) () -> IO ()
+  { interpret :: Controls -> Free (EL SA Profiles) () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another

@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
 -- | Specifies user side and library side languages primitives
 module Biegunka.Language
@@ -25,11 +26,11 @@ data Scope = Actions | Sources | Profiles
 
 -- | External language datatype. That's what user will
 -- construct with combinators from "Biegunka"
-data EL a s x where
-  EP :: a -> P -> Free (EL a' Sources) () -> x -> EL a Profiles x
-  ES :: a -> S -> Free (EL a' Actions) () -> x -> EL a Sources x
-  EA :: a -> A -> x -> EL a Actions x
-  EW :: W -> x -> EL a sc x
+data EL :: (Scope -> *) -> Scope -> * -> * where
+  EP :: f Profiles -> P -> Free (EL f Sources) () -> x -> EL f Profiles x
+  ES :: f Sources -> S -> Free (EL f Actions) () -> x -> EL f Sources x
+  EA :: f Actions -> A -> x -> EL f Actions x
+  EW :: W -> x -> EL f s x
 
 instance Functor (EL a s) where
   fmap = fmapDefault

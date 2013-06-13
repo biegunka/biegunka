@@ -69,11 +69,11 @@ step (EA _ (Shell d c) ()) = do
 step (EW w _) = return $ IW w
 
 
-toList :: Free (EL a s) x -> [EL () s ()]
-toList (Free (EP _ p i x)) = EP () p i () : toList x
-toList (Free (ES _ s i x)) = ES () s i () : toList x
+toList :: Free (EL a s) x -> [EL a s ()]
+toList (Free (EP z p i x)) = EP z p i () : toList x
+toList (Free (ES z s i x)) = ES z s i () : toList x
 toList (Free (EW   t   x)) = EW    t   () : toList x
-toList (Free (EA _ a x))   = EA () a   () : toList x
+toList (Free (EA z a x))   = EA z a   () : toList x
 toList (Pure _)          = []
 
 
