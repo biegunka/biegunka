@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.Pretend (pretend) where
@@ -8,13 +9,14 @@ import Data.Maybe (mapMaybe)
 import Prelude hiding (log)
 
 import Control.Lens
+import Control.Monad.Free (Free(..))
 import System.IO
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
-import Biegunka.Language (IL(..), A(..), W(..))
+import Biegunka.Language (EL(..), P(..), S(..), A(..), W(..))
 import Biegunka.Control (Interpreter(..), logger)
-import Biegunka.Transform (fromEL, simplified)
+import Biegunka.Script (SA)
 
 
 -- | Pretend interpreter
@@ -37,7 +39,7 @@ pretend = I $ \c@(view logger -> l) s -> do
   let b = construct s
   l $ stats a b
   whenM (query l "Print full log?") $
-    let s' = simplified (fromEL s) in l (log s' a b)
+    l (log s a b)
  where
   whenM ma mb = do
     p <- ma
@@ -69,27 +71,31 @@ stats a b = vcat $ mapMaybe about
     n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <$> vcat (xs ++ [empty]))
 
 
-log :: [IL] -> Biegunka -> Biegunka -> Doc
-log cs a b = vcat (mapMaybe install cs ++ [empty] ++ uninstall ++ [empty])
+log :: Free (EL SA s) a -> Biegunka -> Biegunka -> Doc
+log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
  where
-  install :: IL -> Maybe Doc
-  install (IS p t _ _ u) =
-    Just $ green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text p)
-  install (IA (Link src dst) _ _ _ _) = Just . indent 2 $
-    yellow (text dst) </> green "links" </> "to" </> magenta (text src)
-  install (IA (Copy src dst) _ _ _ _) = Just . indent 2 $
-    yellow (text dst) </> "is a" </> green "copy" </> "of" </> magenta (text src)
-  install (IA (Template src dst _) _ _ _ _) = Just . indent 2 $
-    yellow (text dst) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text src)
-  install (IA (Shell p c) _ _ _ _) = Just . indent 2 $
-    green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
-  install (IW w)           = go w
+  install :: Free (EL SA s) a -> [Doc]
+  install (Free (EP _ (Profile n) i z)) =
+      (green "profile" </> cyan (text n) </> green ":")
+    : map (indent 2) (install i) ++ install z
+  install (Free (ES _ (Source t u d _) i z)) =
+      (green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text d))
+    : map (indent 2) (install i) ++ install z
+  install (Free (EA _ i z)) = (:install z) $ case i of
+    Link s d ->
+      yellow (text d) </> green "links" </> "to" </> magenta (text s)
+    Copy s d ->
+      yellow (text d) </> "is a" </> green "copy" </> "of" </> magenta (text s)
+    Template s d _ ->
+      yellow (text d) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text s)
+    Shell p c ->
+      green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
+  install (Free (EW w z)) = go w
    where
-    go (User (Just user)) = Just $ green "change user" </> "to" </> text user
-    go (User Nothing)     = Just $ green "change user" </> "back"
-    go _                  = Nothing
-  install (IT _) = Nothing
-  install (IP _) = Nothing
+    go (User (Just user)) = (green "change user" </> "to" </> text user) : install z
+    go (User Nothing)     = (green "change user" </> "back") : install z
+    go _                  = install z
+  install (Pure _) = []
 
   uninstall :: [Doc]
   uninstall = map ("Delete" </>) $
