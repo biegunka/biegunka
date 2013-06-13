@@ -16,7 +16,7 @@ import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
-import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, writeTVar)
+import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
 import           Control.Monad.State (evalStateT, runStateT, get, put)
@@ -25,7 +25,7 @@ import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
 import           Data.Functor.Trans.Tagged
-import           Data.Set (member, insert)
+import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -111,6 +111,7 @@ task t@(c:cs) = do
     Right _ -> task cs
 task [] = return ()
 
+
 -- | If only I could come up with MonadBaseControl instance for Execution
 try :: Exception e => Execution s a -> Execution s (Either e a)
 try (TagT ex) = do
@@ -194,16 +195,18 @@ command c = do
   op (IS dst _ update _ _) = do
     rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
-      unmentioned <- atomically $ do
+      updated <- atomically $ do
         rs <- readTVar rstv
-        if dst `member` rs
-          then return False
+        if dst `S.member` rs
+          then return True
           else do
-            writeTVar rstv $ insert dst rs
-            return True
-      when unmentioned $ do
+            writeTVar rstv $ S.insert dst rs
+            return False
+      unless updated $ do
         createDirectoryIfMissing True $ dropFileName dst
         update
+     `E.onException`
+      atomically (modifyTVar rstv (S.delete dst))
   op (IA (Link src dst) _ _ _ _) = return $ overWriteWith createSymbolicLink src dst
   op (IA (Copy src dst) _ _ _ _) = return $ overWriteWith copyFile src dst
   op (IA (Template src dst substitute) _ _ _ _) = return $
