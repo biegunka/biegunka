@@ -147,7 +147,7 @@ try (TagT ex) = do
 -- Possible responses: retry command execution or ignore failure or abort task
 retry :: forall s. Reifies s EE => SomeException -> Execution s React
 retry exc = do
-  log <- fmap (\e -> e^.controls.logger) reflected
+  log <- reflected <&> \e -> e^.controls.logger
   liftIO . log . describe $ exception exc
   rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
@@ -198,7 +198,7 @@ command c = do
  where
   op :: EL SA s a -> Execution t (IO ())
   op (ES _ (S _ _ dst update) _ _) = do
-    rstv <- liftM (\e -> e^.stm.repos) reflected
+    rstv <- reflected <&> \e -> e^.stm.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -210,6 +210,8 @@ command c = do
       unless updated $ do
         createDirectoryIfMissing True $ dropFileName dst
         update dst
+     `E.onException`
+      atomically (modifyTVar rstv (S.delete dst))
   op (EA _ (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
   op (EA _ (Copy src dst) _) = return $ overWriteWith copyFile src dst
   op (EA _ (Template src dst substitute) _) = do
