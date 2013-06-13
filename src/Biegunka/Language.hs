@@ -5,7 +5,7 @@
 -- | Specifies user side and library side languages primitives
 module Biegunka.Language
   ( Scope(..)
-  , EL(..), IL(..), A(..), S(..), P(..), W(..)
+  , EL(..), A(..), S(..), P(..), W(..)
   , React(..)
   , peek
   ) where
@@ -89,11 +89,3 @@ data W =
 
 data React = Ignorant | Abortive | Retry
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-
-data IL =
-    IA A Int Int String String
-  | IS FilePath String (IO ()) String String
-  | IP String
-  | IW W
-  | IT [IL]
