@@ -109,19 +109,19 @@ task :: Reifies t EE => Free (EL SA s) a -> Execution t ()
 task (Free (EP _ _ b d)) = do
   newTask d
   task b
-task a@(Free c@(Biegunka.Language.ES _ _ b d)) = do
+task (Free c@(Biegunka.Language.ES _ _ b d)) = do
+  -- That could be optimised to not fork on Pure
+  newTask d
   e <- try (command c)
   case e of
     Left e' -> do
       r <- retry e'
       case r of
-        Retry    -> task a
+        Retry    -> task (Free (Pure () <$ c))
         Abortive -> return ()
         Ignorant -> do
-          newTask d
           task b
     Right _ -> do
-      newTask d
       task b
 task a@(Free c) = do
   e <- try (command c)
