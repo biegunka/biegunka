@@ -123,7 +123,7 @@ sourced ty url path script update = Script $ do
   let df = constructDestinationFilepath rfp url path
   source .= df
   ast <- annotate script
-  lift . liftF $ ES (SAS tok) (Source ty url df update) ast ()
+  lift . liftF $ ES (SAS tok) (S ty url df update) ast ()
   token += 1
 
 actioned :: (FilePath -> FilePath -> A) -> Script Actions ()

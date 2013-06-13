@@ -75,10 +75,10 @@ log :: Free (EL SA s) a -> Biegunka -> Biegunka -> Doc
 log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
  where
   install :: Free (EL SA s) a -> [Doc]
-  install (Free (EP _ (Profile n) i z)) =
+  install (Free (EP _ (P n) i z)) =
       (green "profile" </> cyan (text n) </> green ":")
     : map (indent 2) (install i) ++ install z
-  install (Free (ES _ (Source t u d _) i z)) =
+  install (Free (ES _ (S t u d _) i z)) =
       (green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text d))
     : map (indent 2) (install i) ++ install z
   install (Free (EA _ i z)) = (:install z) $ case i of

@@ -197,7 +197,7 @@ command c = do
       atomically $ writeTVar stv False
  where
   op :: EL SA s a -> Execution t (IO ())
-  op (Biegunka.Language.ES _ (Source _ _ dst update) _ _) = do
+  op (Biegunka.Language.ES _ (S _ _ dst update) _ _) = do
     rstv <- liftM (\e -> e^.stm.repos) reflected
     return $ do
       updated <- atomically $ do

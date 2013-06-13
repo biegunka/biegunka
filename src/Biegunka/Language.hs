@@ -55,12 +55,12 @@ peek (EW   _   x) = x
 
 
 -- | 'Profiles' scope data
-newtype P = Profile
+newtype P = P
   { pname :: String -- ^ name
   } deriving (Show, Read, Eq, Ord)
 
 -- | 'Sources' scope data
-data S = Source {
+data S = S {
   -- | Source type
     stype :: String
   -- | URI where source is located

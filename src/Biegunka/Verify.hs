@@ -56,7 +56,7 @@ verification (Pure ()) = return ()
 -- | Check single instruction correctness
 correct :: EL SA s a -> IO Bool
 correct il = case il of
-  ES _ (Source { spath }) _ _ -> doesDirectoryExist spath
+  ES _ (S { spath }) _ _ -> doesDirectoryExist spath
   EA _ a _ -> case a of
     Link s d -> do
       s' <- readSymbolicLink d
@@ -79,7 +79,7 @@ describe d = let host = "[localhost]" :: String in nest (length host) $ text hos
 -- | Log message on failure
 log :: EL SA s a -> Maybe Doc
 log il = nest 1 <$> case il of
-  ES _ (Source t u d _) _ _  ->
+  ES _ (S t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
   EA _ a _ -> annotation (text "M") <$> case a of
     Link s d ->

@@ -80,7 +80,7 @@ load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (EL SA Profiles) a -> [String]
-  profiles (Free (EP _ (Profile n) _ x)) = n : profiles x
+  profiles (Free (EP _ (P n) _ x)) = n : profiles x
   profiles (Free (EW _ x)) = profiles x
   profiles (Pure _) = []
 
@@ -156,12 +156,12 @@ construct :: Free (EL SA s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (EL SA s) a -> State Construct ()
-  go (Free (EP _ (Profile n) i z)) = do
+  go (Free (EP _ (P n) i z)) = do
     biegunkaL . at n . anon mempty (const False) <>= mempty
     assign profileL n
     go i
     go z
-  go (Free (ES _ (Source t u d _) i z)) = do
+  go (Free (ES _ (S t u d _) i z)) = do
     let s = R { recordtype = t, base = u, location = d }
     n <- use profileL
     assign sourceL s

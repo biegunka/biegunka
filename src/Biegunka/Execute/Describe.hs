@@ -24,7 +24,7 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 -- | Describe current action
 action :: EL SA s a -> Maybe Doc
 action il = nest 3 `fmap` case il of
-  ES _ (Source t u d _) _ _  -> Just . annotation (text u) $
+  ES _ (S t u d _) _ _  -> Just . annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
   EA _ a _ -> Just . annotation (text "M") $ progress 4 7 <$> case a of
     Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
