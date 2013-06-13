@@ -96,12 +96,12 @@ shell c = actioned (\_ sfp -> Shell sfp c)
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script sc () -> Script sc ()
-sudo n s = liftS (EW (User (Just n)) ()) >> s >> liftS (EW (User Nothing) ())
+sudo n s = liftS (EM (User (Just n)) ()) >> s >> liftS (EM (User Nothing) ())
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Script sc () -> Script sc ()
-reacting r s = liftS (EW (Reacting (Just r)) ()) >> s >> liftS (EW (Reacting Nothing) ())
+reacting r s = liftS (EM (Reacting (Just r)) ()) >> s >> liftS (EM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 -- | Chain tasks sequentially

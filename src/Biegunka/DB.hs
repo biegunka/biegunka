@@ -81,7 +81,7 @@ load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (EL SA Profiles) a -> [String]
   profiles (Free (EP _ (P n) _ x)) = n : profiles x
-  profiles (Free (EW _ x)) = profiles x
+  profiles (Free (EM _ x)) = profiles x
   profiles (Pure _) = []
 
 

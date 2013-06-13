@@ -44,7 +44,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
-import Biegunka.Language (EL(..), A(..), S(..), W(..), React(..), peek)
+import Biegunka.Language (EL(..), A(..), S(..), M(..), React(..), peek)
 import Biegunka.Script
 
 
@@ -166,10 +166,10 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | Single command execution
 command :: forall a s t. Reifies t EE => EL SA s a -> Execution t ()
-command (EW (Reacting (Just r)) _) = reactStack %= (r :)
-command (EW (Reacting Nothing) _)  = reactStack %= drop 1
-command (EW (User     (Just u)) _) = usersStack %= (u :)
-command (EW (User     Nothing) _)  = usersStack %= drop 1
+command (EM (Reacting (Just r)) _) = reactStack %= (r :)
+command (EM (Reacting Nothing) _)  = reactStack %= drop 1
+command (EM (User     (Just u)) _) = usersStack %= (u :)
+command (EM (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
   let stv = e^.stm.sudoing

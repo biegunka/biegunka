@@ -5,7 +5,7 @@
 -- | Specifies user side and library side languages primitives
 module Biegunka.Language
   ( Scope(..)
-  , EL(..), A(..), S(..), P(..), W(..)
+  , EL(..), A(..), S(..), P(..), M(..)
   , React(..)
   , peek
   ) where
@@ -30,7 +30,7 @@ data EL :: (Scope -> *) -> Scope -> * -> * where
   EP :: f Profiles -> P -> Free (EL f Sources) () -> x -> EL f Profiles x
   ES :: f Sources -> S -> Free (EL f Actions) () -> x -> EL f Sources x
   EA :: f Actions -> A -> x -> EL f Actions x
-  EW :: W -> x -> EL f s x
+  EM :: M -> x -> EL f s x
 
 instance Functor (EL a s) where
   fmap = fmapDefault
@@ -44,14 +44,14 @@ instance Traversable (EL a s) where
   traverse f (EP a p i x) = EP a p i <$> f x
   traverse f (ES a s i x) = ES a s i <$> f x
   traverse f (EA a z   x) = EA a z   <$> f x
-  traverse f (EW   w   x) = EW   w   <$> f x
+  traverse f (EM   w   x) = EM   w   <$> f x
   {-# INLINE traverse #-}
 
 peek :: EL a s x -> x
 peek (EP _ _ _ x) = x
 peek (ES _ _ _ x) = x
 peek (EA _ _   x) = x
-peek (EW   _   x) = x
+peek (EM   _   x) = x
 
 
 -- | 'Profiles' scope data
@@ -82,7 +82,7 @@ data A =
     -- | Shell command
   | Shell FilePath String
 
-data W =
+data M =
     User (Maybe String)
   | Reacting (Maybe React)
   | Chain

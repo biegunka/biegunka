@@ -14,7 +14,7 @@ import System.IO
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
-import Biegunka.Language (EL(..), P(..), S(..), A(..), W(..))
+import Biegunka.Language (EL(..), P(..), S(..), A(..), M(..))
 import Biegunka.Control (Interpreter(..), logger)
 import Biegunka.Script (SA)
 
@@ -90,7 +90,7 @@ log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
       yellow (text d) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text s)
     Shell p c ->
       green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
-  install (Free (EW w z)) = go w
+  install (Free (EM w z)) = go w
    where
     go (User (Just user)) = (green "change user" </> "to" </> text user) : install z
     go (User Nothing)     = (green "change user" </> "back") : install z
