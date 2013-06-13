@@ -32,12 +32,13 @@ import Biegunka.Transform (fromEL, simplified)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c@(view logger -> l) (simplified . fromEL -> s) -> do
+pretend = I $ \c@(view logger -> l) s -> do
+  let s' = simplified (fromEL s)
   a <- load c s
-  let b = construct s
+  let b = construct s'
   l $ stats a b
   whenM (query l "Print full log?") $
-    l (log s a b)
+    l (log s' a b)
  where
   whenM ma mb = do
     p <- ma

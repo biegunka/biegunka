@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
@@ -13,6 +15,7 @@ import Data.Maybe (catMaybes)
 import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
+import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
 import           Data.Aeson.Encode
@@ -28,7 +31,8 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language (IL(..), A(..))
+import Biegunka.Language (Scope(..), EL(..), IL(..), P(..), A(..))
+import Biegunka.Script (SA(..))
 
 
 newtype Biegunka = Biegunka
@@ -70,8 +74,13 @@ biegunkaL :: Lens' Construct (Map String (Map R (Map FilePath R)))
 biegunkaL f (Construct s b) = (\b' -> Construct s b') <$> f b
 
 
-load :: Controls -> [IL] -> IO Biegunka
-load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c)
+load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
+load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c) . profiles
+ where
+  profiles :: Free (EL SA Profiles) a -> [String]
+  profiles (Free (EP _ (Profile n) _ x)) = n : profiles x
+  profiles (Free (EW _ x)) = profiles x
+  profiles (Pure _) = []
 
 
 -- | Load profile data from file
@@ -85,21 +94,20 @@ load c = fmap (Biegunka . M.fromList . catMaybes) . mapM (loadProfile c)
 --  * Cannot read from profile file (various reasons here)
 --
 --  * Cannot parse profile file (wrong format)
-loadProfile :: Controls -> IL -> IO (Maybe (String, Map R (Map FilePath R)))
-loadProfile c (IP profile) = do
-  let (name, _) = c & appData <</>~ profile
+loadProfile :: Controls -> String -> IO (Maybe (String, Map R (Map FilePath R)))
+loadProfile c p = do
+  let (name, _) = c & appData <</>~ p
   (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
  `mplus`
   return Nothing
  where
-  parser (Object o) = (profile, ) . M.fromList <$> do
+  parser (Object o) = (p, ) . M.fromList <$> do
     ss <- o .: "sources"
     forM ss $ \s -> do
       t  <- s .: "info"
       fs <- s .: "files" >>= mapM parseJSON
       return (t, M.fromList fs)
   parser _ = empty
-loadProfile _ _ = return Nothing
 
 
 -- | Save profiles data to files.

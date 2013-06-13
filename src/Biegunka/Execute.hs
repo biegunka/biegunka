@@ -61,7 +61,7 @@ execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
   let s' = simplified $ fromEL s
       b = construct s'
-  a <- load c s'
+  a <- load c s
   e' <- initTVars e
   when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   atomically $ writeTQueue (e'^.stm.work)
