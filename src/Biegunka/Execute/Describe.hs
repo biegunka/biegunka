@@ -10,6 +10,7 @@ module Biegunka.Execute.Describe
   ) where
 
 import Control.Exception (SomeException)
+import Data.Monoid (mempty)
 
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -23,16 +24,16 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 
 
 -- | Describe current action
-action :: EL SA s a -> Maybe Doc
-action il = nest 3 `fmap` case il of
-  ES _ (S t u d _) _ _  -> Just . annotation (text u) $
+action :: EL SA s a -> Doc
+action il = nest 3 $ case il of
+  ES _ (S t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
-  EA (SAA { saaURI } ) a _ -> Just . annotation (text saaURI) $ progress 4 7 <$> case a of
+  EA (SAA { saaURI, saaOrder } ) a _ -> annotation (text saaURI) $ progress saaOrder 7 <$> case a of
     Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
     Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
     Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
     Shell p c      -> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p)
-  _ -> Nothing
+  _ -> mempty
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc

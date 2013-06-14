@@ -8,7 +8,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
-import           Data.Foldable (for_, traverse_)
+import           Data.Foldable (traverse_)
 import           Data.List ((\\))
 import           Data.Monoid (mempty)
 import           Prelude hiding (log)
@@ -180,7 +180,7 @@ command c = do
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
-      for_ (fmap describe (action c)) log
+      log (describe (action c))
       o
       atomically $ writeTVar rtv False
     u:_ -> do
@@ -191,7 +191,7 @@ command c = do
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
-      for_ (fmap describe (action c)) log
+      log (describe (action c))
       o
       setEffectiveUserID uid
       atomically $ writeTVar stv False

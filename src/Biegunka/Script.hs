@@ -1,15 +1,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
   ( Script(..), SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, source, sourceURL
+  , token, app, source, sourceURL, order
   , runScript, evalScript
   ) where
 
-import Control.Applicative (Applicative(..), (<$>))
+import Control.Applicative (Applicative(..))
 import Control.Monad (when)
 import Data.List (isSuffixOf)
 
@@ -24,7 +25,7 @@ import Biegunka.Language
 data family SA (sc :: Scope) :: *
 data instance SA Profiles = SAP Int
 data instance SA Sources  = SAS Int
-data instance SA Actions  = SAA { saaURI :: URI }
+data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -60,11 +61,15 @@ evalScript :: SS -> Script s a -> Free (EL SA s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
+-- | Repository URI (like @git\@github.com:whoever/whatever.git@)
+type URI = String
+
 data SS = SS
   { _token :: Int
   , _app :: FilePath
   , _source :: FilePath
   , _sourceURL :: URI
+  , _order :: Int
   } deriving (Show, Read)
 
 instance Default SS where
@@ -73,28 +78,25 @@ instance Default SS where
     , _app = ""
     , _source = ""
     , _sourceURL = ""
+    , _order = 0
     }
+
+makeLensesWith ?? ''SS $ defaultRules & generateSignatures .~ False
 
 -- | Unique token for each 'EP'/'ES'
 token :: Lens' SS Int
-token f s@(SS { _token = t }) = (\t' -> s { _token = t' }) <$> f t
-{-# INLINE token #-}
 
 -- | Application filepath root
 app :: Lens' SS FilePath
-app f s@(SS { _app = t }) = (\t' -> s { _app = t' }) <$> f t
-{-# INLINE app #-}
 
 -- | Current source filepath
 source :: Lens' SS FilePath
-source f s@(SS { _source = t }) = (\t' -> s { _source = t' }) <$> f t
-{-# INLINE source #-}
 
--- | Current source filepath
+-- | Current source url
 sourceURL :: Lens' SS String
-sourceURL f s@(SS { _sourceURL = t }) = (\t' -> s { _sourceURL = t' }) <$> f t
-{-# INLINE sourceURL #-}
 
+-- | Current action order
+order :: Lens' SS Int
 
 -- | Lift DSL term to the 'Script'
 liftS :: EL SA s a -> Script s a
@@ -118,9 +120,6 @@ rewind l mb = do
   l .= a
   return a'
 
--- | Repository URI (like @git\@github.com:whoever/whatever.git@)
-type URI = String
-
 -- | Abstract away all plumbing needed to make source
 sourced :: String -> URI -> FilePath
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
@@ -130,6 +129,7 @@ sourced ty url path script update = Script $ do
   let df = constructDestinationFilepath rfp url path
   source .= df
   sourceURL .= url
+  order .= 0
   ast <- annotate script
   lift . liftF $ ES (SAS tok) (S ty url df update) ast ()
   token += 1
@@ -139,7 +139,8 @@ actioned f = Script $ do
   rfp <- use app
   sfp <- use source
   url <- use sourceURL
-  lift . liftF $ EA (SAA url) (f rfp sfp) ()
+  o <- order <+= 1
+  lift . liftF $ EA (SAA { saaURI = url, saaOrder = o }) (f rfp sfp) ()
 
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do
