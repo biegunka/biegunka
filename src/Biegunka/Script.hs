@@ -5,7 +5,7 @@
 -- | User script type definitions
 module Biegunka.Script
   ( Script(..), SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, source
+  , token, app, source, sourceURL
   , runScript, evalScript
   ) where
 
@@ -24,7 +24,7 @@ import Biegunka.Language
 data family SA (sc :: Scope) :: *
 data instance SA Profiles = SAP Int
 data instance SA Sources  = SAS Int
-data instance SA Actions  = SAA ()
+data instance SA Actions  = SAA { saaURI :: URI }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -64,6 +64,7 @@ data SS = SS
   { _token :: Int
   , _app :: FilePath
   , _source :: FilePath
+  , _sourceURL :: URI
   } deriving (Show, Read)
 
 instance Default SS where
@@ -71,6 +72,7 @@ instance Default SS where
     { _token = 0
     , _app = ""
     , _source = ""
+    , _sourceURL = ""
     }
 
 -- | Unique token for each 'EP'/'ES'
@@ -87,6 +89,11 @@ app f s@(SS { _app = t }) = (\t' -> s { _app = t' }) <$> f t
 source :: Lens' SS FilePath
 source f s@(SS { _source = t }) = (\t' -> s { _source = t' }) <$> f t
 {-# INLINE source #-}
+
+-- | Current source filepath
+sourceURL :: Lens' SS String
+sourceURL f s@(SS { _sourceURL = t }) = (\t' -> s { _sourceURL = t' }) <$> f t
+{-# INLINE sourceURL #-}
 
 
 -- | Lift DSL term to the 'Script'
@@ -122,6 +129,7 @@ sourced ty url path script update = Script $ do
   tok <- use token
   let df = constructDestinationFilepath rfp url path
   source .= df
+  sourceURL .= url
   ast <- annotate script
   lift . liftF $ ES (SAS tok) (S ty url df update) ast ()
   token += 1
@@ -130,7 +138,8 @@ actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
 actioned f = Script $ do
   rfp <- use app
   sfp <- use source
-  lift . liftF $ EA (SAA ()) (f rfp sfp) ()
+  url <- use sourceURL
+  lift . liftF $ EA (SAA url) (f rfp sfp) ()
 
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do

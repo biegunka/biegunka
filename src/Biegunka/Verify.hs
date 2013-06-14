@@ -81,7 +81,7 @@ log :: EL SA s a -> Maybe Doc
 log il = nest 1 <$> case il of
   ES _ (S t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
-  EA _ a _ -> annotation (text "M") <$> case a of
+  EA (SAA { saaURI }) a _ -> annotation (text saaURI) <$> case a of
     Link s d ->
       Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
     Copy s d ->

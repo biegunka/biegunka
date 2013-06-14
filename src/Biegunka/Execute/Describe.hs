@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Describe execution I/O actions
 module Biegunka.Execute.Describe
@@ -26,7 +27,7 @@ action :: EL SA s a -> Maybe Doc
 action il = nest 3 `fmap` case il of
   ES _ (S t u d _) _ _  -> Just . annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
-  EA _ a _ -> Just . annotation (text "M") $ progress 4 7 <$> case a of
+  EA (SAA { saaURI } ) a _ -> Just . annotation (text saaURI) $ progress 4 7 <$> case a of
     Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
     Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
     Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
