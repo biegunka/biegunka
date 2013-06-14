@@ -57,7 +57,7 @@ import Biegunka.Script
 --
 -- It's generally advised to use 'pretend' before 'execute': that way you can catch some
 -- bugs in your script before devastation is done.
-execute :: (EE -> EE) -> Interpreter
+execute :: (EE () -> EE ()) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
   let b = construct s
   a <- load c s
@@ -72,17 +72,18 @@ execute (($ def) -> e) = I $ \c s -> do
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
-initTVars :: EE -> IO EE
+initTVars :: EE () -> IO (EE STM)
 initTVars e = do
   a <- newTQueueIO
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
-  return $ e
-    & stm.work .~ a
-    & stm.running .~ b
-    & stm.sudoing .~ c
-    & stm.repos .~ d
+  return $ e & stm .~ STM
+    { _work = a
+    , _running = b
+    , _sudoing = c
+    , _repos = d
+    }
 
 
 -- | Run single task command by command
@@ -91,7 +92,7 @@ initTVars e = do
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t EE => Free (EL SA s) a -> Execution t ()
+task :: Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()
 task (Free (EP _ _ b d)) = do
   newTask d
   task b
@@ -130,7 +131,7 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s EE => SomeException -> Execution s React
+retry :: forall s. Reifies s (EE STM) => SomeException -> Execution s React
 retry exc = do
   log <- reflected <&> \e -> e^.controls.logger
   liftIO . log . describe $ exception exc
@@ -145,12 +146,12 @@ retry exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s EE => Execution s React
+reaction :: forall s. Reifies s (EE STM) => Execution s React
 reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 
 -- | Single command execution
-command :: forall a s t. Reifies t EE => EL SA s a -> Execution t ()
+command :: forall a s t. Reifies t (EE STM) => EL SA s a -> Execution t ()
 command (EM (Reacting (Just r)) _) = reactStack %= (r :)
 command (EM (Reacting Nothing) _)  = reactStack %= drop 1
 command (EM (User     (Just u)) _) = usersStack %= (u :)
@@ -219,7 +220,7 @@ command c = do
 
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t EE => Free (EL SA s) a -> Execution t ()
+newTask :: forall a s t. Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()
 newTask (Pure _) = return ()
 newTask t = do
   e <- reflected

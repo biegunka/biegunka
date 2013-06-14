@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-module Biegunka.Execute.Schedule where
+module Biegunka.Execute.Schedule
+  ( runTask, schedule
+  ) where
 
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM (atomically)
@@ -8,11 +10,11 @@ import           Control.Concurrent.STM.TQueue (TQueue, readTQueue)
 import           Control.Lens
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (evalStateT)
-import           Data.Functor.Trans.Tagged
+import           Data.Functor.Trans.Tagged (untag)
 import           Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
-import           Data.Proxy
-import           Data.Reflection
+import           Data.Proxy (Proxy)
+import           Data.Reflection (Reifies, reify)
 import           Data.Sequence (Seq)
 import qualified Data.Sequence as Q
 
@@ -23,9 +25,9 @@ import Biegunka.Script
 
 -- | Prepares environment to run task with given execution routine
 runTask :: forall s a.
-          EE -- ^ Environment
+          EE STM -- ^ Environment
         -> EC -- ^ Context
-        -> (forall t. Reifies t EE => Free (EL SA s) a -> Execution t ()) -- ^ Task routine
+        -> (forall t. Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()) -- ^ Task routine
         -> (Free (EL SA s) a) -- ^ Task contents
         -> IO ()
 runTask e s f i =

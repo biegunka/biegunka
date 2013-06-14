@@ -7,7 +7,7 @@ module Biegunka.Execute.Control
     -- * Execution thread state control
   , EC(..), reactStack, usersStack, retryCount
     -- * Execution environment
-  , EE(..)
+  , EE(..), STM(..)
   , priviledges, react, templates, retries
   , stm, work, running, sudoing, controls, repos
     -- * Misc
@@ -74,13 +74,13 @@ instance Default STM where
 
 -- | 'Execution' environment.
 -- Denotes default failure reaction, templates used and more
-data EE = EE
+data EE a = EE
   { _priviledges :: Priviledges
   , _react       :: React
   , _templates   :: Templates
   , _retries     :: Int
   , _controls    :: Controls
-  , _stm         :: STM
+  , _stm         :: a
   }
 
 -- | Priviledges control.
@@ -96,12 +96,12 @@ data Templates = forall t. ToSElem t => Templates t
 
 makeLenses ''EE
 
-instance Default EE where
+instance Default a => Default (EE a) where
   def = EE
     { _priviledges = Preserve
     , _react       = Ignorant
     , _templates   = Templates ()
     , _retries     = 1
     , _controls    = def
-    , _stm         = def -- User doesn't have a chance to get there
+    , _stm         = def
     }
