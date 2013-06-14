@@ -46,8 +46,9 @@ library
                    Biegunka.Execute.Exception
   other-modules: Biegunka.Control
                  Biegunka.Execute
-                 Biegunka.Execute.Describe
                  Biegunka.Execute.Control
+                 Biegunka.Execute.Describe
+                 Biegunka.Execute.Schedule
                  Biegunka.Pretend
                  Biegunka.Verify
   ghc-options: -Wall

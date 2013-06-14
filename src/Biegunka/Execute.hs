@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.Execute (execute) where
@@ -17,22 +16,17 @@ import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
-import           Control.Concurrent (forkIO)
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue)
+import           Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
 import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (evalStateT, runStateT, get, put)
+import           Control.Monad.State (runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
 import           Data.Functor.Trans.Tagged
-import           Data.IntMap (IntMap)
-import qualified Data.IntMap as IM
-import           Data.Sequence (Seq)
-import qualified Data.Sequence as Q
 import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -51,6 +45,7 @@ import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
 import Biegunka.Language (EL(..), A(..), S(..), M(..), React(..), peek)
+import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
 
 
@@ -88,12 +83,6 @@ initTVars e = do
     & stm.running .~ b
     & stm.sudoing .~ c
     & stm.repos .~ d
-
-
--- | Thread `s' parameter to 'task' function
-asProxyOf :: Execution s () -> Proxy s -> Execution s ()
-asProxyOf a _ = a
-{-# INLINE asProxyOf #-}
 
 
 -- | Run single task command by command
@@ -243,36 +232,3 @@ newTask t = do
     Do i $ do
       runTask e s task t
       atomically (writeTQueue (e^.stm.work) (Stop i))
-
--- | Prepares environment to run task with given execution routine
-runTask :: forall s a.
-          EE -- ^ Environment
-        -> EC -- ^ Context
-        -> (forall t. Reifies t EE => Free (EL SA s) a -> Execution t ()) -- ^ Task routine
-        -> (Free (EL SA s) a) -- ^ Task contents
-        -> IO ()
-runTask e s f i =
-  reify e ((`evalStateT` s) . untag . asProxyOf (f i))
-
--- | Schedule tasks
---
--- "Forks" on every incoming workload
-schedule :: TQueue Work -> IO ()
-schedule j = loop 0 IM.empty IM.empty
- where
-  loop :: Int -> IntMap Int -> IntMap (Seq (IO ())) -> IO ()
-  loop n a b
-    | n < 0     = return ()
-    | otherwise = atomically (readTQueue j) >>= \t -> case t of
-        Do i w -> do
-          let n' = n + 1
-              a' = a & at i . non 0 +~ 1
-          case a ^. at i of
-            Nothing -> forkIO w >> loop n' a' b
-            Just _  -> loop n' a' (b & at i . anon Q.empty Q.null %~ (|> w))
-        Stop i -> do
-          let n' = n - 1
-              a' = a & at i . non 0 -~ 1
-          case b ^? ix i . to uncons . traverse of
-            Just (w, _) -> forkIO w >> loop n' a' (b & at i . anon Q.empty Q.null %~ Q.drop 1)
-            Nothing -> loop n' a' b
