@@ -28,11 +28,12 @@ action :: EL SA s a -> Doc
 action il = nest 3 $ case il of
   ES _ (S t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
-  EA (SAA { saaURI, saaOrder } ) a _ -> annotation (text saaURI) $ progress saaOrder 7 <$> case a of
-    Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
-    Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
-    Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
-    Shell p c      -> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p)
+  EA (SAA { saaURI, saaOrder, saaMaxOrder } ) a _ ->
+    annotation (text saaURI) $ progress saaOrder saaMaxOrder <$> case a of
+      Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
+      Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
+      Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
+      Shell p c      -> green "shell" </> "`" <//> red (text c) <//> "` from" </> yellow (text p)
   _ -> mempty
  where
   -- | Annotate action description with source name

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -15,8 +16,8 @@ import Control.Monad (when)
 import Data.List (isSuffixOf)
 
 import Control.Lens
-import Control.Monad.Free (Free, iter, liftF)
-import Control.Monad.State (MonadState(..), StateT(..), execState, lift, state)
+import Control.Monad.Free (Free(..), iter, liftF)
+import Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
 import Data.Default (Default(..))
 import System.FilePath.Lens
 
@@ -25,7 +26,7 @@ import Biegunka.Language
 data family SA (sc :: Scope) :: *
 data instance SA Profiles = SAP Int
 data instance SA Sources  = SAS Int
-data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int }
+data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder :: Int }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -70,6 +71,7 @@ data SS = SS
   , _source :: FilePath
   , _sourceURL :: URI
   , _order :: Int
+  , _maxOrder :: Int
   } deriving (Show, Read)
 
 instance Default SS where
@@ -79,6 +81,7 @@ instance Default SS where
     , _source = ""
     , _sourceURL = ""
     , _order = 0
+    , _maxOrder = 0
     }
 
 makeLensesWith ?? ''SS $ defaultRules & generateSignatures .~ False
@@ -97,6 +100,9 @@ sourceURL :: Lens' SS String
 
 -- | Current action order
 order :: Lens' SS Int
+
+-- | Maximum action order in current source
+maxOrder :: Lens' SS Int
 
 -- | Lift DSL term to the 'Script'
 liftS :: EL SA s a -> Script s a
@@ -130,9 +136,18 @@ sourced ty url path script update = Script $ do
   source .= df
   sourceURL .= url
   order .= 0
+  maxOrder .= size script
   ast <- annotate script
   lift . liftF $ ES (SAS tok) (S ty url df update) ast ()
   token += 1
+
+size :: Script Actions a -> Int
+size = (`execState` 0) . go . evalScript def
+ where
+  go :: Free (EL SA Actions) a -> State Int ()
+  go (Free c@(EA {})) = id %= succ >> go (peek c)
+  go (Free c@(EM {})) = go (peek c)
+  go (Pure _) = return ()
 
 actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
 actioned f = Script $ do
@@ -140,7 +155,8 @@ actioned f = Script $ do
   sfp <- use source
   url <- use sourceURL
   o <- order <+= 1
-  lift . liftF $ EA (SAA { saaURI = url, saaOrder = o }) (f rfp sfp) ()
+  mo <- use maxOrder
+  lift . liftF $ EA (SAA { saaURI = url, saaOrder = o, saaMaxOrder = mo }) (f rfp sfp) ()
 
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do
