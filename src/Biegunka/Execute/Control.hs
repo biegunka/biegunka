@@ -10,16 +10,18 @@ module Biegunka.Execute.Control
   , EE(..), STM(..)
   , priviledges, react, templates, retries
   , stm, work, running, sudoing, controls, repos
+  , initializeSTM
     -- * Misc
   , Templates(..), Priviledges(..), Work(..)
   ) where
 
-import Control.Concurrent.STM.TVar
-import Control.Concurrent.STM.TQueue (TQueue)
+import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
 import Control.Monad.State (StateT)
 import Data.Default
 import Data.Functor.Trans.Tagged
+import Data.Monoid (mempty)
 import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
@@ -104,4 +106,18 @@ instance Default a => Default (EE a) where
     , _retries     = 1
     , _controls    = def
     , _stm         = def
+    }
+
+-- | Prepare 'Execution' environment to stm transactions
+initializeSTM :: EE () -> IO (EE STM)
+initializeSTM e = do
+  a <- newTQueueIO
+  b <- newTVarIO False
+  c <- newTVarIO False
+  d <- newTVarIO mempty
+  return $ e & stm .~ STM
+    { _work = a
+    , _running = b
+    , _sudoing = c
+    , _repos = d
     }

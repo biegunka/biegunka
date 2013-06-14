@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.Execute (execute) where
@@ -11,13 +12,12 @@ import           Control.Exception (Exception, SomeException(..), throwIO)
 import qualified Control.Exception as E
 import           Data.Foldable (traverse_)
 import           Data.List ((\\))
-import           Data.Monoid (mempty)
 import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
-import           Control.Concurrent.STM.TQueue (newTQueueIO, writeTQueue)
-import           Control.Concurrent.STM.TVar (newTVarIO, readTVar, modifyTVar, writeTVar)
+import           Control.Concurrent.STM.TQueue (writeTQueue)
+import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically)
 import           Control.Lens hiding (op)
 import           Control.Monad.Free (Free(..))
@@ -57,11 +57,11 @@ import Biegunka.Script
 --
 -- It's generally advised to use 'pretend' before 'execute': that way you can catch some
 -- bugs in your script before devastation is done.
-execute :: (EE () -> EE ()) -> Interpreter
-execute (($ def) -> e) = I $ \c s -> do
+execute :: (forall a. EE a -> EE a) -> Interpreter
+execute e = I $ \c s -> do
   let b = construct s
   a <- load c s
-  (controls .~ c -> e') <- initTVars e
+  (controls .~ c -> e') <- initializeSTM (e def)
   when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
   runTask e' def newTask s
   atomically (writeTQueue (e'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
@@ -71,19 +71,6 @@ execute (($ def) -> e) = I $ \c s -> do
   save c b
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
-
-initTVars :: EE () -> IO (EE STM)
-initTVars e = do
-  a <- newTQueueIO
-  b <- newTVarIO False
-  c <- newTVarIO False
-  d <- newTVarIO mempty
-  return $ e & stm .~ STM
-    { _work = a
-    , _running = b
-    , _sudoing = c
-    , _repos = d
-    }
 
 
 -- | Run single task command by command
@@ -98,24 +85,18 @@ task (Free (EP _ _ b d)) = do
   task b
 task (Free c@(ES _ _ b d)) = do
   newTask d
-  e <- try (command c)
-  case e of
-    Left e' -> do
-      r <- retry e'
-      case r of
-        Retry    -> task (Free (Pure () <$ c))
-        Abortive -> return ()
-        Ignorant -> task b
+  try (command c) >>= \e -> case e of
+    Left e' -> retry e' >>= \r -> case r of
+      Retry    -> task (Free (Pure () <$ c))
+      Abortive -> return ()
+      Ignorant -> task b
     Right _ -> task b
-task a@(Free c) = do
-  e <- try (command c)
-  case e of
-    Left e' -> do
-      r <- retry e'
-      case r of
-        Retry    -> task a
-        Abortive -> return ()
-        Ignorant -> task (peek c)
+task a@(Free c) =
+  try (command c) >>= \e -> case e of
+    Left e' -> retry e' >>= \r -> case r of
+      Retry    -> task a
+      Abortive -> return ()
+      Ignorant -> task (peek c)
     Right _ -> task (peek c)
 task (Pure _) = return ()
 
