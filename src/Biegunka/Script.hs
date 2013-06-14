@@ -24,8 +24,8 @@ import System.FilePath.Lens
 import Biegunka.Language
 
 data family SA (sc :: Scope) :: *
-data instance SA Profiles = SAP Int
-data instance SA Sources  = SAS Int
+data instance SA Profiles = SAP { sapToken :: Int }
+data instance SA Sources  = SAS { sasToken :: Int }
 data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder :: Int }
 
 
@@ -138,7 +138,7 @@ sourced ty url path script update = Script $ do
   order .= 0
   maxOrder .= size script
   ast <- annotate script
-  lift . liftF $ ES (SAS tok) (S ty url df update) ast ()
+  lift . liftF $ ES (SAS { sasToken = tok }) (S ty url df update) ast ()
   token += 1
 
 size :: Script Actions a -> Int

@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 module Biegunka.Execute (execute) where
@@ -27,6 +29,10 @@ import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
 import           Data.Functor.Trans.Tagged
+import           Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
+import           Data.Sequence (Seq)
+import qualified Data.Sequence as Q
 import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -60,10 +66,10 @@ execute :: (EE -> EE) -> Interpreter
 execute (($ def) -> e) = I $ \c s -> do
   let b = construct s
   a <- load c s
-  e' <- initTVars e
+  (controls .~ c -> e') <- initTVars e
   when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
-  atomically $ writeTQueue (e'^.stm.work)
-    (Do $ runTask e' { _controls = c } def s >> atomically (writeTQueue (e'^.stm.work) Stop))
+  runTask e' def newTask s
+  atomically (writeTQueue (e'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
   schedule (e'^.stm.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
@@ -84,13 +90,6 @@ initTVars e = do
     & stm.repos .~ d
 
 
--- | Run single task with supplied environment. Also signals to scheduler when work is done.
-runTask :: EE -> EC -> Free (EL SA s) a -> IO ()
-runTask e s t = do
-  reify e ((`evalStateT` s) . untag . asProxyOf (task t))
-  atomically (writeTQueue (e^.stm.work) Stop)
-
-
 -- | Thread `s' parameter to 'task' function
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
 asProxyOf a _ = a
@@ -107,8 +106,7 @@ task :: Reifies t EE => Free (EL SA s) a -> Execution t ()
 task (Free (EP _ _ b d)) = do
   newTask d
   task b
-task (Free c@(Biegunka.Language.ES _ _ b d)) = do
-  -- That could be optimised to not fork on Pure
+task (Free c@(ES _ _ b d)) = do
   newTask d
   e <- try (command c)
   case e of
@@ -117,10 +115,8 @@ task (Free c@(Biegunka.Language.ES _ _ b d)) = do
       case r of
         Retry    -> task (Free (Pure () <$ c))
         Abortive -> return ()
-        Ignorant -> do
-          task b
-    Right _ -> do
-      task b
+        Ignorant -> task b
+    Right _ -> task b
 task a@(Free c) = do
   e <- try (command c)
   case e of
@@ -235,19 +231,48 @@ command c = do
 
 -- | Queue next task in scheduler
 newTask :: forall a s t. Reifies t EE => Free (EL SA s) a -> Execution t ()
+newTask (Pure _) = return ()
 newTask t = do
   e <- reflected
   s <- get
-  liftIO . atomically $ writeTQueue (e^.stm.work) (Do $ runTask e s t)
+  let i = case t of
+            Free (EP (SAP { sapToken }) _ _ _) -> sapToken
+            Free (ES (SAS { sasToken }) _ _ _) -> sasToken
+            _ -> error "???"
+  liftIO . atomically . writeTQueue (e^.stm.work) $
+    Do i $ do
+      runTask e s task t
+      atomically (writeTQueue (e^.stm.work) (Stop i))
+
+-- | Prepares environment to run task with given execution routine
+runTask :: forall s a.
+          EE -- ^ Environment
+        -> EC -- ^ Context
+        -> (forall t. Reifies t EE => Free (EL SA s) a -> Execution t ()) -- ^ Task routine
+        -> (Free (EL SA s) a) -- ^ Task contents
+        -> IO ()
+runTask e s f i =
+  reify e ((`evalStateT` s) . untag . asProxyOf (f i))
 
 -- | Schedule tasks
 --
 -- "Forks" on every incoming workload
 schedule :: TQueue Work -> IO ()
-schedule j = loop (0 :: Int)
+schedule j = loop 0 IM.empty IM.empty
  where
-  loop n
+  loop :: Int -> IntMap Int -> IntMap (Seq (IO ())) -> IO ()
+  loop n a b
     | n < 0     = return ()
     | otherwise = atomically (readTQueue j) >>= \t -> case t of
-        Do w -> forkIO w >> loop (n + 1)
-        Stop ->             loop (n - 1)
+        Do i w -> do
+          let n' = n + 1
+              a' = a & at i . non 0 +~ 1
+          case a ^. at i of
+            Nothing -> forkIO w >> loop n' a' b
+            Just _  -> loop n' a' (b & at i . anon Q.empty Q.null %~ (|> w))
+        Stop i -> do
+          let n' = n - 1
+              a' = a & at i . non 0 -~ 1
+          case b ^? ix i . to uncons . traverse of
+            Just (w, _) -> forkIO w >> loop n' a' (b & at i . anon Q.empty Q.null %~ Q.drop 1)
+            Nothing -> loop n' a' b

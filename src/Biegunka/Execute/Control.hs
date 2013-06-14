@@ -59,8 +59,8 @@ data STM = STM
 
 -- | Workload
 data Work =
-    Do (IO ()) -- ^ Task to come
-  | Stop       -- ^ Task is done
+    Do Int (IO ()) -- ^ Task to come and its id
+  | Stop Int       -- ^ Task with that id is done
 
 makeLenses ''STM
 
