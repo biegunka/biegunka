@@ -6,7 +6,7 @@ module Biegunka.Primitive
     -- * Actions layer primitives
   , registerAt, link, copy, substitute, shell
     -- * Wrappers
-  , sudo, reacting, chain, (~>>)
+  , sudo, reacting, chain, (<~>)
   ) where
 
 import Data.Monoid (mempty)
@@ -20,7 +20,7 @@ import Text.StringTemplate (newSTMP, render, setAttribute)
 import Biegunka.Language
 import Biegunka.Script
 
-infixr 7 `chain`, ~>>
+infixr 7 `chain`, <~>
 
 
 -- | Configuration profile
@@ -113,6 +113,6 @@ chain a b = Script $ do
   token .= max s t
 
 -- | Alias for 'chain'
-(~>>) :: Script sc () -> Script sc () -> Script sc ()
-(~>>) = chain
-{-# INLINE (~>>) #-}
+(<~>) :: Script sc () -> Script sc () -> Script sc ()
+(<~>) = chain
+{-# INLINE (<~>) #-}
