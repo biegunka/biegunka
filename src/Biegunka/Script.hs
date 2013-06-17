@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | User script type definitions
 module Biegunka.Script
-  ( Script(..), SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  ( Script(..), SS, SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source, sourceURL, order
   , runScript, evalScript
   ) where

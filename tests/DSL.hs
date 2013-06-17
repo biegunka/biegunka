@@ -3,11 +3,12 @@ module Main where
 
 import Data.Monoid (mempty)
 
+import Control.Lens
 import Control.Monad.Free (Free(..))
 import Data.Default (def)
-import Biegunka.Language (EL(..))
-import Biegunka.Primitive (chain)
-import Biegunka.Script (SA(..), evalScript)
+import Biegunka.Language (EL(..), A(..), S(..))
+import Biegunka.Primitive (chain, link)
+import Biegunka.Script (SA(..), evalScript, app, source)
 import Biegunka.Source.Dummy (dummy_)
 import Test.Hspec (hspec, describe, context, it, pending)
 
@@ -30,4 +31,16 @@ main = hspec $
             (Free (ES (SAS { sasToken = t }) _ (Pure ())
               (Pure ())))) -> s == t
           _ -> False
+    context "paths" $ do
+      it "mangles paths for Actions" $
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (link "from" "to")
+        in case ast of
+          Free (EA _ (Link "source/from" "app/to") (Pure ())) -> True
+          _ -> False
+      it "mangles paths for Sources" $
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "to")
+        in case ast of
+          Free (ES _ (S { spath = "app/to" }) (Pure ()) (Pure ())) -> True
+          _ -> False
+
     it "does something useful" $ pending
