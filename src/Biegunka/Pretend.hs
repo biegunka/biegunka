@@ -15,7 +15,7 @@ import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
 import Biegunka.Language (EL(..), P(..), S(..), A(..), M(..))
-import Biegunka.Control (Interpreter(..), logger)
+import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.Script (SA)
 
 
@@ -34,7 +34,7 @@ import Biegunka.Script (SA)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = I $ \c@(view logger -> l) s -> do
+pretend = interpret $ \c@(view logger -> l) s -> do
   a <- load c s
   let b = construct s
   l $ stats a b

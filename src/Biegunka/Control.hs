@@ -4,15 +4,16 @@
 -- | Controlling biegunka interpreters and their composition
 module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter(..)
+    biegunka, Interpreter(..), interpret
     -- * Common interpreters controls
   , Controls, root, appData, logger, colors
     -- * Generic interpreters
-  , pause
+  , pause, confirm
   ) where
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (forever, unless)
+import Data.Char (toLower)
 import Prelude hiding (log)
 import System.IO
 
@@ -64,18 +65,21 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { interpret :: Controls -> Free (EL SA Profiles) () -> IO ()
+  { runInterpreter :: Controls -> Free (EL SA Profiles) () -> IO () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Semigroup Interpreter where
-  I f <> I g = I $ \c s -> f c s >> g c s
+  I f <> I g = I $ \c s k -> f c s (g c s k)
 
 -- | Empty 'Interpreter' does nothing.
 -- Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Monoid Interpreter where
-  mempty = I $ \_ _ -> return ()
+  mempty = I $ \_ _ _ -> return ()
   mappend = (<>)
+
+interpret :: (Controls -> Free (EL SA Profiles) () -> IO ()) -> Interpreter
+interpret f = I (\c s k -> f c s >> k)
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
@@ -91,6 +95,7 @@ biegunka (($ def) -> c) (I f) s = do
   forkIO $ log l
   f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z))
     (evalScript (def & app .~ r) s)
+    (return ())
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
@@ -103,14 +108,31 @@ expand x = do
     _         -> x
 
 
--- | Simple interpreter example that just waits user to press any key
+-- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = I $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
+pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
  where
   getch = do
     hSetBuffering stdin NoBuffering
     _ <- getChar
     hSetBuffering stdin LineBuffering
+
+-- | Interpreter that awaits user confirmation
+confirm :: Interpreter
+confirm = I $ \c _ k -> do
+  r <- prompt (view logger c) (text "Proceed? [y/N] ")
+  case r of
+    True  -> k
+    False -> return ()
+ where
+  prompt l m = do
+    l m
+    r <- getLine
+    case map toLower r of
+      "y" -> return True
+      "n" -> return False
+      ""  -> return False
+      _   -> prompt l m
 
 
 -- | Display supplied docs

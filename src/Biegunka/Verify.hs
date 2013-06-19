@@ -20,7 +20,7 @@ import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
-import Biegunka.Control (Interpreter(..), logger)
+import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.Language (EL(..), S(..), A(..), peek)
 import Biegunka.Script (SA(..))
 
@@ -30,7 +30,7 @@ import Biegunka.Script (SA(..))
 -- Compares current filesystem layout and what script says it should be line by line.
 -- Outputs errors it find, otherwise prints OK. Is useful to check execution correctness.
 verify :: Interpreter
-verify = I $ \c s -> do
+verify = interpret $ \c s -> do
   failures <- execWriterT (verification s)
   view logger c $
        text "Verification: "

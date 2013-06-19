@@ -3,7 +3,7 @@ module Biegunka
   ( -- * Interpreters control
     biegunka, Controls, root, appData, colors
     -- * Interpreters
-  , pretend, pause, execute, verify
+  , pretend, pause, confirm, execute, verify
     -- * Execution environment hooks
   , EE
   , Priviledges(..), priviledges
@@ -20,7 +20,7 @@ module Biegunka
   , Script, Scope(..)
   ) where
 
-import Biegunka.Control (biegunka, Controls, root, appData, colors, pause)
+import Biegunka.Control (biegunka, Controls, root, appData, colors, pause, confirm)
 import Biegunka.Execute (execute)
 import Biegunka.Execute.Control
   ( EE

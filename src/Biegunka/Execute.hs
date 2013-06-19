@@ -39,7 +39,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Interpreter(..), logger)
+import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
@@ -58,7 +58,7 @@ import Biegunka.Script
 -- It's generally advised to use 'pretend' before 'execute': that way you can catch some
 -- bugs in your script before devastation is done.
 execute :: (forall a. EE a -> EE a) -> Interpreter
-execute e = I $ \c s -> do
+execute e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
   (controls .~ c -> e') <- initializeSTM (e def)

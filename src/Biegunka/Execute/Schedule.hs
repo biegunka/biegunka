@@ -32,6 +32,7 @@ runTask :: forall s a.
         -> IO ()
 runTask e s f i =
   reify e ((`evalStateT` s) . untag . asProxyOf (f i))
+{-# INLINE runTask #-}
 
 -- | Thread `s' parameter to 'task' function
 asProxyOf :: Execution s () -> Proxy s -> Execution s ()
