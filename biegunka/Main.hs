@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Char (toLower)
+import Options.Applicative
 import System.Directory (copyFile, doesFileExist)
 import System.Exit (ExitCode(..), exitWith)
 import System.IO (hFlush, stdout)
@@ -8,28 +9,44 @@ import System.IO (hFlush, stdout)
 import Paths_biegunka_core
 
 
-destination :: FilePath
-destination = "Main.hs"
+data BiegunkaCommand = Init
+
+
+opts :: ParserInfo BiegunkaCommand
+opts = info (helper <*> subcommands) fullDesc
+ where
+  subcommands = subparser $
+    command "init" (info (pure Init) (progDesc "Initialize biegunka script"))
 
 
 main :: IO ()
 main = do
+  biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
+  case biegunkaCommand of
+    Init -> initialize
+
+
+initialize :: IO ()
+initialize = do
   template <- getDataFileName "data/biegunka-init.template"
   destinationExists <- doesFileExist destination
   case destinationExists of
     True -> do
       response <- prompt "Main.hs already exists! Overwrite?"
       case response of
-        True  -> initialize template
+        True  -> move template
         False -> do
           putStrLn $ "Failed to initialize biegunka script: Already Exists"
           exitWith (ExitFailure 1)
-    False -> initialize template
+    False -> move template
+ where
+  destination :: FilePath
+  destination = "Main.hs"
 
-initialize :: FilePath -> IO ()
-initialize source = do
-  copyFile source destination
-  putStrLn $ "Initialized biegunka script at " ++ destination
+  move :: FilePath -> IO ()
+  move source = do
+    copyFile source destination
+    putStrLn $ "Initialized biegunka script at " ++ destination
 
 
 prompt :: String -> IO Bool
