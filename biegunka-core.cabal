@@ -9,6 +9,8 @@ category: System
 cabal-version: >= 1.10
 build-type: Simple
 
+data-files: data/biegunka-init.template
+
 library
   default-language: Haskell2010
   build-depends: base >= 3 && < 5,
@@ -53,6 +55,15 @@ library
                  Biegunka.Verify
   ghc-options: -Wall
                -fno-warn-unused-do-bind
+
+executable biegunka
+  default-language: Haskell2010
+  build-depends: base >= 3 && < 5
+  hs-source-dirs: biegunka
+  main-is: Main.hs
+  ghc-options: -Wall
+               -fno-warn-unused-do-bind
+
 
 test-suite behaviours
   default-language: Haskell2010
