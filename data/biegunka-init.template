@@ -1,0 +1,17 @@
+import Biegunka           -- Import biegunka library primitives
+import Biegunka.Souce.Git -- Import git support (most likely you will need it)
+import Control.Lens       -- Auxilliary functions, no need to know what 'lens' is
+
+
+main :: IO ()
+-- Set ~ directory as root for all paths (except those which are rooted at source location)
+main = biegunka (set root "~")
+  -- First make dry-run and display log
+  -- Then wait for confirmation and execute script for real
+  -- Lastly, verify what've been done
+  (pretend <> pause <> execute (set priviledges Drop) <> verify) $
+    -- Default profile (named "my-dotfiles")
+    -- After successful run data will be found at ~/.biegunka/my-dotfiles
+    profile "my-dotfiles" $ do
+      -- Your dotfiles repositories go here
+      return ()
