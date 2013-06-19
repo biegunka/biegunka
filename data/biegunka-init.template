@@ -5,11 +5,9 @@
 import Biegunka            -- Import biegunka library primitives
 import Biegunka.Source.Git -- Import git support (most likely you will need it)
 import Control.Lens        -- Auxilliary functions, no need to know what 'lens' is
-import Data.Monoid ((<>))
 
 
 data Environments = Default
-
 
 makeOptionsParser ''Environments
 
@@ -19,12 +17,12 @@ main = do
   -- Use generated options parser to get environment to run scripts in
   environment <- optionsParser
   -- Set ~ directory as root for all paths (except those which are rooted at source location)
-  biegunka (set root "~")
-    -- First make dry-run and display log
-    -- Then wait for confirmation and execute script for real
-    -- Lastly, verify what've been done
-    (pretend <> confirm <> execute (set priviledges Drop) <> verify) $ case environment of
-      Default -> script
+  let biegunkaSettings = set root "~"
+  -- Drop priviledges if user starts the script with sudo
+      execSettings     = set priviledges Drop
+  -- Get console line options and act accordingly
+  case environment of
+    (Default, run) -> run biegunkaSettings execSettings script
 
 -- Dotfiles script stub
 script :: Script Profiles ()

@@ -57,7 +57,7 @@ import Biegunka.Script
 --
 -- It's generally advised to use 'pretend' before 'execute': that way you can catch some
 -- bugs in your script before devastation is done.
-execute :: (forall a. EE a -> EE a) -> Interpreter
+execute :: (EE () -> EE ()) -> Interpreter
 execute e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
