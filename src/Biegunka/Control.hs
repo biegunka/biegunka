@@ -75,7 +75,7 @@ instance Semigroup Interpreter where
 -- | Empty 'Interpreter' does nothing.
 -- Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Monoid Interpreter where
-  mempty = I $ \_ _ _ -> return ()
+  mempty = I $ \_ _ k -> k
   mappend = (<>)
 
 interpret :: (Controls -> Free (EL SA Profiles) () -> IO ()) -> Interpreter
