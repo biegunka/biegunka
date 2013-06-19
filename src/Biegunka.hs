@@ -18,6 +18,8 @@ module Biegunka
   , sudo, reacting, chain, (<~>)
     -- * Types
   , Script, Scope(..)
+    -- * TH
+  , makeOptionsParser
   ) where
 
 import Biegunka.Control (biegunka, Controls, root, appData, colors, pause, confirm)
@@ -33,4 +35,5 @@ import Biegunka.Language (Scope(..), React(..))
 import Biegunka.Pretend (pretend)
 import Biegunka.Primitive
 import Biegunka.Script (Script)
+import Biegunka.TH (makeOptionsParser)
 import Biegunka.Verify (verify)

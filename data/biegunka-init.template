@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- -*- mode: haskell -*-
 -- vi: set ft=haskell :
 import Biegunka            -- Import biegunka library primitives
@@ -6,20 +8,34 @@ import Control.Lens        -- Auxilliary functions, no need to know what 'lens' 
 import Data.Monoid ((<>))
 
 
+data Environments = Default
+
+
+makeOptionsParser ''Environments
+
+
 main :: IO ()
--- Set ~ directory as root for all paths (except those which are rooted at source location)
-main = biegunka (set root "~")
-  -- First make dry-run and display log
-  -- Then wait for confirmation and execute script for real
-  -- Lastly, verify what've been done
-  (pretend <> confirm <> execute (set priviledges Drop) <> verify) $ do
-    -- Default profile (named "my-dotfiles")
-    -- After successful run data will be found at ~/.biegunka/my-dotfiles
-    profile "my-dotfiles" $ do
-      -- Your dotfiles repositories go here
-      git "git@github.com:user/dotfiles" "somewhere/under/~" $
-        -- What exactly to do with the cloned repository?
-        return ()
+main = do
+  -- Use generated options parser to get environment to run scripts in
+  environment <- optionsParser
+  -- Set ~ directory as root for all paths (except those which are rooted at source location)
+  biegunka (set root "~")
+    -- First make dry-run and display log
+    -- Then wait for confirmation and execute script for real
+    -- Lastly, verify what've been done
+    (pretend <> confirm <> execute (set priviledges Drop) <> verify) $ case environment of
+      Default -> script
+
+-- Dotfiles script stub
+script :: Script Profiles ()
+script = do
+  -- Default profile (named "my-dotfiles")
+  -- After successful run data will be found at ~/.biegunka/my-dotfiles
+  profile "my-dotfiles" $ do
+    -- Your dotfiles repositories go here
+    git "git@github.com:user/dotfiles" "somewhere/under/~" $
+      -- What exactly to do with the cloned repository?
       return ()
-    -- Other profiles go there
     return ()
+  -- Other profiles go there
+  return ()

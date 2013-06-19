@@ -22,6 +22,7 @@ library
                  bytestring,
                  text,
                  aeson,
+                 template-haskell,
                  mtl >= 2.1 && < 2.2,
                  free,
                  lens >= 3.8,
@@ -35,7 +36,8 @@ library
                  data-default,
                  stm >= 2.4,
                  HStringTemplate >= 0.7,
-                 wordexp >= 0.2
+                 wordexp >= 0.2,
+                 optparse-applicative
   hs-source-dirs: src
   exposed-modules: Biegunka
                    Biegunka.Primitive
@@ -46,6 +48,7 @@ library
                    Biegunka.Language
                    Biegunka.DB
                    Biegunka.Execute.Exception
+                   Biegunka.TH
   other-modules: Biegunka.Control
                  Biegunka.Execute
                  Biegunka.Execute.Control
