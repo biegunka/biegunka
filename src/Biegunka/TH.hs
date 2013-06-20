@@ -5,6 +5,7 @@ module Biegunka.TH (makeOptionsParser) where
 
 import Data.Char (toLower)
 import Data.Foldable (asum)
+import Data.Monoid (mempty)
 
 import Language.Haskell.TH
 import Options.Applicative
@@ -29,16 +30,19 @@ makeOptionsParser name = do
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
 
-          interpreters = asum
-            [ flag' run    (long "run"     <>
-                help ("Do dry run, real run (after confirmation) and then check results"))
-            , flag' dryRun (long "dry-run" <> help ("Do only dry run, do not touch anything"))
-            , flag' check  (long "check"   <> help ("Compare current filesystem state against script"))
-            ]
-           where
-            dryRun cs _  = biegunka cs pretend
-            run    cs es = biegunka cs (pretend <> confirm <> execute es <> verify)
-            check  cs _  = biegunka cs verify
+          interpreters = (\i -> (\cs es -> biegunka cs (i es))) <$>
+            foldr (liftA2 (\i a -> (\cs -> i cs <> a cs))) (pure (const mempty))
+              [ flag (const mempty) execute (long "run" <>
+                  help ("Do real run"))
+              , flag (const mempty) (\es -> confirm <> execute es) (long "safe-run" <>
+                  help ("Do real run (after confirmation)"))
+              , flag (const mempty) (\es -> pretend <> confirm <> execute es <> verify) (long "--all" <>
+                  help ("Do dry run, real run (after confirmation) and then check results"))
+              , flag (const mempty) (const pretend) (long "dry-run" <>
+                  help ("Do only dry run, do not touch anything"))
+              , flag (const mempty) (const verify) (long "check" <>
+                  help ("Compare current filesystem state against script"))
+              ]
         |]
     _ -> fail "makeOptionsParser: Unsupported data type"
 
