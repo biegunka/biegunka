@@ -32,7 +32,7 @@ initialize = do
   destinationExists <- doesFileExist destination
   case destinationExists of
     True -> do
-      response <- prompt "Main.hs already exists! Overwrite?"
+      response <- prompt $ destination ++ " already exists! Overwrite?"
       case response of
         True  -> move template
         False -> do
@@ -41,7 +41,7 @@ initialize = do
     False -> move template
  where
   destination :: FilePath
-  destination = "Main.hs"
+  destination = "Dotfiles.hs"
 
   move :: FilePath -> IO ()
   move source = do
