@@ -1,16 +1,13 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 module Biegunka.Pretend (pretend) where
 
-import Control.Monad (when)
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Prelude hiding (log)
 
 import Control.Lens
 import Control.Monad.Free (Free(..))
-import System.IO
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
@@ -34,28 +31,11 @@ import Biegunka.Script (SA)
 --   profile ...
 -- @
 pretend :: Interpreter
-pretend = interpret $ \c@(view logger -> l) s -> do
-  a <- load c s
+pretend = interpret $ \c s -> do
   let b = construct s
-  l $ stats a b
-  whenM (query l "Print full log?") $
-    l (log s a b)
- where
-  whenM ma mb = do
-    p <- ma
-    when p mb
-
-  query l s = do
-    l (s </> "[yN]" <//> colon </> empty)
-    c <- getChar'
-    l line
-    return (c == 'y')
-
-  getChar' = do
-    hSetBuffering stdin NoBuffering
-    c <- getChar
-    hSetBuffering stdin LineBuffering
-    return c
+  a <- load c s
+  view logger c (log s a b)
+  view logger c (stats a b)
 
 
 stats :: Biegunka -> Biegunka -> Doc
