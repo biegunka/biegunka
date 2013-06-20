@@ -21,10 +21,10 @@ main = do
   -- Drop priviledges if user starts the script with sudo
       execSettings     = set priviledges Drop
   -- Use generated options parser to get environment to run scripts in
-  environment <- optionsParser
+  (environment, run) <- optionsParser
   -- Detect environment and act accordingly
   case environment of
-    (Default, run) -> run biegunkaSettings execSettings script
+    Default -> run biegunkaSettings execSettings script
 
 -- Dotfiles script stub
 script :: Script Profiles ()
