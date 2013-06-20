@@ -56,7 +56,7 @@ log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
  where
   install :: Free (EL SA s) a -> [Doc]
   install (Free (EP _ (P n) i z)) =
-      (green "profile" </> cyan (text n) </> green ":")
+      (green "profile" </> cyan (text n) <> ":")
     : map (indent 2) (install i) ++ install z
   install (Free (ES _ (S t u d _) i z)) =
       (green "update" </> text t </> "source" </> cyan (text u) </> "at" </> magenta (text d))
