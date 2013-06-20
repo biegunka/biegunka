@@ -5,7 +5,8 @@ module Biegunka.TH (makeOptionsParser) where
 
 import Data.Char (toLower)
 import Data.Foldable (asum)
-import Data.Monoid (mempty)
+import Data.Traversable (sequenceA)
+import Data.Monoid (mconcat, mempty)
 
 import Language.Haskell.TH
 import Options.Applicative
@@ -30,19 +31,18 @@ makeOptionsParser name = do
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
 
-          interpreters = (\i -> (\cs es -> biegunka cs (i es))) <$>
-            foldr (liftA2 (\i a -> (\cs -> i cs <> a cs))) (pure (const mempty))
-              [ flag (const mempty) execute (long "run" <>
-                  help ("Do real run"))
-              , flag (const mempty) (\es -> confirm <> execute es) (long "safe-run" <>
-                  help ("Do real run (after confirmation)"))
-              , flag (const mempty) (\es -> pretend <> confirm <> execute es <> verify) (long "--all" <>
-                  help ("Do dry run, real run (after confirmation) and then check results"))
-              , flag (const mempty) (const pretend) (long "dry-run" <>
-                  help ("Do only dry run, do not touch anything"))
-              , flag (const mempty) (const verify) (long "check" <>
-                  help ("Compare current filesystem state against script"))
-              ]
+          interpreters = (\i cs -> biegunka cs . i) . mconcat <$> sequenceA
+            [ flag mempty execute (long "run" <>
+                help ("Do real run"))
+            , flag mempty (const confirm <> execute) (long "safe-run" <>
+                help ("Do real run (after confirmation)"))
+            , flag mempty (const pretend <> const confirm <> execute <> const verify) (long "all" <>
+                help ("Do dry run, real run (after confirmation) and then check results"))
+            , flag mempty (const pretend) (long "dry-run" <>
+                help ("Do only dry run, do not touch anything"))
+            , flag mempty (const verify) (long "check" <>
+                help ("Compare current filesystem state against script"))
+            ]
         |]
     _ -> fail "makeOptionsParser: Unsupported data type"
 
