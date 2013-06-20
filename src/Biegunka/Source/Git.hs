@@ -14,16 +14,18 @@ module Biegunka.Source.Git
   , Branch, Remote, URI
   ) where
 
+import Control.Exception (bracket)
 import Control.Monad (forM_)
+import Data.Foldable (for_)
+import Data.Monoid (mempty)
 import System.Exit (ExitCode(..))
 
 import           Control.Lens
 import           Data.Default (Default(..))
-import qualified Data.Text.IO as T
-import           System.Directory (doesDirectoryExist)
+import qualified Data.Text as T
+import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))
-import           System.Posix.IO (createPipe, fdToHandle)
-import           System.Process (runProcess, waitForProcess)
+import           System.Process (readProcessWithExitCode)
 
 import Biegunka.Execute.Exception
 import Biegunka.Language
@@ -113,20 +115,19 @@ updateGit u rs br p = do
   exists <- doesDirectoryExist p
   if exists
     then do
-      gitie ["remote", "update"] (Just p)
+      readGitProcess ["remote", "update"] (Just p)
       forM_ rs $ \r ->
-        gitie ["merge", r </> br, br] (Just p)
+        readGitProcess ["merge", r </> br, br] (Just p)
     else
-      gitie ["clone", u, p] Nothing
-  gitie ["checkout", br] (Just p)
+      readGitProcess ["clone", u, p] Nothing
+  readGitProcess ["checkout", br] (Just p)
  where
-  check ih (ExitFailure _) = do
-    l <- T.hGetContents ih
-    sourceFailure u p l
-  check _ _ = return ()
-
-  gitie xs fp = do
-    (ifd,ofd) <- createPipe
-    ih <- fdToHandle ifd
-    oh <- fdToHandle ofd
-    check ih =<< waitForProcess =<< runProcess "git" xs fp Nothing Nothing (Just oh) (Just oh)
+  readGitProcess args workingDirectory = bracket
+    getCurrentDirectory
+    setCurrentDirectory $ \_ -> do
+      for_ workingDirectory setCurrentDirectory
+      (exitcode, _, stderr) <- readProcessWithExitCode "git" args mempty
+      case exitcode of
+        ExitFailure _ -> do
+          sourceFailure u p (T.pack stderr)
+        ExitSuccess -> return ()
