@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
+-- | Making life easier with meta-programming
 module Biegunka.TH (makeOptionsParser) where
 
 import Data.Char (toLower)
@@ -20,6 +21,15 @@ import Biegunka.Script (Script)
 import Biegunka.Verify (verify)
 
 
+-- | Make options parser for environments data
+--
+-- Makes following options:
+--   * @--run@
+--   * @--safe-run@
+--   * @--dry-run@
+--   * @--check@
+--   * @--full@
+--   * Also one option for each environment. Same name, only lowercased
 makeOptionsParser :: Name -> Q [Dec]
 makeOptionsParser name = do
   inf <- reify name

@@ -2,7 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
--- | Verification interpreter
+-- | Check interpreter
 module Biegunka.Verify (verify) where
 
 import Control.Applicative

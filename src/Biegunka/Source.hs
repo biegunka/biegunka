@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+-- | Generally useful 'Sources' related definitions
 module Biegunka.Source
   ( Source(..)
   ) where

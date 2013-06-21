@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+-- | Dry run interpreter
 module Biegunka.Pretend (pretend) where
 
 import Data.List ((\\))

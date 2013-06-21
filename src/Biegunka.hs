@@ -12,6 +12,8 @@ module Biegunka
   , retries
     -- * Profile layer primitives
   , profile
+    -- * Source layer primitives
+  , Source(..)
     -- * Action layer primitives
   , registerAt, copy, link, substitute, shell
     -- * All layers primitives
@@ -37,3 +39,4 @@ import Biegunka.Primitive
 import Biegunka.Script (Script)
 import Biegunka.TH (makeOptionsParser)
 import Biegunka.Verify (verify)
+import Biegunka.Source (Source(..))

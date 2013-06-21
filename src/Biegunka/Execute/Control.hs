@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+-- | Controlling execution
 module Biegunka.Execute.Control
   ( -- * Execution facade type
     Execution
@@ -36,9 +37,9 @@ type Execution s a = TaggedT s (StateT EC IO) a
 -- | 'Execution' thread state.
 -- Denotes current failure reaction, effective user id and more
 data EC = EC
-  { _reactStack  :: [React]
-  , _usersStack  :: [String]
-  , _retryCount  :: Int
+  { _reactStack  :: [React]  -- ^ Saved reactions modificators. Topmost is active
+  , _usersStack  :: [String] -- ^ Saved user chaning modificators. Topmost is active
+  , _retryCount  :: Int      -- ^ Performed retries for task
   } deriving (Show, Read, Eq, Ord)
 
 instance Default EC where
@@ -48,8 +49,16 @@ instance Default EC where
     , _retryCount = 0
     }
 
-makeLenses ''EC
+makeLensesWith (defaultRules & generateSignatures .~ False) ''EC
 
+-- | Saved reactions modificators. Topmost is active
+reactStack :: Lens' EC [React]
+
+-- | Saved user chaning modificators. Topmost is active
+usersStack :: Lens' EC [String]
+
+-- | Performed retries for task
+retryCount :: Lens' EC Int
 
 -- | Concurrent parts of 'EE'
 data STM = STM
@@ -64,7 +73,19 @@ data Work =
     Do Int (IO ()) -- ^ Task to come and its id
   | Stop Int       -- ^ Task with that id is done
 
-makeLenses ''STM
+makeLensesWith (defaultRules & generateSignatures .~ False) ''STM
+
+-- | Task queue
+work :: Lens' STM (TQueue Work)
+
+-- | Whether sudoed operation is in progress.
+sudoing :: Lens' STM (TVar Bool)
+
+-- | Whether any operation is in progress.
+running :: Lens' STM (TVar Bool)
+
+-- | Already updated repositories
+repos :: Lens' STM (TVar (Set String))
 
 instance Default STM where
   def = STM
@@ -77,12 +98,12 @@ instance Default STM where
 -- | 'Execution' environment.
 -- Denotes default failure reaction, templates used and more
 data EE a = EE
-  { _priviledges :: Priviledges
-  , _react       :: React
-  , _templates   :: Templates
-  , _retries     :: Int
-  , _controls    :: Controls
-  , _stm         :: a
+  { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
+  , _react       :: React       -- ^ How to react on failures
+  , _templates   :: Templates   -- ^ Templates mapping
+  , _retries     :: Int         -- ^ Maximum retries count
+  , _controls    :: Controls    -- ^ General biegunka controls
+  , _stm         :: a           -- ^ Execution cross-thread state
   }
 
 -- | Priviledges control.
@@ -96,7 +117,25 @@ data Priviledges =
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. ToSElem t => Templates t
 
-makeLenses ''EE
+makeLensesWith (defaultRules & generateSignatures .~ False) ''EE
+
+-- | What to do with priviledges if ran in sudo
+priviledges :: Lens' (EE a) Priviledges
+
+-- | How to react on failures
+react :: Lens' (EE a) React
+
+-- | Templates mapping
+templates :: Lens' (EE a) Templates
+
+-- | Maximum retries count
+retries :: Lens' (EE a) Int
+
+-- | General biegunka controls
+controls :: Lens' (EE a) Controls
+
+-- | Execution cross-thread state
+stm :: Lens (EE a) (EE b) a b
 
 instance Default a => Default (EE a) where
   def = EE

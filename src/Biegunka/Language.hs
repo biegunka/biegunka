@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
--- | Specifies user side and library side languages primitives
+-- | Specifies configuration scripts language
 module Biegunka.Language
   ( Scope(..)
   , EL(..), A(..), S(..), P(..), M(..)
@@ -47,6 +47,7 @@ instance Traversable (EL a s) where
   traverse f (EM   w   x) = EM   w   <$> f x
   {-# INLINE traverse #-}
 
+-- | Peek next language term
 peek :: EL a s x -> x
 peek (EP _ _ _ x) = x
 peek (ES _ _ _ x) = x
@@ -54,7 +55,7 @@ peek (EA _ _   x) = x
 peek (EM   _   x) = x
 
 
--- | 'Profiles' scope data
+-- | 'Profiles' scope datatype
 newtype P = P
   { pname :: String -- ^ name
   } deriving (Show, Read, Eq, Ord)
@@ -71,7 +72,7 @@ data S = S {
   , supdate :: (FilePath -> IO ())
   }
 
--- | 'Actions' scope data
+-- | 'Actions' scope datatype
 data A =
     -- | Symbolic link
     Link FilePath FilePath
@@ -82,10 +83,12 @@ data A =
     -- | Shell command
   | Shell FilePath String
 
+-- | Modificators for other datatypes
 data M =
     User (Maybe String)
   | Reacting (Maybe React)
   | Chain
 
+-- | Failure reaction
 data React = Ignorant | Abortive | Retry
   deriving (Show, Read, Eq, Ord, Enum, Bounded)

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+-- | Execution tasks scheduler
 module Biegunka.Execute.Schedule
   ( runTask, schedule
   ) where

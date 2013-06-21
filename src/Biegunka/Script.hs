@@ -1,10 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
--- | User script type definitions
+-- | Configuration script machinery
 module Biegunka.Script
   ( Script(..), SS, SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source, sourceURL, order
@@ -23,6 +22,8 @@ import System.FilePath.Lens
 
 import Biegunka.Language
 
+
+-- | Language term annotation depending on their scope
 data family SA (sc :: Scope) :: *
 data instance SA Profiles = SAP { sapToken :: Int }
 data instance SA Sources  = SAS { sasToken :: Int }
@@ -65,13 +66,14 @@ evalScript = (fmap fst .) . runScript
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
 type URI = String
 
+-- | Script construction state
 data SS = SS
-  { _token :: Int
-  , _app :: FilePath
-  , _source :: FilePath
-  , _sourceURL :: URI
-  , _order :: Int
-  , _maxOrder :: Int
+  { _token :: Int       -- ^ Unique term token
+  , _app :: FilePath    -- ^ Biegunka root filepath
+  , _source :: FilePath -- ^ Source root filepath
+  , _sourceURL :: URI   -- ^ Current source url
+  , _order :: Int       -- ^ Current action order
+  , _maxOrder :: Int    -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
 instance Default SS where
@@ -89,7 +91,7 @@ makeLensesWith ?? ''SS $ defaultRules & generateSignatures .~ False
 -- | Unique token for each 'EP'/'ES'
 token :: Lens' SS Int
 
--- | Application filepath root
+-- | Biegunka filepath root
 app :: Lens' SS FilePath
 
 -- | Current source filepath
@@ -141,6 +143,7 @@ sourced ty url path script update = Script $ do
   lift . liftF $ ES (SAS { sasToken = tok }) (S ty url df update) ast ()
   token += 1
 
+-- | 'Actions' scope script size (in actual actions)
 size :: Script Actions a -> Int
 size = (`execState` 0) . go . evalScript def
  where
@@ -149,6 +152,7 @@ size = (`execState` 0) . go . evalScript def
   go (Free c@(EM {})) = go (peek c)
   go (Pure _) = return ()
 
+-- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
 actioned f = Script $ do
   rfp <- use app
@@ -158,6 +162,10 @@ actioned f = Script $ do
   mo <- use maxOrder
   lift . liftF $ EA (SAA { saaURI = url, saaOrder = o, saaMaxOrder = mo }) (f rfp sfp) ()
 
+-- | Construct destination 'FilePath'
+--
+-- Trying to be smart: if provided filepath ends in @\/@,
+-- then append source filepath's basename
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do
   id </>= d

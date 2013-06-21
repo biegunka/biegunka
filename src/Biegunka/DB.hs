@@ -3,7 +3,9 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+-- | Saved profiles data management
 module Biegunka.DB
   ( Biegunka(..), R(..)
   , load, loads, save, construct
@@ -38,11 +40,13 @@ import Biegunka.Language (Scope(..), EL(..), P(..), S(..), A(..))
 import Biegunka.Script (SA(..))
 
 
+-- | Profiles data
 newtype Biegunka = Biegunka
   { unBiegunka :: Map String (Map R (Map FilePath R))
   } deriving (Show, Read, Eq, Ord, Monoid)
 
 
+-- | Source record
 data R = R
   { recordtype :: String
   , base :: FilePath
@@ -61,25 +65,33 @@ instance ToJSON R where
     ]
 
 
+-- | Profiles data construction state
 data Construct = Construct
-  { _source :: R
-  , _profile :: String
-  , _biegunka :: Map String (Map R (Map FilePath R))
+  { _profile :: String                               -- ^ Current profile
+  , _source :: R                                     -- ^ Current source
+  , _biegunka :: Map String (Map R (Map FilePath R)) -- ^ Already constructed mapping
   } deriving (Show, Read, Eq, Ord)
 
 instance Default Construct where
-  def = Construct (R "" "" "") mempty mempty
+  def = Construct
+    { _profile  = mempty
+    , _source   = (R "" "" "")
+    , _biegunka = mempty
+    }
 
-profileL :: Lens' Construct String
-profileL f (Construct s p b) = (\p' -> Construct s p' b) <$> f p
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Construct
 
-sourceL :: Lens' Construct R
-sourceL f (Construct s p b) = (\s' -> Construct s' p b) <$> f s
+-- | Current profile
+profile :: Lens' Construct String
 
-biegunkaL :: Lens' Construct (Map String (Map R (Map FilePath R)))
-biegunkaL f (Construct s p b) = (\b' -> Construct s p b') <$> f b
+-- | Current source
+source :: Lens' Construct R
+
+-- | Already constructed mapping
+biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
 
 
+-- | Load profiles mentioned in script
 load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
@@ -126,8 +138,8 @@ loads _ [] = return []
 save :: Controls -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
-  ifor_ b $ \profile sourceData -> do
-    let (name, _) = c & appData <</>~ profile -- Map profile to file name
+  ifor_ b $ \p sourceData -> do
+    let (name, _) = c & appData <</>~ p -- Map profile to file name
         dir = view directory name
         dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
     if M.null sourceData then do
@@ -144,40 +156,44 @@ save c (Biegunka b) = do
   repo (k, v) = object ["info" .= k, "files"   .= map toJSON (M.toList v)]
 
 
+-- | All destination files paths
 filepaths :: Biegunka -> [FilePath]
 filepaths = M.keys <=< M.elems <=< M.elems . unBiegunka
 
 
+-- | All sources paths
 sources :: Biegunka -> [FilePath]
 sources = map location . M.keys <=< M.elems . unBiegunka
 
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
+-- | Convert strict bytestring into lazy one
 fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
 #endif
 
 
+-- | Extract terms data from script
 construct :: Free (EL SA s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (EL SA s) a -> State Construct ()
   go (Free (EP _ (P n) i z)) = do
-    biegunkaL . at n . anon mempty (const False) <>= mempty
-    assign profileL n
+    biegunka . at n . anon mempty (const False) <>= mempty
+    assign profile n
     go i
     go z
   go (Free (ES _ (S t u d _) i z)) = do
     let s = R { recordtype = t, base = u, location = d }
-    n <- use profileL
-    assign sourceL s
-    biegunkaL . at n . non mempty <>= M.singleton s mempty
+    n <- use profile
+    assign source s
+    biegunka . at n . non mempty <>= M.singleton s mempty
     go i
     go z
   go (Free (EA _ a z)) = do
-    n <- use profileL
-    s <- use sourceL
-    biegunkaL . at n . traverse . at s . traverse <>= h a
+    n <- use profile
+    s <- use source
+    biegunka . at n . traverse . at s . traverse <>= h a
     go z
    where
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }

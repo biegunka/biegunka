@@ -34,18 +34,18 @@ import Biegunka.Script
 
 -- | Common interpreters controls
 data Controls = Controls
-  { _root    :: FilePath -- ^ Root path for 'Source' layer
-  , _appData :: FilePath -- ^ Biegunka profile files path
-  , _logger  :: Doc -> IO ()
-  , _colors  :: Bool
+  { _root    :: FilePath    -- ^ Root path for 'Source' layer
+  , _appData :: FilePath    -- ^ Biegunka profile files path
+  , _logger  :: Doc -> IO () -- ^ Logger channel
+  , _colors  :: Bool        -- ^ Pretty printing
   }
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 
--- | Root path for 'Source' layer lens
+-- | Root path for 'Source' layer
 root :: Lens' Controls FilePath
 
--- | Biegunka profile files path
+-- | Biegunka profile files
 appData :: Lens' Controls FilePath
 
 -- | Logger channel
@@ -78,6 +78,7 @@ instance Monoid Interpreter where
   mempty = I $ \_ _ k -> k
   mappend = (<>)
 
+-- | Interpreter that calls its continuation after interpretation
 interpret :: (Controls -> Free (EL SA Profiles) () -> IO ()) -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
@@ -100,6 +101,7 @@ biegunka (($ def) -> c) (I f) s = do
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
 
+-- | Take first glob expansion result
 expand :: String -> IO String
 expand x = do
   es <- wordexp (nosubst <> noundef) x

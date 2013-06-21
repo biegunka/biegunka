@@ -49,13 +49,13 @@ library
                    Biegunka.DB
                    Biegunka.Execute.Exception
                    Biegunka.TH
-  other-modules: Biegunka.Control
-                 Biegunka.Execute
-                 Biegunka.Execute.Control
-                 Biegunka.Execute.Describe
-                 Biegunka.Execute.Schedule
-                 Biegunka.Pretend
-                 Biegunka.Verify
+                   Biegunka.Control
+                   Biegunka.Execute
+                   Biegunka.Execute.Control
+                   Biegunka.Execute.Describe
+                   Biegunka.Execute.Schedule
+                   Biegunka.Pretend
+                   Biegunka.Verify
   ghc-options: -Wall
                -fno-warn-unused-do-bind
 

@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
+-- | Real run interpreter
 module Biegunka.Execute (execute) where
 
 import           Control.Applicative
