@@ -1,5 +1,10 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
+import           Control.Exception (SomeException, mask, try)
+import           Control.Concurrent (ThreadId)
+#endif
 import           Control.Concurrent (forkFinally, forkIO)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import           Control.Monad (forever)
@@ -98,3 +103,10 @@ prompt message = do
     "n" -> return False
     ""  -> return False
     _   -> prompt message
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
+forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
+forkFinally action and_then =
+  mask $ \restore ->
+    forkIO $ try (restore action) >>= and_then
+#endif
