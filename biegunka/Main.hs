@@ -4,8 +4,10 @@ module Main where
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
 import           Control.Exception (SomeException, mask, try)
 import           Control.Concurrent (ThreadId)
+#else
+import           Control.Concurrent (forkFinally)
 #endif
-import           Control.Concurrent (forkFinally, forkIO)
+import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import           Control.Monad (forever)
 import           Data.Char (toLower)
