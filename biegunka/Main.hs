@@ -86,11 +86,13 @@ withScript script args = do
     Nothing
     Nothing
   hSetBuffering stdin' NoBuffering
-  anchor <- newEmptyMVar
-  listen anchor stdout'
-  listen anchor stderr'
+  stdoutAnchor <- newEmptyMVar
+  stderrAnchor <- newEmptyMVar
+  listen stdoutAnchor stdout'
+  listen stderrAnchor stderr'
   tell stdin'
-  takeMVar anchor
+  takeMVar stdoutAnchor
+  takeMVar stderrAnchor
   exitcode <- getProcessExitCode pid
   exitWith (maybe (ExitFailure 1) id exitcode)
  where
