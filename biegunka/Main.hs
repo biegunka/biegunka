@@ -28,8 +28,8 @@ import Paths_biegunka_core
 
 
 data BiegunkaCommand
-  = Init
-  | Script Script [String]
+  = Init FilePath
+  | Script FilePath Script [String]
 
 data Script = Run Run | Check
 
@@ -40,10 +40,10 @@ opts :: ParserInfo BiegunkaCommand
 opts = info (helper <*> subcommands) fullDesc
  where
   subcommands = subparser $
-    command "init" (info (pure Init) (progDesc "Initialize biegunka script")) <>
-    command "run"  (info (Script <$> (Run <$> runVariant) <*> otherArguments)
+    command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
+    command "run"  (info (Script <$> destination <*> (Run <$> runVariant) <*> otherArguments)
       (progDesc "Run biegunka script (with confirmation by default)")) <>
-    command "check"  (info (Script Check <$> otherArguments)
+    command "check"  (info (Script <$> destination <*> pure Check <*> otherArguments)
       (progDesc "Check biegunka script"))
    where
     runVariant = asum
@@ -53,6 +53,8 @@ opts = info (helper <*> subcommands) fullDesc
       , pure Safe
       ]
 
+    destination = argument Just (value "Dotfiles.hs")
+
     otherArguments = arguments Just mempty
 
 
@@ -61,16 +63,12 @@ main = do
   hSetBuffering stdout NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
   case biegunkaCommand of
-    Init -> initialize
-    Script script args -> withScript script args
+    Init destination -> initialize destination
+    Script destination script args -> withScript destination script args
 
 
-destination :: FilePath
-destination = "Dotfiles.hs"
-
-
-initialize :: IO ()
-initialize = do
+initialize :: FilePath -> IO ()
+initialize destination = do
   template <- getDataFileName "data/biegunka-init.template"
   destinationExists <- doesFileExist destination
   case destinationExists of
@@ -89,8 +87,8 @@ initialize = do
     putStrLn $ "Initialized biegunka script at " ++ destination
 
 
-withScript :: Script -> [String] -> IO ()
-withScript script args = do
+withScript :: FilePath -> Script -> [String] -> IO ()
+withScript destination script args = do
   let (biegunkaArgs, ghcArgs) = partition (\arg -> "--" == take 2 arg) args
   packageDBArg <- findPackageDBArg
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
