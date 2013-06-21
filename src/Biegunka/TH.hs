@@ -36,7 +36,7 @@ makeOptionsParser name = do
                 help ("Do real run"))
             , flag mempty (const confirm <> execute) (long "safe-run" <>
                 help ("Do real run (after confirmation)"))
-            , flag mempty (const pretend <> const confirm <> execute <> const verify) (long "all" <>
+            , flag mempty (const pretend <> const confirm <> execute <> const verify) (long "full" <>
                 help ("Do dry run, real run (after confirmation) and then check results"))
             , flag mempty (const pretend) (long "dry-run" <>
                 help ("Do only dry run, do not touch anything"))

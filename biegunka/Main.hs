@@ -30,7 +30,7 @@ data BiegunkaCommand
 
 data Script = Run Run | Check
 
-data Run = Dry | Safe | Force
+data Run = Dry | Safe | Force | Full
 
 
 opts :: ParserInfo BiegunkaCommand
@@ -39,13 +39,14 @@ opts = info (helper <*> subcommands) fullDesc
   subcommands = subparser $
     command "init" (info (pure Init) (progDesc "Initialize biegunka script")) <>
     command "run"  (info (Script <$> (Run <$> runVariant) <*> otherArguments)
-      (progDesc "Run biegunka script")) <>
+      (progDesc "Run biegunka script (with confirmation by default)")) <>
     command "check"  (info (Script Check <$> otherArguments)
       (progDesc "Check biegunka script"))
    where
     runVariant = asum
       [ flag' Dry   (long "dry"   <> help "Do not do anything, only display logs and stats")
       , flag' Force (long "force" <> help "Do not ask for confirmation")
+      , flag' Full  (long "full"  <> help "Do also a dry run and check results afterwards")
       , pure Safe
       ]
 
@@ -113,6 +114,7 @@ toOption :: Script -> String
 toOption (Run Force) = "--run"
 toOption (Run Safe)  = "--safe-run"
 toOption (Run Dry)   = "--dry-run"
+toOption (Run Full)  = "--full"
 toOption Check       = "--check"
 
 
