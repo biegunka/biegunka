@@ -7,138 +7,44 @@
 <link type='text/css' rel='stylesheet' href='hscolour.css' />
 </head>
 <body>
-<pre><a name="line-1"></a><span class='hs-comment'>{-# LANGUAGE DataKinds #-}</span>
-<a name="line-2"></a><span class='hs-comment'>-- | Biegunka - configuration management library</span>
-<a name="line-3"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Biegunka</span>
-<a name="line-4"></a>  <span class='hs-layout'>(</span> <span class='hs-comment'>-- * Interpreters control</span>
-<a name="line-5"></a>    <span class='hs-varid'>biegunka</span><span class='hs-layout'>,</span> <span class='hs-conid'>Controls</span><span class='hs-layout'>,</span> <span class='hs-varid'>root</span><span class='hs-layout'>,</span> <span class='hs-varid'>appData</span><span class='hs-layout'>,</span> <span class='hs-varid'>pretty</span><span class='hs-layout'>,</span> <span class='hs-conid'>Pretty</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
-<a name="line-6"></a>    <span class='hs-comment'>-- * Interpreters</span>
-<a name="line-7"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>pretend</span><span class='hs-layout'>,</span> <span class='hs-varid'>pause</span><span class='hs-layout'>,</span> <span class='hs-varid'>execute</span><span class='hs-layout'>,</span> <span class='hs-varid'>verify</span>
-<a name="line-8"></a>    <span class='hs-comment'>-- * Execution environment hooks</span>
-<a name="line-9"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>EE</span>
-<a name="line-10"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Priviledges</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>priviledges</span>
-<a name="line-11"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>react</span>
-<a name="line-12"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Templates</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>templates</span>
-<a name="line-13"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>retries</span>
-<a name="line-14"></a>    <span class='hs-comment'>-- * All layers</span>
-<a name="line-15"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>sudo</span><span class='hs-layout'>,</span> <span class='hs-varid'>reacting</span><span class='hs-layout'>,</span> <span class='hs-varid'>chain</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>~&gt;&gt;</span><span class='hs-layout'>)</span>
-<a name="line-16"></a>    <span class='hs-comment'>-- * Profile layer</span>
-<a name="line-17"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>profile</span>
-<a name="line-18"></a>    <span class='hs-comment'>-- * File layer</span>
-<a name="line-19"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>registerAt</span><span class='hs-layout'>,</span> <span class='hs-varid'>copy</span><span class='hs-layout'>,</span> <span class='hs-varid'>link</span><span class='hs-layout'>,</span> <span class='hs-varid'>substitute</span><span class='hs-layout'>,</span> <span class='hs-varid'>shell</span>
-<a name="line-20"></a>    <span class='hs-comment'>-- * Convenient type aliases</span>
-<a name="line-21"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Script</span><span class='hs-layout'>,</span> <span class='hs-conid'>Scope</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
-<a name="line-22"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-23"></a>
-<a name="line-24"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Monoid</span> <span class='hs-layout'>(</span><span class='hs-varid'>mempty</span><span class='hs-layout'>)</span>
-<a name="line-25"></a>
-<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Text</span><span class='hs-varop'>.</span><span class='hs-conid'>StringTemplate</span> <span class='hs-layout'>(</span><span class='hs-varid'>newSTMP</span><span class='hs-layout'>,</span> <span class='hs-varid'>render</span><span class='hs-layout'>,</span> <span class='hs-varid'>setAttribute</span><span class='hs-layout'>)</span>
-<a name="line-27"></a>
-<a name="line-28"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Control</span> <span class='hs-layout'>(</span><span class='hs-varid'>biegunka</span><span class='hs-layout'>,</span> <span class='hs-conid'>Controls</span><span class='hs-layout'>,</span> <span class='hs-varid'>root</span><span class='hs-layout'>,</span> <span class='hs-varid'>appData</span><span class='hs-layout'>,</span> <span class='hs-varid'>pretty</span><span class='hs-layout'>,</span> <span class='hs-conid'>Pretty</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>pause</span><span class='hs-layout'>)</span>
-<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Language</span> <span class='hs-layout'>(</span><span class='hs-conid'>Scope</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>Script</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>lift</span><span class='hs-layout'>,</span> <span class='hs-conid'>EL</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>P</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>A</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>W</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
-<a name="line-30"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Pretend</span> <span class='hs-layout'>(</span><span class='hs-varid'>pretend</span><span class='hs-layout'>)</span>
-<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Execute</span> <span class='hs-layout'>(</span><span class='hs-varid'>execute</span><span class='hs-layout'>)</span>
-<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Execute</span><span class='hs-varop'>.</span><span class='hs-conid'>Control</span>
-<a name="line-33"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Verify</span> <span class='hs-layout'>(</span><span class='hs-varid'>verify</span><span class='hs-layout'>)</span>
-<a name="line-34"></a>
-<a name="line-35"></a><span class='hs-keyword'>infixr</span> <span class='hs-num'>7</span> <span class='hs-varop'>`chain`</span><span class='hs-layout'>,</span> <span class='hs-varop'>~&gt;&gt;</span>
-<a name="line-36"></a>
-<a name="line-37"></a>
-<a name="line-38"></a><a name="registerAt"></a><span class='hs-comment'>-- | Links source to specified filepath</span>
-<a name="line-39"></a><span class='hs-comment'>--</span>
-<a name="line-40"></a><span class='hs-comment'>-- &gt; git "https://example.com/repo.git" "git/repo" $</span>
-<a name="line-41"></a><span class='hs-comment'>-- &gt;   registerAt "we/need/you/here"</span>
-<a name="line-42"></a><span class='hs-comment'>--</span>
-<a name="line-43"></a><span class='hs-comment'>-- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here</span>
-<a name="line-44"></a><span class='hs-definition'>registerAt</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-45"></a><span class='hs-definition'>registerAt</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>EA</span> <span class='hs-layout'>(</span><span class='hs-conid'>Link</span> <span class='hs-varid'>mempty</span> <span class='hs-varid'>dst</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
-<a name="line-46"></a><span class='hs-comment'>{-# INLINE registerAt #-}</span>
-<a name="line-47"></a>
-<a name="line-48"></a>
-<a name="line-49"></a><a name="link"></a><span class='hs-comment'>-- | Links given file to specified filepath</span>
-<a name="line-50"></a><span class='hs-comment'>--</span>
-<a name="line-51"></a><span class='hs-comment'>-- &gt; git "https://example.com/repo.git" "git/repo" $</span>
-<a name="line-52"></a><span class='hs-comment'>-- &gt;   link "you" "we/need/you/here"</span>
-<a name="line-53"></a><span class='hs-comment'>--</span>
-<a name="line-54"></a><span class='hs-comment'>-- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here</span>
-<a name="line-55"></a><span class='hs-definition'>link</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-56"></a><span class='hs-definition'>link</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>EA</span> <span class='hs-layout'>(</span><span class='hs-conid'>Link</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
-<a name="line-57"></a><span class='hs-comment'>{-# INLINE link #-}</span>
-<a name="line-58"></a>
-<a name="line-59"></a>
-<a name="line-60"></a><a name="copy"></a><span class='hs-comment'>-- | Copies given file to specified filepath</span>
-<a name="line-61"></a><span class='hs-comment'>--</span>
-<a name="line-62"></a><span class='hs-comment'>-- &gt; git "https://example.com/repo.git" "git/repo" $</span>
-<a name="line-63"></a><span class='hs-comment'>-- &gt;   copy "you" "we/need/you/here"</span>
-<a name="line-64"></a><span class='hs-comment'>--</span>
-<a name="line-65"></a><span class='hs-comment'>-- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here</span>
-<a name="line-66"></a><span class='hs-definition'>copy</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-67"></a><span class='hs-definition'>copy</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>EA</span> <span class='hs-layout'>(</span><span class='hs-conid'>Copy</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
-<a name="line-68"></a><span class='hs-comment'>{-# INLINE copy #-}</span>
-<a name="line-69"></a>
-<a name="line-70"></a>
-<a name="line-71"></a><a name="substitute"></a><span class='hs-comment'>-- | Substitutes $template.X$ templates in given file and writes result to specified filepath</span>
-<a name="line-72"></a><span class='hs-comment'>--</span>
-<a name="line-73"></a><span class='hs-comment'>-- &gt; git "https://example.com/repo.git" "git/repo" $</span>
-<a name="line-74"></a><span class='hs-comment'>-- &gt;   substitute "you.hs" "we/need/you/here"</span>
-<a name="line-75"></a><span class='hs-comment'>--</span>
-<a name="line-76"></a><span class='hs-comment'>-- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from</span>
-<a name="line-77"></a><span class='hs-comment'>-- Settings.template and writes result to ${HOME}\/we\/need\/you\/here</span>
-<a name="line-78"></a><span class='hs-definition'>substitute</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-79"></a><span class='hs-definition'>substitute</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span>
-<a name="line-80"></a>  <span class='hs-conid'>EA</span> <span class='hs-layout'>(</span><span class='hs-conid'>Template</span> <span class='hs-varid'>src</span> <span class='hs-varid'>dst</span> <span class='hs-layout'>(</span><span class='hs-keyglyph'>\</span><span class='hs-varid'>b</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>render</span> <span class='hs-varop'>.</span> <span class='hs-varid'>setAttribute</span> <span class='hs-str'>"template"</span> <span class='hs-varid'>b</span> <span class='hs-varop'>.</span> <span class='hs-varid'>newSTMP</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
-<a name="line-81"></a><span class='hs-comment'>{-# INLINE substitute #-}</span>
-<a name="line-82"></a>
-<a name="line-83"></a>
-<a name="line-84"></a><a name="shell"></a><span class='hs-comment'>-- | Executes shell command with default shell</span>
-<a name="line-85"></a><span class='hs-comment'>--</span>
-<a name="line-86"></a><span class='hs-comment'>-- &gt; git "https://example.com/repo.git" "git/repo" $</span>
-<a name="line-87"></a><span class='hs-comment'>-- &gt;   shell "echo -n hello"</span>
-<a name="line-88"></a><span class='hs-comment'>--</span>
-<a name="line-89"></a><span class='hs-comment'>-- Prints "hello" (without a newline)</span>
-<a name="line-90"></a><span class='hs-definition'>shell</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-91"></a><span class='hs-definition'>shell</span> <span class='hs-varid'>c</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>EA</span> <span class='hs-layout'>(</span><span class='hs-conid'>Shell</span> <span class='hs-varid'>mempty</span> <span class='hs-varid'>c</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
-<a name="line-92"></a><span class='hs-comment'>{-# INLINE shell #-}</span>
-<a name="line-93"></a>
-<a name="line-94"></a>
-<a name="line-95"></a><a name="sudo"></a><span class='hs-comment'>-- | Change effective user id for wrapped commands</span>
-<a name="line-96"></a><span class='hs-definition'>sudo</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span>
-<a name="line-97"></a><span class='hs-definition'>sudo</span> <span class='hs-varid'>n</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-layout'>(</span><span class='hs-conid'>EW</span> <span class='hs-layout'>(</span><span class='hs-conid'>User</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>n</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>s</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>lift</span> <span class='hs-layout'>(</span><span class='hs-conid'>EW</span> <span class='hs-layout'>(</span><span class='hs-conid'>User</span> <span class='hs-conid'>Nothing</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span>
-<a name="line-98"></a><span class='hs-comment'>{-# INLINE sudo #-}</span>
-<a name="line-99"></a>
-<a name="line-100"></a>
-<a name="line-101"></a><a name="reacting"></a><span class='hs-comment'>-- | Change reaction pattern for wrapped commands</span>
-<a name="line-102"></a><span class='hs-definition'>reacting</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>React</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span>
-<a name="line-103"></a><span class='hs-definition'>reacting</span> <span class='hs-varid'>r</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-layout'>(</span><span class='hs-conid'>EW</span> <span class='hs-layout'>(</span><span class='hs-conid'>Reacting</span> <span class='hs-layout'>(</span><span class='hs-conid'>Just</span> <span class='hs-varid'>r</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>s</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>lift</span> <span class='hs-layout'>(</span><span class='hs-conid'>EW</span> <span class='hs-layout'>(</span><span class='hs-conid'>Reacting</span> <span class='hs-conid'>Nothing</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span>
-<a name="line-104"></a><span class='hs-comment'>{-# INLINE reacting #-}</span>
-<a name="line-105"></a>
-<a name="line-106"></a>
-<a name="line-107"></a><a name="profile"></a><span class='hs-comment'>-- | Configuration profile</span>
-<a name="line-108"></a><span class='hs-comment'>--</span>
-<a name="line-109"></a><span class='hs-comment'>-- Provides convenient sources grouping</span>
-<a name="line-110"></a><span class='hs-comment'>--</span>
-<a name="line-111"></a><span class='hs-comment'>-- &gt; profile "mine" $ do</span>
-<a name="line-112"></a><span class='hs-comment'>-- &gt;   git ...</span>
-<a name="line-113"></a><span class='hs-comment'>-- &gt;   git ...</span>
-<a name="line-114"></a><span class='hs-comment'>-- &gt; profile "friend's" $ do</span>
-<a name="line-115"></a><span class='hs-comment'>-- &gt;   svn ...</span>
-<a name="line-116"></a><span class='hs-definition'>profile</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Profiles</span> <span class='hs-conid'>()</span>
-<a name="line-117"></a><span class='hs-definition'>profile</span> <span class='hs-varid'>n</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>lift</span> <span class='hs-varop'>$</span> <span class='hs-conid'>EP</span> <span class='hs-layout'>(</span><span class='hs-conid'>Profile</span> <span class='hs-varid'>n</span><span class='hs-layout'>)</span> <span class='hs-varid'>s</span> <span class='hs-conid'>()</span>
-<a name="line-118"></a><span class='hs-comment'>{-# INLINE profile #-}</span>
-<a name="line-119"></a>
-<a name="line-120"></a>
-<a name="line-121"></a><a name="chain"></a><span class='hs-comment'>-- | Chain tasks sequentially</span>
-<a name="line-122"></a><span class='hs-comment'>-- Connects two tasks which forces them to run sequentially one after another.</span>
-<a name="line-123"></a><span class='hs-comment'>--</span>
-<a name="line-124"></a><span class='hs-comment'>-- Note: redundant if 'Order' is 'Sequential'</span>
-<a name="line-125"></a><span class='hs-definition'>chain</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span>
-<a name="line-126"></a><span class='hs-definition'>chain</span> <span class='hs-varid'>a</span> <span class='hs-varid'>b</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>a</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>lift</span> <span class='hs-layout'>(</span><span class='hs-conid'>EW</span> <span class='hs-conid'>Chain</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span> <span class='hs-varop'>&gt;&gt;</span> <span class='hs-varid'>b</span>
-<a name="line-127"></a><span class='hs-comment'>{-# INLINE chain #-}</span>
-<a name="line-128"></a>
-<a name="line-129"></a>
-<a name="line-130"></a><a name="~%3e%3e"></a><span class='hs-comment'>-- | Alias for 'chain'</span>
-<a name="line-131"></a><span class='hs-layout'>(</span><span class='hs-varop'>~&gt;&gt;</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-varid'>sc</span> <span class='hs-conid'>()</span>
-<a name="line-132"></a><span class='hs-layout'>(</span><span class='hs-varop'>~&gt;&gt;</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>chain</span>
-<a name="line-133"></a><span class='hs-comment'>{-# INLINE (~&gt;&gt;) #-}</span>
+<pre><a name="line-1"></a><span class='hs-comment'>-- | Biegunka - configuration development library</span>
+<a name="line-2"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Biegunka</span>
+<a name="line-3"></a>  <span class='hs-layout'>(</span> <span class='hs-comment'>-- * Interpreters control</span>
+<a name="line-4"></a>    <span class='hs-varid'>biegunka</span><span class='hs-layout'>,</span> <span class='hs-conid'>Controls</span><span class='hs-layout'>,</span> <span class='hs-varid'>root</span><span class='hs-layout'>,</span> <span class='hs-varid'>appData</span><span class='hs-layout'>,</span> <span class='hs-varid'>colors</span>
+<a name="line-5"></a>    <span class='hs-comment'>-- * Interpreters</span>
+<a name="line-6"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>pretend</span><span class='hs-layout'>,</span> <span class='hs-varid'>pause</span><span class='hs-layout'>,</span> <span class='hs-varid'>confirm</span><span class='hs-layout'>,</span> <span class='hs-varid'>execute</span><span class='hs-layout'>,</span> <span class='hs-varid'>verify</span>
+<a name="line-7"></a>    <span class='hs-comment'>-- * Execution environment hooks</span>
+<a name="line-8"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>EE</span>
+<a name="line-9"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Priviledges</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>priviledges</span>
+<a name="line-10"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>react</span>
+<a name="line-11"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Templates</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>templates</span>
+<a name="line-12"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>retries</span>
+<a name="line-13"></a>    <span class='hs-comment'>-- * Profile layer primitives</span>
+<a name="line-14"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>profile</span>
+<a name="line-15"></a>    <span class='hs-comment'>-- * Action layer primitives</span>
+<a name="line-16"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>registerAt</span><span class='hs-layout'>,</span> <span class='hs-varid'>copy</span><span class='hs-layout'>,</span> <span class='hs-varid'>link</span><span class='hs-layout'>,</span> <span class='hs-varid'>substitute</span><span class='hs-layout'>,</span> <span class='hs-varid'>shell</span>
+<a name="line-17"></a>    <span class='hs-comment'>-- * All layers primitives</span>
+<a name="line-18"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>sudo</span><span class='hs-layout'>,</span> <span class='hs-varid'>reacting</span><span class='hs-layout'>,</span> <span class='hs-varid'>chain</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;~&gt;</span><span class='hs-layout'>)</span>
+<a name="line-19"></a>    <span class='hs-comment'>-- * Types</span>
+<a name="line-20"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Script</span><span class='hs-layout'>,</span> <span class='hs-conid'>Scope</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
+<a name="line-21"></a>    <span class='hs-comment'>-- * TH</span>
+<a name="line-22"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>makeOptionsParser</span>
+<a name="line-23"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-24"></a>
+<a name="line-25"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Control</span> <span class='hs-layout'>(</span><span class='hs-varid'>biegunka</span><span class='hs-layout'>,</span> <span class='hs-conid'>Controls</span><span class='hs-layout'>,</span> <span class='hs-varid'>root</span><span class='hs-layout'>,</span> <span class='hs-varid'>appData</span><span class='hs-layout'>,</span> <span class='hs-varid'>colors</span><span class='hs-layout'>,</span> <span class='hs-varid'>pause</span><span class='hs-layout'>,</span> <span class='hs-varid'>confirm</span><span class='hs-layout'>)</span>
+<a name="line-26"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Execute</span> <span class='hs-layout'>(</span><span class='hs-varid'>execute</span><span class='hs-layout'>)</span>
+<a name="line-27"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Execute</span><span class='hs-varop'>.</span><span class='hs-conid'>Control</span>
+<a name="line-28"></a>  <span class='hs-layout'>(</span> <span class='hs-conid'>EE</span>
+<a name="line-29"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Priviledges</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>priviledges</span>
+<a name="line-30"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>react</span>
+<a name="line-31"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Templates</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>templates</span>
+<a name="line-32"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>retries</span>
+<a name="line-33"></a>  <span class='hs-layout'>)</span>
+<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Language</span> <span class='hs-layout'>(</span><span class='hs-conid'>Scope</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-35"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Pretend</span> <span class='hs-layout'>(</span><span class='hs-varid'>pretend</span><span class='hs-layout'>)</span>
+<a name="line-36"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Primitive</span>
+<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Script</span> <span class='hs-layout'>(</span><span class='hs-conid'>Script</span><span class='hs-layout'>)</span>
+<a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>TH</span> <span class='hs-layout'>(</span><span class='hs-varid'>makeOptionsParser</span><span class='hs-layout'>)</span>
+<a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Verify</span> <span class='hs-layout'>(</span><span class='hs-varid'>verify</span><span class='hs-layout'>)</span>
 </pre></body>
 </html>
