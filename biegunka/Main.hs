@@ -124,7 +124,6 @@ prompt message = do
   case map toLower response of
     "y" -> return True
     "n" -> return False
-    ""  -> return False
     _   -> prompt message
 
 

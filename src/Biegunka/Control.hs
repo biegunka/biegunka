@@ -131,7 +131,6 @@ confirm = I $ \c _ k -> do
     case map toLower r of
       "y" -> return True
       "n" -> return False
-      ""  -> return False
       _   -> prompt l m
 
 
