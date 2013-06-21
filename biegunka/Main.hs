@@ -25,7 +25,9 @@ import Paths_biegunka_core
 
 data BiegunkaCommand
   = Init
-  | Run [String]
+  | Script Script [String]
+
+data Script = DryRun | Run | Check
 
 
 opts :: ParserInfo BiegunkaCommand
@@ -33,10 +35,14 @@ opts = info (helper <*> subcommands) fullDesc
  where
   subcommands = subparser $
     command "init" (info (pure Init) (progDesc "Initialize biegunka script")) <>
-    command "run"  (info runCommandParser
-      (progDesc "Run biegunka script"))
+    command "dry-run"  (info (Script DryRun <$> runCommandParser)
+      (progDesc "Run biegunka script dry")) <>
+    command "run"  (info (Script Run <$> runCommandParser)
+      (progDesc "Run biegunka script")) <>
+    command "check"  (info (Script Check <$> runCommandParser)
+      (progDesc "Check biegunka script"))
    where
-    runCommandParser = Run <$> arguments Just mempty
+    runCommandParser = arguments Just mempty
 
 
 main :: IO ()
@@ -44,8 +50,8 @@ main = do
   hSetBuffering stdout NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
   case biegunkaCommand of
-    Init     -> initialize
-    Run args -> run args
+    Init -> initialize
+    Script script args -> withScript script args
 
 
 destination :: FilePath
@@ -72,11 +78,11 @@ initialize = do
     putStrLn $ "Initialized biegunka script at " ++ destination
 
 
-run :: [String] -> IO ()
-run args = do
+withScript :: Script -> [String] -> IO ()
+withScript script args = do
   let (biegunkaArgs, ghcArgs) = partition (\arg -> "--" == take 2 arg) args
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
-    (ghcArgs ++ [destination, "--all"] ++ biegunkaArgs)
+    (ghcArgs ++ [destination, toOption script] ++ biegunkaArgs)
     Nothing
     Nothing
   hSetBuffering stdin' NoBuffering
@@ -86,13 +92,17 @@ run args = do
   tell stdin'
   takeMVar anchor
   exitcode <- getProcessExitCode pid
-  case exitcode of
-    Just exitcode' -> exitWith exitcode'
-    Nothing        -> exitWith (ExitFailure 1)
+  exitWith (maybe (ExitFailure 1) id exitcode)
  where
   listen mvar handle = forkFinally (forever $ T.hGetContents handle >>= T.putStr)
     (\_ -> putMVar mvar ())
   tell handle = forkIO . forever $ T.getLine >>= T.hPutStrLn handle
+
+
+toOption :: Script -> String
+toOption Run    = "--safe-run"
+toOption DryRun = "--dry-run"
+toOption Check  = "--check"
 
 
 prompt :: String -> IO Bool
@@ -105,6 +115,7 @@ prompt message = do
     "n" -> return False
     ""  -> return False
     _   -> prompt message
+
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
 forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
