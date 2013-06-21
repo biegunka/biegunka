@@ -8,21 +8,22 @@
 </head>
 <body>
 <pre><a name="line-1"></a><span class='hs-comment'>{-# LANGUAGE DataKinds #-}</span>
-<a name="line-2"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Source</span>
-<a name="line-3"></a>  <span class='hs-layout'>(</span> <span class='hs-conid'>Source</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
-<a name="line-4"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-5"></a>
-<a name="line-6"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Lens</span>
-<a name="line-7"></a>
-<a name="line-8"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Language</span>
-<a name="line-9"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Script</span>
-<a name="line-10"></a>
+<a name="line-2"></a><span class='hs-comment'>-- | Generally useful 'Sources' related definitions</span>
+<a name="line-3"></a><span class='hs-keyword'>module</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Source</span>
+<a name="line-4"></a>  <span class='hs-layout'>(</span> <span class='hs-conid'>Source</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span>
+<a name="line-5"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-6"></a>
+<a name="line-7"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Lens</span>
+<a name="line-8"></a>
+<a name="line-9"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Language</span>
+<a name="line-10"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Biegunka</span><span class='hs-varop'>.</span><span class='hs-conid'>Script</span>
 <a name="line-11"></a>
-<a name="line-12"></a><span class='hs-comment'>-- | Common 'Sources' structure</span>
-<a name="line-13"></a><span class='hs-keyword'>class</span> <span class='hs-conid'>Source</span> <span class='hs-varid'>s</span> <span class='hs-keyword'>where</span>
-<a name="line-14"></a>  <span class='hs-comment'>-- | Actions to run after source update</span>
-<a name="line-15"></a>  <span class='hs-varid'>actions</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Lens'</span> <span class='hs-varid'>s</span> <span class='hs-layout'>(</span><span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span>
-<a name="line-16"></a>
-<a name="line-17"></a>  <span class='hs-layout'>(</span><span class='hs-varop'>==&gt;</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
+<a name="line-12"></a>
+<a name="line-13"></a><span class='hs-comment'>-- | Common 'Sources' structure</span>
+<a name="line-14"></a><span class='hs-keyword'>class</span> <span class='hs-conid'>Source</span> <span class='hs-varid'>s</span> <span class='hs-keyword'>where</span>
+<a name="line-15"></a>  <span class='hs-comment'>-- | Actions to run after source update</span>
+<a name="line-16"></a>  <span class='hs-varid'>actions</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Lens'</span> <span class='hs-varid'>s</span> <span class='hs-layout'>(</span><span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span>
+<a name="line-17"></a>
+<a name="line-18"></a>  <span class='hs-layout'>(</span><span class='hs-varop'>==&gt;</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>s</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
 </pre></body>
 </html>
