@@ -12,14 +12,17 @@ import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import           Control.Monad (forever)
 import           Data.Char (toLower)
 import           Data.Foldable (asum)
-import           Data.List (partition)
+import           Data.List (intercalate, partition)
 import           Data.Monoid (mempty)
 import qualified Data.Text.Lazy.IO as T
+import           Data.Version (Version(..))
 import           Options.Applicative
 import           System.Directory (copyFile, doesFileExist)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
+import           System.Info (arch, os, compilerName, compilerVersion)
+import           System.Wordexp (wordexp, nosubst, noundef)
 
 import Paths_biegunka_core
 
@@ -89,12 +92,14 @@ initialize = do
 withScript :: Script -> [String] -> IO ()
 withScript script args = do
   let (biegunkaArgs, ghcArgs) = partition (\arg -> "--" == take 2 arg) args
+  packageDBArg <- findPackageDBArg
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
-    (ghcArgs ++ [destination, toOption script] ++ biegunkaArgs)
+    (ghcArgs ++ maybe [] pure packageDBArg ++ [destination, toOption script] ++ biegunkaArgs)
     Nothing
     Nothing
   hSetBuffering stdin' NoBuffering
   -- Can't use waitForProcess here because runhaskell ignores -threaded
+  -- and we want to support runhaskell because compiling scripts is not cool
   stdoutAnchor <- newEmptyMVar
   stderrAnchor <- newEmptyMVar
   listen stdoutAnchor stdout'
@@ -108,6 +113,38 @@ withScript script args = do
   listen mvar handle = forkFinally (forever $ T.hGetContents handle >>= T.putStr)
     (\_ -> putMVar mvar ())
   tell handle = forkIO . forever $ T.getLine >>= T.hPutStrLn handle
+
+
+findPackageDBArg :: IO (Maybe String)
+findPackageDBArg = do
+  maybeCabalSandbox <- findCabalSandbox
+  case maybeCabalSandbox of
+    Just cabalSandbox -> return . Just $ "-package-db=" ++ cabalSandbox
+    Nothing -> do
+      maybeCabalDevSandbox <- findCabalDevSandbox
+      case maybeCabalDevSandbox of
+        Just cabalDevSandbox -> return . Just $ "-package-db=" ++ cabalDevSandbox
+        Nothing -> return Nothing
+ where
+  findCabalSandbox    =
+    findSandbox $ "cabal-dev/packages-" ++ compilerVersionString compilerVersion ++ "*.conf"
+  findCabalDevSandbox =
+    findSandbox $
+         ".cabal-sandbox/" ++ arch ++ "-" ++ os ++ "-" ++ compilerName ++ "-"
+      ++ compilerVersionString compilerVersion ++ "*-packages.conf.d"
+
+  findSandbox pattern = do
+    findings <- wordexp (nosubst <> noundef) pattern
+    case findings of
+      Right [sandbox]
+        | sandbox /= pattern -> return (Just sandbox)
+      Right (sandbox:_:_) -> do
+        putStrLn $ "Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
+        return (Just sandbox)
+      Right _ -> return Nothing
+      Left _ -> return Nothing
+
+  compilerVersionString = intercalate "." . map show . versionBranch
 
 
 toOption :: Script -> String

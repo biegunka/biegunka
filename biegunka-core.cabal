@@ -65,7 +65,8 @@ executable biegunka
                  directory,
                  process,
                  text,
-                 optparse-applicative
+                 optparse-applicative,
+                 wordexp
   hs-source-dirs: biegunka
   main-is: Main.hs
   ghc-options: -Wall
