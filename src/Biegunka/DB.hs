@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -21,6 +22,9 @@ import           Data.Aeson.Encode
 import           Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 706
+import           Data.ByteString.Lazy (fromStrict)
+#endif
 import           Data.Default
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -148,8 +152,10 @@ sources :: Biegunka -> [FilePath]
 sources = map location . M.keys <=< M.elems . unBiegunka
 
 
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
 fromStrict :: B.ByteString -> BL.ByteString
 fromStrict = BL.fromChunks . return
+#endif
 
 
 construct :: Free (EL SA s) a -> Biegunka
