@@ -13,12 +13,12 @@ import Language.Haskell.TH
 import Options.Applicative
 
 import Biegunka.Control (Controls, biegunka, confirm)
-import Biegunka.Execute (execute)
+import Biegunka.Execute (run)
 import Biegunka.Execute.Control (EE)
 import Biegunka.Language (Scope(Profiles))
-import Biegunka.Pretend (pretend)
+import Biegunka.Pretend (dryRun)
 import Biegunka.Script (Script)
-import Biegunka.Verify (verify)
+import Biegunka.Verify (check)
 
 
 -- | Make options parser for environments data
@@ -42,15 +42,15 @@ makeOptionsParser name = do
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
 
           interpreters = (\i cs -> biegunka cs . i) . mconcat <$> sequenceA
-            [ flag mempty execute (long "run" <>
+            [ flag mempty run (long "run" <>
                 help ("Do real run"))
-            , flag mempty (const confirm <> execute) (long "safe-run" <>
+            , flag mempty (const confirm <> run) (long "safe-run" <>
                 help ("Do real run (after confirmation)"))
-            , flag mempty (const pretend <> const confirm <> execute <> const verify) (long "full" <>
+            , flag mempty (const dryRun <> const confirm <> run <> const check) (long "full" <>
                 help ("Do dry run, real run (after confirmation) and then check results"))
-            , flag mempty (const pretend) (long "dry-run" <>
+            , flag mempty (const dryRun) (long "dry-run" <>
                 help ("Do only dry run, do not touch anything"))
-            , flag mempty (const verify) (long "check" <>
+            , flag mempty (const check) (long "check" <>
                 help ("Compare current filesystem state against script"))
             ]
         |]

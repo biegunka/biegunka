@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Check interpreter
-module Biegunka.Verify (verify) where
+module Biegunka.Verify (check, verify) where
 
 import Control.Applicative
 import Control.Monad (mplus)
@@ -25,12 +25,9 @@ import Biegunka.Language (EL(..), S(..), A(..), peek)
 import Biegunka.Script (SA(..))
 
 
--- | Verification interpreter
---
--- Compares current filesystem layout and what script says it should be line by line.
--- Outputs errors it find, otherwise prints OK. Is useful to check execution correctness.
-verify :: Interpreter
-verify = interpret $ \c s -> do
+-- | Check interpreter
+check :: Interpreter
+check = interpret $ \c s -> do
   failures <- execWriterT (verification s)
   view logger c $
        text "Verification: "
@@ -38,6 +35,11 @@ verify = interpret $ \c s -> do
       [] -> green "OK"
       _  -> line <> vcat failures
     <> line
+
+-- | Check interpreter
+verify :: Interpreter
+verify = check
+{-# DEPRECATED verify "Please, use `check'" #-}
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
 verification :: Free (EL SA s) () -> WriterT [Doc] IO ()

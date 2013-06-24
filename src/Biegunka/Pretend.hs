@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Dry run interpreter
-module Biegunka.Pretend (pretend) where
+module Biegunka.Pretend (dryRun, pretend) where
 
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
@@ -17,27 +17,18 @@ import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.Script (SA)
 
 
--- | Pretend interpreter
---
--- Doesn't do any IO, so you can't check if script will fail to do IO
---
--- But Pretend can show which changes would be maid if IO will run without errors
---
--- Prints execution log if asked
---
--- @
--- main :: IO ()
--- main = pretend $ do
---   profile ...
---   profile ...
--- @
-pretend :: Interpreter
-pretend = interpret $ \c s -> do
+-- | Dru run interpreter
+dryRun :: Interpreter
+dryRun = interpret $ \c s -> do
   let b = construct s
   a <- load c s
   view logger c (log s a b)
   view logger c (stats a b)
 
+-- | Dru run interpreter
+pretend :: Interpreter
+pretend = dryRun
+{-# DEPRECATED pretend "Please, use `dryRun'" #-}
 
 stats :: Biegunka -> Biegunka -> Doc
 stats a b = vcat $ mapMaybe about

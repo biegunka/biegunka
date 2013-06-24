@@ -3,7 +3,8 @@ module Biegunka
   ( -- * Interpreters control
     biegunka, Controls, root, appData, colors
     -- * Interpreters
-  , pretend, pause, confirm, execute, verify
+  , pause, confirm, dryRun, run, check
+  , pretend, execute, verify
     -- * Execution environment hooks
   , EE
   , Priviledges(..), priviledges
@@ -25,7 +26,7 @@ module Biegunka
   ) where
 
 import Biegunka.Control (biegunka, Controls, root, appData, colors, pause, confirm)
-import Biegunka.Execute (execute)
+import Biegunka.Execute (execute, run)
 import Biegunka.Execute.Control
   ( EE
   , Priviledges(..), priviledges
@@ -34,9 +35,9 @@ import Biegunka.Execute.Control
   , retries
   )
 import Biegunka.Language (Scope(..), React(..))
-import Biegunka.Pretend (pretend)
+import Biegunka.Pretend (dryRun, pretend)
 import Biegunka.Primitive
 import Biegunka.Script (Script)
 import Biegunka.TH (makeOptionsParser)
-import Biegunka.Verify (verify)
+import Biegunka.Verify (check, verify)
 import Biegunka.Source (Source(..))

@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Real run interpreter
-module Biegunka.Execute (execute) where
+module Biegunka.Execute (run, execute) where
 
 import           Control.Applicative
 import           Control.Monad
@@ -50,16 +50,9 @@ import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
 
 
--- | Execute Interpreter
---
--- Biegunka workhorse. Does useful work: copy and links files, compiles stuff, anything else
---
--- Supports setting execution options via its first argument
---
--- It's generally advised to use 'pretend' before 'execute': that way you can catch some
--- bugs in your script before devastation is done.
-execute :: (EE () -> EE ()) -> Interpreter
-execute e = interpret $ \c s -> do
+-- | Real run interpreter
+run :: (EE () -> EE ()) -> Interpreter
+run e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
   (controls .~ c -> e') <- initializeSTM (e def)
@@ -72,6 +65,11 @@ execute e = interpret $ \c s -> do
   save c b
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
+
+-- | Real run interpreter
+execute :: (EE () -> EE ()) -> Interpreter
+execute = run
+{-# DEPRECATED execute "Please, use `run'" #-}
 
 
 -- | Run single task command by command
