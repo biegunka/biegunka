@@ -21,15 +21,32 @@ import Biegunka.Script (Script)
 import Biegunka.Verify (check)
 
 
--- | Make options parser for environments data
+-- | Make parser for biegunka and environment options
 --
--- Makes following options:
---   * @--run@
---   * @--safe-run@
---   * @--dry-run@
---   * @--check@
---   * @--full@
---   * Also one option for each environment. Same name, only lowercased
+-- The following options become available:
+--
+--   * --run
+--
+--   * --safe-run
+--
+--   * --dry-run
+--
+--   * --check
+--
+--   * --full
+--
+--   * Also one option for each environment (the --lowercased environment name)
+--
+-- The usage is trivial:
+--
+-- > data Environments = X220 | T510
+-- >
+-- > makeOptionsParser ''Environment
+-- >
+-- > main :: IO ()
+-- > main = do
+-- >   (environment, runBiegunka) <- optionsParser
+-- >   ...
 makeOptionsParser :: Name -> Q [Dec]
 makeOptionsParser name = do
   inf <- reify name
