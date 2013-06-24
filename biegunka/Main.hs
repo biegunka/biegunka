@@ -47,10 +47,10 @@ opts = info (helper <*> subcommands) fullDesc
       (progDesc "Check biegunka script"))
    where
     runVariant = asum
-      [ flag' Dry   (long "dry"   <> help "Do not do anything, only display logs and stats")
-      , flag' Force (long "force" <> help "Do not ask for confirmation")
-      , flag' Full  (long "full"  <> help "Do also a dry run and check results afterwards")
-      , flag' Safe  (long "safe"  <> help "Do a real run with confirmation [default]")
+      [ flag' Dry   (long "dry"   <> help "Only display a forecast and stats")
+      , flag' Force (long "force" <> help "Skip confirmation")
+      , flag' Full  (long "full"  <> help "Composition of run --dry, run --safe and check")
+      , flag' Safe  (long "safe"  <> help "Run with confirmation [default]")
       , pure Safe
       ]
 
