@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Biegunka
+import Biegunka hiding (check)
 import Biegunka.Source.Dummy
 import Control.Lens
 import System.Directory.Layout
@@ -27,7 +27,7 @@ main = do
 
 resultsIn :: Script Profiles () -> Layout -> IO [LayoutException]
 resultsIn s l = do
-  biegunka (set root "/tmp") (execute id) s
+  biegunka (set root "/tmp") (run id) s
   check l "/tmp"
 
 
