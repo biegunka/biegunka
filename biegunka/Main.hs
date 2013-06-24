@@ -42,7 +42,7 @@ opts = info (helper <*> subcommands) fullDesc
   subcommands = subparser $
     command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
     command "run"  (info (Script <$> destination <*> (Run <$> runVariant) <*> otherArguments)
-      (progDesc "Run biegunka script (with confirmation by default)")) <>
+      (progDesc "Run biegunka script")) <>
     command "check"  (info (Script <$> destination <*> pure Check <*> otherArguments)
       (progDesc "Check biegunka script"))
    where
@@ -50,6 +50,7 @@ opts = info (helper <*> subcommands) fullDesc
       [ flag' Dry   (long "dry"   <> help "Do not do anything, only display logs and stats")
       , flag' Force (long "force" <> help "Do not ask for confirmation")
       , flag' Full  (long "full"  <> help "Do also a dry run and check results afterwards")
+      , flag' Safe  (long "safe"  <> help "Do a real run with confirmation [default]")
       , pure Safe
       ]
 
