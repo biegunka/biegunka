@@ -2,12 +2,21 @@
 window.onload = function () {pageLoad();setSynopsis("mini_Biegunka-TH.html");};
 //]]>
 </script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="src/Biegunka-TH.html">Source</a></li><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">biegunka-core-0.1.0.0: DSL definitions, interpreters, templating</p></div><div id="content"><div id="module-header"><table class="info"><tr><th>Safe Haskell</th><td>None</td></tr></table><p class="caption">Biegunka.TH</p></div><div id="description"><p class="caption">Description</p><div class="doc"><p>Making life easier with meta-programming
-</p></div></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><a href="#v:makeOptionsParser">makeOptionsParser</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Name">Name</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Q">Q</a> [<a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Dec">Dec</a>]</li></ul></div><div id="interface"><h1>Documentation</h1><div class="top"><p class="src"><a name="v:makeOptionsParser" class="def">makeOptionsParser</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Name">Name</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Q">Q</a> [<a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Dec">Dec</a>]<a href="src/Biegunka-TH.html#makeOptionsParser" class="link">Source</a></p><div class="doc"><p>Make options parser for environments data
-</p><p>Makes following options:
-   * <code>--run</code>
-   * <code>--safe-run</code>
-   * <code>--dry-run</code>
-   * <code>--check</code>
-   * <code>--full</code>
-   * Also one option for each environment. Same name, only lowercased
-</p></div></div></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.13.2</p></div></body></html>
+</p></div></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><a href="#v:makeOptionsParser">makeOptionsParser</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Name">Name</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Q">Q</a> [<a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Dec">Dec</a>]</li></ul></div><div id="interface"><h1>Documentation</h1><div class="top"><p class="src"><a name="v:makeOptionsParser" class="def">makeOptionsParser</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Name">Name</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Q">Q</a> [<a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Dec">Dec</a>]<a href="src/Biegunka-TH.html#makeOptionsParser" class="link">Source</a></p><div class="doc"><p>Make parser for biegunka and environment options
+</p><p>The following options become available:
+</p><ul><li> --run
+</li><li> --safe-run
+</li><li> --dry-run
+</li><li> --check
+</li><li> --full
+</li><li> Also one option for each environment (the --lowercased environment name)
+</li></ul><p>The usage is trivial:
+</p><pre> data Environments = X220 | T510
+
+ makeOptionsParser ''Environment
+
+ main :: IO ()
+ main = do
+   (environment, runBiegunka) &lt;- optionsParser
+   ...
+</pre></div></div></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.13.2</p></div></body></html>
