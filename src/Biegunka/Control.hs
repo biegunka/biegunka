@@ -122,7 +122,7 @@ pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//>
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
 confirm = I $ \c _ k -> do
-  r <- prompt (view logger c) (text "Proceed? [y/N] ")
+  r <- prompt (view logger c) (text "Proceed? [y/n] ")
   case r of
     True  -> k
     False -> return ()

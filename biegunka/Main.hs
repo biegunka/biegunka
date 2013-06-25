@@ -156,7 +156,7 @@ toOption Check       = "--check"
 
 prompt :: String -> IO Bool
 prompt message = do
-  putStr $ message ++ " [y/N] "
+  putStr $ message ++ " [y/n] "
   hFlush stdout
   response <- getLine
   case map toLower response of
