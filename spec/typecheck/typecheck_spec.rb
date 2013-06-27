@@ -9,6 +9,9 @@ directory = File.expand_path File.dirname __FILE__
 if Dir.exists? "cabal-dev"
   options << "-package-db=#{Dir.glob("cabal-dev/packages-*.conf").first}"
 end
+if Dir.exists? ".cabal-sandbox"
+  options << "-package-db=#{Dir.glob(".cabal-sandbox/*-packages.conf.d").first}"
+end
 
 describe "typecheck:" do
   Dir.glob("#{directory}/should_compile/*").each do |test|
