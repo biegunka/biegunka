@@ -38,7 +38,7 @@ library
                  HStringTemplate >= 0.7,
                  wordexp >= 0.2,
                  optparse-applicative
-  hs-source-dirs: src
+  hs-source-dirs: lib
   exposed-modules: Biegunka
                    Biegunka.Primitive
                    Biegunka.Script
@@ -67,7 +67,7 @@ executable biegunka
                  text,
                  optparse-applicative,
                  wordexp
-  hs-source-dirs: biegunka
+  hs-source-dirs: bin/biegunka
   main-is: Main.hs
   ghc-options: -Wall
                -fno-warn-unused-do-bind
