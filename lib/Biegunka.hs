@@ -11,11 +11,11 @@ module Biegunka
   , React(..), react
   , Templates(..), templates
   , retries
-    -- * Profile layer primitives
+    -- * Profiles layer primitives
   , profile
-    -- * Source layer primitives
+    -- * Sources layer primitives
   , Source(..)
-    -- * Action layer primitives
+    -- * Actions layer primitives
   , link, register, copy, substitute, shell
     -- * All layers primitives
   , sudo, reacting, chain, (<~>)
