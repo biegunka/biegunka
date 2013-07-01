@@ -4,9 +4,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka.html");};
 </script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="src/Biegunka.html">Source</a></li><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">biegunka-core-0.1.0.0: DSL definitions, interpreters, templating</p></div><div id="content"><div id="module-header"><table class="info"><tr><th>Safe Haskell</th><td>None</td></tr></table><p class="caption">Biegunka</p></div><div id="table-of-contents"><p class="caption">Contents</p><ul><li><a href="#g:1">Interpreters control
 </a></li><li><a href="#g:2">Interpreters
 </a></li><li><a href="#g:3">Execution environment hooks
-</a></li><li><a href="#g:4">Profile layer primitives
-</a></li><li><a href="#g:5">Source layer primitives
-</a></li><li><a href="#g:6">Action layer primitives
+</a></li><li><a href="#g:4">Profiles layer primitives
+</a></li><li><a href="#g:5">Sources layer primitives
+</a></li><li><a href="#g:6">Actions layer primitives
 </a></li><li><a href="#g:7">All layers primitives
 </a></li><li><a href="#g:8">Types
 </a></li><li><a href="#g:9">TH
@@ -46,7 +46,7 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka.html");};
  Existence of that wrapper is what made <code><a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/data-default-0.5.3/html/Data-Default.html#t:Default">Default</a></code> instance possible
 </p></div><div class="subs constructors"><p class="caption">Constructors</p><table><tr><td class="src"><span class="keyword">forall</span> t . <a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/HStringTemplate-0.7.1/html/Text-StringTemplate.html#t:ToSElem">ToSElem</a> t =&gt; <a name="v:Templates" class="def">Templates</a> t</td><td class="doc empty">&nbsp;</td></tr></table></div></div><div class="top"><p class="src"><a name="v:templates" class="def">templates</a> ::  <a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/lens-3.9.0.2/html/Control-Lens-Type.html#t:Lens-39-">Lens'</a> (<a href="Biegunka.html#t:EE">EE</a> a) <a href="Biegunka.html#t:Templates">Templates</a><a href="src/Biegunka-Execute-Control.html#templates" class="link">Source</a></p><div class="doc"><p>Templates mapping
 </p></div></div><div class="top"><p class="src"><a name="v:retries" class="def">retries</a> ::  <a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/lens-3.9.0.2/html/Control-Lens-Type.html#t:Lens-39-">Lens'</a> (<a href="Biegunka.html#t:EE">EE</a> a) <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-Int.html#t:Int">Int</a><a href="src/Biegunka-Execute-Control.html#retries" class="link">Source</a></p><div class="doc"><p>Maximum retries count
-</p></div></div><h1 id="g:4">Profile layer primitives
+</p></div></div><h1 id="g:4">Profiles layer primitives
 </h1><div class="top"><p class="src"><a name="v:profile" class="def">profile</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Sources">Sources</a> () -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Profiles">Profiles</a> ()<a href="src/Biegunka-Primitive.html#profile" class="link">Source</a></p><div class="doc"><p>Provides convenient <code><a href="Biegunka.html#v:Sources">Sources</a></code> grouping. Does not nest
 </p><p>Example usage:
 </p><pre> profile &quot;dotfiles&quot; $ do
@@ -54,10 +54,10 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka.html");};
    git &quot;https://github.com/dmalikov/dotfiles&quot;
  profile &quot;experimental&quot; $ do
    git &quot;https://github.com/ekmett/lens&quot; ...
-</pre></div></div><h1 id="g:5">Source layer primitives
+</pre></div></div><h1 id="g:5">Sources layer primitives
 </h1><div class="top"><p class="src"><span class="keyword">class</span>  <a name="t:Source" class="def">Source</a> s  <span class="keyword">where</span><a href="src/Biegunka-Source.html#Source" class="link">Source</a></p><div class="doc"><p>Common <code><a href="Biegunka.html#v:Sources">Sources</a></code> structure
 </p></div><div class="subs methods"><p class="caption">Methods</p><p class="src"><a name="v:actions" class="def">actions</a> :: <a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/lens-3.9.0.2/html/Control-Lens-Type.html#t:Lens-39-">Lens'</a> s (<a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Actions">Actions</a> ())<a href="src/Biegunka-Source.html#actions" class="link">Source</a></p><div class="doc"><p>Actions to run after source update
-</p></div><p class="src"><a name="v:-61--61--62-" class="def">(==&gt;)</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; s -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Sources">Sources</a> ()<a href="src/Biegunka-Source.html#%3D%3D%3E" class="link">Source</a></p></div><div class="subs instances"><p id="control.i:Source" class="caption collapser" onclick="toggleSection('i:Source')">Instances</p><div id="section.i:Source" class="show"><table><tr><td class="src"><a href="Biegunka.html#t:Source">Source</a> <a href="Biegunka-Source-Git.html#t:Git">Git</a></td><td class="doc empty">&nbsp;</td></tr></table></div></div></div><h1 id="g:6">Action layer primitives
+</p></div><p class="src"><a name="v:-61--61--62-" class="def">(==&gt;)</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; s -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Sources">Sources</a> ()<a href="src/Biegunka-Source.html#%3D%3D%3E" class="link">Source</a></p></div><div class="subs instances"><p id="control.i:Source" class="caption collapser" onclick="toggleSection('i:Source')">Instances</p><div id="section.i:Source" class="show"><table><tr><td class="src"><a href="Biegunka.html#t:Source">Source</a> <a href="Biegunka-Source-Git.html#t:Git">Git</a></td><td class="doc empty">&nbsp;</td></tr></table></div></div></div><h1 id="g:6">Actions layer primitives
 </h1><div class="top"><p class="src"><a name="v:link" class="def">link</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#link" class="link">Source</a></p><div class="doc"><p>Links given file to specified filepath
 </p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
    link &quot;some-file&quot; &quot;anywhere&quot;
@@ -97,8 +97,8 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka.html");};
 </p></div><div class="subs constructors"><p class="caption">Constructors</p><table><tr><td class="src"><a name="v:Actions" class="def">Actions</a></td><td class="doc empty">&nbsp;</td></tr><tr><td class="src"><a name="v:Sources" class="def">Sources</a></td><td class="doc empty">&nbsp;</td></tr><tr><td class="src"><a name="v:Profiles" class="def">Profiles</a></td><td class="doc empty">&nbsp;</td></tr></table></div></div><h1 id="g:9">TH
 </h1><div class="top"><p class="src"><a name="v:makeOptionsParser" class="def">makeOptionsParser</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Name">Name</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Q">Q</a> [<a href="/usr/local/share/doc/ghc/html/libraries/template-haskell-2.8.0.0/Language-Haskell-TH-Syntax.html#t:Dec">Dec</a>]<a href="src/Biegunka-TH.html#makeOptionsParser" class="link">Source</a></p><div class="doc"><p>Make parser for biegunka and environment options
 </p><p>The following options become available:
-</p><ul><li> --run
-</li><li> --safe-run
+</p><ul><li> --safe-run (default)
+</li><li> --run
 </li><li> --dry-run
 </li><li> --check
 </li><li> --full
