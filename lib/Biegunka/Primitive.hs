@@ -4,7 +4,7 @@ module Biegunka.Primitive
   ( -- * Profile layer primitives
     profile
     -- * Actions layer primitives
-  , registerAt, link, copy, substitute, shell
+  , link, register, copy, substitute, shell
     -- * Wrappers
   , sudo, reacting, chain, (<~>)
   ) where
@@ -43,13 +43,13 @@ profile n i = Script $ do
 -- | Links source to specified filepath
 --
 -- > git "https://example.com/source.git" "git/source" $
--- >   registerAt "somewhere"
+-- >   register "somewhere"
 --
 -- Links @~\/git\/source@ to @~\/somewhere@.
 -- (Assuming default settings.)
-registerAt :: FilePath -> Script Actions ()
-registerAt dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
-{-# INLINE registerAt #-}
+register :: FilePath -> Script Actions ()
+register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
+{-# INLINE register #-}
 
 -- | Links given file to specified filepath
 --

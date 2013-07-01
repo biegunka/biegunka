@@ -16,7 +16,7 @@ module Biegunka
     -- * Source layer primitives
   , Source(..)
     -- * Action layer primitives
-  , registerAt, copy, link, substitute, shell
+  , link, register, copy, substitute, shell
     -- * All layers primitives
   , sudo, reacting, chain, (<~>)
     -- * Types
