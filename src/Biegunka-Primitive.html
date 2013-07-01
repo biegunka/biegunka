@@ -13,7 +13,7 @@
 <a name="line-4"></a>  <span class='hs-layout'>(</span> <span class='hs-comment'>-- * Profile layer primitives</span>
 <a name="line-5"></a>    <span class='hs-varid'>profile</span>
 <a name="line-6"></a>    <span class='hs-comment'>-- * Actions layer primitives</span>
-<a name="line-7"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>registerAt</span><span class='hs-layout'>,</span> <span class='hs-varid'>link</span><span class='hs-layout'>,</span> <span class='hs-varid'>copy</span><span class='hs-layout'>,</span> <span class='hs-varid'>substitute</span><span class='hs-layout'>,</span> <span class='hs-varid'>shell</span>
+<a name="line-7"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>link</span><span class='hs-layout'>,</span> <span class='hs-varid'>register</span><span class='hs-layout'>,</span> <span class='hs-varid'>copy</span><span class='hs-layout'>,</span> <span class='hs-varid'>substitute</span><span class='hs-layout'>,</span> <span class='hs-varid'>shell</span>
 <a name="line-8"></a>    <span class='hs-comment'>-- * Wrappers</span>
 <a name="line-9"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>sudo</span><span class='hs-layout'>,</span> <span class='hs-varid'>reacting</span><span class='hs-layout'>,</span> <span class='hs-varid'>chain</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;~&gt;</span><span class='hs-layout'>)</span>
 <a name="line-10"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
@@ -49,16 +49,16 @@
 <a name="line-40"></a>  <span class='hs-varid'>token</span> <span class='hs-varop'>+=</span> <span class='hs-num'>1</span>
 <a name="line-41"></a><span class='hs-comment'>{-# INLINE profile #-}</span>
 <a name="line-42"></a>
-<a name="line-43"></a><a name="registerAt"></a><span class='hs-comment'>-- | Links source to specified filepath</span>
+<a name="line-43"></a><a name="register"></a><span class='hs-comment'>-- | Links source to specified filepath</span>
 <a name="line-44"></a><span class='hs-comment'>--</span>
 <a name="line-45"></a><span class='hs-comment'>-- &gt; git "https://example.com/source.git" "git/source" $</span>
-<a name="line-46"></a><span class='hs-comment'>-- &gt;   registerAt "somewhere"</span>
+<a name="line-46"></a><span class='hs-comment'>-- &gt;   register "somewhere"</span>
 <a name="line-47"></a><span class='hs-comment'>--</span>
 <a name="line-48"></a><span class='hs-comment'>-- Links @~\/git\/source@ to @~\/somewhere@.</span>
 <a name="line-49"></a><span class='hs-comment'>-- (Assuming default settings.)</span>
-<a name="line-50"></a><span class='hs-definition'>registerAt</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
-<a name="line-51"></a><span class='hs-definition'>registerAt</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>actioned</span> <span class='hs-layout'>(</span><span class='hs-keyglyph'>\</span><span class='hs-varid'>rfp</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Link</span> <span class='hs-varid'>mempty</span> <span class='hs-layout'>(</span><span class='hs-varid'>rfp</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>dst</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
-<a name="line-52"></a><span class='hs-comment'>{-# INLINE registerAt #-}</span>
+<a name="line-50"></a><span class='hs-definition'>register</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
+<a name="line-51"></a><span class='hs-definition'>register</span> <span class='hs-varid'>dst</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>actioned</span> <span class='hs-layout'>(</span><span class='hs-keyglyph'>\</span><span class='hs-varid'>rfp</span> <span class='hs-keyword'>_</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Link</span> <span class='hs-varid'>mempty</span> <span class='hs-layout'>(</span><span class='hs-varid'>rfp</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>dst</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-52"></a><span class='hs-comment'>{-# INLINE register #-}</span>
 <a name="line-53"></a>
 <a name="line-54"></a><a name="link"></a><span class='hs-comment'>-- | Links given file to specified filepath</span>
 <a name="line-55"></a><span class='hs-comment'>--</span>
