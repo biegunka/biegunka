@@ -6,35 +6,41 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka-Primitive.htm
 </a></li><li><a href="#g:3">Wrappers
 </a></li></ul></div><div id="description"><p class="caption">Description</p><div class="doc"><p>Language primitives
 </p></div></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><a href="#v:profile">profile</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Sources">Sources</a> () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Profiles">Profiles</a> ()</li><li class="src short"><a href="#v:registerAt">registerAt</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()</li><li class="src short"><a href="#v:link">link</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()</li><li class="src short"><a href="#v:copy">copy</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()</li><li class="src short"><a href="#v:substitute">substitute</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()</li><li class="src short"><a href="#v:shell">shell</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()</li><li class="src short"><a href="#v:sudo">sudo</a> ::  <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()</li><li class="src short"><a href="#v:reacting">reacting</a> ::  <a href="Biegunka-Language.html#t:React">React</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()</li><li class="src short"><a href="#v:chain">chain</a> ::  <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()</li><li class="src short"><a href="#v:-60--126--62-">(&lt;~&gt;)</a> ::  <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()</li></ul></div><div id="interface"><h1 id="g:1">Profile layer primitives
-</h1><div class="top"><p class="src"><a name="v:profile" class="def">profile</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Sources">Sources</a> () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Profiles">Profiles</a> ()<a href="src/Biegunka-Primitive.html#profile" class="link">Source</a></p><div class="doc"><p>Configuration profile
-</p><p>Provides convenient sources grouping
-</p><pre> profile &quot;mine&quot; $ do
-   git ...
-   git ...
- profile &quot;friend's&quot; $ do
-   svn ...
+</h1><div class="top"><p class="src"><a name="v:profile" class="def">profile</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Sources">Sources</a> () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Profiles">Profiles</a> ()<a href="src/Biegunka-Primitive.html#profile" class="link">Source</a></p><div class="doc"><p>Provides convenient <code><a href="Biegunka-Language.html#v:Sources">Sources</a></code> grouping. Does not nest
+</p><p>Example usage:
+</p><pre> profile &quot;dotfiles&quot; $ do
+   git &quot;https://github.com/supki/.dotfiles&quot; ...
+   git &quot;https://github.com/dmalikov/dotfiles&quot;
+ profile &quot;experimental&quot; $ do
+   git &quot;https://github.com/ekmett/lens&quot; ...
 </pre></div></div><h1 id="g:2">Actions layer primitives
 </h1><div class="top"><p class="src"><a name="v:registerAt" class="def">registerAt</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#registerAt" class="link">Source</a></p><div class="doc"><p>Links source to specified filepath
-</p><pre> git &quot;https://example.com/repo.git&quot; &quot;git/repo&quot; $
-   registerAt &quot;we/need/you/here&quot;
-</pre><p>Links the whole ${HOME}/git/repo to ${HOME}/we/need/you/here
+</p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
+   registerAt &quot;somewhere&quot;
+</pre><p>Links <code>~/git/source</code> to <code>~/somewhere</code>.
+ (Assuming default settings.)
 </p></div></div><div class="top"><p class="src"><a name="v:link" class="def">link</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#link" class="link">Source</a></p><div class="doc"><p>Links given file to specified filepath
-</p><pre> git &quot;https://example.com/repo.git&quot; &quot;git/repo&quot; $
-   link &quot;you&quot; &quot;we/need/you/here&quot;
-</pre><p>Links ${HOME}/git/repo/you to ${HOME}/we/need/you/here
+</p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
+   link &quot;some-file&quot; &quot;anywhere&quot;
+</pre><p>Links <code>~/git/source/some-file</code> to <code>~/anywhere</code>.
+ (Assuming default settings.)
 </p></div></div><div class="top"><p class="src"><a name="v:copy" class="def">copy</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#copy" class="link">Source</a></p><div class="doc"><p>Copies given file to specified filepath
-</p><pre> git &quot;https://example.com/repo.git&quot; &quot;git/repo&quot; $
-   copy &quot;you&quot; &quot;we/need/you/here&quot;
-</pre><p>Copies ${HOME}/git/repo/you to ${HOME}/we/need/you/here
-</p></div></div><div class="top"><p class="src"><a name="v:substitute" class="def">substitute</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#substitute" class="link">Source</a></p><div class="doc"><p>Substitutes $template.X$ templates in given file and writes result to specified filepath
-</p><pre> git &quot;https://example.com/repo.git&quot; &quot;git/repo&quot; $
-   substitute &quot;you.hs&quot; &quot;we/need/you/here&quot;
-</pre><p>Substitutes templates in ${HOME}/git/repo/you.hs with values from
- Settings.template and writes result to ${HOME}/we/need/you/here
+</p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
+   copy &quot;some-file&quot; &quot;anywhere&quot;
+</pre><p>Copies <code>~/git/source/some-file</code> to <code>~/anywhere</code>.
+ (Assuming default settings.)
+</p></div></div><div class="top"><p class="src"><a name="v:substitute" class="def">substitute</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/System-IO.html#t:FilePath">FilePath</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#substitute" class="link">Source</a></p><div class="doc"><p>Substitutes templates in <code>HStringTemplate</code> syntax
+ in given file and writes result to specified filepath
+</p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
+   substitute &quot;some-file.template&quot; &quot;anywhere&quot;
+</pre><p>Copies <code>~/git/source/some-file.template</code> to <code>~/anywhere</code>.
+ (Assuming default settings.)
+</p><p>Substitutes templates in <code>~/anywhere</code> with values from
+ <code>templates</code> part of <code>Controls</code>
 </p></div></div><div class="top"><p class="src"><a name="v:shell" class="def">shell</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> <a href="Biegunka-Language.html#v:Actions">Actions</a> ()<a href="src/Biegunka-Primitive.html#shell" class="link">Source</a></p><div class="doc"><p>Executes shell command with default shell
-</p><pre> git &quot;https://example.com/repo.git&quot; &quot;git/repo&quot; $
-   shell &quot;echo -n hello&quot;
-</pre><p>Prints <a href="hello.html">hello</a> (without a newline)
+</p><pre> git &quot;https://example.com/source.git&quot; &quot;git/source&quot; $
+   shell &quot;echo hello&quot;
+</pre><p>Prints &quot;hello\n&quot; to stdout
 </p></div></div><h1 id="g:3">Wrappers
 </h1><div class="top"><p class="src"><a name="v:sudo" class="def">sudo</a> ::  <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()<a href="src/Biegunka-Primitive.html#sudo" class="link">Source</a></p><div class="doc"><p>Change effective user id for wrapped commands
 </p></div></div><div class="top"><p class="src"><a name="v:reacting" class="def">reacting</a> ::  <a href="Biegunka-Language.html#t:React">React</a> -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc () -&gt; <a href="Biegunka-Script.html#t:Script">Script</a> sc ()<a href="src/Biegunka-Primitive.html#reacting" class="link">Source</a></p><div class="doc"><p>Change reaction pattern for wrapped commands
