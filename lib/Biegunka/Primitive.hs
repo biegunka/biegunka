@@ -23,15 +23,15 @@ import Biegunka.Script
 infixr 7 `chain`, <~>
 
 
--- | Configuration profile
+-- | Provides convenient 'Sources' grouping. Does not nest
 --
--- Provides convenient sources grouping
+-- Example usage:
 --
--- > profile "mine" $ do
--- >   git ...
--- >   git ...
--- > profile "friend's" $ do
--- >   svn ...
+-- > profile "dotfiles" $ do
+-- >   git "https://github.com/supki/.dotfiles" ...
+-- >   git "https://github.com/dmalikov/dotfiles"
+-- > profile "experimental" $ do
+-- >   git "https://github.com/ekmett/lens" ...
 profile :: String -> Script Sources () -> Script Profiles ()
 profile n i = Script $ do
   tok <- use token
@@ -42,41 +42,48 @@ profile n i = Script $ do
 
 -- | Links source to specified filepath
 --
--- > git "https://example.com/repo.git" "git/repo" $
--- >   registerAt "we/need/you/here"
+-- > git "https://example.com/source.git" "git/source" $
+-- >   registerAt "somewhere"
 --
--- Links the whole ${HOME}\/git\/repo to ${HOME}\/we\/need\/you\/here
+-- Links @~\/git\/source@ to @~\/somewhere@.
+-- (Assuming default settings.)
 registerAt :: FilePath -> Script Actions ()
 registerAt dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 {-# INLINE registerAt #-}
 
 -- | Links given file to specified filepath
 --
--- > git "https://example.com/repo.git" "git/repo" $
--- >   link "you" "we/need/you/here"
+-- > git "https://example.com/source.git" "git/source" $
+-- >   link "some-file" "anywhere"
 --
--- Links ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
+-- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
+-- (Assuming default settings.)
 link :: FilePath -> FilePath -> Script Actions ()
 link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE link #-}
 
 -- | Copies given file to specified filepath
 --
--- > git "https://example.com/repo.git" "git/repo" $
--- >   copy "you" "we/need/you/here"
+-- > git "https://example.com/source.git" "git/source" $
+-- >   copy "some-file" "anywhere"
 --
--- Copies ${HOME}\/git\/repo\/you to ${HOME}\/we\/need\/you\/here
+-- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
+-- (Assuming default settings.)
 copy :: FilePath -> FilePath -> Script Actions ()
 copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE copy #-}
 
--- | Substitutes $template.X$ templates in given file and writes result to specified filepath
+-- | Substitutes templates in @HStringTemplate@ syntax
+-- in given file and writes result to specified filepath
 --
--- > git "https://example.com/repo.git" "git/repo" $
--- >   substitute "you.hs" "we/need/you/here"
+-- > git "https://example.com/source.git" "git/source" $
+-- >   substitute "some-file.template" "anywhere"
 --
--- Substitutes templates in ${HOME}\/git\/repo\/you.hs with values from
--- Settings.template and writes result to ${HOME}\/we\/need\/you\/here
+-- Copies @~\/git\/source\/some-file.template@ to @~\/anywhere@.
+-- (Assuming default settings.)
+--
+-- Substitutes templates in @~\/anywhere@ with values from
+-- 'templates' part of 'Controls'
 substitute :: FilePath -> FilePath -> Script Actions ()
 substitute src dst = actioned (\rfp sfp ->
   Template (sfp </> src) (constructDestinationFilepath rfp src dst)
@@ -86,10 +93,10 @@ substitute src dst = actioned (\rfp sfp ->
 
 -- | Executes shell command with default shell
 --
--- > git "https://example.com/repo.git" "git/repo" $
--- >   shell "echo -n hello"
+-- > git "https://example.com/source.git" "git/source" $
+-- >   shell "echo hello"
 --
--- Prints "hello" (without a newline)
+-- Prints \"hello\\n\" to stdout
 shell :: String -> Script Actions ()
 shell c = actioned (\_ sfp -> Shell sfp c)
 {-# INLINE shell #-}

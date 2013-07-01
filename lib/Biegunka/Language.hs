@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
--- | Specifies configuration scripts language
+-- | Specifies configuration language
 module Biegunka.Language
   ( Scope(..)
   , EL(..), A(..), S(..), P(..), M(..)
