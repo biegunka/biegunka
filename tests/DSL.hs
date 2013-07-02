@@ -38,16 +38,27 @@ main = hspec $
             (Free (ES (SAS { sasToken = t }) _ (Pure ())
               (Pure ())))) -> s == t
           _ -> False
-    context "paths" $ do
-      it "mangles paths for Actions" $
+    context "relative paths" $ do
+      it "mangles relative paths for Actions" $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (link "from" "to")
         in case ast of
           Free (EA _ (Link "source/from" "app/to") (Pure ())) -> True
           _ -> False
-      it "mangles paths for Sources" $
+      it "mangles relative paths for Sources" $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "to")
         in case ast of
           Free (ES _ (S { spath = "app/to" }) (Pure ()) (Pure ())) -> True
+          _ -> False
+    context "absolute paths" $ do
+      it "does not mangle absolute paths for Actions" $
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (link "from" "/to")
+        in case ast of
+          Free (EA _ (Link "source/from" "/to") (Pure ())) -> True
+          _ -> False
+      it "does not mangle absolute paths for Sources" $
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "/to")
+        in case ast of
+          Free (ES _ (S { spath = "/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
 
     it "does something useful" $ pending
