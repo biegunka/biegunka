@@ -48,6 +48,9 @@ window.onload = function () {pageLoad();setSynopsis("mini_Biegunka.html");};
 </p></div></div><div class="top"><p class="src"><a name="v:retries" class="def">retries</a> ::  <a href="/home/maksenov/git/biegunka-core/.cabal-sandbox/share/doc/x86_64-linux-ghc-7.6.2/lens-3.9.0.2/html/Control-Lens-Type.html#t:Lens-39-">Lens'</a> (<a href="Biegunka.html#t:EE">EE</a> a) <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-Int.html#t:Int">Int</a><a href="src/Biegunka-Execute-Control.html#retries" class="link">Source</a></p><div class="doc"><p>Maximum retries count
 </p></div></div><h1 id="g:4">Profiles layer primitives
 </h1><div class="top"><p class="src"><a name="v:profile" class="def">profile</a> :: <a href="/usr/local/share/doc/ghc/html/libraries/base-4.6.0.1/Data-String.html#t:String">String</a> -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Sources">Sources</a> () -&gt; <a href="Biegunka.html#t:Script">Script</a> <a href="Biegunka.html#v:Profiles">Profiles</a> ()<a href="src/Biegunka-Primitive.html#profile" class="link">Source</a></p><div class="doc"><p>Provides convenient <code><a href="Biegunka.html#v:Sources">Sources</a></code> grouping. Does not nest
+</p><p>Information about sources and files related to a particular
+ profile <code>profile</code> could be found in <code>~/.biegunka/profile</code>.
+ (Assuming default settings.)
 </p><p>Example usage:
 </p><pre> profile &quot;dotfiles&quot; $ do
    git &quot;https://github.com/supki/.dotfiles&quot; ...
