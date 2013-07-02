@@ -25,6 +25,10 @@ infixr 7 `chain`, <~>
 
 -- | Provides convenient 'Sources' grouping. Does not nest
 --
+-- Information about sources and files related to a particular
+-- profile @profile@ could be found in @~\/.biegunka\/profile@.
+-- (Assuming default settings.)
+--
 -- Example usage:
 --
 -- > profile "dotfiles" $ do
