@@ -56,20 +56,26 @@ run e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
   (controls .~ c -> e') <- initializeSTM (e def)
-  when (e' ^. priviledges == Drop) $ getEnv "SUDO_USER" >>= traverse_ setUser
+  dropPriviledges e'
   runTask e' def newTask s
   atomically (writeTQueue (e'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
   schedule (e'^.stm.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
- where
-  setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
 -- | Real run interpreter
 execute :: (EE () -> EE ()) -> Interpreter
 execute = run
 {-# DEPRECATED execute "Please, use `run'" #-}
+
+dropPriviledges :: EE a -> IO ()
+dropPriviledges e =
+  case e^.priviledges of
+    Drop     -> getEnv "SUDO_USER" >>= traverse_ setUser
+    Preserve -> return ()
+ where
+  setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
 
 -- | Run single task command by command
