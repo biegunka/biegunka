@@ -5,7 +5,7 @@ module Biegunka.Primitive
     profile
     -- * Actions layer primitives
   , link, register, copy, substitute
-  , shell, command
+  , shell, raw
     -- * Wrappers
   , sudo, reacting, chain, (<~>)
   ) where
@@ -110,12 +110,12 @@ shell c = actioned (\_ sfp -> Shell sfp (ShellCommand c))
 -- | Executes raw command
 --
 -- > git "https://example.com/source.git" "git/source" $
--- >   command "/bin/echo" ["-n", "hello"]
+-- >   raw "/bin/echo" ["-n", "hello"]
 --
 -- Prints \"hello\" to stdout
-command :: FilePath -> [String] -> Script Actions ()
-command c as = actioned (\_ sfp -> Shell sfp (RawCommand c as))
-{-# INLINE command #-}
+raw :: FilePath -> [String] -> Script Actions ()
+raw c as = actioned (\_ sfp -> Shell sfp (RawCommand c as))
+{-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script sc () -> Script sc ()
