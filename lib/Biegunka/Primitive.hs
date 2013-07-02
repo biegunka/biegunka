@@ -4,7 +4,8 @@ module Biegunka.Primitive
   ( -- * Profile layer primitives
     profile
     -- * Actions layer primitives
-  , link, register, copy, substitute, shell
+  , link, register, copy, substitute
+  , shell, command
     -- * Wrappers
   , sudo, reacting, chain, (<~>)
   ) where
@@ -15,6 +16,7 @@ import Control.Lens
 import Control.Monad.State
 import Control.Monad.Free (liftF)
 import System.FilePath ((</>))
+import System.Process (CmdSpec(..))
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
@@ -102,8 +104,18 @@ substitute src dst = actioned (\rfp sfp ->
 --
 -- Prints \"hello\\n\" to stdout
 shell :: String -> Script Actions ()
-shell c = actioned (\_ sfp -> Shell sfp c)
+shell c = actioned (\_ sfp -> Shell sfp (ShellCommand c))
 {-# INLINE shell #-}
+
+-- | Executes raw command
+--
+-- > git "https://example.com/source.git" "git/source" $
+-- >   command "/bin/echo" ["-n", "hello"]
+--
+-- Prints \"hello\" to stdout
+command :: FilePath -> [String] -> Script Actions ()
+command c as = actioned (\_ sfp -> Shell sfp (RawCommand c as))
+{-# INLINE command #-}
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script sc () -> Script sc ()

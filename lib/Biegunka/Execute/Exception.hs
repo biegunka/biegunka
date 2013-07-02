@@ -9,9 +9,10 @@ module Biegunka.Execute.Exception
   ) where
 
 import Control.Exception (Exception, throwIO)
-import Data.Data (Data)
+import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
+import System.Process (CmdSpec(..))
 
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -19,15 +20,17 @@ import qualified Data.Text as T
 
 -- | Custom exceptions
 data BiegunkaException =
-    ShellCommandFailure String Text    -- ^ Various shell failures with output
+    ShellCommandFailure CmdSpec Text    -- ^ Various shell failures with output
   | SourceFailure String FilePath Text -- ^ Source emerging failure with paths and output
-    deriving (Data, Typeable)
+    deriving (Typeable)
 
 instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
-    pretty (ShellCommandFailure t o) =
-      "Shell command `" <> T.pack t <> "` has failed\nFailures log:\n" <> o
+    pretty (ShellCommandFailure (ShellCommand c) o) =
+      "Shell command `" <> T.pack c <> "' has failed\nFailures log:\n" <> o
+    pretty (ShellCommandFailure (RawCommand c as) o) =
+      "Command `" <> T.pack c <> " " <> T.pack (intercalate " " as) <> "` has failed\nFailures log:\n" <> o
     pretty (SourceFailure up fp fs) =
       "Biegunka has failed to update source " <> T.pack up <> " at " <> T.pack fp <> "\nFailures log:\n" <> fs
 

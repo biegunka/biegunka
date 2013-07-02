@@ -3,12 +3,13 @@
 -- | Dry run interpreter
 module Biegunka.Pretend (dryRun, pretend) where
 
-import Data.List ((\\))
+import Data.List ((\\), intercalate)
 import Data.Maybe (mapMaybe)
 import Prelude hiding (log)
 
 import Control.Lens
 import Control.Monad.Free (Free(..))
+import System.Process (CmdSpec(..))
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
@@ -60,8 +61,10 @@ log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
       yellow (text d) </> "is a" </> green "copy" </> "of" </> magenta (text s)
     Template s d _ ->
       yellow (text d) </> "is copied with substituted" </> green "templates" </> "from" </> magenta (text s)
-    Shell p c ->
-      green "shell" </> "`" <//> red (text c) <//> "` executed from" </> yellow (text p)
+    Shell p (ShellCommand c) ->
+      green "shell command" </> "`" <//> red (text c) <//> "' executed from" </> yellow (text p)
+    Shell p (RawCommand c as) ->
+      green "command" </> "`" <//> red (text (intercalate " " (c:as))) <//> "' executed from" </> yellow (text p)
   install (Free (EM w z)) = go w
    where
     go (User (Just user)) = (green "change user" </> "to" </> text user) : install z

@@ -190,12 +190,21 @@ command c = do
     Templates ts <- view templates <$> reflected
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  op (EA _ (Shell p sc) _) = return $ do
+  op (EA _ (Shell p sp) _) = return $ do
     (_, _, Just er, ph) <- createProcess $
-      (shell sc) { cwd = Just p, std_out = CreatePipe, std_err = CreatePipe }
+      CreateProcess
+        { cmdspec      = sp
+        , cwd          = Just p
+        , env          = Nothing
+        , std_in       = Inherit
+        , std_out      = CreatePipe
+        , std_err      = CreatePipe
+        , close_fds    = False
+        , create_group = False
+        }
     e <- waitForProcess ph
     case e of
-      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sc
+      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
       _ -> return ()
   op _ = return $ return ()
 

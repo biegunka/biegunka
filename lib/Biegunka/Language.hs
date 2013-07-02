@@ -16,6 +16,7 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
 import Data.Text.Lazy (Text)
+import System.Process (CmdSpec)
 import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
 
@@ -81,7 +82,7 @@ data A =
     -- | Copy with template substitutions
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
     -- | Shell command
-  | Shell FilePath String
+  | Shell FilePath CmdSpec
 
 -- | Modificators for other datatypes
 data M =
