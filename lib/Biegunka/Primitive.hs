@@ -6,7 +6,7 @@ module Biegunka.Primitive
     -- * Actions layer primitives
   , link, register, copy, substitute
   , shell, raw
-    -- * Wrappers
+    -- * Modifiers
   , sudo, reacting, chain, (<~>)
   ) where
 
@@ -21,6 +21,7 @@ import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
 import Biegunka.Script
+
 
 infixr 7 `chain`, <~>
 
@@ -135,7 +136,7 @@ chain a b = Script $ do
   t <- rewind token (annotate b >>= lift)
   token .= max s t
 
--- | Alias for 'chain'
+-- | Infix alias for 'chain'
 (<~>) :: Script sc () -> Script sc () -> Script sc ()
 (<~>) = chain
 {-# INLINE (<~>) #-}

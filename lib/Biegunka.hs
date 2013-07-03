@@ -18,7 +18,7 @@ module Biegunka
     -- * Actions layer primitives
   , link, register, copy, substitute
   , shell, raw
-    -- * All layers primitives
+    -- * Modifiers
   , sudo, reacting, chain, (<~>)
     -- * Types
   , Script, Scope(..)
