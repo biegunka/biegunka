@@ -65,7 +65,7 @@ instance Default Controls where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter :: Controls -> Free (Term SA Profiles) () -> IO () -> IO ()
+  { runInterpreter :: Controls -> Free (Term Annotate Profiles) () -> IO () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -79,7 +79,7 @@ instance Monoid Interpreter where
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
-interpret :: (Controls -> Free (Term SA Profiles) () -> IO ()) -> Interpreter
+interpret :: (Controls -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
 

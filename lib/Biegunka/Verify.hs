@@ -22,7 +22,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.Language (Term(..), S(..), A(..), peek)
-import Biegunka.Script (SA(..))
+import Biegunka.Script (Annotate(..))
 
 
 -- | Check interpreter
@@ -42,7 +42,7 @@ verify = check
 {-# DEPRECATED verify "Please, use `check'" #-}
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
-verification :: Free (Term SA s) () -> WriterT [Doc] IO ()
+verification :: Free (Term Annotate s) () -> WriterT [Doc] IO ()
 verification (Free c) = do
   r <- liftIO (correct c `mplus` return False)
   if r then case c of
@@ -56,7 +56,7 @@ verification (Free c) = do
 verification (Pure ()) = return ()
 
 -- | Check single instruction correctness
-correct :: Term SA s a -> IO Bool
+correct :: Term Annotate s a -> IO Bool
 correct il = case il of
   ES _ (S { spath }) _ _ -> doesDirectoryExist spath
   EA _ a _ -> case a of
@@ -79,7 +79,7 @@ describe :: Doc -> Doc
 describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
 
 -- | Log message on failure
-log :: Term SA s a -> Maybe Doc
+log :: Term Annotate s a -> Maybe Doc
 log il = nest 1 <$> case il of
   ES _ (S t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)

@@ -8,7 +8,7 @@ import Control.Monad.Free (Free(..))
 import Data.Default (def)
 import Biegunka.Language (Term(..), A(..), S(..))
 import Biegunka.Primitive (chain, (<~>), link)
-import Biegunka.Script (SA(..), evalScript, app, source)
+import Biegunka.Script (Annotate(..), evalScript, app, source)
 import Biegunka.Source.Dummy (dummy_)
 import Test.Hspec (hspec, describe, context, it, pending)
 

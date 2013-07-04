@@ -15,7 +15,7 @@ import Text.PrettyPrint.ANSI.Leijen
 import Biegunka.DB
 import Biegunka.Language (Term(..), P(..), S(..), A(..), M(..))
 import Biegunka.Control (Interpreter(..), interpret, logger)
-import Biegunka.Script (SA)
+import Biegunka.Script (Annotate)
 
 
 -- | Dru run interpreter
@@ -44,10 +44,10 @@ stats a b = vcat $ mapMaybe about
     n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <$> vcat (xs ++ [empty]))
 
 
-log :: Free (Term SA s) a -> Biegunka -> Biegunka -> Doc
+log :: Free (Term Annotate s) a -> Biegunka -> Biegunka -> Doc
 log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
  where
-  install :: Free (Term SA s) a -> [Doc]
+  install :: Free (Term Annotate s) a -> [Doc]
   install (Free (EP _ (P n) i z)) =
       (green "profile" </> cyan (text n) <> ":")
     : map (indent 2) (install i) ++ install z

@@ -28,8 +28,8 @@ import Biegunka.Script
 runTask :: forall s a.
           EE STM -- ^ Environment
         -> EC -- ^ Context
-        -> (forall t. Reifies t (EE STM) => Free (Term SA s) a -> Execution t ()) -- ^ Task routine
-        -> (Free (Term SA s) a) -- ^ Task contents
+        -> (forall t. Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()) -- ^ Task routine
+        -> (Free (Term Annotate s) a) -- ^ Task contents
         -> IO ()
 runTask e s f i =
   reify e ((`evalStateT` s) . untag . asProxyOf (f i))

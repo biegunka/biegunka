@@ -5,7 +5,8 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 module Biegunka.Script
-  ( Script(..), SS, SA(..), liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  ( Script(..), SS, Annotate(..)
+  , liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source, sourceURL, order
   , runScript, evalScript
   ) where
@@ -24,14 +25,16 @@ import Biegunka.Language
 
 
 -- | Language term annotation depending on their scope
-data family SA (sc :: Scope) :: *
-data instance SA Profiles = SAP { sapToken :: Int }
-data instance SA Sources  = SAS { sasToken :: Int }
-data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder :: Int }
+data family Annotate (sc :: Scope) :: *
+data instance Annotate Profiles = SAP { sapToken :: Int }
+data instance Annotate Sources  = SAS { sasToken :: Int }
+data instance Annotate Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder :: Int }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
-newtype Script s a = Script { unScript :: StateT SS (Free (Term SA s)) a }
+newtype Script s a = Script
+ { unScript :: StateT SS (Free (Term Annotate s)) a
+ }
 
 instance Functor (Script s) where
   fmap f (Script m) = Script (fmap f m)
@@ -54,12 +57,12 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: SS -> Script s a -> Free (Term SA s) (a, SS)
+runScript :: SS -> Script s a -> Free (Term Annotate s) (a, SS)
 runScript s = (`runStateT` s) . unScript
 {-# INLINE runScript #-}
 
 -- | Get DSL from 'Script'
-evalScript :: SS -> Script s a -> Free (Term SA s) a
+evalScript :: SS -> Script s a -> Free (Term Annotate s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
@@ -107,12 +110,12 @@ order :: Lens' SS Int
 maxOrder :: Lens' SS Int
 
 -- | Lift DSL term to the 'Script'
-liftS :: Term SA s a -> Script s a
+liftS :: Term Annotate s a -> Script s a
 liftS = Script . lift . liftF
 {-# INLINE liftS #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT SS (Free (Term SA t)) (Free (Term SA s) a)
+annotate :: Script s a -> StateT SS (Free (Term Annotate t)) (Free (Term Annotate s) a)
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r
@@ -147,7 +150,7 @@ sourced ty url path script update = Script $ do
 size :: Script Actions a -> Int
 size = (`execState` 0) . go . evalScript def
  where
-  go :: Free (Term SA Actions) a -> State Int ()
+  go :: Free (Term Annotate Actions) a -> State Int ()
   go (Free c@(EA {})) = id %= succ >> go (peek c)
   go (Free c@(EM {})) = go (peek c)
   go (Pure _) = return ()
