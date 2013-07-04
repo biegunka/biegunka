@@ -6,7 +6,7 @@
 -- | Configuration script machinery
 module Biegunka.Script
   ( Script(..), Annotating, Annotate(..)
-  , liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source, sourceURL, order
   , runScript, evalScript
   ) where
@@ -25,7 +25,7 @@ import System.FilePath.Lens
 import Biegunka.Language
 
 
--- | Language term annotation depending on their scope
+-- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Profiles = SAP { sapToken :: Int }
 data instance Annotate Sources  = SAS { sasToken :: Int }
@@ -111,9 +111,9 @@ order :: Lens' Annotating Int
 maxOrder :: Lens' Annotating Int
 
 -- | Lift DSL term to the 'Script'
-liftS :: Term Annotate s a -> Script s a
-liftS = Script . lift . liftF
-{-# INLINE liftS #-}
+script :: Term Annotate s a -> Script s a
+script = Script . lift . liftF
+{-# INLINE script #-}
 
 -- | Annotate DSL
 annotate :: Script s a -> StateT Annotating (Free (Term Annotate t)) (Free (Term Annotate s) a)
@@ -135,15 +135,15 @@ rewind l mb = do
 -- | Abstract away all plumbing needed to make source
 sourced :: String -> URI -> FilePath
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
-sourced ty url path script update = Script $ do
+sourced ty url path inner update = Script $ do
   rfp <- use app
   tok <- use token
   let df = constructDestinationFilepath rfp url path
   source .= df
   sourceURL .= url
   order .= 0
-  maxOrder .= size script
-  ast <- annotate script
+  maxOrder .= size inner
+  ast <- annotate inner
   lift . liftF $ ES (SAS { sasToken = tok }) (S ty url df update) ast ()
   token += 1
 

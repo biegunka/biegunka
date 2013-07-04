@@ -40,10 +40,10 @@ infixr 7 `chain`, <~>
 -- > profile "experimental" $ do
 -- >   git "https://github.com/ekmett/lens" ...
 profile :: String -> Script Sources () -> Script Profiles ()
-profile n i = Script $ do
+profile name inner = Script $ do
   tok <- use token
-  ast <- annotate i
-  lift . liftF $ EP (SAP { sapToken = tok }) (P n) ast ()
+  ast <- annotate inner
+  lift . liftF $ EP (SAP { sapToken = tok }) (P name) ast ()
   token += 1
 {-# INLINE profile #-}
 
@@ -105,7 +105,7 @@ substitute src dst = actioned (\rfp sfp ->
 --
 -- Prints \"hello\\n\" to stdout
 shell :: String -> Script Actions ()
-shell c = actioned (\_ sfp -> Shell sfp (ShellCommand c))
+shell command = actioned (\_ sfp -> Shell sfp (ShellCommand command))
 {-# INLINE shell #-}
 
 -- | Executes raw command
@@ -115,17 +115,23 @@ shell c = actioned (\_ sfp -> Shell sfp (ShellCommand c))
 --
 -- Prints \"hello\" to stdout
 raw :: FilePath -> [String] -> Script Actions ()
-raw c as = actioned (\_ sfp -> Shell sfp (RawCommand c as))
+raw command args = actioned (\_ sfp -> Shell sfp (RawCommand command args))
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script s () -> Script s ()
-sudo n s = liftS (EM (User (Just n)) ()) >> s >> liftS (EM (User Nothing) ())
+sudo username inner = do
+  script (EM (User (Just username)) ())
+  inner
+  script (EM (User Nothing) ())
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Script s () -> Script s ()
-reacting r s = liftS (EM (Reacting (Just r)) ()) >> s >> liftS (EM (Reacting Nothing) ())
+reacting reaction inner = do
+  script (EM (Reacting (Just reaction)) ())
+  inner
+  script (EM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 -- | Chain tasks sequentially

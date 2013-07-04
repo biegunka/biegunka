@@ -20,7 +20,7 @@ dummy :: Layout            -- ^ Layout to make
       -> FilePath          -- ^ Layout root (relative to user home directory)
       -> Script Actions () -- ^ What to do with layout files
       -> Script Sources ()
-dummy layout path script = sourced "dummy" "localhost" path script $ \dir ->
+dummy layout path inner = sourced "dummy" "localhost" path inner $ \dir ->
   make (directory (takeFileName dir) layout) (takeDirectory dir) >>= mapM_ print
 
 
