@@ -84,7 +84,7 @@ log :: Term Annotate s a -> Maybe Doc
 log il = nest 1 <$> case il of
   ES _ (S t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
-  EA (SAA { saaURI }) a _ -> annotation (text saaURI) <$> case a of
+  EA (AA { aaURI }) a _ -> annotation (text aaURI) <$> case a of
     Link s d ->
       Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
     Copy s d ->

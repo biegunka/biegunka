@@ -27,9 +27,9 @@ import Biegunka.Language
 
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
-data instance Annotate Profiles = SAP { sapToken :: Int }
-data instance Annotate Sources  = SAS { sasToken :: Int }
-data instance Annotate Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder :: Int }
+data instance Annotate Profiles = AP { apToken :: Int }
+data instance Annotate Sources  = AS { asToken :: Int }
+data instance Annotate Actions  = AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -144,7 +144,7 @@ sourced ty url path inner update = Script $ do
   order .= 0
   maxOrder .= size inner
   ast <- annotate inner
-  lift . liftF $ ES (SAS { sasToken = tok }) (S ty url df update) ast ()
+  lift . liftF $ ES (AS { asToken = tok }) (S ty url df update) ast ()
   token += 1
 
 -- | 'Actions' scope script size (in actual actions)
@@ -164,7 +164,7 @@ actioned f = Script $ do
   url <- use sourceURL
   o <- order <+= 1
   mo <- use maxOrder
-  lift . liftF $ EA (SAA { saaURI = url, saaOrder = o, saaMaxOrder = mo }) (f rfp sfp) ()
+  lift . liftF $ EA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
 -- | Construct destination 'FilePath'
 --

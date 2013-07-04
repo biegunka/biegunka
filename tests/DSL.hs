@@ -20,22 +20,22 @@ main = hspec $
       it "gives unchained tasks different ids" $
         let ast = evalScript def (dummy_ mempty mempty >> dummy_ mempty mempty)
         in case ast of
-          Free (ES (SAS { sasToken = s })  _ (Pure ())
-            (Free (ES (SAS { sasToken = t }) _ (Pure ())
+          Free (ES (AS { asToken = s })  _ (Pure ())
+            (Free (ES (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s /= t
           _ -> False
       it "gives chained tasks the same id" $
         let ast = evalScript def (dummy_ mempty mempty `chain` dummy_ mempty mempty)
         in case ast of
-          Free (ES (SAS { sasToken = s })  _ (Pure ())
-            (Free (ES (SAS { sasToken = t }) _ (Pure ())
+          Free (ES (AS { asToken = s })  _ (Pure ())
+            (Free (ES (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s == t
           _ -> False
       it "gives chained tasks the same id (infix)" $
         let ast = evalScript def (dummy_ mempty mempty <~> dummy_ mempty mempty)
         in case ast of
-          Free (ES (SAS { sasToken = s })  _ (Pure ())
-            (Free (ES (SAS { sasToken = t }) _ (Pure ())
+          Free (ES (AS { asToken = s })  _ (Pure ())
+            (Free (ES (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s == t
           _ -> False
     context "relative paths" $ do

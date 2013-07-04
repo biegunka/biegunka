@@ -246,8 +246,8 @@ newTask t = do
   e <- reflected
   s <- get
   let i = case t of
-            Free (EP (SAP { sapToken }) _ _ _) -> sapToken
-            Free (ES (SAS { sasToken }) _ _ _) -> sasToken
+            Free (EP (AP { apToken }) _ _ _) -> apToken
+            Free (ES (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
   liftIO . atomically . writeTQueue (e^.stm.work) $
     Do i $ do

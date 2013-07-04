@@ -32,8 +32,8 @@ action :: Term Annotate s a -> Doc
 action il = nest 3 $ case il of
   ES _ (S t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
-  EA (SAA { saaURI, saaOrder, saaMaxOrder } ) a _ ->
-    annotation (text saaURI) $ progress saaOrder saaMaxOrder <$> case a of
+  EA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
+    annotation (text aaURI) $ progress aaOrder aaMaxOrder <$> case a of
       Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
       Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
       Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
