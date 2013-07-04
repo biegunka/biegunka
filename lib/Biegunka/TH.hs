@@ -11,10 +11,9 @@ import Language.Haskell.TH
 import Options.Applicative
 
 import Biegunka.Control (Controls, biegunka, confirm)
-import Biegunka.Execute (run)
+import Biegunka.Execute (run, dryRun)
 import Biegunka.Execute.Control (EE)
 import Biegunka.Language (Scope(Profiles))
-import Biegunka.Pretend (dryRun)
 import Biegunka.Script (Script)
 import Biegunka.Verify (check)
 

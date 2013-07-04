@@ -10,10 +10,10 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..), STM(..)
   , priviledges, react, templates, retries
-  , stm, work, running, sudoing, controls, repos
+  , stm, work, running, sudoing, controls, repos, mode
   , initializeSTM
     -- * Misc
-  , Templates(..), Priviledges(..), Work(..)
+  , Templates(..), Priviledges(..), Work(..), Mode(..)
   ) where
 
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
@@ -104,6 +104,7 @@ data EE a = EE
   , _retries     :: Int         -- ^ Maximum retries count
   , _controls    :: Controls    -- ^ General biegunka controls
   , _stm         :: a           -- ^ Execution cross-thread state
+  , _mode        :: Mode        -- ^ Execution mode
   }
 
 -- | Priviledges control.
@@ -111,6 +112,12 @@ data EE a = EE
 data Priviledges =
     Drop     -- ^ Drop priviledges
   | Preserve -- ^ Preserve priviledges
+    deriving (Show, Read, Eq, Ord)
+
+-- | How to do execution
+data Mode =
+    Dry  -- ^ Dry run mode
+  | Real -- ^ Real run mode
     deriving (Show, Read, Eq, Ord)
 
 -- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
@@ -137,6 +144,9 @@ controls :: Lens' (EE a) Controls
 -- | Execution cross-thread state
 stm :: Lens (EE a) (EE b) a b
 
+-- | Execution mode
+mode :: Lens' (EE a) Mode
+
 instance Default a => Default (EE a) where
   def = EE
     { _priviledges = Preserve
@@ -145,6 +155,7 @@ instance Default a => Default (EE a) where
     , _retries     = 1
     , _controls    = def
     , _stm         = def
+    , _mode        = Dry
     }
 
 -- | Prepare 'Execution' environment to stm transactions

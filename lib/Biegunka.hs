@@ -27,7 +27,7 @@ module Biegunka
   ) where
 
 import Biegunka.Control (biegunka, Controls, root, appData, colors, pause, confirm)
-import Biegunka.Execute (execute, run)
+import Biegunka.Execute (run, execute, dryRun, pretend)
 import Biegunka.Execute.Control
   ( EE
   , Priviledges(..), priviledges
@@ -36,7 +36,6 @@ import Biegunka.Execute.Control
   , retries
   )
 import Biegunka.Language (Scope(..), React(..))
-import Biegunka.Pretend (dryRun, pretend)
 import Biegunka.Primitive
 import Biegunka.Script (Script)
 import Biegunka.TH (makeOptionsParser)

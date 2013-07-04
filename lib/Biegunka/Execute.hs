@@ -5,7 +5,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Real run interpreter
-module Biegunka.Execute (run, execute) where
+module Biegunka.Execute
+  ( run, dryRun
+  , execute, pretend
+  ) where
 
 import           Control.Applicative
 import           Control.Monad
@@ -44,8 +47,8 @@ import           System.Process
 import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.DB
 import Biegunka.Execute.Control
+import Biegunka.Execute.Describe (describe, stats, action, exception, retryCounter)
 import Biegunka.Execute.Exception
-import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
 import Biegunka.Language (Term(..), A(..), S(..), M(..), React(..))
 import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
@@ -56,7 +59,7 @@ run :: (EE () -> EE ()) -> Interpreter
 run e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
-  (controls .~ c -> e') <- initializeSTM (e def)
+  (set controls c . set mode Real -> e') <- initializeSTM (e def)
   dropPriviledges e'
   runTask e' def newTask s
   atomically (writeTQueue (e'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
@@ -77,6 +80,22 @@ dropPriviledges e =
     Preserve -> return ()
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
+
+-- | Dru run interpreter
+dryRun :: Interpreter
+dryRun = interpret $ \c s -> do
+  let b = construct s
+  a <- load c s
+  (controls .~ c -> e) <- initializeSTM def
+  runTask e def newTask s
+  atomically (writeTQueue (e^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (e^.stm.work)
+  e^.controls.logger $ stats a b
+
+-- | Dru run interpreter
+pretend :: Interpreter
+pretend = dryRun
+{-# DEPRECATED pretend "Please, use `dryRun'" #-}
 
 
 -- | Run single task command by command
@@ -138,7 +157,7 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 
 -- | Single command execution
-command :: forall a s t. Reifies t (EE STM) => Term Annotate s a -> Execution t ()
+command :: Reifies t (EE STM) => Term Annotate s a -> Execution t ()
 command (EM (Reacting (Just r)) _) = reactStack %= (r :)
 command (EM (Reacting Nothing) _)  = reactStack %= drop 1
 command (EM (User     (Just u)) _) = usersStack %= (u :)
@@ -149,12 +168,14 @@ command c = do
       rtv = e^.stm.running
       log = e^.controls.logger
   xs <- use usersStack
-  o  <- op c
+  op  <- case e^.mode of
+          Dry  -> termEmptyOperation c
+          Real -> termOperation c
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
       log (describe (action c))
-      o
+      op
       atomically $ writeTVar rtv False
     u:_ -> do
       atomically $ do
@@ -165,12 +186,13 @@ command c = do
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
       log (describe (action c))
-      o
+      op
       setEffectiveUserID uid
       atomically $ writeTVar stv False
- where
-  op :: Term Annotate s a -> Execution t (IO ())
-  op (ES _ (S _ _ dst update) _ _) = do
+
+termOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
+termOperation term = case term of
+  ES _ (S _ _ dst update) _ _ -> do
     rstv <- reflected <&> \e -> e^.stm.repos
     return $ do
       updated <- atomically $ do
@@ -185,13 +207,13 @@ command c = do
         update dst
      `E.onException`
       atomically (modifyTVar rstv (S.delete dst))
-  op (EA _ (Link src dst) _) = return $ overWriteWith createSymbolicLink src dst
-  op (EA _ (Copy src dst) _) = return $ overWriteWith copyFile src dst
-  op (EA _ (Template src dst substitute) _) = do
+  EA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
+  EA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
+  EA _ (Template src dst substitute) _ -> do
     Templates ts <- view templates <$> reflected
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  op (EA _ (Shell p sp) _) = return $ do
+  EA _ (Shell p sp) _ -> return $ do
     (_, _, Just er, ph) <- createProcess $
       CreateProcess
         { cmdspec      = sp
@@ -207,13 +229,15 @@ command c = do
     case e of
       ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
       _ -> return ()
-  op _ = return $ return ()
-
+  _ -> return $ return ()
+ where
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
+termEmptyOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
+termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
 newTask :: forall a s t. Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()

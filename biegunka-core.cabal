@@ -55,7 +55,6 @@ library
                    Biegunka.Execute.Control
                    Biegunka.Execute.Describe
                    Biegunka.Execute.Schedule
-                   Biegunka.Pretend
                    Biegunka.Verify
   ghc-options: -Wall
                -fno-warn-unused-do-bind
