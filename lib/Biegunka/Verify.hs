@@ -22,7 +22,7 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), interpret, logger)
-import Biegunka.Language (Term(..), S(..), A(..))
+import Biegunka.Language (Term(..), Source(..), Action(..))
 import Biegunka.Script (Annotate(..))
 
 
@@ -59,7 +59,7 @@ verification (Pure ()) = return ()
 -- | Check single instruction correctness
 correct :: Term Annotate s a -> IO Bool
 correct il = case il of
-  ES _ (S { spath }) _ _ -> doesDirectoryExist spath
+  ES _ (Source { spath }) _ _ -> doesDirectoryExist spath
   EA _ a _ -> case a of
     Link s d -> do
       s' <- readSymbolicLink d
@@ -82,7 +82,7 @@ describe d = let host = "[localhost]" :: String in nest (length host) $ text hos
 -- | Log message on failure
 log :: Term Annotate s a -> Maybe Doc
 log il = nest 1 <$> case il of
-  ES _ (S t u d _) _ _  ->
+  ES _ (Source t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
   EA (AA { aaURI }) a _ -> annotation (text aaURI) <$> case a of
     Link s d ->

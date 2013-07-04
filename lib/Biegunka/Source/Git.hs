@@ -29,7 +29,7 @@ import           System.Process (readProcessWithExitCode)
 import Biegunka.Execute.Exception (sourceFailure)
 import Biegunka.Language (Scope(..))
 import Biegunka.Script (Script, URI, sourced)
-import Biegunka.Source (Source(..))
+import Biegunka.Source (Sourceable(..))
 
 
 -- | Git repository's settings
@@ -42,7 +42,7 @@ data Git = Git
 instance Default Git where
   def = defaultGit
 
-instance Source Git where
+instance Sourceable Git where
   actions f x = f (gitactions x) <&> \as -> x { gitactions = as }
 
   (==>) = git'

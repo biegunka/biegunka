@@ -49,7 +49,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Describe (describe, stats, action, exception, retryCounter)
 import Biegunka.Execute.Exception
-import Biegunka.Language (Term(..), A(..), S(..), M(..), React(..))
+import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
 import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
 
@@ -192,7 +192,7 @@ command c = do
 
 termOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
 termOperation term = case term of
-  ES _ (S _ _ dst update) _ _ -> do
+  ES _ (Source _ _ dst update) _ _ -> do
     rstv <- reflected <&> \e -> e^.stm.repos
     return $ do
       updated <- atomically $ do

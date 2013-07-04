@@ -6,7 +6,7 @@ import Data.Monoid (mempty)
 import Control.Lens
 import Control.Monad.Free (Free(..))
 import Data.Default (def)
-import Biegunka.Language (Term(..), A(..), S(..))
+import Biegunka.Language (Term(..), Action(..), Source(..))
 import Biegunka.Primitive (chain, (<~>), link)
 import Biegunka.Script (Annotate(..), evalScript, app, source)
 import Biegunka.Source.Dummy (dummy_)
@@ -47,7 +47,7 @@ main = hspec $
       it "mangles relative paths for Sources" $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "to")
         in case ast of
-          Free (ES _ (S { spath = "app/to" }) (Pure ()) (Pure ())) -> True
+          Free (ES _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
     context "absolute paths" $ do
       it "does not mangle absolute paths for Actions" $
@@ -58,7 +58,7 @@ main = hspec $
       it "does not mangle absolute paths for Sources" $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "/to")
         in case ast of
-          Free (ES _ (S { spath = "/to" }) (Pure ()) (Pure ())) -> True
+          Free (ES _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
 
     it "does something useful" $ pending

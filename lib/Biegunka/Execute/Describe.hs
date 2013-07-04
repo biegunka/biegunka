@@ -30,7 +30,7 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 -- | Describe current action
 action :: Term Annotate s a -> Doc
 action il = nest 3 $ case il of
-  ES _ (S t u d _) _ _  -> annotation (text u) $
+  ES _ (Source t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
   EA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
     annotation (text aaURI) $ progress aaOrder aaMaxOrder <$> case a of

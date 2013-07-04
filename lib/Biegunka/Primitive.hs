@@ -43,7 +43,7 @@ profile :: String -> Script Sources () -> Script Profiles ()
 profile name inner = Script $ do
   tok <- use token
   ast <- annotate inner
-  lift . liftF $ EP (AP { apToken = tok }) (P name) ast ()
+  lift . liftF $ EP (AP { apToken = tok }) (Profile name) ast ()
   token += 1
 {-# INLINE profile #-}
 

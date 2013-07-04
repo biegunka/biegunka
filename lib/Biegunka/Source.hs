@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 -- | Generally useful 'Sources' related definitions
 module Biegunka.Source
-  ( Source(..)
+  ( Sourceable(..)
   ) where
 
 import Control.Lens
@@ -11,7 +11,7 @@ import Biegunka.Script
 
 
 -- | Common 'Sources' structure
-class Source s where
+class Sourceable s where
   -- | Actions to run after source update
   actions :: Lens' s (Script Actions ())
 

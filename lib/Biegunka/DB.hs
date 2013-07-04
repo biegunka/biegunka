@@ -36,7 +36,7 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language (Scope(..), Term(..), P(..), S(..), A(..))
+import Biegunka.Language (Scope(..), Term(..), Profile(..), Source(..), Action(..))
 import Biegunka.Script (Annotate(..))
 
 
@@ -96,7 +96,7 @@ load :: Controls -> Free (Term Annotate Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (Term Annotate Profiles) a -> [String]
-  profiles (Free (EP _ (P n) _ x)) = n : profiles x
+  profiles (Free (EP _ (Profile n) _ x)) = n : profiles x
   profiles (Free (EM _ x)) = profiles x
   profiles (Pure _) = []
 
@@ -178,12 +178,12 @@ construct :: Free (Term Annotate s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (Term Annotate s) a -> State Construct ()
-  go (Free (EP _ (P n) i z)) = do
+  go (Free (EP _ (Profile n) i z)) = do
     biegunka . at n . anon mempty (const False) <>= mempty
     assign profile n
     go i
     go z
-  go (Free (ES _ (S t u d _) i z)) = do
+  go (Free (ES _ (Source t u d _) i z)) = do
     let s = R { recordtype = t, base = u, location = d }
     n <- use profile
     assign source s

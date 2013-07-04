@@ -5,7 +5,7 @@
 -- | Specifies configuration language
 module Biegunka.Language
   ( Scope(..)
-  , Term(..), A(..), S(..), P(..), M(..)
+  , Term(..), Action(..), Source(..), Profile(..), Modifier(..)
   , React(..)
   ) where
 
@@ -35,10 +35,10 @@ data Scope = Actions | Sources | Profiles
 -- Consists of 3 scopes ('Actions' scope, 'Sources' scope, and 'Profiles' scope)
 -- and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
-  EP :: f Profiles -> P -> Free (Term f Sources) () -> x -> Term f Profiles x
-  ES :: f Sources -> S -> Free (Term f Actions) () -> x -> Term f Sources x
-  EA :: f Actions -> A -> x -> Term f Actions x
-  EM :: M -> x -> Term f s x
+  EP :: f Profiles -> Profile -> Free (Term f Sources) () -> x -> Term f Profiles x
+  ES :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
+  EA :: f Actions -> Action -> x -> Term f Actions x
+  EM :: Modifier -> x -> Term f s x
 
 instance Functor (Term f s) where
   fmap = fmapDefault
@@ -64,12 +64,12 @@ instance Copointed (Term f s) where
 
 
 -- | 'Profiles' scope datatype
-newtype P = P
+newtype Profile = Profile
   { pname :: String -- ^ name
   } deriving (Show, Read, Eq, Ord)
 
 -- | 'Sources' scope data
-data S = S {
+data Source = Source {
   -- | Source type
     stype :: String
   -- | URI where source is located
@@ -81,7 +81,7 @@ data S = S {
   }
 
 -- | 'Actions' scope datatype
-data A =
+data Action =
     -- | Symbolic link
     Link FilePath FilePath
     -- | Verbatim copy
@@ -92,7 +92,7 @@ data A =
   | Shell FilePath CmdSpec
 
 -- | Modificators for other datatypes
-data M =
+data Modifier =
     User (Maybe String)
   | Reacting (Maybe React)
   | Chain

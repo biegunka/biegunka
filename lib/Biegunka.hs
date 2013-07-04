@@ -14,7 +14,7 @@ module Biegunka
     -- * Profiles layer primitives
   , profile
     -- * Sources layer primitives
-  , Source(..)
+  , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, substitute
   , shell, raw
@@ -40,4 +40,4 @@ import Biegunka.Primitive
 import Biegunka.Script (Script)
 import Biegunka.TH (makeOptionsParser)
 import Biegunka.Verify (check, verify)
-import Biegunka.Source (Source(..))
+import Biegunka.Source (Sourceable(..))

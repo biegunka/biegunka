@@ -15,7 +15,7 @@ import Control.Applicative (Applicative(..))
 import Control.Monad (when)
 import Data.List (isSuffixOf)
 
-import Control.Lens
+import Control.Lens hiding (Action)
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
 import Data.Default (Default(..))
@@ -144,7 +144,7 @@ sourced ty url path inner update = Script $ do
   order .= 0
   maxOrder .= size inner
   ast <- annotate inner
-  lift . liftF $ ES (AS { asToken = tok }) (S ty url df update) ast ()
+  lift . liftF $ ES (AS { asToken = tok }) (Source ty url df update) ast ()
   token += 1
 
 -- | 'Actions' scope script size (in actual actions)
@@ -157,7 +157,7 @@ size = (`execState` 0) . go . evalScript def
   go (Pure _) = return ()
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
-actioned :: (FilePath -> FilePath -> A) -> Script Actions ()
+actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
 actioned f = Script $ do
   rfp <- use app
   sfp <- use source
