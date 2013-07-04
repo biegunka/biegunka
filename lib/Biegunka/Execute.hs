@@ -24,6 +24,7 @@ import           Control.Lens hiding (op)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (runStateT, get, put)
 import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Copointed (copoint)
 import           Data.Default (def)
 import           Data.Proxy
 import           Data.Reflection
@@ -45,7 +46,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
-import Biegunka.Language (Term(..), A(..), S(..), M(..), React(..), peek)
+import Biegunka.Language (Term(..), A(..), S(..), M(..), React(..))
 import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
 
@@ -101,8 +102,8 @@ task a@(Free c) =
     Left e' -> retry e' >>= \r -> case r of
       Retry    -> task a
       Abortive -> return ()
-      Ignorant -> task (peek c)
-    Right _ -> task (peek c)
+      Ignorant -> task (copoint c)
+    Right _ -> task (copoint c)
 task (Pure _) = return ()
 
 

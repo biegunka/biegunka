@@ -7,7 +7,6 @@ module Biegunka.Language
   ( Scope(..)
   , Term(..), A(..), S(..), P(..), M(..)
   , React(..)
-  , peek
   ) where
 
 import Control.Applicative((<$>))
@@ -15,6 +14,7 @@ import Data.Foldable (Foldable(..))
 import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
+import Data.Copointed (Copointed(..))
 import Data.Text.Lazy (Text)
 import System.Process (CmdSpec)
 import Text.StringTemplate (ToSElem)
@@ -55,12 +55,12 @@ instance Traversable (Term f s) where
   traverse f (EM   w   x) = EM   w   <$> f x
   {-# INLINE traverse #-}
 
--- | Peek next language term
-peek :: Term f s x -> x
-peek (EP _ _ _ x) = x
-peek (ES _ _ _ x) = x
-peek (EA _ _   x) = x
-peek (EM   _   x) = x
+-- | Peek next 'Term'
+instance Copointed (Term f s) where
+  copoint (EP _ _ _ x) = x
+  copoint (ES _ _ _ x) = x
+  copoint (EA _ _   x) = x
+  copoint (EM   _   x) = x
 
 
 -- | 'Profiles' scope datatype

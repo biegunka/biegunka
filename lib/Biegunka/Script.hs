@@ -19,6 +19,7 @@ import Control.Lens
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
 import Data.Default (Default(..))
+import Data.Copointed (copoint)
 import System.FilePath.Lens
 
 import Biegunka.Language
@@ -119,7 +120,7 @@ annotate :: Script s a -> StateT Annotating (Free (Term Annotate t)) (Free (Term
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r
-      s' = iter peek $ fmap snd r
+      s' = iter copoint $ fmap snd r
   in (ast, s')
 
 -- | Rewind state part pointed by a 'Lens\'' after monadic action execution
@@ -151,8 +152,8 @@ size :: Script Actions a -> Int
 size = (`execState` 0) . go . evalScript def
  where
   go :: Free (Term Annotate Actions) a -> State Int ()
-  go (Free c@(EA {})) = id %= succ >> go (peek c)
-  go (Free c@(EM {})) = go (peek c)
+  go (Free c@(EA {})) = id %= succ >> go (copoint c)
+  go (Free c@(EM {})) = go (copoint c)
   go (Pure _) = return ()
 
 -- | Get 'Actions' scope script from 'FilePath' mangling

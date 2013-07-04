@@ -15,13 +15,14 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, execWriterT, tell)
 import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
+import           Data.Copointed (copoint)
 import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control (Interpreter(..), interpret, logger)
-import Biegunka.Language (Term(..), S(..), A(..), peek)
+import Biegunka.Language (Term(..), S(..), A(..))
 import Biegunka.Script (Annotate(..))
 
 
@@ -51,7 +52,7 @@ verification (Free c) = do
     _ -> return ()
   else
     traverse_ (tell . (:[])) (describe <$> log c)
-  verification (peek c)
+  verification (copoint c)
  where
 verification (Pure ()) = return ()
 
