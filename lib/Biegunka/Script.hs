@@ -31,7 +31,7 @@ data instance SA Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOrder ::
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
-newtype Script s a = Script { unScript :: StateT SS (Free (EL SA s)) a }
+newtype Script s a = Script { unScript :: StateT SS (Free (Term SA s)) a }
 
 instance Functor (Script s) where
   fmap f (Script m) = Script (fmap f m)
@@ -54,12 +54,12 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: SS -> Script s a -> Free (EL SA s) (a, SS)
+runScript :: SS -> Script s a -> Free (Term SA s) (a, SS)
 runScript s = (`runStateT` s) . unScript
 {-# INLINE runScript #-}
 
 -- | Get DSL from 'Script'
-evalScript :: SS -> Script s a -> Free (EL SA s) a
+evalScript :: SS -> Script s a -> Free (Term SA s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
@@ -107,12 +107,12 @@ order :: Lens' SS Int
 maxOrder :: Lens' SS Int
 
 -- | Lift DSL term to the 'Script'
-liftS :: EL SA s a -> Script s a
+liftS :: Term SA s a -> Script s a
 liftS = Script . lift . liftF
 {-# INLINE liftS #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT SS (Free (EL SA t)) (Free (EL SA s) a)
+annotate :: Script s a -> StateT SS (Free (Term SA t)) (Free (Term SA s) a)
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r
@@ -147,7 +147,7 @@ sourced ty url path script update = Script $ do
 size :: Script Actions a -> Int
 size = (`execState` 0) . go . evalScript def
  where
-  go :: Free (EL SA Actions) a -> State Int ()
+  go :: Free (Term SA Actions) a -> State Int ()
   go (Free c@(EA {})) = id %= succ >> go (peek c)
   go (Free c@(EM {})) = go (peek c)
   go (Pure _) = return ()

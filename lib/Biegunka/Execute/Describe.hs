@@ -26,7 +26,7 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 
 
 -- | Describe current action
-action :: EL SA s a -> Doc
+action :: Term SA s a -> Doc
 action il = nest 3 $ case il of
   ES _ (S t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)

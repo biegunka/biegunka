@@ -45,7 +45,7 @@ import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Exception
 import Biegunka.Execute.Describe (describe, action, exception, retryCounter)
-import Biegunka.Language (EL(..), A(..), S(..), M(..), React(..), peek)
+import Biegunka.Language (Term(..), A(..), S(..), M(..), React(..), peek)
 import Biegunka.Execute.Schedule (runTask, schedule)
 import Biegunka.Script
 
@@ -84,7 +84,7 @@ dropPriviledges e =
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()
+task :: Reifies t (EE STM) => Free (Term SA s) a -> Execution t ()
 task (Free (EP _ _ b d)) = do
   newTask d
   task b
@@ -137,7 +137,7 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 
 -- | Single command execution
-command :: forall a s t. Reifies t (EE STM) => EL SA s a -> Execution t ()
+command :: forall a s t. Reifies t (EE STM) => Term SA s a -> Execution t ()
 command (EM (Reacting (Just r)) _) = reactStack %= (r :)
 command (EM (Reacting Nothing) _)  = reactStack %= drop 1
 command (EM (User     (Just u)) _) = usersStack %= (u :)
@@ -168,7 +168,7 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
  where
-  op :: EL SA s a -> Execution t (IO ())
+  op :: Term SA s a -> Execution t (IO ())
   op (ES _ (S _ _ dst update) _ _) = do
     rstv <- reflected <&> \e -> e^.stm.repos
     return $ do
@@ -215,7 +215,7 @@ command c = do
 
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()
+newTask :: forall a s t. Reifies t (EE STM) => Free (Term SA s) a -> Execution t ()
 newTask (Pure _) = return ()
 newTask t = do
   e <- reflected

@@ -36,7 +36,7 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath.Lens
 
 import Biegunka.Control (Controls, appData)
-import Biegunka.Language (Scope(..), EL(..), P(..), S(..), A(..))
+import Biegunka.Language (Scope(..), Term(..), P(..), S(..), A(..))
 import Biegunka.Script (SA(..))
 
 
@@ -92,10 +92,10 @@ biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
 
 
 -- | Load profiles mentioned in script
-load :: Controls -> Free (EL SA Profiles) a -> IO Biegunka
+load :: Controls -> Free (Term SA Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
-  profiles :: Free (EL SA Profiles) a -> [String]
+  profiles :: Free (Term SA Profiles) a -> [String]
   profiles (Free (EP _ (P n) _ x)) = n : profiles x
   profiles (Free (EM _ x)) = profiles x
   profiles (Pure _) = []
@@ -174,10 +174,10 @@ fromStrict = BL.fromChunks . return
 
 
 -- | Extract terms data from script
-construct :: Free (EL SA s) a -> Biegunka
+construct :: Free (Term SA s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
-  go :: Free (EL SA s) a -> State Construct ()
+  go :: Free (Term SA s) a -> State Construct ()
   go (Free (EP _ (P n) i z)) = do
     biegunka . at n . anon mempty (const False) <>= mempty
     assign profile n

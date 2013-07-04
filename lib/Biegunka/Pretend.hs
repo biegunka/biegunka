@@ -13,7 +13,7 @@ import System.Process (CmdSpec(..))
 import Text.PrettyPrint.ANSI.Leijen
 
 import Biegunka.DB
-import Biegunka.Language (EL(..), P(..), S(..), A(..), M(..))
+import Biegunka.Language (Term(..), P(..), S(..), A(..), M(..))
 import Biegunka.Control (Interpreter(..), interpret, logger)
 import Biegunka.Script (SA)
 
@@ -44,10 +44,10 @@ stats a b = vcat $ mapMaybe about
     n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <$> vcat (xs ++ [empty]))
 
 
-log :: Free (EL SA s) a -> Biegunka -> Biegunka -> Doc
+log :: Free (Term SA s) a -> Biegunka -> Biegunka -> Doc
 log cs a b = vcat (install cs ++ [empty] ++ uninstall ++ [empty])
  where
-  install :: Free (EL SA s) a -> [Doc]
+  install :: Free (Term SA s) a -> [Doc]
   install (Free (EP _ (P n) i z)) =
       (green "profile" </> cyan (text n) <> ":")
     : map (indent 2) (install i) ++ install z

@@ -5,7 +5,7 @@
 -- | Specifies configuration language
 module Biegunka.Language
   ( Scope(..)
-  , EL(..), A(..), S(..), P(..), M(..)
+  , Term(..), A(..), S(..), P(..), M(..)
   , React(..)
   , peek
   ) where
@@ -21,27 +21,34 @@ import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
 
 
--- | External language scopes
+-- | Language terms scopes [kind]
 data Scope = Actions | Sources | Profiles
 
 
--- | External language datatype. That's what user will
--- construct with combinators from "Biegunka"
-data EL :: (Scope -> *) -> Scope -> * -> * where
-  EP :: f Profiles -> P -> Free (EL f Sources) () -> x -> EL f Profiles x
-  ES :: f Sources -> S -> Free (EL f Actions) () -> x -> EL f Sources x
-  EA :: f Actions -> A -> x -> EL f Actions x
-  EM :: M -> x -> EL f s x
+-- | Language terms datatype.
+--
+-- "Biegunka.Primitive" contains DSL primitives constructed
+-- using these terms.
+--
+-- User should never construct any DSL term using these.
+--
+-- Consists of 3 scopes (actions scope, sources scope, and profiles scope)
+-- and also scope-agnostic modifiers.
+data Term :: (Scope -> *) -> Scope -> * -> * where
+  EP :: f Profiles -> P -> Free (Term f Sources) () -> x -> Term f Profiles x
+  ES :: f Sources -> S -> Free (Term f Actions) () -> x -> Term f Sources x
+  EA :: f Actions -> A -> x -> Term f Actions x
+  EM :: M -> x -> Term f s x
 
-instance Functor (EL a s) where
+instance Functor (Term f s) where
   fmap = fmapDefault
   {-# INLINE fmap #-}
 
-instance Foldable (EL a s) where
+instance Foldable (Term f s) where
   foldMap = foldMapDefault
   {-# INLINE foldMap #-}
 
-instance Traversable (EL a s) where
+instance Traversable (Term f s) where
   traverse f (EP a p i x) = EP a p i <$> f x
   traverse f (ES a s i x) = ES a s i <$> f x
   traverse f (EA a z   x) = EA a z   <$> f x
@@ -49,7 +56,7 @@ instance Traversable (EL a s) where
   {-# INLINE traverse #-}
 
 -- | Peek next language term
-peek :: EL a s x -> x
+peek :: Term f s x -> x
 peek (EP _ _ _ x) = x
 peek (ES _ _ _ x) = x
 peek (EA _ _   x) = x

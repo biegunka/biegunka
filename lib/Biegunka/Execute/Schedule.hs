@@ -20,7 +20,7 @@ import           Data.Sequence (Seq)
 import qualified Data.Sequence as Q
 
 import Biegunka.Execute.Control
-import Biegunka.Language (EL(..))
+import Biegunka.Language (Term(..))
 import Biegunka.Script
 
 
@@ -28,8 +28,8 @@ import Biegunka.Script
 runTask :: forall s a.
           EE STM -- ^ Environment
         -> EC -- ^ Context
-        -> (forall t. Reifies t (EE STM) => Free (EL SA s) a -> Execution t ()) -- ^ Task routine
-        -> (Free (EL SA s) a) -- ^ Task contents
+        -> (forall t. Reifies t (EE STM) => Free (Term SA s) a -> Execution t ()) -- ^ Task routine
+        -> (Free (Term SA s) a) -- ^ Task contents
         -> IO ()
 runTask e s f i =
   reify e ((`evalStateT` s) . untag . asProxyOf (f i))

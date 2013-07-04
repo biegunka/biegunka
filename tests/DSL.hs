@@ -6,7 +6,7 @@ import Data.Monoid (mempty)
 import Control.Lens
 import Control.Monad.Free (Free(..))
 import Data.Default (def)
-import Biegunka.Language (EL(..), A(..), S(..))
+import Biegunka.Language (Term(..), A(..), S(..))
 import Biegunka.Primitive (chain, (<~>), link)
 import Biegunka.Script (SA(..), evalScript, app, source)
 import Biegunka.Source.Dummy (dummy_)
