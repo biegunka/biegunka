@@ -1,5 +1,6 @@
+-- |
+-- Checks that profiles scope cannot be nested
 module Main where
-
 
 import Biegunka
 import Biegunka.Source.Git

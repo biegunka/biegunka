@@ -1,5 +1,6 @@
+-- |
+-- Checks that sources scope cannot be top-level
 module Main where
-
 
 import Biegunka
 import Biegunka.Source.Git

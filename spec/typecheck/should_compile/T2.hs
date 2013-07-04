@@ -1,5 +1,8 @@
+-- |
+-- Basic sanity check
+--
+-- Checks you /can/ have script with Sources under several Profiles
 module Main where
-
 
 import Biegunka
 import Biegunka.Source.Git

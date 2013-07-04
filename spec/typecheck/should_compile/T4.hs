@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+-- |
+-- Checks that reacting works in any scope
 module Main where
-
 
 import Biegunka
 import Biegunka.Source.Git
