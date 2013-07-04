@@ -30,9 +30,9 @@ describe d = let host = "[localhost]" :: String in nest (length host) (text host
 -- | Describe current action
 action :: Term Annotate s a -> Doc
 action il = nest 3 $ case il of
-  ES _ (Source t u d _) _ _  -> annotation (text u) $
+  TS _ (Source t u d _) _ _  -> annotation (text u) $
     green "update" </> text t </> "source at" </> magenta (text d)
-  EA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
+  TA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
     annotation (text aaURI) $ progress aaOrder aaMaxOrder <$> case a of
       Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
       Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)

@@ -105,10 +105,10 @@ pretend = dryRun
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
 task :: Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()
-task (Free (EP _ _ b d)) = do
+task (Free (TP _ _ b d)) = do
   newTask d
   task b
-task (Free c@(ES _ _ b d)) = do
+task (Free c@(TS _ _ b d)) = do
   newTask d
   try (command c) >>= \e -> case e of
     Left e' -> retry e' >>= \r -> case r of
@@ -158,10 +158,10 @@ reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
 
 -- | Single command execution
 command :: Reifies t (EE STM) => Term Annotate s a -> Execution t ()
-command (EM (Reacting (Just r)) _) = reactStack %= (r :)
-command (EM (Reacting Nothing) _)  = reactStack %= drop 1
-command (EM (User     (Just u)) _) = usersStack %= (u :)
-command (EM (User     Nothing) _)  = usersStack %= drop 1
+command (TM (Reacting (Just r)) _) = reactStack %= (r :)
+command (TM (Reacting Nothing) _)  = reactStack %= drop 1
+command (TM (User     (Just u)) _) = usersStack %= (u :)
+command (TM (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
   let stv = e^.stm.sudoing
@@ -192,7 +192,7 @@ command c = do
 
 termOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
 termOperation term = case term of
-  ES _ (Source _ _ dst update) _ _ -> do
+  TS _ (Source _ _ dst update) _ _ -> do
     rstv <- reflected <&> \e -> e^.stm.repos
     return $ do
       updated <- atomically $ do
@@ -207,13 +207,13 @@ termOperation term = case term of
         update dst
      `E.onException`
       atomically (modifyTVar rstv (S.delete dst))
-  EA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
-  EA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
-  EA _ (Template src dst substitute) _ -> do
+  TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
+  TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
+  TA _ (Template src dst substitute) _ -> do
     Templates ts <- view templates <$> reflected
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  EA _ (Shell p sp) _ -> return $ do
+  TA _ (Shell p sp) _ -> return $ do
     (_, _, Just er, ph) <- createProcess $
       CreateProcess
         { cmdspec      = sp
@@ -246,8 +246,8 @@ newTask t = do
   e <- reflected
   s <- get
   let i = case t of
-            Free (EP (AP { apToken }) _ _ _) -> apToken
-            Free (ES (AS { asToken }) _ _ _) -> asToken
+            Free (TP (AP { apToken }) _ _ _) -> apToken
+            Free (TS (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
   liftIO . atomically . writeTQueue (e^.stm.work) $
     Do i $ do

@@ -96,8 +96,8 @@ load :: Controls -> Free (Term Annotate Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (Term Annotate Profiles) a -> [String]
-  profiles (Free (EP _ (Profile n) _ x)) = n : profiles x
-  profiles (Free (EM _ x)) = profiles x
+  profiles (Free (TP _ (Profile n) _ x)) = n : profiles x
+  profiles (Free (TM _ x)) = profiles x
   profiles (Pure _) = []
 
 
@@ -178,19 +178,19 @@ construct :: Free (Term Annotate s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (Term Annotate s) a -> State Construct ()
-  go (Free (EP _ (Profile n) i z)) = do
+  go (Free (TP _ (Profile n) i z)) = do
     biegunka . at n . anon mempty (const False) <>= mempty
     assign profile n
     go i
     go z
-  go (Free (ES _ (Source t u d _) i z)) = do
+  go (Free (TS _ (Source t u d _) i z)) = do
     let s = R { recordtype = t, base = u, location = d }
     n <- use profile
     assign source s
     biegunka . at n . non mempty <>= M.singleton s mempty
     go i
     go z
-  go (Free (EA _ a z)) = do
+  go (Free (TA _ a z)) = do
     n <- use profile
     s <- use source
     biegunka . at n . traverse . at s . traverse <>= h a

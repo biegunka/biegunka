@@ -43,7 +43,7 @@ profile :: String -> Script Sources () -> Script Profiles ()
 profile name inner = Script $ do
   tok <- use token
   ast <- annotate inner
-  lift . liftF $ EP (AP { apToken = tok }) (Profile name) ast ()
+  lift . liftF $ TP (AP { apToken = tok }) (Profile name) ast ()
   token += 1
 {-# INLINE profile #-}
 
@@ -121,17 +121,17 @@ raw command args = actioned (\_ sfp -> Shell sfp (RawCommand command args))
 -- | Change effective user id for wrapped commands
 sudo :: String -> Script s () -> Script s ()
 sudo username inner = do
-  script (EM (User (Just username)) ())
+  script (TM (User (Just username)) ())
   inner
-  script (EM (User Nothing) ())
+  script (TM (User Nothing) ())
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
 reacting :: React -> Script s () -> Script s ()
 reacting reaction inner = do
-  script (EM (Reacting (Just reaction)) ())
+  script (TM (Reacting (Just reaction)) ())
   inner
-  script (EM (Reacting Nothing) ())
+  script (TM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 -- | Chain tasks sequentially

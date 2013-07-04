@@ -92,7 +92,7 @@ instance Default Annotating where
 
 makeLensesWith ?? ''Annotating $ defaultRules & generateSignatures .~ False
 
--- | Unique token for each 'EP'/'ES'
+-- | Unique token for each 'TP'/'TS'
 token :: Lens' Annotating Int
 
 -- | Biegunka filepath root
@@ -144,7 +144,7 @@ sourced ty url path inner update = Script $ do
   order .= 0
   maxOrder .= size inner
   ast <- annotate inner
-  lift . liftF $ ES (AS { asToken = tok }) (Source ty url df update) ast ()
+  lift . liftF $ TS (AS { asToken = tok }) (Source ty url df update) ast ()
   token += 1
 
 -- | 'Actions' scope script size (in actual actions)
@@ -152,8 +152,8 @@ size :: Script Actions a -> Int
 size = (`execState` 0) . go . evalScript def
  where
   go :: Free (Term Annotate Actions) a -> State Int ()
-  go (Free c@(EA {})) = id %= succ >> go (copoint c)
-  go (Free c@(EM {})) = go (copoint c)
+  go (Free c@(TA {})) = id %= succ >> go (copoint c)
+  go (Free c@(TM {})) = go (copoint c)
   go (Pure _) = return ()
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
@@ -164,7 +164,7 @@ actioned f = Script $ do
   url <- use sourceURL
   o <- order <+= 1
   mo <- use maxOrder
-  lift . liftF $ EA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
+  lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
 -- | Construct destination 'FilePath'
 --

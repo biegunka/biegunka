@@ -47,8 +47,8 @@ verification :: Free (Term Annotate s) () -> WriterT [Doc] IO ()
 verification (Free c) = do
   r <- liftIO (correct c `mplus` return False)
   if r then case c of
-    EP _ _ i _ -> verification i
-    ES _ _ i _ -> verification i
+    TP _ _ i _ -> verification i
+    TS _ _ i _ -> verification i
     _ -> return ()
   else
     traverse_ (tell . (:[])) (describe <$> log c)
@@ -59,8 +59,8 @@ verification (Pure ()) = return ()
 -- | Check single instruction correctness
 correct :: Term Annotate s a -> IO Bool
 correct il = case il of
-  ES _ (Source { spath }) _ _ -> doesDirectoryExist spath
-  EA _ a _ -> case a of
+  TS _ (Source { spath }) _ _ -> doesDirectoryExist spath
+  TA _ a _ -> case a of
     Link s d -> do
       s' <- readSymbolicLink d
       dfe <- doesFileExist s'
@@ -82,9 +82,9 @@ describe d = let host = "[localhost]" :: String in nest (length host) $ text hos
 -- | Log message on failure
 log :: Term Annotate s a -> Maybe Doc
 log il = nest 1 <$> case il of
-  ES _ (Source t u d _) _ _  ->
+  TS _ (Source t u d _) _ _  ->
     Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
-  EA (AA { aaURI }) a _ -> annotation (text aaURI) <$> case a of
+  TA (AA { aaURI }) a _ -> annotation (text aaURI) <$> case a of
     Link s d ->
       Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
     Copy s d ->

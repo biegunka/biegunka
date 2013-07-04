@@ -35,10 +35,10 @@ data Scope = Actions | Sources | Profiles
 -- Consists of 3 scopes ('Actions' scope, 'Sources' scope, and 'Profiles' scope)
 -- and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
-  EP :: f Profiles -> Profile -> Free (Term f Sources) () -> x -> Term f Profiles x
-  ES :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
-  EA :: f Actions -> Action -> x -> Term f Actions x
-  EM :: Modifier -> x -> Term f s x
+  TP :: f Profiles -> Profile -> Free (Term f Sources) () -> x -> Term f Profiles x
+  TS :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
+  TA :: f Actions -> Action -> x -> Term f Actions x
+  TM :: Modifier -> x -> Term f s x
 
 instance Functor (Term f s) where
   fmap = fmapDefault
@@ -49,18 +49,18 @@ instance Foldable (Term f s) where
   {-# INLINE foldMap #-}
 
 instance Traversable (Term f s) where
-  traverse f (EP a p i x) = EP a p i <$> f x
-  traverse f (ES a s i x) = ES a s i <$> f x
-  traverse f (EA a z   x) = EA a z   <$> f x
-  traverse f (EM   w   x) = EM   w   <$> f x
+  traverse f (TP a p i x) = TP a p i <$> f x
+  traverse f (TS a s i x) = TS a s i <$> f x
+  traverse f (TA a z   x) = TA a z   <$> f x
+  traverse f (TM   w   x) = TM   w   <$> f x
   {-# INLINE traverse #-}
 
 -- | Peek next 'Term'
 instance Copointed (Term f s) where
-  copoint (EP _ _ _ x) = x
-  copoint (ES _ _ _ x) = x
-  copoint (EA _ _   x) = x
-  copoint (EM   _   x) = x
+  copoint (TP _ _ _ x) = x
+  copoint (TS _ _ _ x) = x
+  copoint (TA _ _   x) = x
+  copoint (TM   _   x) = x
 
 
 -- | 'Profiles' scope datatype
