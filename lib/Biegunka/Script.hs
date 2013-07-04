@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 module Biegunka.Script
-  ( Script(..), SS, Annotate(..)
+  ( Script(..), Annotating, Annotate(..)
   , liftS, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, source, sourceURL, order
   , runScript, evalScript
@@ -33,7 +33,7 @@ data instance Annotate Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOr
 
 -- | Newtype used to provide better error messages for type errors in DSL
 newtype Script s a = Script
- { unScript :: StateT SS (Free (Term Annotate s)) a
+ { unScript :: StateT Annotating (Free (Term Annotate s)) a
  }
 
 instance Functor (Script s) where
@@ -57,12 +57,12 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: SS -> Script s a -> Free (Term Annotate s) (a, SS)
+runScript :: Annotating -> Script s a -> Free (Term Annotate s) (a, Annotating)
 runScript s = (`runStateT` s) . unScript
 {-# INLINE runScript #-}
 
 -- | Get DSL from 'Script'
-evalScript :: SS -> Script s a -> Free (Term Annotate s) a
+evalScript :: Annotating -> Script s a -> Free (Term Annotate s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
@@ -70,7 +70,7 @@ evalScript = (fmap fst .) . runScript
 type URI = String
 
 -- | Script construction state
-data SS = SS
+data Annotating = Annotating
   { _token :: Int       -- ^ Unique term token
   , _app :: FilePath    -- ^ Biegunka root filepath
   , _source :: FilePath -- ^ Source root filepath
@@ -79,8 +79,8 @@ data SS = SS
   , _maxOrder :: Int    -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
-instance Default SS where
-  def = SS
+instance Default Annotating where
+  def = Annotating
     { _token = 0
     , _app = ""
     , _source = ""
@@ -89,25 +89,25 @@ instance Default SS where
     , _maxOrder = 0
     }
 
-makeLensesWith ?? ''SS $ defaultRules & generateSignatures .~ False
+makeLensesWith ?? ''Annotating $ defaultRules & generateSignatures .~ False
 
 -- | Unique token for each 'EP'/'ES'
-token :: Lens' SS Int
+token :: Lens' Annotating Int
 
 -- | Biegunka filepath root
-app :: Lens' SS FilePath
+app :: Lens' Annotating FilePath
 
 -- | Current source filepath
-source :: Lens' SS FilePath
+source :: Lens' Annotating FilePath
 
 -- | Current source url
-sourceURL :: Lens' SS String
+sourceURL :: Lens' Annotating String
 
 -- | Current action order
-order :: Lens' SS Int
+order :: Lens' Annotating Int
 
 -- | Maximum action order in current source
-maxOrder :: Lens' SS Int
+maxOrder :: Lens' Annotating Int
 
 -- | Lift DSL term to the 'Script'
 liftS :: Term Annotate s a -> Script s a
@@ -115,7 +115,7 @@ liftS = Script . lift . liftF
 {-# INLINE liftS #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT SS (Free (Term Annotate t)) (Free (Term Annotate s) a)
+annotate :: Script s a -> StateT Annotating (Free (Term Annotate t)) (Free (Term Annotate s) a)
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r
