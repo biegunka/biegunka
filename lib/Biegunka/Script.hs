@@ -34,8 +34,8 @@ data instance Annotate Actions  = SAA { saaURI :: URI, saaOrder :: Int, saaMaxOr
 
 -- | Newtype used to provide better error messages for type errors in DSL
 newtype Script s a = Script
- { unScript :: StateT Annotating (Free (Term Annotate s)) a
- }
+  { unScript :: StateT Annotating (Free (Term Annotate s)) a
+  }
 
 instance Functor (Script s) where
   fmap f (Script m) = Script (fmap f m)

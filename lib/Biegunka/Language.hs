@@ -30,9 +30,9 @@ data Scope = Actions | Sources | Profiles
 -- "Biegunka.Primitive" contains DSL primitives constructed
 -- using these terms.
 --
--- User should never construct any DSL term using these.
+-- User should never have a need to construct any DSL term using these manually.
 --
--- Consists of 3 scopes (actions scope, sources scope, and profiles scope)
+-- Consists of 3 scopes ('Actions' scope, 'Sources' scope, and 'Profiles' scope)
 -- and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
   EP :: f Profiles -> P -> Free (Term f Sources) () -> x -> Term f Profiles x
