@@ -199,5 +199,5 @@ construct = Biegunka . _biegunka . (`execState` def) . go
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
     h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
     h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
-    h (Shell {})           = mempty
+    h (Command {})           = mempty
   go _ = return ()

@@ -77,7 +77,7 @@ data Source = Source {
   -- | Where to emerge source on FS (relative to Biegunka root setting)
   , spath :: FilePath
   -- | How to update source
-  , supdate :: (FilePath -> IO ())
+  , supdate :: FilePath -> IO ()
   }
 
 -- | 'Actions' scope datatype
@@ -88,8 +88,8 @@ data Action =
   | Copy FilePath FilePath
     -- | Copy with template substitutions
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
-    -- | Shell command
-  | Shell FilePath CmdSpec
+    -- | External command
+  | Command FilePath CmdSpec
 
 -- | Modificators for other datatypes
 data Modifier =

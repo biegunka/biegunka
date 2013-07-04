@@ -213,7 +213,7 @@ termOperation term = case term of
     Templates ts <- view templates <$> reflected
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  TA _ (Shell p sp) _ -> return $ do
+  TA _ (Command p sp) _ -> return $ do
     (_, _, Just er, ph) <- createProcess $
       CreateProcess
         { cmdspec      = sp

@@ -105,7 +105,7 @@ substitute src dst = actioned (\rfp sfp ->
 --
 -- Prints \"hello\\n\" to stdout
 shell :: String -> Script Actions ()
-shell command = actioned (\_ sfp -> Shell sfp (ShellCommand command))
+shell command = actioned (\_ sfp -> Command sfp (ShellCommand command))
 {-# INLINE shell #-}
 
 -- | Executes raw command
@@ -115,7 +115,7 @@ shell command = actioned (\_ sfp -> Shell sfp (ShellCommand command))
 --
 -- Prints \"hello\" to stdout
 raw :: FilePath -> [String] -> Script Actions ()
-raw command args = actioned (\_ sfp -> Shell sfp (RawCommand command args))
+raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands

@@ -37,10 +37,10 @@ action il = nest 3 $ case il of
       Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
       Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
       Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
-      Shell p (ShellCommand c) ->
+      Command p (ShellCommand c) ->
         green "shell command" </> "`" <//> red (text c) <//> "' from" </> yellow (text p)
-      Shell p (RawCommand c as) ->
-        green "command" </> "`" <//> red (text (intercalate " " (c:as))) <//> "' from" </> yellow (text p)
+      Command p (RawCommand c as) ->
+        green "external command" </> "`" <//> red (text (intercalate " " (c:as))) <//> "' from" </> yellow (text p)
   _ -> mempty
  where
   -- | Annotate action description with source name
