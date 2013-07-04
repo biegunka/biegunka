@@ -4,7 +4,7 @@
 -- | Describe execution I/O actions
 module Biegunka.Execute.Describe
   ( -- * General description formatting
-    describe, stats
+    termDescription, runChanges
     -- * Specific description formatting
   , action, exception, retryCounter
   ) where
@@ -14,38 +14,71 @@ import Data.List ((\\), intercalate)
 import Data.Maybe (mapMaybe)
 import Data.Monoid (mempty)
 
+import Control.Lens
 import System.Process (CmdSpec(..))
 import Text.PrettyPrint.ANSI.Leijen
 
+import Biegunka.Control
+  ( ColorScheme(..)
+  , actionColor, sourceColor
+  , srcColor, dstColor
+  , errorColor, retryColor
+  )
 import Biegunka.DB (Biegunka, filepaths, sources)
 import Biegunka.Language
 import Biegunka.Script
 
 
 -- | Describe current action and host where it happens
-describe :: Doc -> Doc
-describe d = let host = "[localhost]" :: String in nest (length host) (text host </> d) <> linebreak
+termDescription :: Doc -> Doc
+termDescription d =
+  let host = "[localhost]" :: String
+  in nest (length host) (text host </> d) <> linebreak
 
 
 -- | Describe current action
-action :: Term Annotate s a -> Doc
-action il = nest 3 $ case il of
+action :: ColorScheme -> Term Annotate s a -> Doc
+action sc il = nest 3 $ case il of
   TS _ (Source t u d _) _ _  -> annotation (text u) $
-    green "update" </> text t </> "source at" </> magenta (text d)
+        (sc^.actionColor) "update"
+    </> text t
+    </> "source at"
+    </> (sc^.dstColor) (text d)
   TA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
     annotation (text aaURI) $ progress aaOrder aaMaxOrder <$> case a of
-      Link s d       -> green "link" </> yellow (text d) </> "to" </> magenta (text s)
-      Copy s d       -> green "copy" </> magenta (text s) </> "to" </> yellow (text d)
-      Template s d _ -> green "substitute" </> "in" </> magenta (text s) </> "to" </> yellow (text d)
+      Link s d       ->
+            (sc^.actionColor) "link"
+        </> (sc^.srcColor) (text d)
+        </> "to"
+        </> (sc^.dstColor) (text s)
+      Copy s d       ->
+            (sc^.actionColor) "copy"
+        </> (sc^.srcColor) (text s)
+        </> "to"
+        </> (sc^.dstColor) (text d)
+      Template s d _ ->
+            (sc^.actionColor) "substitute"
+        </> "in"
+        </> (sc^.srcColor) (text s)
+        </> "to"
+        </> (sc^.dstColor) (text d)
       Command p (ShellCommand c) ->
-        green "shell command" </> "`" <//> red (text c) <//> "' from" </> yellow (text p)
+            (sc^.actionColor) "shell command"
+        </> "`"
+        <//> text c
+        <//> "' from"
+        </> (sc^.srcColor) (text p)
       Command p (RawCommand c as) ->
-        green "external command" </> "`" <//> red (text (intercalate " " (c:as))) <//> "' from" </> yellow (text p)
+            (sc^.actionColor) "external command"
+        </> "`"
+        <//> text (intercalate " " (c:as))
+        <//> "' from"
+        </> (sc^.srcColor) (text p)
   _ -> mempty
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
-  annotation t doc = parens (cyan t) </> doc
+  annotation t doc = parens ((sc^.sourceColor) t) </> doc
 
   -- | Add progress to action description
   progress :: Int -> Int -> Doc
@@ -53,21 +86,22 @@ action il = nest 3 $ case il of
 
 
 -- | Describe handled exception
-exception :: SomeException -> Doc
-exception e = nest 3 $ (red "FAIL" <//> colon) <$> vcat (map text . lines $ show e)
+exception :: ColorScheme -> SomeException -> Doc
+exception sc e = nest 3 $
+  ((sc^.errorColor) "FAIL" <//> colon) <$> vcat (map text . lines $ show e)
 
 
 -- | Describe retry counter
-retryCounter :: Int -> Doc
-retryCounter n = yellow "Retry" <//> colon </> text (show n)
+retryCounter :: ColorScheme -> Int -> Doc
+retryCounter sc n = (sc^.retryColor) "Retry" <//> colon </> text (show n)
 
 
-stats :: Biegunka -> Biegunka -> Doc
-stats a b = vcat $ empty : mapMaybe about
-  [ ("added files",     map (yellow  . text) $ filepaths b \\ filepaths a)
-  , ("added sources",   map (magenta . text) $ sources b   \\ sources a)
-  , ("deleted files",   map (yellow  . text) $ filepaths a \\ filepaths b)
-  , ("deleted sources", map (magenta . text) $ sources a   \\ sources b)
+runChanges :: ColorScheme -> Biegunka -> Biegunka -> Doc
+runChanges sc a b = vcat $ empty : mapMaybe about
+  [ ("added files",     map ((sc^.srcColor) . text) $ filepaths b \\ filepaths a)
+  , ("added sources",   map ((sc^.dstColor) . text) $ sources b   \\ sources a)
+  , ("deleted files",   map ((sc^.srcColor) . text) $ filepaths a \\ filepaths b)
+  , ("deleted sources", map ((sc^.dstColor) . text) $ sources a   \\ sources b)
   ] ++ [empty]
  where
   about (msg, xs) = case length xs of

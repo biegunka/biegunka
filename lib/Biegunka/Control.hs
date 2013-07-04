@@ -7,6 +7,9 @@ module Biegunka.Control
     biegunka, Interpreter(..), interpret
     -- * Common interpreters controls
   , Controls, root, appData, logger, colors
+    -- * Color scheme controls
+  , ColorScheme(..), noColors, actionColor, sourceColor
+  , srcColor, dstColor, errorColor, retryColor
     -- * Generic interpreters
   , pause, confirm
   ) where
@@ -37,8 +40,58 @@ data Controls = Controls
   { _root    :: FilePath    -- ^ Root path for 'Source' layer
   , _appData :: FilePath    -- ^ Biegunka profile files path
   , _logger  :: Doc -> IO () -- ^ Logger channel
-  , _colors  :: Bool        -- ^ Pretty printing
+  , _colors  :: ColorScheme -- ^ Pretty printing
   }
+
+data ColorScheme = ColorScheme
+  { _actionColor :: Doc -> Doc
+  , _sourceColor :: Doc -> Doc
+  , _srcColor    :: Doc -> Doc
+  , _dstColor    :: Doc -> Doc
+  , _errorColor  :: Doc -> Doc
+  , _retryColor  :: Doc -> Doc
+  }
+
+instance Default ColorScheme where
+  def = ColorScheme
+    { _actionColor = green
+    , _sourceColor = cyan
+    , _srcColor    = yellow
+    , _dstColor    = magenta
+    , _errorColor  = red
+    , _retryColor  = yellow
+    }
+
+-- | Disable colors
+noColors :: ColorScheme
+noColors = ColorScheme
+  { _actionColor = id
+  , _sourceColor = id
+  , _srcColor    = id
+  , _dstColor    = id
+  , _errorColor  = id
+  , _retryColor  = id
+  }
+
+makeLensesWith ?? ''ColorScheme $ (defaultRules & generateSignatures .~ False)
+
+-- | Action color
+actionColor :: Lens' ColorScheme (Doc -> Doc)
+
+-- | Source color
+sourceColor :: Lens' ColorScheme (Doc -> Doc)
+
+-- | Src color
+srcColor :: Lens' ColorScheme (Doc -> Doc)
+
+-- | Dst color
+dstColor :: Lens' ColorScheme (Doc -> Doc)
+
+-- | Error color
+errorColor :: Lens' ColorScheme (Doc -> Doc)
+
+-- | Retry color
+retryColor :: Lens' ColorScheme (Doc -> Doc)
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 
@@ -52,14 +105,14 @@ appData :: Lens' Controls FilePath
 logger :: Lens' Controls (Doc -> IO ())
 
 -- | Pretty printing
-colors :: Lens' Controls Bool
+colors :: Lens' Controls ColorScheme
 
 instance Default Controls where
   def = Controls
     { _root    = "/"
     , _appData = "~/.biegunka"
     , _logger  = const (return ())
-    , _colors  = True
+    , _colors  = def
     }
 
 
@@ -89,12 +142,11 @@ biegunka :: (Controls -> Controls) -- ^ User defined settings
          -> Script Profiles ()    -- ^ Script to interpret
          -> IO ()
 biegunka (($ def) -> c) (I f) s = do
-  r  <- c ^. root . to expand
-  ad <- c ^. appData . to expand
-  let z = if view colors c then id else plain
+  r  <- c^.root.to expand
+  ad <- c^.appData.to expand
   l <- newTQueueIO
   forkIO $ log l
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l . z))
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l))
     (evalScript (def & app .~ r) s)
     (return ())
   fix $ \wait ->

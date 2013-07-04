@@ -2,6 +2,11 @@
 module Biegunka
   ( -- * Interpreters control
     biegunka, Controls, root, appData, colors
+  , ColorScheme(..)
+  , actionColor, sourceColor
+  , srcColor, dstColor
+  , errorColor, retryColor
+  , noColors
     -- * Interpreters
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
@@ -26,7 +31,14 @@ module Biegunka
   , makeOptionsParser
   ) where
 
-import Biegunka.Control (biegunka, Controls, root, appData, colors, pause, confirm)
+import Biegunka.Control
+  ( biegunka, Controls, root, appData, colors, pause, confirm
+  , ColorScheme(..)
+  , actionColor, sourceColor
+  , srcColor, dstColor
+  , errorColor, retryColor
+  , noColors
+  )
 import Biegunka.Execute (run, execute, dryRun, pretend)
 import Biegunka.Execute.Control
   ( EE

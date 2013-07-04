@@ -21,7 +21,11 @@ import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
-import Biegunka.Control (Interpreter(..), interpret, logger)
+import Biegunka.Control
+  ( Interpreter(..), Controls, interpret, logger
+  , ColorScheme(..), colors
+  , sourceColor, srcColor, dstColor
+  )
 import Biegunka.Language (Term(..), Source(..), Action(..))
 import Biegunka.Script (Annotate(..))
 
@@ -29,7 +33,7 @@ import Biegunka.Script (Annotate(..))
 -- | Check interpreter
 check :: Interpreter
 check = interpret $ \c s -> do
-  failures <- execWriterT (verification s)
+  failures <- execWriterT (verification c s)
   view logger c $
        text "Verification: "
     <> case failures of
@@ -43,18 +47,18 @@ verify = check
 {-# DEPRECATED verify "Please, use `check'" #-}
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
-verification :: Free (Term Annotate s) () -> WriterT [Doc] IO ()
-verification (Free c) = do
-  r <- liftIO (correct c `mplus` return False)
-  if r then case c of
-    TP _ _ i _ -> verification i
-    TS _ _ i _ -> verification i
+verification :: Controls -> Free (Term Annotate s) () -> WriterT [Doc] IO ()
+verification c (Free t) = do
+  r <- liftIO (correct t `mplus` return False)
+  if r then case t of
+    TP _ _ i _ -> verification c i
+    TS _ _ i _ -> verification c i
     _ -> return ()
   else
-    traverse_ (tell . (:[])) (describe <$> log c)
-  verification (copoint c)
+    traverse_ (tell . (:[])) (termDescription <$> log (c^.colors) t)
+  verification c (copoint t)
  where
-verification (Pure ()) = return ()
+verification _ (Pure ()) = return ()
 
 -- | Check single instruction correctness
 correct :: Term Annotate s a -> IO Bool
@@ -76,24 +80,31 @@ correct il = case il of
 
 
 -- | Describe current action and host where it happens
-describe :: Doc -> Doc
-describe d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
+termDescription :: Doc -> Doc
+termDescription d = let host = "[localhost]" :: String in nest (length host) $ text host </> d
 
 -- | Log message on failure
-log :: Term Annotate s a -> Maybe Doc
-log il = nest 1 <$> case il of
+log :: ColorScheme -> Term Annotate s a -> Maybe Doc
+log sc il = nest 1 <$> case il of
   TS _ (Source t u d _) _ _  ->
-    Just $ text t </> "source" </> parens (cyan (text u)) </> "does not exist at" </> magenta (text d)
+    Just $ text t </> "source" </> parens ((sc^.sourceColor) (text u)) </> "does not exist at" </> (sc^.dstColor) (text d)
   TA (AA { aaURI }) a _ -> annotation (text aaURI) <$> case a of
-    Link s d ->
-      Just $ yellow (text d) </> "link to" </> magenta (text s) </> "is broken"
-    Copy s d ->
-      Just $ yellow (text d) </> "is not a copy of" </> magenta (text s)
-    Template s d _ ->
-      Just $ yellow (text d) </> "is not a templated copy of" </> magenta (text s)
+    Link s d -> Just $
+          (sc^.dstColor) (text d)
+      </> "link to"
+      </> (sc^.srcColor) (text s)
+      </> "is broken"
+    Copy s d -> Just $
+          (sc^.dstColor) (text d)
+      </> "is not a copy of"
+      </> (sc^.srcColor) (text s)
+    Template s d _ -> Just $
+          (sc^.dstColor) (text d)
+      </> "is not a templated copy of"
+      </> (sc^.srcColor) (text s)
     _ -> Nothing
   _ -> Nothing
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
-  annotation t doc = parens (cyan t) L.<$> doc
+  annotation t doc = parens ((sc^.sourceColor) t) L.<$> doc

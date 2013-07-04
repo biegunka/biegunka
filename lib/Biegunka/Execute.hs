@@ -44,10 +44,10 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Interpreter(..), interpret, logger)
+import Biegunka.Control (Interpreter(..), interpret, logger, colors)
 import Biegunka.DB
 import Biegunka.Execute.Control
-import Biegunka.Execute.Describe (describe, stats, action, exception, retryCounter)
+import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Biegunka.Execute.Exception
 import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
 import Biegunka.Execute.Schedule (runTask, schedule)
@@ -90,7 +90,7 @@ dryRun = interpret $ \c s -> do
   runTask e def newTask s
   atomically (writeTQueue (e^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
   schedule (e^.stm.work)
-  e^.controls.logger $ stats a b
+  e^.controls.logger $ runChanges (e^.controls.colors) a b
 
 -- | Dru run interpreter
 pretend :: Interpreter
@@ -139,11 +139,13 @@ try (TagT ex) = do
 -- Possible responses: retry command execution or ignore failure or abort task
 retry :: forall s. Reifies s (EE STM) => SomeException -> Execution s React
 retry exc = do
-  log <- reflected <&> \e -> e^.controls.logger
-  liftIO . log . describe $ exception exc
+  e <- reflected
+  let log = e^.controls.logger
+      scm = e^.controls.colors
+  liftIO . log . termDescription $ exception scm exc
   rc <- retryCount <<%= (+1)
   if rc < _retries (reflect (Proxy :: Proxy s)) then do
-    liftIO . log . describe $ retryCounter (rc + 1)
+    liftIO . log . termDescription $ retryCounter scm (rc + 1)
     return Retry
   else do
     retryCount .= 0
@@ -167,6 +169,7 @@ command c = do
   let stv = e^.stm.sudoing
       rtv = e^.stm.running
       log = e^.controls.logger
+      scm = e^.controls.colors
   xs <- use usersStack
   op  <- case e^.mode of
           Dry  -> termEmptyOperation c
@@ -174,7 +177,7 @@ command c = do
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
-      log (describe (action c))
+      log (termDescription (action scm c))
       op
       atomically $ writeTVar rtv False
     u:_ -> do
@@ -185,7 +188,7 @@ command c = do
       uid  <- getEffectiveUserID
       uid' <- userID <$> getUserEntryForName u
       setEffectiveUserID uid'
-      log (describe (action c))
+      log (termDescription (action scm c))
       op
       setEffectiveUserID uid
       atomically $ writeTVar stv False
