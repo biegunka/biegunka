@@ -119,24 +119,24 @@ raw c as = actioned (\_ sfp -> Shell sfp (RawCommand c as))
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Script sc () -> Script sc ()
+sudo :: String -> Script s () -> Script s ()
 sudo n s = liftS (EM (User (Just n)) ()) >> s >> liftS (EM (User Nothing) ())
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Script sc () -> Script sc ()
+reacting :: React -> Script s () -> Script s ()
 reacting r s = liftS (EM (Reacting (Just r)) ()) >> s >> liftS (EM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
 -- | Chain tasks sequentially
 -- Connects two tasks which forces them to run sequentially one after another.
-chain :: Script sc () -> Script sc () -> Script sc ()
+chain :: Script s () -> Script s () -> Script s ()
 chain a b = Script $ do
   s <- rewind token (annotate a >>= lift)
   t <- rewind token (annotate b >>= lift)
   token .= max s t
 
 -- | Infix alias for 'chain'
-(<~>) :: Script sc () -> Script sc () -> Script sc ()
+(<~>) :: Script s () -> Script s () -> Script s ()
 (<~>) = chain
 {-# INLINE (<~>) #-}
