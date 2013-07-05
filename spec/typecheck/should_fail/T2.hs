@@ -9,3 +9,8 @@ import Biegunka.Source.Git
 main :: IO ()
 main = biegunka id (execute id) $ do
   link ".xmonad/xmonad.hs" ".xmonad/xmonad.hs.bak"
+
+-- STDERR
+--     Couldn't match type 'Actions with 'Profiles
+--     Expected type: Script 'Profiles ()
+--       Actual type: Script 'Actions ()
