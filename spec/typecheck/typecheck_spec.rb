@@ -8,8 +8,7 @@ options = []
 directory = File.expand_path File.dirname __FILE__
 if File.exists? "cabal-dev"
   options << "-package-db=#{Dir.glob("cabal-dev/packages-*.conf").first}"
-end
-if File.exists? ".cabal-sandbox"
+elsif File.exists? ".cabal-sandbox"
   options << "-package-db=#{Dir.glob(".cabal-sandbox/*-packages.conf.d").first}"
 end
 
