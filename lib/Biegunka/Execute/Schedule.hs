@@ -30,7 +30,7 @@ runTask :: forall s a. Controls (EE STM) -- ^ Environment
         -> EC -- ^ Context
         -> (forall t. Reifies t (Controls (EE STM))
                 => Free (Term Annotate s) a
-                -> Execution t ()) -- ^ Task routine
+                -> Executor t ()) -- ^ Task routine
         -> (Free (Term Annotate s) a) -- ^ Task contents
         -> IO ()
 runTask e s f i =
@@ -38,7 +38,7 @@ runTask e s f i =
 {-# INLINE runTask #-}
 
 -- | Thread `s' parameter to 'task' function
-asProxyOf :: Execution s () -> Proxy s -> Execution s ()
+asProxyOf :: Executor s () -> Proxy s -> Executor s ()
 asProxyOf a _ = a
 {-# INLINE asProxyOf #-}
 

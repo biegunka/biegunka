@@ -3,11 +3,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
 module Biegunka.Execute.Control
-  ( -- * Execution facade type
-    Execution
-    -- * Execution thread state control
+  ( -- * Executor newtype
+    Executor
+    -- * Executor thread state control
   , EC(..), reactStack, usersStack, retryCount
-    -- * Execution environment
+    -- * Executor environment
   , EE(..), STM(..)
   , priviledges, react, templates, retries
   , stm, work, running, sudoing, repos, mode
@@ -30,10 +30,10 @@ import Biegunka.Language (React(..))
 
 
 -- | Stateful IO actions execution tagged with environment
-type Execution s a = TaggedT s (StateT EC IO) a
+type Executor s a = TaggedT s (StateT EC IO) a
 
 
--- | 'Execution' thread state.
+-- | 'Executor' thread state.
 -- Denotes current failure reaction, effective user id and more
 data EC = EC
   { _reactStack  :: [React]  -- ^ Saved reactions modificators. Topmost is active
@@ -94,15 +94,15 @@ instance Default STM where
     , _repos = undefined
     }
 
--- | 'Execution' environment.
+-- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
 data EE a = EE
   { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
   , _retries     :: Int         -- ^ Maximum retries count
-  , _stm         :: a           -- ^ Execution cross-thread state
-  , _mode        :: Mode        -- ^ Execution mode
+  , _stm         :: a           -- ^ Executor cross-thread state
+  , _mode        :: Mode        -- ^ Executor mode
   }
 
 -- | Priviledges control.
@@ -136,10 +136,10 @@ templates :: Lens' (EE a) Templates
 -- | Maximum retries count
 retries :: Lens' (EE a) Int
 
--- | Execution cross-thread state
+-- | Executor cross-thread state
 stm :: Lens (EE a) (EE b) a b
 
--- | Execution mode
+-- | Executor mode
 mode :: Lens' (EE a) Mode
 
 instance Default a => Default (EE a) where
@@ -152,7 +152,7 @@ instance Default a => Default (EE a) where
     , _mode        = Dry
     }
 
--- | Prepare 'Execution' environment to stm transactions
+-- | Prepare 'Executor' environment to stm transactions
 initializeSTM :: EE () -> IO (EE STM)
 initializeSTM e = do
   a <- newTQueueIO
