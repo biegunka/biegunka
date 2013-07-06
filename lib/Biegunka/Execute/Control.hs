@@ -5,7 +5,7 @@
 module Biegunka.Execute.Control
   ( Executor
     -- * Executor thread state control
-  , EC(..), reactStack, usersStack, retryCount
+  , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
   , EE(..), STM(..)
   , priviledges, react, templates, retries
@@ -28,36 +28,41 @@ import Text.StringTemplate (ToSElem(..))
 import Biegunka.Language (React(..))
 
 
--- | Convenient type alias for thread-local-state-ful IO
--- tagged with multithreaded execution environment @s@
-type Executor s a = TaggedT s (StateT EC IO) a
+-- | Convenient type alias for task-local-state-ful IO
+-- tagged with crosstask execution environment @s@
+type Executor s a = TaggedT s (StateT TaskLocal IO) a
 
 
--- | 'Executor' thread state.
--- Denotes current failure reaction, effective user id and more
-data EC = EC
+-- | 'Executor' task-local state. Contains:
+--
+--   * Active failure reactions stack.
+--
+--   * Effective users names stack.
+--
+--   * Retry count for current task.
+data TaskLocal = TaskLocal
   { _reactStack  :: [React]  -- ^ Saved reactions modificators. Topmost is active
   , _usersStack  :: [String] -- ^ Saved user chaning modificators. Topmost is active
   , _retryCount  :: Int      -- ^ Performed retries for task
   } deriving (Show, Read, Eq, Ord)
 
-instance Default EC where
-  def = EC
+instance Default TaskLocal where
+  def = TaskLocal
     { _reactStack = []
     , _usersStack = []
     , _retryCount = 0
     }
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''EC
+makeLensesWith (defaultRules & generateSignatures .~ False) ''TaskLocal
 
 -- | Saved reactions modificators. Topmost is active
-reactStack :: Lens' EC [React]
+reactStack :: Lens' TaskLocal [React]
 
 -- | Saved user chaning modificators. Topmost is active
-usersStack :: Lens' EC [String]
+usersStack :: Lens' TaskLocal [String]
 
 -- | Performed retries for task
-retryCount :: Lens' EC Int
+retryCount :: Lens' TaskLocal Int
 
 -- | Concurrent parts of 'EE'
 data STM = STM
