@@ -7,11 +7,11 @@ module Biegunka.Execute.Control
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , Run, Execution, Globals
+  , Run, Execution, Sync
   , priviledges, react, templates, retries
   , work, running, sudoing, repos, mode
   , initializeSTM
-  , globals, execution
+  , sync, execution
     -- * Misc
   , Templates(..), Priviledges(..), Work(..), Mode(..)
   ) where
@@ -66,8 +66,8 @@ usersStack :: Lens' TaskLocal [String]
 retryCount :: Lens' TaskLocal Int
 
 -- | Multithread accessable parts of 'Execution'
-data Globals = Globals
-  { _work    :: TQueue Work      -- ^ Task queue
+data Sync = Sync
+  { _work    :: TQueue Work       -- ^ Task queue
   , _sudoing :: TVar Bool         -- ^ Whether sudoed operation is in progress.
   , _running :: TVar Bool         -- ^ Whether any operation is in progress.
   , _repos   :: TVar (Set String) -- ^ Already updated repositories
@@ -78,19 +78,19 @@ data Work =
     Do Int (IO ()) -- ^ Task to come and its id
   | Stop Int       -- ^ Task with that id is done
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Globals
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Sync
 
 -- | Task queue
-work :: Lens' Globals (TQueue Work)
+work :: Lens' Sync (TQueue Work)
 
 -- | Whether sudoed operation is in progress.
-sudoing :: Lens' Globals (TVar Bool)
+sudoing :: Lens' Sync (TVar Bool)
 
 -- | Whether any operation is in progress.
-running :: Lens' Globals (TVar Bool)
+running :: Lens' Sync (TVar Bool)
 
 -- | Already updated repositories
-repos :: Lens' Globals (TVar (Set String))
+repos :: Lens' Sync (TVar (Set String))
 
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
@@ -147,14 +147,14 @@ instance Default Execution where
 
 
 data Run = Run
-  { _globals   :: Globals
+  { _sync      :: Sync
   , _execution :: Execution
   }
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
 
 -- | Executor cross-thread state
-globals :: Lens Run Run Globals Globals
+sync :: Lens Run Run Sync Sync
 
 -- | Executor environment
 execution :: Lens Run Run Execution Execution
@@ -168,7 +168,7 @@ initializeSTM e = do
   c <- newTVarIO False
   d <- newTVarIO mempty
   return $ Run
-    { _globals = Globals
+    { _sync = Sync
         { _work = a
         , _running = b
         , _sudoing = c

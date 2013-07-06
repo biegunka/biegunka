@@ -63,8 +63,8 @@ run e = interpret $ \c s -> do
   let c' = c & local.~r
   dropPriviledges r
   runTask c' def newTask s
-  atomically (writeTQueue (c'^.local.globals.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (c'^.local.globals.work)
+  atomically (writeTQueue (c'^.local.sync.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (c'^.local.sync.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -90,8 +90,8 @@ dryRun = interpret $ \c s -> do
   e <- initializeSTM def
   let c' = c & local.~e
   runTask c' def newTask s
-  atomically (writeTQueue (e^.globals.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (e^.globals.work)
+  atomically (writeTQueue (e^.sync.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (e^.sync.work)
   c'^.logger $ runChanges (c'^.colors) a b
 
 -- | Dru run interpreter
@@ -174,8 +174,8 @@ command (TM (User     (Just u)) _) = usersStack %= (u :)
 command (TM (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
-  let stv = e^.local.globals.sudoing
-      rtv = e^.local.globals.running
+  let stv = e^.local.sync.sudoing
+      rtv = e^.local.sync.running
       log = e^.logger
       scm = e^.colors
   xs <- use usersStack
@@ -206,7 +206,7 @@ termOperation :: Reifies t (Settings Run)
               -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- reflected <&> \e -> e^.local.globals.repos
+    rstv <- reflected <&> \e -> e^.local.sync.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -266,7 +266,7 @@ newTask t = do
             Free (TP (AP { apToken }) _ _ _) -> apToken
             Free (TS (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
-  liftIO . atomically . writeTQueue (e^.local.globals.work) $
+  liftIO . atomically . writeTQueue (e^.local.sync.work) $
     Do i $ do
       runTask e s task t
-      atomically (writeTQueue (e^.local.globals.work) (Stop i))
+      atomically (writeTQueue (e^.local.sync.work) (Stop i))
