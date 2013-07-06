@@ -10,7 +10,7 @@ module Biegunka.Execute.Control
     -- * Execution environment
   , EE(..), STM(..)
   , priviledges, react, templates, retries
-  , stm, work, running, sudoing, controls, repos, mode
+  , stm, work, running, sudoing, repos, mode
   , initializeSTM
     -- * Misc
   , Templates(..), Priviledges(..), Work(..), Mode(..)
@@ -27,7 +27,6 @@ import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
 import Biegunka.Language (React(..))
-import Biegunka.Control (Controls)
 
 
 -- | Stateful IO actions execution tagged with environment
@@ -102,7 +101,6 @@ data EE a = EE
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
   , _retries     :: Int         -- ^ Maximum retries count
-  , _controls    :: Controls    -- ^ General biegunka controls
   , _stm         :: a           -- ^ Execution cross-thread state
   , _mode        :: Mode        -- ^ Execution mode
   }
@@ -138,9 +136,6 @@ templates :: Lens' (EE a) Templates
 -- | Maximum retries count
 retries :: Lens' (EE a) Int
 
--- | General biegunka controls
-controls :: Lens' (EE a) Controls
-
 -- | Execution cross-thread state
 stm :: Lens (EE a) (EE b) a b
 
@@ -153,7 +148,6 @@ instance Default a => Default (EE a) where
     , _react       = Ignorant
     , _templates   = Templates ()
     , _retries     = 1
-    , _controls    = def
     , _stm         = def
     , _mode        = Dry
     }

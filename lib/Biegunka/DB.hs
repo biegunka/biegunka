@@ -92,7 +92,7 @@ biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
 
 
 -- | Load profiles mentioned in script
-load :: Controls -> Free (Term Annotate Profiles) a -> IO Biegunka
+load :: Controls () -> Free (Term Annotate Profiles) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
   profiles :: Free (Term Annotate Profiles) a -> [String]
@@ -110,7 +110,7 @@ load c = fmap (Biegunka . M.fromList) . loads c . profiles
 --  * Cannot read from profile file (various reasons here)
 --
 --  * Cannot parse profile file (wrong format)
-loads :: Controls -> [String] -> IO [(String, Map R (Map FilePath R))]
+loads :: Controls () -> [String] -> IO [(String, Map R (Map FilePath R))]
 loads c (p:ps) = do
   let (name, _) = c & appData <</>~ p
   Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
@@ -135,7 +135,7 @@ loads _ [] = return []
 --
 -- For example, profile @dotfiles@ is located in @~\/.biegunka\/dotfiles@ by default
 -- and profile @my\/dotfiles@ is located in @~\/.biegunka.my\/dotfiles@ by default.
-save :: Controls -> Biegunka -> IO ()
+save :: Controls () -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
   ifor_ b $ \p sourceData -> do

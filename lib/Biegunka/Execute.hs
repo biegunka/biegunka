@@ -44,7 +44,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Interpreter(..), interpret, logger, colors)
+import Biegunka.Control (Controls, Interpreter(..), interpret, interpreter, logger, colors)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
@@ -56,14 +56,15 @@ import Biegunka.Script
 
 -- | Real run interpreter
 run :: (EE () -> EE ()) -> Interpreter
-run e = interpret $ \c s -> do
+run ee = interpret $ \c s -> do
   let b = construct s
   a <- load c s
-  (set controls c . set mode Real -> e') <- initializeSTM (e def)
-  dropPriviledges e'
-  runTask e' def newTask s
-  atomically (writeTQueue (e'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (e'^.stm.work)
+  (set mode Real -> ee') <- initializeSTM (ee def)
+  let c' = set interpreter ee' c
+  dropPriviledges ee'
+  runTask c' def newTask s
+  atomically (writeTQueue (c'^.interpreter.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (c'^.interpreter.stm.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
@@ -86,11 +87,12 @@ dryRun :: Interpreter
 dryRun = interpret $ \c s -> do
   let b = construct s
   a <- load c s
-  (controls .~ c -> e) <- initializeSTM def
-  runTask e def newTask s
-  atomically (writeTQueue (e^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (e^.stm.work)
-  e^.controls.logger $ runChanges (e^.controls.colors) a b
+  ee' <- initializeSTM def
+  let c' = set interpreter ee' c
+  runTask c' def newTask s
+  atomically (writeTQueue (ee'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (ee'^.stm.work)
+  c'^.logger $ runChanges (c'^.colors) a b
 
 -- | Dru run interpreter
 pretend :: Interpreter
@@ -104,7 +106,7 @@ pretend = dryRun
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()
+task :: Reifies t (Controls (EE STM)) => Free (Term Annotate s) a -> Execution t ()
 task (Free (TP _ _ b d)) = do
   newTask d
   task b
@@ -137,14 +139,14 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s (EE STM) => SomeException -> Execution s React
+retry :: forall s. Reifies s (Controls (EE STM)) => SomeException -> Execution s React
 retry exc = do
   e <- reflected
-  let log = e^.controls.logger
-      scm = e^.controls.colors
+  let log = e^.logger
+      scm = e^.colors
   liftIO . log . termDescription $ exception scm exc
   rc <- retryCount <<%= (+1)
-  if rc < _retries (reflect (Proxy :: Proxy s)) then do
+  if rc < (reflect (Proxy :: Proxy s))^.interpreter.retries then do
     liftIO . log . termDescription $ retryCounter scm (rc + 1)
     return Retry
   else do
@@ -154,24 +156,24 @@ retry exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s (EE STM) => Execution s React
-reaction = head . (++ [_react $ reflect (Proxy :: Proxy s)]) <$> use reactStack
+reaction :: forall s. Reifies s (Controls (EE STM)) => Execution s React
+reaction = head . (++ [(reflect (Proxy :: Proxy s))^.interpreter.react]) <$> use reactStack
 
 
 -- | Single command execution
-command :: Reifies t (EE STM) => Term Annotate s a -> Execution t ()
+command :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Execution t ()
 command (TM (Reacting (Just r)) _) = reactStack %= (r :)
 command (TM (Reacting Nothing) _)  = reactStack %= drop 1
 command (TM (User     (Just u)) _) = usersStack %= (u :)
 command (TM (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
-  let stv = e^.stm.sudoing
-      rtv = e^.stm.running
-      log = e^.controls.logger
-      scm = e^.controls.colors
+  let stv = e^.interpreter.stm.sudoing
+      rtv = e^.interpreter.stm.running
+      log = e^.logger
+      scm = e^.colors
   xs <- use usersStack
-  op  <- case e^.mode of
+  op  <- case e^.interpreter.mode of
           Dry  -> termEmptyOperation c
           Real -> termOperation c
   liftIO $ case xs of
@@ -193,10 +195,10 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
 
-termOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
+termOperation :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Execution t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- reflected <&> \e -> e^.stm.repos
+    rstv <- reflected <&> \e -> e^.interpreter.stm.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -213,7 +215,7 @@ termOperation term = case term of
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
   TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- view templates <$> reflected
+    Templates ts <- view (interpreter.templates) <$> reflected
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   TA _ (Command p sp) _ -> return $ do
@@ -239,11 +241,11 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation :: Reifies t (EE STM) => Term Annotate s a -> Execution t (IO ())
+termEmptyOperation :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Execution t (IO ())
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()
+newTask :: forall a s t. Reifies t (Controls (EE STM)) => Free (Term Annotate s) a -> Execution t ()
 newTask (Pure _) = return ()
 newTask t = do
   e <- reflected
@@ -252,7 +254,7 @@ newTask t = do
             Free (TP (AP { apToken }) _ _ _) -> apToken
             Free (TS (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
-  liftIO . atomically . writeTQueue (e^.stm.work) $
+  liftIO . atomically . writeTQueue (e^.interpreter.stm.work) $
     Do i $ do
       runTask e s task t
-      atomically (writeTQueue (e^.stm.work) (Stop i))
+      atomically (writeTQueue (e^.interpreter.stm.work) (Stop i))

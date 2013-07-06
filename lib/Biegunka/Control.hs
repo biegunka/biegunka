@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
@@ -6,7 +7,7 @@ module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
     -- * Common interpreters controls
-  , Controls, root, appData, logger, colors
+  , Controls, root, appData, logger, colors, interpreter
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
@@ -36,11 +37,12 @@ import Biegunka.Script
 
 
 -- | Common interpreters controls
-data Controls = Controls
-  { _root    :: FilePath    -- ^ Root path for 'Source' layer
-  , _appData :: FilePath    -- ^ Biegunka profile files path
-  , _logger  :: Doc -> IO () -- ^ Logger channel
-  , _colors  :: ColorScheme -- ^ Pretty printing
+data Controls a = Controls
+  { _root        :: FilePath    -- ^ Root path for 'Source' layer
+  , _appData     :: FilePath    -- ^ Biegunka profile files path
+  , _logger      :: Doc -> IO () -- ^ Logger channel
+  , _colors      :: ColorScheme -- ^ Pretty printing
+  , _interpreter :: a
   }
 
 data ColorScheme = ColorScheme
@@ -96,29 +98,33 @@ retryColor :: Lens' ColorScheme (Doc -> Doc)
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
 
 -- | Root path for 'Source' layer
-root :: Lens' Controls FilePath
+root :: Lens' (Controls a) FilePath
 
 -- | Biegunka profile files
-appData :: Lens' Controls FilePath
+appData :: Lens' (Controls a) FilePath
 
 -- | Logger channel
-logger :: Lens' Controls (Doc -> IO ())
+logger :: Lens' (Controls a) (Doc -> IO ())
 
 -- | Pretty printing
-colors :: Lens' Controls ColorScheme
+colors :: Lens' (Controls a) ColorScheme
 
-instance Default Controls where
+-- | Interpreter controls
+interpreter :: Lens (Controls a) (Controls b) a b
+
+instance Default a => Default (Controls a) where
   def = Controls
-    { _root    = "/"
-    , _appData = "~/.biegunka"
-    , _logger  = const (return ())
-    , _colors  = def
+    { _root        = "/"
+    , _appData     = "~/.biegunka"
+    , _logger      = const (return ())
+    , _colors      = def
+    , _interpreter = def
     }
 
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter :: Controls -> Free (Term Annotate Profiles) () -> IO () -> IO ()
+  { runInterpreter :: Controls () -> Free (Term Annotate Profiles) () -> IO () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -132,14 +138,14 @@ instance Monoid Interpreter where
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
-interpret :: (Controls -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
+interpret :: (Controls () -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
-biegunka :: (Controls -> Controls) -- ^ User defined settings
-         -> Interpreter           -- ^ Combined interpreters
-         -> Script Profiles ()    -- ^ Script to interpret
+biegunka :: (Controls () -> Controls ()) -- ^ User defined settings
+         -> Interpreter                 -- ^ Combined interpreters
+         -> Script Profiles ()          -- ^ Script to interpret
          -> IO ()
 biegunka (($ def) -> c) (I f) s = do
   r  <- c^.root.to expand

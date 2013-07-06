@@ -19,16 +19,18 @@ import           Data.Reflection (Reifies, reify)
 import           Data.Sequence (Seq)
 import qualified Data.Sequence as Q
 
+import Biegunka.Control
 import Biegunka.Execute.Control
 import Biegunka.Language (Term(..))
 import Biegunka.Script
 
 
 -- | Prepares environment to run task with given execution routine
-runTask :: forall s a.
-          EE STM -- ^ Environment
+runTask :: forall s a. Controls (EE STM) -- ^ Environment
         -> EC -- ^ Context
-        -> (forall t. Reifies t (EE STM) => Free (Term Annotate s) a -> Execution t ()) -- ^ Task routine
+        -> (forall t. Reifies t (Controls (EE STM))
+                => Free (Term Annotate s) a
+                -> Execution t ()) -- ^ Task routine
         -> (Free (Term Annotate s) a) -- ^ Task contents
         -> IO ()
 runTask e s f i =
