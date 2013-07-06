@@ -26,9 +26,9 @@ import Biegunka.Script
 
 
 -- | Prepares environment to run task with given execution routine
-runTask :: forall s a. Settings (EE STM) -- ^ Environment
+runTask :: forall s a. Settings (EE Globals) -- ^ Environment
         -> TaskLocal -- ^ Context
-        -> (forall t. Reifies t (Settings (EE STM))
+        -> (forall t. Reifies t (Settings (EE Globals))
                 => Free (Term Annotate s) a
                 -> Executor t ()) -- ^ Task routine
         -> (Free (Term Annotate s) a) -- ^ Task contents

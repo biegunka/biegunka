@@ -4,10 +4,10 @@
 -- | Controlling execution
 module Biegunka.Execute.Control
   ( Executor
-    -- * Executor thread state control
+    -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , EE(..), STM(..)
+  , EE(..), Globals
   , priviledges, react, templates, retries
   , stm, work, running, sudoing, repos, mode
   , initializeSTM
@@ -65,7 +65,7 @@ usersStack :: Lens' TaskLocal [String]
 retryCount :: Lens' TaskLocal Int
 
 -- | Concurrent parts of 'EE'
-data STM = STM
+data Globals = Globals
   { _work    :: TQueue Work -- ^ Task queue
   , _sudoing :: TVar Bool -- ^ Whether sudoed operation is in progress.
   , _running :: TVar Bool -- ^ Whether any operation is in progress.
@@ -77,22 +77,22 @@ data Work =
     Do Int (IO ()) -- ^ Task to come and its id
   | Stop Int       -- ^ Task with that id is done
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''STM
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Globals
 
 -- | Task queue
-work :: Lens' STM (TQueue Work)
+work :: Lens' Globals (TQueue Work)
 
 -- | Whether sudoed operation is in progress.
-sudoing :: Lens' STM (TVar Bool)
+sudoing :: Lens' Globals (TVar Bool)
 
 -- | Whether any operation is in progress.
-running :: Lens' STM (TVar Bool)
+running :: Lens' Globals (TVar Bool)
 
 -- | Already updated repositories
-repos :: Lens' STM (TVar (Set String))
+repos :: Lens' Globals (TVar (Set String))
 
-instance Default STM where
-  def = STM
+instance Default Globals where
+  def = Globals
     { _work = undefined
     , _sudoing = undefined
     , _running = undefined
@@ -158,13 +158,13 @@ instance Default a => Default (EE a) where
     }
 
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: EE () -> IO (EE STM)
+initializeSTM :: EE () -> IO (EE Globals)
 initializeSTM e = do
   a <- newTQueueIO
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
-  return $ e & stm .~ STM
+  return $ e & stm .~ Globals
     { _work = a
     , _running = b
     , _sudoing = c
