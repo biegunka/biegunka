@@ -10,7 +10,7 @@ import Data.Foldable (asum)
 import Language.Haskell.TH
 import Options.Applicative
 
-import Biegunka.Control (Controls, biegunka, confirm)
+import Biegunka.Control (Settings, biegunka, confirm)
 import Biegunka.Execute (run, dryRun)
 import Biegunka.Execute.Control (EE)
 import Biegunka.Language (Scope(Profiles))
@@ -50,7 +50,7 @@ makeOptionsParser name = do
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        optionsParser :: IO ($(conT tyCon), (Controls -> Controls) -> (EE () -> EE ()) -> Script Profiles () -> IO ())
+        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (EE () -> EE ()) -> Script Profiles () -> IO ())
         optionsParser = customExecParser (prefs showHelpOnError) opts
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc

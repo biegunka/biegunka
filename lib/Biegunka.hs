@@ -1,7 +1,7 @@
 -- | Biegunka - configuration development library
 module Biegunka
   ( -- * Interpreters control
-    biegunka, Controls, root, appData, colors
+    biegunka, Settings, root, appData, colors
   , ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor
@@ -32,7 +32,7 @@ module Biegunka
   ) where
 
 import Biegunka.Control
-  ( biegunka, Controls, root, appData, colors, pause, confirm
+  ( biegunka, Settings, root, appData, colors, pause, confirm
   , ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor
