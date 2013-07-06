@@ -7,7 +7,7 @@ module Biegunka.Execute.Control
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , EE(..), Globals
+  , Execution, Globals
   , priviledges, react, templates, retries
   , stm, work, running, sudoing, repos, mode
   , initializeSTM
@@ -64,11 +64,11 @@ usersStack :: Lens' TaskLocal [String]
 -- | Performed retries for task
 retryCount :: Lens' TaskLocal Int
 
--- | Concurrent parts of 'EE'
+-- | Multithread accessable parts of 'Execution'
 data Globals = Globals
-  { _work    :: TQueue Work -- ^ Task queue
-  , _sudoing :: TVar Bool -- ^ Whether sudoed operation is in progress.
-  , _running :: TVar Bool -- ^ Whether any operation is in progress.
+  { _work    :: TQueue Work      -- ^ Task queue
+  , _sudoing :: TVar Bool         -- ^ Whether sudoed operation is in progress.
+  , _running :: TVar Bool         -- ^ Whether any operation is in progress.
   , _repos   :: TVar (Set String) -- ^ Already updated repositories
   }
 
@@ -101,7 +101,7 @@ instance Default Globals where
 
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
-data EE a = EE
+data Execution a = Execution
   { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
@@ -127,28 +127,28 @@ data Mode =
 -- Existence of that wrapper is what made 'Default' instance possible
 data Templates = forall t. ToSElem t => Templates t
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''EE
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 -- | What to do with priviledges if ran in sudo
-priviledges :: Lens' (EE a) Priviledges
+priviledges :: Lens' (Execution a) Priviledges
 
 -- | How to react on failures
-react :: Lens' (EE a) React
+react :: Lens' (Execution a) React
 
 -- | Templates mapping
-templates :: Lens' (EE a) Templates
+templates :: Lens' (Execution a) Templates
 
 -- | Maximum retries count
-retries :: Lens' (EE a) Int
+retries :: Lens' (Execution a) Int
 
 -- | Executor mode
-mode :: Lens' (EE a) Mode
+mode :: Lens' (Execution a) Mode
 
 -- | Executor cross-thread state
-stm :: Lens (EE a) (EE b) a b
+stm :: Lens (Execution a) (Execution b) a b
 
-instance Default a => Default (EE a) where
-  def = EE
+instance Default a => Default (Execution a) where
+  def = Execution
     { _priviledges = Preserve
     , _react       = Ignorant
     , _templates   = Templates ()
@@ -158,7 +158,7 @@ instance Default a => Default (EE a) where
     }
 
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: EE () -> IO (EE Globals)
+initializeSTM :: Execution () -> IO (Execution Globals)
 initializeSTM e = do
   a <- newTQueueIO
   b <- newTVarIO False
