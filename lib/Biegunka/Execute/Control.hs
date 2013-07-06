@@ -3,8 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
 module Biegunka.Execute.Control
-  ( -- * Executor newtype
-    Executor
+  ( Executor
     -- * Executor thread state control
   , EC(..), reactStack, usersStack, retryCount
     -- * Executor environment
@@ -29,7 +28,8 @@ import Text.StringTemplate (ToSElem(..))
 import Biegunka.Language (React(..))
 
 
--- | Stateful IO actions execution tagged with environment
+-- | Convenient type alias for thread-local-state-ful IO
+-- tagged with multithreaded execution environment @s@
 type Executor s a = TaggedT s (StateT EC IO) a
 
 
@@ -101,8 +101,8 @@ data EE a = EE
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
   , _retries     :: Int         -- ^ Maximum retries count
-  , _stm         :: a           -- ^ Executor cross-thread state
   , _mode        :: Mode        -- ^ Executor mode
+  , _stm         :: a           -- ^ Executor cross-thread state
   }
 
 -- | Priviledges control.
@@ -136,11 +136,11 @@ templates :: Lens' (EE a) Templates
 -- | Maximum retries count
 retries :: Lens' (EE a) Int
 
--- | Executor cross-thread state
-stm :: Lens (EE a) (EE b) a b
-
 -- | Executor mode
 mode :: Lens' (EE a) Mode
+
+-- | Executor cross-thread state
+stm :: Lens (EE a) (EE b) a b
 
 instance Default a => Default (EE a) where
   def = EE
