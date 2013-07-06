@@ -7,10 +7,11 @@ module Biegunka.Execute.Control
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , Execution, Globals
+  , Run, Execution, Globals
   , priviledges, react, templates, retries
-  , stm, work, running, sudoing, repos, mode
+  , work, running, sudoing, repos, mode
   , initializeSTM
+  , globals, execution
     -- * Misc
   , Templates(..), Priviledges(..), Work(..), Mode(..)
   ) where
@@ -91,23 +92,14 @@ running :: Lens' Globals (TVar Bool)
 -- | Already updated repositories
 repos :: Lens' Globals (TVar (Set String))
 
-instance Default Globals where
-  def = Globals
-    { _work = undefined
-    , _sudoing = undefined
-    , _running = undefined
-    , _repos = undefined
-    }
-
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
-data Execution a = Execution
+data Execution = Execution
   { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
   , _retries     :: Int         -- ^ Maximum retries count
   , _mode        :: Mode        -- ^ Executor mode
-  , _stm         :: a           -- ^ Executor cross-thread state
   }
 
 -- | Priviledges control.
@@ -130,43 +122,57 @@ data Templates = forall t. ToSElem t => Templates t
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 -- | What to do with priviledges if ran in sudo
-priviledges :: Lens' (Execution a) Priviledges
+priviledges :: Lens' Execution Priviledges
 
 -- | How to react on failures
-react :: Lens' (Execution a) React
+react :: Lens' Execution React
 
 -- | Templates mapping
-templates :: Lens' (Execution a) Templates
+templates :: Lens' Execution Templates
 
 -- | Maximum retries count
-retries :: Lens' (Execution a) Int
+retries :: Lens' Execution Int
 
 -- | Executor mode
-mode :: Lens' (Execution a) Mode
+mode :: Lens' Execution Mode
 
--- | Executor cross-thread state
-stm :: Lens (Execution a) (Execution b) a b
-
-instance Default a => Default (Execution a) where
+instance Default Execution where
   def = Execution
     { _priviledges = Preserve
     , _react       = Ignorant
     , _templates   = Templates ()
     , _retries     = 1
-    , _stm         = def
     , _mode        = Dry
     }
 
+
+data Run = Run
+  { _globals   :: Globals
+  , _execution :: Execution
+  }
+
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
+
+-- | Executor cross-thread state
+globals :: Lens Run Run Globals Globals
+
+-- | Executor environment
+execution :: Lens Run Run Execution Execution
+
+
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: Execution () -> IO (Execution Globals)
+initializeSTM :: Execution -> IO Run
 initializeSTM e = do
   a <- newTQueueIO
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
-  return $ e & stm .~ Globals
-    { _work = a
-    , _running = b
-    , _sudoing = c
-    , _repos = d
+  return $ Run
+    { _globals = Globals
+        { _work = a
+        , _running = b
+        , _sudoing = c
+        , _repos = d
+        }
+    , _execution = e
     }

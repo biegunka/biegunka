@@ -7,7 +7,7 @@ module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
     -- * Settings common for all interpreters
-  , Settings, root, appData, logger, colors, interpreter
+  , Settings, root, appData, logger, colors, local
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
@@ -42,7 +42,7 @@ data Settings a = Settings
   , _appData     :: FilePath    -- ^ Biegunka profile files path
   , _logger      :: Doc -> IO () -- ^ Logger channel
   , _colors      :: ColorScheme -- ^ Pretty printing
-  , _interpreter :: a           -- ^ Interpreter specific settings
+  , _local :: a                -- ^ Interpreter specific settings
   }
 
 data ColorScheme = ColorScheme
@@ -110,15 +110,15 @@ logger :: Lens' (Settings a) (Doc -> IO ())
 colors :: Lens' (Settings a) ColorScheme
 
 -- | Interpreter controls
-interpreter :: Lens (Settings a) (Settings b) a b
+local :: Lens (Settings a) (Settings b) a b
 
 instance Default a => Default (Settings a) where
   def = Settings
-    { _root        = "/"
-    , _appData     = "~/.biegunka"
-    , _logger      = const (return ())
-    , _colors      = def
-    , _interpreter = def
+    { _root    = "/"
+    , _appData = "~/.biegunka"
+    , _logger  = const (return ())
+    , _colors  = def
+    , _local   = def
     }
 
 

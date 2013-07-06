@@ -44,7 +44,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Settings, Interpreter(..), interpret, interpreter, logger, colors)
+import Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
@@ -55,28 +55,28 @@ import Biegunka.Script
 
 
 -- | Real run interpreter
-run :: (Execution () -> Execution ()) -> Interpreter
-run ee = interpret $ \c s -> do
+run :: (Execution -> Execution) -> Interpreter
+run e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
-  (set mode Real -> ee') <- initializeSTM (ee def)
-  let c' = set interpreter ee' c
-  dropPriviledges ee'
+  r <- initializeSTM ((e $ def) & mode.~Real)
+  let c' = c & local.~r
+  dropPriviledges r
   runTask c' def newTask s
-  atomically (writeTQueue (c'^.interpreter.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (c'^.interpreter.stm.work)
+  atomically (writeTQueue (c'^.local.globals.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (c'^.local.globals.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
   save c b
 
 -- | Real run interpreter
-execute :: (Execution () -> Execution ()) -> Interpreter
+execute :: (Execution -> Execution) -> Interpreter
 execute = run
 {-# DEPRECATED execute "Please, use `run'" #-}
 
-dropPriviledges :: Execution a -> IO ()
+dropPriviledges :: Run -> IO ()
 dropPriviledges e =
-  case e^.priviledges of
+  case e^.execution.priviledges of
     Drop     -> getEnv "SUDO_USER" >>= traverse_ setUser
     Preserve -> return ()
  where
@@ -87,11 +87,11 @@ dryRun :: Interpreter
 dryRun = interpret $ \c s -> do
   let b = construct s
   a <- load c s
-  ee' <- initializeSTM def
-  let c' = set interpreter ee' c
+  e <- initializeSTM def
+  let c' = c & local.~e
   runTask c' def newTask s
-  atomically (writeTQueue (ee'^.stm.work) (Stop 0)) -- Can we assume script starts from id 0?
-  schedule (ee'^.stm.work)
+  atomically (writeTQueue (e^.globals.work) (Stop 0)) -- Can we assume script starts from id 0?
+  schedule (e^.globals.work)
   c'^.logger $ runChanges (c'^.colors) a b
 
 -- | Dru run interpreter
@@ -106,7 +106,7 @@ pretend = dryRun
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (Settings (Execution Globals))
+task :: Reifies t (Settings Run)
      => Free (Term Annotate s) a
      -> Executor t ()
 task (Free (TP _ _ b d)) = do
@@ -141,7 +141,7 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s (Settings (Execution Globals))
+retry :: forall s. Reifies s (Settings Run)
       => SomeException
       -> Executor s React
 retry exc = do
@@ -150,7 +150,7 @@ retry exc = do
       scm = e^.colors
   liftIO . log . termDescription $ exception scm exc
   rc <- retryCount <<%= (+1)
-  if rc < (reflect (Proxy :: Proxy s))^.interpreter.retries then do
+  if rc < (reflect (Proxy :: Proxy s))^.local.execution.retries then do
     liftIO . log . termDescription $ retryCounter scm (rc + 1)
     return Retry
   else do
@@ -160,12 +160,12 @@ retry exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s (Settings (Execution Globals)) => Executor s React
-reaction = head . (++ [(reflect (Proxy :: Proxy s))^.interpreter.react]) <$> use reactStack
+reaction :: forall s. Reifies s (Settings Run) => Executor s React
+reaction = head . (++ [(reflect (Proxy :: Proxy s))^.local.execution.react]) <$> use reactStack
 
 
 -- | Single command execution
-command :: Reifies t (Settings (Execution Globals))
+command :: Reifies t (Settings Run)
         => Term Annotate s a
         -> Executor t ()
 command (TM (Reacting (Just r)) _) = reactStack %= (r :)
@@ -174,12 +174,12 @@ command (TM (User     (Just u)) _) = usersStack %= (u :)
 command (TM (User     Nothing) _)  = usersStack %= drop 1
 command c = do
   e <- reflected
-  let stv = e^.interpreter.stm.sudoing
-      rtv = e^.interpreter.stm.running
+  let stv = e^.local.globals.sudoing
+      rtv = e^.local.globals.running
       log = e^.logger
       scm = e^.colors
   xs <- use usersStack
-  op  <- case e^.interpreter.mode of
+  op  <- case e^.local.execution.mode of
           Dry  -> termEmptyOperation c
           Real -> termOperation c
   liftIO $ case xs of
@@ -201,12 +201,12 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
 
-termOperation :: Reifies t (Settings (Execution Globals))
+termOperation :: Reifies t (Settings Run)
               => Term Annotate s a
               -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- reflected <&> \e -> e^.interpreter.stm.repos
+    rstv <- reflected <&> \e -> e^.local.globals.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -223,7 +223,7 @@ termOperation term = case term of
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
   TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- view (interpreter.templates) <$> reflected
+    Templates ts <- reflected <&> \e -> e^.local.execution.templates
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   TA _ (Command p sp) _ -> return $ do
@@ -249,13 +249,13 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation :: Reifies t (Settings (Execution Globals))
+termEmptyOperation :: Reifies t (Settings Run)
                    => Term Annotate s a
                    -> Executor t (IO ())
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (Settings (Execution Globals))
+newTask :: forall a s t. Reifies t (Settings Run)
         => Free (Term Annotate s) a
         -> Executor t ()
 newTask (Pure _) = return ()
@@ -266,7 +266,7 @@ newTask t = do
             Free (TP (AP { apToken }) _ _ _) -> apToken
             Free (TS (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
-  liftIO . atomically . writeTQueue (e^.interpreter.stm.work) $
+  liftIO . atomically . writeTQueue (e^.local.globals.work) $
     Do i $ do
       runTask e s task t
-      atomically (writeTQueue (e^.interpreter.stm.work) (Stop i))
+      atomically (writeTQueue (e^.local.globals.work) (Stop i))

@@ -50,7 +50,7 @@ makeOptionsParser name = do
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (Execution () -> Execution ()) -> Script Profiles () -> IO ())
+        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (Execution -> Execution) -> Script Profiles () -> IO ())
         optionsParser = customExecParser (prefs showHelpOnError) opts
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
