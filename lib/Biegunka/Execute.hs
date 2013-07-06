@@ -44,7 +44,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Control (Controls, Interpreter(..), interpret, interpreter, logger, colors)
+import Biegunka.Control (Settings, Interpreter(..), interpret, interpreter, logger, colors)
 import Biegunka.DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
@@ -106,7 +106,7 @@ pretend = dryRun
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (Controls (EE STM)) => Free (Term Annotate s) a -> Executor t ()
+task :: Reifies t (Settings (EE STM)) => Free (Term Annotate s) a -> Executor t ()
 task (Free (TP _ _ b d)) = do
   newTask d
   task b
@@ -139,7 +139,7 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s (Controls (EE STM)) => SomeException -> Executor s React
+retry :: forall s. Reifies s (Settings (EE STM)) => SomeException -> Executor s React
 retry exc = do
   e <- reflected
   let log = e^.logger
@@ -156,12 +156,12 @@ retry exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s (Controls (EE STM)) => Executor s React
+reaction :: forall s. Reifies s (Settings (EE STM)) => Executor s React
 reaction = head . (++ [(reflect (Proxy :: Proxy s))^.interpreter.react]) <$> use reactStack
 
 
 -- | Single command execution
-command :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Executor t ()
+command :: Reifies t (Settings (EE STM)) => Term Annotate s a -> Executor t ()
 command (TM (Reacting (Just r)) _) = reactStack %= (r :)
 command (TM (Reacting Nothing) _)  = reactStack %= drop 1
 command (TM (User     (Just u)) _) = usersStack %= (u :)
@@ -195,7 +195,7 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
 
-termOperation :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Executor t (IO ())
+termOperation :: Reifies t (Settings (EE STM)) => Term Annotate s a -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
     rstv <- reflected <&> \e -> e^.interpreter.stm.repos
@@ -241,11 +241,11 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation :: Reifies t (Controls (EE STM)) => Term Annotate s a -> Executor t (IO ())
+termEmptyOperation :: Reifies t (Settings (EE STM)) => Term Annotate s a -> Executor t (IO ())
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (Controls (EE STM)) => Free (Term Annotate s) a -> Executor t ()
+newTask :: forall a s t. Reifies t (Settings (EE STM)) => Free (Term Annotate s) a -> Executor t ()
 newTask (Pure _) = return ()
 newTask t = do
   e <- reflected

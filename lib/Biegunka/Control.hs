@@ -6,8 +6,8 @@
 module Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
-    -- * Common interpreters controls
-  , Controls, root, appData, logger, colors, interpreter
+    -- * Settings common for all interpreters
+  , Settings, root, appData, logger, colors, interpreter
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
@@ -36,13 +36,13 @@ import Biegunka.Language
 import Biegunka.Script
 
 
--- | Common interpreters controls
-data Controls a = Controls
+-- | Settings common for all interpreters and also specific for this one
+data Settings a = Settings
   { _root        :: FilePath    -- ^ Root path for 'Source' layer
   , _appData     :: FilePath    -- ^ Biegunka profile files path
   , _logger      :: Doc -> IO () -- ^ Logger channel
   , _colors      :: ColorScheme -- ^ Pretty printing
-  , _interpreter :: a
+  , _interpreter :: a           -- ^ Interpreter specific settings
   }
 
 data ColorScheme = ColorScheme
@@ -95,25 +95,25 @@ errorColor :: Lens' ColorScheme (Doc -> Doc)
 -- | Retry color
 retryColor :: Lens' ColorScheme (Doc -> Doc)
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Controls
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Settings
 
 -- | Root path for 'Source' layer
-root :: Lens' (Controls a) FilePath
+root :: Lens' (Settings a) FilePath
 
 -- | Biegunka profile files
-appData :: Lens' (Controls a) FilePath
+appData :: Lens' (Settings a) FilePath
 
 -- | Logger channel
-logger :: Lens' (Controls a) (Doc -> IO ())
+logger :: Lens' (Settings a) (Doc -> IO ())
 
 -- | Pretty printing
-colors :: Lens' (Controls a) ColorScheme
+colors :: Lens' (Settings a) ColorScheme
 
 -- | Interpreter controls
-interpreter :: Lens (Controls a) (Controls b) a b
+interpreter :: Lens (Settings a) (Settings b) a b
 
-instance Default a => Default (Controls a) where
-  def = Controls
+instance Default a => Default (Settings a) where
+  def = Settings
     { _root        = "/"
     , _appData     = "~/.biegunka"
     , _logger      = const (return ())
@@ -124,7 +124,7 @@ instance Default a => Default (Controls a) where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter :: Controls () -> Free (Term Annotate Profiles) () -> IO () -> IO ()
+  { runInterpreter :: Settings () -> Free (Term Annotate Profiles) () -> IO () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -138,12 +138,12 @@ instance Monoid Interpreter where
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
-interpret :: (Controls () -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
+interpret :: (Settings () -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
-biegunka :: (Controls () -> Controls ()) -- ^ User defined settings
+biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Interpreter                 -- ^ Combined interpreters
          -> Script Profiles ()          -- ^ Script to interpret
          -> IO ()

@@ -22,7 +22,7 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Biegunka.Control
-  ( Interpreter(..), Controls, interpret, logger
+  ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
   , sourceColor, srcColor, dstColor
   )
@@ -47,7 +47,7 @@ verify = check
 {-# DEPRECATED verify "Please, use `check'" #-}
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
-verification :: Controls () -> Free (Term Annotate s) () -> WriterT [Doc] IO ()
+verification :: Settings () -> Free (Term Annotate s) () -> WriterT [Doc] IO ()
 verification c (Free t) = do
   r <- liftIO (correct t `mplus` return False)
   if r then case t of
