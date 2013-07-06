@@ -145,7 +145,7 @@ instance Default Execution where
     , _mode        = Dry
     }
 
-
+-- | Both 'Executor' environment and synced multithread state
 data Run = Run
   { _sync      :: Sync
   , _execution :: Execution
