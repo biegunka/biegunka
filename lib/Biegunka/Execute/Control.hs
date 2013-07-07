@@ -6,7 +6,7 @@ module Biegunka.Execute.Control
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , Run, Sync, Execution
+  , Execution, Sync, Run
     -- * Lenses
   , sync, runs
   , work, running, sudoing, repos
