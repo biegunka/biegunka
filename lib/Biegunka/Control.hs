@@ -115,7 +115,7 @@ local :: Lens (Settings a) (Settings b) a b
 
 instance Default a => Default (Settings a) where
   def = Settings
-    { _root    = "/"
+    { _root    = "~"
     , _appData = "~/.biegunka"
     , _logger  = const (return ())
     , _colors  = def

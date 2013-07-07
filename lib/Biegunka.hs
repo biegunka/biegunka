@@ -11,7 +11,7 @@ module Biegunka
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
     -- * Execution environment hooks
-  , Execution
+  , Run
   , Priviledges(..), priviledges
   , React(..), react
   , Templates(..), templates
@@ -41,7 +41,7 @@ import Biegunka.Control
   )
 import Biegunka.Execute (run, execute, dryRun, pretend)
 import Biegunka.Execute.Control
-  ( Execution
+  ( Run
   , Priviledges(..), priviledges
   , react
   , Templates(..), templates
