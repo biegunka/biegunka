@@ -1,5 +1,4 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
 module Biegunka.Execute.Control
@@ -7,13 +6,15 @@ module Biegunka.Execute.Control
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
-  , Run, Execution, Sync
-  , priviledges, react, templates, retries
-  , work, running, sudoing, repos, mode
-  , initializeSTM
+  , Run, Sync, Execution
+    -- * Lenses
   , sync, execution
-    -- * Misc
-  , Templates(..), Priviledges(..), Work(..), Mode(..)
+  , work, running, sudoing, repos
+  , priviledges, react, templates, retries, mode
+    -- * Initializations
+  , initializeSTM
+    -- * Auxiliary types
+  , Work(..), Templates(..), Priviledges(..), Mode(..)
   ) where
 
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
@@ -65,6 +66,13 @@ usersStack :: Lens' TaskLocal [String]
 -- | Performed retries for task
 retryCount :: Lens' TaskLocal Int
 
+
+-- | Both 'Executor' environment and synced multithread state
+data Run = Run
+  { _sync      :: Sync
+  , _execution :: Execution
+  }
+
 -- | Multithread accessable parts of 'Execution'
 data Sync = Sync
   { _work    :: TQueue Work       -- ^ Task queue
@@ -77,6 +85,57 @@ data Sync = Sync
 data Work =
     Do Int (IO ()) -- ^ Task to come and its id
   | Stop Int       -- ^ Task with that id is done
+
+-- | 'Executor' environment.
+-- Denotes default failure reaction, templates used and more
+data Execution = Execution
+  { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
+  , _react       :: React       -- ^ How to react on failures
+  , _templates   :: Templates   -- ^ Templates mapping
+  , _retries     :: Int         -- ^ Maximum retries count
+  , _mode        :: Mode        -- ^ Executor mode
+  }
+
+instance Default Execution where
+  def = Execution
+    { _priviledges = def
+    , _react       = def
+    , _templates   = Templates ()
+    , _retries     = 1
+    , _mode        = Dry
+    }
+
+-- | Priviledges control.
+-- Controls how to behave if started with sudo
+data Priviledges =
+    Drop     -- ^ Drop priviledges
+  | Preserve -- ^ Preserve priviledges
+    deriving (Show, Read, Eq, Ord)
+
+instance Default Priviledges where
+  def = Drop
+
+-- | How to do execution
+data Mode =
+    Dry  -- ^ Dry run mode
+  | Real -- ^ Real run mode
+    deriving (Show, Read, Eq, Ord)
+
+-- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
+-- Existence of that wrapper is what made 'Default' instance possible
+data Templates = forall t. ToSElem t => Templates t
+
+
+-- * Lenses
+
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
+
+-- | Executor cross-thread state
+sync :: Lens' Run Sync
+
+-- | Executor environment
+execution :: Lens' Run Execution
+
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Sync
 
@@ -92,32 +151,6 @@ running :: Lens' Sync (TVar Bool)
 -- | Already updated repositories
 repos :: Lens' Sync (TVar (Set String))
 
--- | 'Executor' environment.
--- Denotes default failure reaction, templates used and more
-data Execution = Execution
-  { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
-  , _react       :: React       -- ^ How to react on failures
-  , _templates   :: Templates   -- ^ Templates mapping
-  , _retries     :: Int         -- ^ Maximum retries count
-  , _mode        :: Mode        -- ^ Executor mode
-  }
-
--- | Priviledges control.
--- Controls how to behave if started with sudo
-data Priviledges =
-    Drop     -- ^ Drop priviledges
-  | Preserve -- ^ Preserve priviledges
-    deriving (Show, Read, Eq, Ord)
-
--- | How to do execution
-data Mode =
-    Dry  -- ^ Dry run mode
-  | Real -- ^ Real run mode
-    deriving (Show, Read, Eq, Ord)
-
--- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
--- Existence of that wrapper is what made 'Default' instance possible
-data Templates = forall t. ToSElem t => Templates t
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
@@ -135,29 +168,6 @@ retries :: Lens' Execution Int
 
 -- | Executor mode
 mode :: Lens' Execution Mode
-
-instance Default Execution where
-  def = Execution
-    { _priviledges = Drop
-    , _react       = Ignorant
-    , _templates   = Templates ()
-    , _retries     = 1
-    , _mode        = Dry
-    }
-
--- | Both 'Executor' environment and synced multithread state
-data Run = Run
-  { _sync      :: Sync
-  , _execution :: Execution
-  }
-
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
-
--- | Executor cross-thread state
-sync :: Lens Run Run Sync Sync
-
--- | Executor environment
-execution :: Lens Run Run Execution Execution
 
 
 -- | Prepare 'Executor' environment to stm transactions

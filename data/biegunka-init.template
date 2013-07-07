@@ -4,7 +4,7 @@
 -- vi: set ft=haskell :
 import Biegunka            -- Import biegunka library primitives
 import Biegunka.Source.Git -- Import git support (most likely you will need it)
-import Control.Lens        -- Auxilliary functions, no need to know what 'lens' is
+import Control.Lens        -- Auxiliary functions, no need to know what 'lens' is
 
 
 -- Supported environments. Extend this if needed

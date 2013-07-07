@@ -15,6 +15,7 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
+import Data.Default (Default(..))
 import Data.Text.Lazy (Text)
 import System.Process (CmdSpec)
 import Text.StringTemplate (ToSElem)
@@ -100,3 +101,6 @@ data Modifier =
 -- | Failure reaction
 data React = Ignorant | Abortive | Retry
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
+instance Default React where
+  def = Ignorant
