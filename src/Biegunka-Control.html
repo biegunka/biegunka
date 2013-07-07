@@ -51,7 +51,7 @@
 <a name="line-42"></a>  <span class='hs-layout'>,</span> <span class='hs-sel'>_appData</span>     <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span>    <span class='hs-comment'>-- ^ Biegunka profile files path</span>
 <a name="line-43"></a>  <span class='hs-layout'>,</span> <span class='hs-sel'>_logger</span>      <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Doc</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span> <span class='hs-comment'>-- ^ Logger channel</span>
 <a name="line-44"></a>  <span class='hs-layout'>,</span> <span class='hs-sel'>_colors</span>      <span class='hs-keyglyph'>::</span> <span class='hs-conid'>ColorScheme</span> <span class='hs-comment'>-- ^ Pretty printing</span>
-<a name="line-45"></a>  <span class='hs-layout'>,</span> <span class='hs-sel'>_local</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span>                 <span class='hs-comment'>-- ^ Interpreter specific settings</span>
+<a name="line-45"></a>  <span class='hs-layout'>,</span> <span class='hs-sel'>_local</span>       <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span>          <span class='hs-comment'>-- ^ Interpreter specific settings</span>
 <a name="line-46"></a>  <span class='hs-layout'>}</span>
 <a name="line-47"></a>
 <a name="line-48"></a><a name="ColorScheme"></a><span class='hs-comment'>-- | Colors used in logger</span>
@@ -124,7 +124,7 @@
 <a name="line-115"></a>
 <a name="line-116"></a><a name="instance%20Default%20(Settings%20a)"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Default</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>Default</span> <span class='hs-layout'>(</span><span class='hs-conid'>Settings</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
 <a name="line-117"></a>  <span class='hs-varid'>def</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Settings</span>
-<a name="line-118"></a>    <span class='hs-layout'>{</span> <span class='hs-sel'>_root</span>    <span class='hs-keyglyph'>=</span> <span class='hs-str'>"/"</span>
+<a name="line-118"></a>    <span class='hs-layout'>{</span> <span class='hs-sel'>_root</span>    <span class='hs-keyglyph'>=</span> <span class='hs-str'>"~"</span>
 <a name="line-119"></a>    <span class='hs-layout'>,</span> <span class='hs-sel'>_appData</span> <span class='hs-keyglyph'>=</span> <span class='hs-str'>"~/.biegunka"</span>
 <a name="line-120"></a>    <span class='hs-layout'>,</span> <span class='hs-sel'>_logger</span>  <span class='hs-keyglyph'>=</span> <span class='hs-varid'>const</span> <span class='hs-layout'>(</span><span class='hs-varid'>return</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span>
 <a name="line-121"></a>    <span class='hs-layout'>,</span> <span class='hs-sel'>_colors</span>  <span class='hs-keyglyph'>=</span> <span class='hs-varid'>def</span>
