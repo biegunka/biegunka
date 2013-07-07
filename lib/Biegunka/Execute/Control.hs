@@ -138,7 +138,7 @@ mode :: Lens' Execution Mode
 
 instance Default Execution where
   def = Execution
-    { _priviledges = Preserve
+    { _priviledges = Drop
     , _react       = Ignorant
     , _templates   = Templates ()
     , _retries     = 1

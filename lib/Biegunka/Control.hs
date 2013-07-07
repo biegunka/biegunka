@@ -42,7 +42,7 @@ data Settings a = Settings
   , _appData     :: FilePath    -- ^ Biegunka profile files path
   , _logger      :: Doc -> IO () -- ^ Logger channel
   , _colors      :: ColorScheme -- ^ Pretty printing
-  , _local :: a                 -- ^ Interpreter specific settings
+  , _local       :: a          -- ^ Interpreter specific settings
   }
 
 -- | Colors used in logger
