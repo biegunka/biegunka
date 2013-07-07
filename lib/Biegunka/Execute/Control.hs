@@ -8,7 +8,7 @@ module Biegunka.Execute.Control
     -- * Executor environment
   , Run, Sync, Execution
     -- * Lenses
-  , sync, execution
+  , sync, runs
   , work, running, sudoing, repos
   , priviledges, react, templates, retries, mode
     -- * Initializations
@@ -68,9 +68,9 @@ retryCount :: Lens' TaskLocal Int
 
 
 -- | Both 'Executor' environment and synced multithread state
-data Run = Run
-  { _sync      :: Sync
-  , _execution :: Execution
+data Execution = Execution
+  { _sync :: Sync
+  , _runs :: Run
   }
 
 -- | Multithread accessable parts of 'Execution'
@@ -88,7 +88,7 @@ data Work =
 
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
-data Execution = Execution
+data Run = Run
   { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
   , _react       :: React       -- ^ How to react on failures
   , _templates   :: Templates   -- ^ Templates mapping
@@ -96,8 +96,8 @@ data Execution = Execution
   , _mode        :: Mode        -- ^ Executor mode
   }
 
-instance Default Execution where
-  def = Execution
+instance Default Run where
+  def = Run
     { _priviledges = def
     , _react       = def
     , _templates   = Templates ()
@@ -128,13 +128,13 @@ data Templates = forall t. ToSElem t => Templates t
 
 -- * Lenses
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 -- | Executor cross-thread state
-sync :: Lens' Run Sync
+sync :: Lens' Execution Sync
 
 -- | Executor environment
-execution :: Lens' Run Execution
+runs :: Lens' Execution Run
 
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Sync
@@ -152,37 +152,37 @@ running :: Lens' Sync (TVar Bool)
 repos :: Lens' Sync (TVar (Set String))
 
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
 
 -- | What to do with priviledges if ran in sudo
-priviledges :: Lens' Execution Priviledges
+priviledges :: Lens' Run Priviledges
 
 -- | How to react on failures
-react :: Lens' Execution React
+react :: Lens' Run React
 
 -- | Templates mapping
-templates :: Lens' Execution Templates
+templates :: Lens' Run Templates
 
 -- | Maximum retries count
-retries :: Lens' Execution Int
+retries :: Lens' Run Int
 
 -- | Executor mode
-mode :: Lens' Execution Mode
+mode :: Lens' Run Mode
 
 
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: Execution -> IO Run
-initializeSTM e = do
+initializeSTM :: Run -> IO Execution
+initializeSTM r = do
   a <- newTQueueIO
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
-  return $ Run
+  return $ Execution
     { _sync = Sync
         { _work = a
         , _running = b
         , _sudoing = c
         , _repos = d
         }
-    , _execution = e
+    , _runs = r
     }

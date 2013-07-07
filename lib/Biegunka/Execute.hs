@@ -55,7 +55,7 @@ import Biegunka.Script
 
 
 -- | Real run interpreter
-run :: (Execution -> Execution) -> Interpreter
+run :: (Run -> Run) -> Interpreter
 run e = interpret $ \c s -> do
   let b = construct s
   a <- load c s
@@ -70,13 +70,13 @@ run e = interpret $ \c s -> do
   save c b
 
 -- | Real run interpreter
-execute :: (Execution -> Execution) -> Interpreter
+execute :: (Run -> Run) -> Interpreter
 execute = run
 {-# DEPRECATED execute "Please, use `run'" #-}
 
-dropPriviledges :: Run -> IO ()
+dropPriviledges :: Execution -> IO ()
 dropPriviledges e =
-  case e^.execution.priviledges of
+  case e^.runs.priviledges of
     Drop     -> getEnv "SUDO_USER" >>= traverse_ setUser
     Preserve -> return ()
  where
@@ -106,7 +106,7 @@ pretend = dryRun
 -- Note: current thread continues to execute what's inside task, but all the other stuff is queued
 --
 -- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (Settings Run)
+task :: Reifies t (Settings Execution)
      => Free (Term Annotate s) a
      -> Executor t ()
 task (Free (TP _ _ b d)) = do
@@ -141,7 +141,7 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s (Settings Run)
+retry :: forall s. Reifies s (Settings Execution)
       => SomeException
       -> Executor s React
 retry exc = do
@@ -150,7 +150,7 @@ retry exc = do
       scm = e^.colors
   liftIO . log . termDescription $ exception scm exc
   rc <- retryCount <<%= (+1)
-  if rc < (reflect (Proxy :: Proxy s))^.local.execution.retries then do
+  if rc < (reflect (Proxy :: Proxy s))^.local.runs.retries then do
     liftIO . log . termDescription $ retryCounter scm (rc + 1)
     return Retry
   else do
@@ -160,12 +160,12 @@ retry exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s (Settings Run) => Executor s React
-reaction = head . (++ [(reflect (Proxy :: Proxy s))^.local.execution.react]) <$> use reactStack
+reaction :: forall s. Reifies s (Settings Execution) => Executor s React
+reaction = head . (++ [(reflect (Proxy :: Proxy s))^.local.runs.react]) <$> use reactStack
 
 
 -- | Single command execution
-command :: Reifies t (Settings Run)
+command :: Reifies t (Settings Execution)
         => Term Annotate s a
         -> Executor t ()
 command (TM (Reacting (Just r)) _) = reactStack %= (r :)
@@ -179,7 +179,7 @@ command c = do
       log = e^.logger
       scm = e^.colors
   xs <- use usersStack
-  op  <- case e^.local.execution.mode of
+  op  <- case e^.local.runs.mode of
           Dry  -> termEmptyOperation c
           Real -> termOperation c
   liftIO $ case xs of
@@ -201,7 +201,7 @@ command c = do
       setEffectiveUserID uid
       atomically $ writeTVar stv False
 
-termOperation :: Reifies t (Settings Run)
+termOperation :: Reifies t (Settings Execution)
               => Term Annotate s a
               -> Executor t (IO ())
 termOperation term = case term of
@@ -223,7 +223,7 @@ termOperation term = case term of
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
   TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- reflected <&> \e -> e^.local.execution.templates
+    Templates ts <- reflected <&> \e -> e^.local.runs.templates
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   TA _ (Command p sp) _ -> return $ do
@@ -249,13 +249,13 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation :: Reifies t (Settings Run)
+termEmptyOperation :: Reifies t (Settings Execution)
                    => Term Annotate s a
                    -> Executor t (IO ())
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (Settings Run)
+newTask :: forall a s t. Reifies t (Settings Execution)
         => Free (Term Annotate s) a
         -> Executor t ()
 newTask (Pure _) = return ()
