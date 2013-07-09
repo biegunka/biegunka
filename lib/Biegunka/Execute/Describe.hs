@@ -24,7 +24,7 @@ import Biegunka.Control
   , srcColor, dstColor
   , errorColor, retryColor
   )
-import Biegunka.DB (Biegunka, filepaths, sources)
+import Biegunka.DB (DB, filepaths, sources)
 import Biegunka.Language
 import Biegunka.Script
 
@@ -97,7 +97,7 @@ retryCounter sc n = (sc^.retryColor) "Retry" <//> colon </> text (show n)
 
 
 -- | Describe changes which will happen after the run
-runChanges :: ColorScheme -> Biegunka -> Biegunka -> Doc
+runChanges :: ColorScheme -> DB -> DB -> Doc
 runChanges sc a b = vcat $ empty : mapMaybe about
   [ ("added files",     map ((sc^.srcColor) . text) $ filepaths b \\ filepaths a)
   , ("added sources",   map ((sc^.dstColor) . text) $ sources b   \\ sources a)

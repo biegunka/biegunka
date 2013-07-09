@@ -67,7 +67,7 @@ run e = interpret $ \c (s, as) -> do
   schedule (c'^.local.sync.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
-  save c b
+  save c (as^.profiles) b
 
 -- | Real run interpreter
 execute :: (Run -> Run) -> Interpreter

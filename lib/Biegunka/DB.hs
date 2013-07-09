@@ -28,10 +28,10 @@ import qualified Data.ByteString.Lazy as BL
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 706
 import           Data.ByteString.Lazy (fromStrict)
 #endif
-import           Data.Foldable (toList)
+import           Data.Foldable (for_, toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           Data.Set (Set)
+import           Data.Set (Set, (\\))
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
@@ -111,21 +111,27 @@ loads _ [] = return []
 --
 -- For example, profile @dotfiles@ is located in @~\/.biegunka\/dotfiles@ by default
 -- and profile @my\/dotfiles@ is located in @~\/.biegunka.my\/dotfiles@ by default.
-save :: Settings () -> DB -> IO ()
-save c (DB b) = do
-  createDirectoryIfMissing False (view appData c)
+save :: Settings () -> Set String -> DB -> IO ()
+save c ps (DB b) = do
+  -- | Create app data directory if it's missing
+  createDirectoryIfMissing False (c^.appData)
   ifor_ b $ \p sourceData -> do
     let name = profileFilePath c p
-        dir = view directory name
-        dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
-    if M.null sourceData then do
-      removeFile name            -- Since profile is empty no need having crap in the filesystem
-      mapM_ removeDirectory dirs -- Also remove empty directories if possible
-     `mplus`
-      return ()                  -- Ignore failures, they are not critical in any way here
-    else do
-      createDirectoryIfMissing True dir      -- Create missing directories for nested profile files
-      BL.writeFile name $ encode' sourceData -- Finally encode profile as JSON
+    -- Create missing directories for nested profile files
+    createDirectoryIfMissing True (name^.directory)
+    -- Finally encode profile as JSON
+    BL.writeFile name $ encode' sourceData
+  -- These profiles are mentioned in script but they do not exist
+  -- in DB. That means they should be deleted
+  for_ (ps \\ M.keysSet b) $ \p -> do
+    let name = profileFilePath c p
+        dirs = name^..directory.takingWhile (/= c^.appData) (iterated (^.directory))
+    removeFile name
+    -- Also remove empty directories if possible
+    mapM_ removeDirectory dirs
+   `mplus`
+    -- Ignore failures, they are not critical in any way here
+    return ()
  where
   encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
   unparser t  = object [             "sources" .= map repo   (M.toList t)]
