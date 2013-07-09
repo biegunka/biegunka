@@ -45,13 +45,9 @@ infixr 7 `chain`, <~>
 -- >     ...
 profile :: String -> Script Sources () -> Script Sources ()
 profile name inner = do
-  p <- Script $ do
-    p <- use profileName
-    profileName .= p </> name
-    return p
+  p <- Script $ profileName <<%= (</> name)
   inner
-  Script $
-    profileName .= p
+  Script $ profileName .= p
 {-# INLINE profile #-}
 
 -- | Alias for 'profile'. May be useful for nested grouping

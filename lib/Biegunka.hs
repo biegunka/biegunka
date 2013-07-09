@@ -16,14 +16,13 @@ module Biegunka
   , React(..), react
   , Templates(..), templates
   , retries
-    -- * Profiles layer primitives
-  , profile
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, substitute
   , shell, raw
     -- * Modifiers
+  , profile, group
   , sudo, reacting, chain, (<~>)
     -- * Types
   , Script, Scope(..)

@@ -175,23 +175,21 @@ fromStrict = BL.fromChunks . return
 
 
 -- | Extract terms data from script
-construct :: Free (Term Annotate s) a -> Biegunka
+construct :: Free (Term Annotate Sources) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (Term Annotate s) a -> State Construct ()
-  go (Free (TS (AS { asProfile }) (Source t u d _) i z)) = do
-    biegunka . at asProfile . anon mempty (const False) <>= mempty
-    assign profile asProfile
+  go (Free (TS (AS { asProfile = p }) (Source t u d _) i z)) = do
     let s = R { recordtype = t, base = u, location = d }
-    n <- use profile
+    biegunka . at p . non mempty <>= M.singleton s mempty
+    assign profile p
     assign source s
-    biegunka . at n . non mempty <>= M.singleton s mempty
     go i
     go z
   go (Free (TA _ a z)) = do
-    n <- use profile
+    p <- use profile
     s <- use source
-    biegunka . at n . traverse . at s . traverse <>= h a
+    biegunka . at p . traverse . at s . traverse <>= h a
     go z
    where
     h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
