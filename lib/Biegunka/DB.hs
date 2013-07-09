@@ -36,7 +36,8 @@ import           Data.Set (Set)
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
-import           System.FilePath.Lens
+import           System.FilePath ((</>), (<.>))
+import           System.FilePath.Lens (directory)
 
 import Biegunka.Control (Settings, appData)
 import Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
@@ -110,7 +111,7 @@ load c = fmap (Biegunka . M.fromList) . loads c . toList
 --  * Cannot parse profile file (wrong format)
 loads :: Settings () -> [String] -> IO [(String, Map R (Map FilePath R))]
 loads c (p:ps) = do
-  let (name, _) = c & appData </>~ p & appData <<.>~ "profile"
+  let name = profileFilePath c p
   Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
   (v:) <$> loads c ps
  `mplus`
@@ -137,7 +138,7 @@ save :: Settings () -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
   ifor_ b $ \p sourceData -> do
-    let (name, _) = c & appData </>~ p & appData <<.>~ "profile" -- Map profile to file name
+    let name = profileFilePath c p
         dir = view directory name
         dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
     if M.null sourceData then do
@@ -154,10 +155,23 @@ save c (Biegunka b) = do
   repo (k, v) = object ["info" .= k, "files"   .= map toJSON (M.toList v)]
 
 
+-- | Compute profiles' filepaths with current settings
+--
+-- >>> let settings = def :: Settings ()
+--
+-- >>> profileFilePath settings ""
+-- "~/.biegunka/profiles/.profile"
+--
+-- >>> profileFilePath settings "dotfiles"
+-- "~/.biegunka/profiles/dotfiles.profile"
+profileFilePath :: Settings a -> String -> FilePath
+profileFilePath settings name =
+  settings^.appData.to (\app -> app </> "profiles" </> name <.> "profile")
+
+
 -- | All destination files paths
 filepaths :: Biegunka -> [FilePath]
 filepaths = M.keys <=< M.elems <=< M.elems . unBiegunka
-
 
 -- | All sources paths
 sources :: Biegunka -> [FilePath]
