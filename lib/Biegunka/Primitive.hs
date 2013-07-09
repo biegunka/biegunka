@@ -2,7 +2,7 @@
 -- | Language primitives
 module Biegunka.Primitive
   ( -- * Profile layer primitives
-    profile
+    profile, group
     -- * Actions layer primitives
   , link, register, copy, substitute
   , shell, raw
@@ -14,7 +14,6 @@ import Data.Monoid (mempty)
 
 import Control.Lens
 import Control.Monad.State
-import Control.Monad.Free (liftF)
 import System.FilePath ((</>))
 import System.Process (CmdSpec(..))
 import Text.StringTemplate (newSTMP, render, setAttribute)
@@ -26,7 +25,7 @@ import Biegunka.Script
 infixr 7 `chain`, <~>
 
 
--- | Provides convenient 'Sources' grouping. Does not nest
+-- | Provides convenient 'Sources' grouping. Does nest
 --
 -- Information about sources and files related to a particular
 -- profile @profile@ could be found in @~\/.biegunka\/profile@.
@@ -35,17 +34,30 @@ infixr 7 `chain`, <~>
 -- Example usage:
 --
 -- > profile "dotfiles" $ do
--- >   git "https://github.com/supki/.dotfiles" ...
--- >   git "https://github.com/dmalikov/dotfiles"
+-- >   group "mine" $
+-- >     git "https://github.com/supki/.dotfiles"
+-- >       ...
+-- >   group "not-mine" $
+-- >     git "https://github.com/dmalikov/dotfiles"
+-- >       ...
 -- > profile "experimental" $ do
--- >   git "https://github.com/ekmett/lens" ...
-profile :: String -> Script Sources () -> Script Profiles ()
-profile name inner = Script $ do
-  tok <- use token
-  ast <- annotate inner
-  lift . liftF $ TP (AP { apToken = tok }) (Profile name) ast ()
-  token += 1
+-- >   git "https://github.com/ekmett/lens"
+-- >     ...
+profile :: String -> Script Sources () -> Script Sources ()
+profile name inner = do
+  p <- Script $ do
+    p <- use profileName
+    profileName .= p </> name
+    return p
+  inner
+  Script $
+    profileName .= p
 {-# INLINE profile #-}
+
+-- | Alias for 'profile'. May be useful for nested grouping
+group :: String -> Script Sources () -> Script Sources ()
+group = profile
+{-# INLINE group #-}
 
 -- | Links source to specified filepath
 --

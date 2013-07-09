@@ -51,7 +51,6 @@ verification :: Settings () -> Free (Term Annotate s) () -> WriterT [Doc] IO ()
 verification c (Free t) = do
   r <- liftIO (correct t `mplus` return False)
   if r then case t of
-    TP _ _ i _ -> verification c i
     TS _ _ i _ -> verification c i
     _ -> return ()
   else

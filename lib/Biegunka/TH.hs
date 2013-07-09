@@ -13,7 +13,7 @@ import Options.Applicative
 import Biegunka.Control (Settings, biegunka, confirm)
 import Biegunka.Execute (run, dryRun)
 import Biegunka.Execute.Control (Run)
-import Biegunka.Language (Scope(Profiles))
+import Biegunka.Language (Scope(Sources))
 import Biegunka.Script (Script)
 import Biegunka.Verify (check)
 
@@ -50,7 +50,7 @@ makeOptionsParser name = do
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (Run -> Run) -> Script Profiles () -> IO ())
+        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (Run -> Run) -> Script Sources () -> IO ())
         optionsParser = customExecParser (prefs showHelpOnError) opts
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc

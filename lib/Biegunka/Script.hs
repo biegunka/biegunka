@@ -7,7 +7,7 @@
 module Biegunka.Script
   ( Script(..), Annotating, Annotate(..)
   , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, source, sourceURL, order
+  , token, app, profileName, source, sourceURL, order
   , runScript, evalScript
   ) where
 
@@ -27,8 +27,7 @@ import Biegunka.Language
 
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
-data instance Annotate Profiles = AP { apToken :: Int }
-data instance Annotate Sources  = AS { asToken :: Int }
+data instance Annotate Sources  = AS { asToken :: Int, asProfile :: String }
 data instance Annotate Actions  = AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int }
 
 
@@ -72,18 +71,20 @@ type URI = String
 
 -- | Script construction state
 data Annotating = Annotating
-  { _token :: Int       -- ^ Unique term token
-  , _app :: FilePath    -- ^ Biegunka root filepath
-  , _source :: FilePath -- ^ Source root filepath
-  , _sourceURL :: URI   -- ^ Current source url
-  , _order :: Int       -- ^ Current action order
-  , _maxOrder :: Int    -- ^ Maximum action order in current source
+  { _token :: Int          -- ^ Unique term token
+  , _app :: FilePath       -- ^ Biegunka root filepath
+  , _profileName :: String -- ^ Profile name
+  , _source :: FilePath    -- ^ Source root filepath
+  , _sourceURL :: URI      -- ^ Current source url
+  , _order :: Int          -- ^ Current action order
+  , _maxOrder :: Int       -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
 instance Default Annotating where
   def = Annotating
     { _token = 0
     , _app = ""
+    , _profileName = ""
     , _source = ""
     , _sourceURL = ""
     , _order = 0
@@ -97,6 +98,9 @@ token :: Lens' Annotating Int
 
 -- | Biegunka filepath root
 app :: Lens' Annotating FilePath
+
+-- | Current profile name
+profileName :: Lens' Annotating String
 
 -- | Current source filepath
 source :: Lens' Annotating FilePath
@@ -143,8 +147,9 @@ sourced ty url path inner update = Script $ do
   sourceURL .= url
   order .= 0
   maxOrder .= size inner
+  p <- use profileName
   ast <- annotate inner
-  lift . liftF $ TS (AS { asToken = tok }) (Source ty url df update) ast ()
+  lift . liftF $ TS (AS { asToken = tok, asProfile = p }) (Source ty url df update) ast ()
   token += 1
 
 -- | 'Actions' scope script size (in actual actions)

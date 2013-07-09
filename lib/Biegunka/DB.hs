@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -36,7 +37,7 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath.Lens
 
 import Biegunka.Control (Settings, appData)
-import Biegunka.Language (Scope(..), Term(..), Profile(..), Source(..), Action(..))
+import Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Biegunka.Script (Annotate(..))
 
 
@@ -92,11 +93,11 @@ biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
 
 
 -- | Load profiles mentioned in script
-load :: Settings () -> Free (Term Annotate Profiles) a -> IO Biegunka
+load :: Settings () -> Free (Term Annotate Sources) a -> IO Biegunka
 load c = fmap (Biegunka . M.fromList) . loads c . profiles
  where
-  profiles :: Free (Term Annotate Profiles) a -> [String]
-  profiles (Free (TP _ (Profile n) _ x)) = n : profiles x
+  profiles :: Free (Term Annotate Sources) a -> [String]
+  profiles (Free (TS (AS { asProfile }) _ _ x)) = asProfile : profiles x
   profiles (Free (TM _ x)) = profiles x
   profiles (Pure _) = []
 
@@ -178,12 +179,9 @@ construct :: Free (Term Annotate s) a -> Biegunka
 construct = Biegunka . _biegunka . (`execState` def) . go
  where
   go :: Free (Term Annotate s) a -> State Construct ()
-  go (Free (TP _ (Profile n) i z)) = do
-    biegunka . at n . anon mempty (const False) <>= mempty
-    assign profile n
-    go i
-    go z
-  go (Free (TS _ (Source t u d _) i z)) = do
+  go (Free (TS (AS { asProfile }) (Source t u d _) i z)) = do
+    biegunka . at asProfile . anon mempty (const False) <>= mempty
+    assign profile asProfile
     let s = R { recordtype = t, base = u, location = d }
     n <- use profile
     assign source s

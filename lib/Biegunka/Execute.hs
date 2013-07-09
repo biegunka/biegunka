@@ -109,9 +109,6 @@ pretend = dryRun
 task :: Reifies t (Settings Execution)
      => Free (Term Annotate s) a
      -> Executor t ()
-task (Free (TP _ _ b d)) = do
-  newTask d
-  task b
 task (Free c@(TS _ _ b d)) = do
   newTask d
   try (command c) >>= \e -> case e of
@@ -263,7 +260,6 @@ newTask t = do
   e <- reflected
   s <- get
   let i = case t of
-            Free (TP (AP { apToken }) _ _ _) -> apToken
             Free (TS (AS { asToken }) _ _ _) -> asToken
             _ -> error "???"
   liftIO . atomically . writeTQueue (e^.local.sync.work) $

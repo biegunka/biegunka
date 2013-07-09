@@ -5,7 +5,7 @@
 -- | Specifies configuration language
 module Biegunka.Language
   ( Scope(..)
-  , Term(..), Action(..), Source(..), Profile(..), Modifier(..)
+  , Term(..), Action(..), Source(..), Modifier(..)
   , React(..)
   ) where
 
@@ -23,7 +23,7 @@ import Text.StringTemplate.GenericStandard ()
 
 
 -- | Language terms scopes [kind]
-data Scope = Actions | Sources | Profiles
+data Scope = Actions | Sources
 
 
 -- | Language terms datatype.
@@ -36,7 +36,6 @@ data Scope = Actions | Sources | Profiles
 -- Consists of 3 scopes ('Actions' scope, 'Sources' scope, and 'Profiles' scope)
 -- and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
-  TP :: f Profiles -> Profile -> Free (Term f Sources) () -> x -> Term f Profiles x
   TS :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
   TA :: f Actions -> Action -> x -> Term f Actions x
   TM :: Modifier -> x -> Term f s x
@@ -50,7 +49,6 @@ instance Foldable (Term f s) where
   {-# INLINE foldMap #-}
 
 instance Traversable (Term f s) where
-  traverse f (TP a p i x) = TP a p i <$> f x
   traverse f (TS a s i x) = TS a s i <$> f x
   traverse f (TA a z   x) = TA a z   <$> f x
   traverse f (TM   w   x) = TM   w   <$> f x
@@ -58,16 +56,9 @@ instance Traversable (Term f s) where
 
 -- | Peek next 'Term'
 instance Copointed (Term f s) where
-  copoint (TP _ _ _ x) = x
   copoint (TS _ _ _ x) = x
   copoint (TA _ _   x) = x
   copoint (TM   _   x) = x
-
-
--- | 'Profiles' scope datatype
-newtype Profile = Profile
-  { pname :: String -- ^ name
-  } deriving (Show, Read, Eq, Ord)
 
 -- | 'Sources' scope data
 data Source = Source {

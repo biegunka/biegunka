@@ -125,7 +125,7 @@ instance Default a => Default (Settings a) where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter :: Settings () -> Free (Term Annotate Profiles) () -> IO () -> IO ()
+  { runInterpreter :: Settings () -> Free (Term Annotate Sources) () -> IO () -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -139,14 +139,14 @@ instance Monoid Interpreter where
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
-interpret :: (Settings () -> Free (Term Annotate Profiles) () -> IO ()) -> Interpreter
+interpret :: (Settings () -> Free (Term Annotate Sources) () -> IO ()) -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
 biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Interpreter                 -- ^ Combined interpreters
-         -> Script Profiles ()          -- ^ Script to interpret
+         -> Script Sources ()           -- ^ Script to interpret
          -> IO ()
 biegunka (($ def) -> c) (I f) s = do
   r  <- c^.root.to expand

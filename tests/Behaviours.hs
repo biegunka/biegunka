@@ -25,13 +25,13 @@ main = do
       it "should disappear after deletion" $ null ds
 
 
-resultsIn :: Script Profiles () -> Layout -> IO [LayoutException]
+resultsIn :: Script Sources () -> Layout -> IO [LayoutException]
 resultsIn s l = do
   biegunka (set root "/tmp") (run id) s
   check l "/tmp"
 
 
-trivial_script :: Script Profiles ()
+trivial_script :: Script Sources ()
 trivial_script = return ()
 
 
@@ -39,11 +39,11 @@ trivial_layout :: Layout
 trivial_layout = return ()
 
 
-trivial_repo :: String -> Script Profiles ()
+trivial_repo :: String -> Script Sources ()
 trivial_repo p = profile p $ return ()
 
 
-simple_repo_0 :: Script Profiles ()
+simple_repo_0 :: Script Sources ()
 simple_repo_0 =
   profile "biegunka-core-simple0" $
     dummy l "tmp/biegunka-core-simple0" $
