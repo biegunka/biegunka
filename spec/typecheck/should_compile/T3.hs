@@ -10,12 +10,6 @@ import Biegunka.Source.Git
 main :: IO ()
 main = return ()
 
-profiles :: Script Profiles ()
-profiles =
-  sudo "nobody" $
-    profile "name" $
-      return ()
-
 sources :: Script Sources ()
 sources =
   sudo "nobody" $

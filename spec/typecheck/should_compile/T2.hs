@@ -1,7 +1,7 @@
 -- |
 -- Basic sanity check
 --
--- Checks you /can/ have script with Sources under several Profiles
+-- Checks you /can/ have script with Sources under several profiles
 module Main where
 
 import Biegunka
