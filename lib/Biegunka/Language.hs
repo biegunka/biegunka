@@ -29,12 +29,11 @@ data Scope = Actions | Sources
 -- | Language terms datatype.
 --
 -- "Biegunka.Primitive" contains DSL primitives constructed
--- using these terms.
+-- using these terms (and annotations).
 --
--- User should never have a need to construct any DSL term using these manually.
+-- User should *never* have a need to construct any DSL term using these manually.
 --
--- Consists of 3 scopes ('Actions' scope, 'Sources' scope, and 'Profiles' scope)
--- and also scope-agnostic modifiers.
+-- Consists of 2 scopes ('Actions' and 'Sources') and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
   TS :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
   TA :: f Actions -> Action -> x -> Term f Actions x
@@ -60,7 +59,7 @@ instance Copointed (Term f s) where
   copoint (TA _ _   x) = x
   copoint (TM   _   x) = x
 
--- | 'Sources' scope data
+-- | 'Sources' scope terms data
 data Source = Source {
   -- | Source type
     stype :: String
@@ -72,7 +71,7 @@ data Source = Source {
   , supdate :: FilePath -> IO ()
   }
 
--- | 'Actions' scope datatype
+-- | 'Actions' scope terms data
 data Action =
     -- | Symbolic link
     Link FilePath FilePath

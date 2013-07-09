@@ -1,12 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 -- | Language primitives
+--
+-- Containts 'Actions' layer primitive and modifiers.
+-- 'Sources' layer primitives are found in 'Biegunka.Source.*' modules
 module Biegunka.Primitive
-  ( -- * Profile layer primitives
-    profile, group
-    -- * Actions layer primitives
-  , link, register, copy, substitute
+  ( -- * Actions layer primitives
+    link, register, copy, substitute
   , shell, raw
     -- * Modifiers
+  , profile, group
   , sudo, reacting, chain, (<~>)
   ) where
 
@@ -26,10 +28,10 @@ import Biegunka.Script
 infixr 7 `chain`, <~>
 
 
--- | Provides convenient 'Sources' grouping. Does nest
+-- | Provides convenient 'Sources' grouping. May be nested
 --
 -- Information about sources and files related to a particular
--- profile @profile@ could be found in @~\/.biegunka\/profile@.
+-- profile @profile@ could be found in @~\/.biegunka\/profiles\/@.
 -- (Assuming default settings.)
 --
 -- Example usage:

@@ -48,7 +48,7 @@ newtype DB = DB
   { _db :: Map String (Map Record (Map FilePath Record))
   } deriving (Show, Read, Eq, Ord, Monoid)
 
--- | Source record
+-- | File record
 data Record = Record
   { recordtype :: String
   , base :: FilePath
@@ -68,7 +68,7 @@ instance ToJSON Record where
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 
--- | Already constructed mapping
+-- | Profiles data
 db :: Lens' DB (Map String (Map Record (Map FilePath Record)))
 
 
@@ -76,16 +76,7 @@ db :: Lens' DB (Map String (Map Record (Map FilePath Record)))
 load :: Settings () -> Set String -> IO DB
 load c = fmap (DB . M.fromList) . loads c . toList
 
-
--- | Load profile data from file
---
--- This may fail, on failure 'loadProfile' returns Nothing
---
--- Reasons to fail:
---
---  * Cannot read from profile file (various reasons here)
---
---  * Cannot parse profile file (wrong format)
+-- | Load profile data from disk
 loads :: Settings () -> [String] -> IO [(String, Map Record (Map FilePath Record))]
 loads c (p:ps) = do
   let name = profileFilePath c p
@@ -106,23 +97,19 @@ loads _ [] = return []
 
 -- | Save profiles data to files.
 --
--- Each profile is mapped to a separate file in 'appData' directory.
--- Mapping rules are simple: profile name is a relative path in 'appData'.
---
--- For example, profile @dotfiles@ is located in @~\/.biegunka\/dotfiles@ by default
--- and profile @my\/dotfiles@ is located in @~\/.biegunka.my\/dotfiles@ by default.
+-- Each profile is mapped to a separate file in the 'appData' directory.
 save :: Settings () -> Set String -> DB -> IO ()
 save c ps (DB b) = do
-  -- | Create app data directory if it's missing
+  -- Create app data directory if it's missing
   createDirectoryIfMissing False (c^.appData)
+  -- Save profiles new data
   ifor_ b $ \p sourceData -> do
     let name = profileFilePath c p
     -- Create missing directories for nested profile files
     createDirectoryIfMissing True (name^.directory)
     -- Finally encode profile as JSON
     BL.writeFile name $ encode' sourceData
-  -- These profiles are mentioned in script but they do not exist
-  -- in DB. That means they should be deleted
+  -- Remove mentioned but empty profiles data
   for_ (ps \\ M.keysSet b) $ \p -> do
     let name = profileFilePath c p
         dirs = name^..directory.takingWhile (/= c^.appData) (iterated (^.directory))
