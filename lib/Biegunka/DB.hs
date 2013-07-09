@@ -8,7 +8,7 @@
 {-# LANGUAGE TupleSections #-}
 -- | Saved profiles data management
 module Biegunka.DB
-  ( Biegunka(..), R(..)
+  ( DB(..), Record(..)
   , load, loads, save, construct
   , filepaths, sources
   ) where
@@ -28,7 +28,6 @@ import qualified Data.ByteString.Lazy as BL
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 706
 import           Data.ByteString.Lazy (fromStrict)
 #endif
-import           Data.Default
 import           Data.Foldable (toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -45,59 +44,37 @@ import Biegunka.Script (Annotate(..))
 
 
 -- | Profiles data
-newtype Biegunka = Biegunka
-  { unBiegunka :: Map String (Map R (Map FilePath R))
+newtype DB = DB
+  { _db :: Map String (Map Record (Map FilePath Record))
   } deriving (Show, Read, Eq, Ord, Monoid)
 
-
 -- | Source record
-data R = R
+data Record = Record
   { recordtype :: String
   , base :: FilePath
   , location :: FilePath
   } deriving (Show, Read, Eq, Ord)
 
-instance FromJSON R where
-  parseJSON (Object o) = liftA3 R (o .: "recordtype") (o .: "base") (o .: "location")
+instance FromJSON Record where
+  parseJSON (Object o) = liftA3 Record (o .: "recordtype") (o .: "base") (o .: "location")
   parseJSON _          = empty
 
-instance ToJSON R where
-  toJSON R { recordtype = ft, base = bs, location = lc } = object
+instance ToJSON Record where
+  toJSON Record { recordtype = ft, base = bs, location = lc } = object
     [ "recordtype" .= ft
     , "base" .= bs
     , "location" .= lc
     ]
 
-
--- | Profiles data construction state
-data Construct = Construct
-  { _profile :: String                               -- ^ Current profile
-  , _source :: R                                     -- ^ Current source
-  , _biegunka :: Map String (Map R (Map FilePath R)) -- ^ Already constructed mapping
-  } deriving (Show, Read, Eq, Ord)
-
-instance Default Construct where
-  def = Construct
-    { _profile  = mempty
-    , _source   = (R "" "" "")
-    , _biegunka = mempty
-    }
-
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Construct
-
--- | Current profile
-profile :: Lens' Construct String
-
--- | Current source
-source :: Lens' Construct R
+makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 
 -- | Already constructed mapping
-biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
+db :: Lens' DB (Map String (Map Record (Map FilePath Record)))
 
 
 -- | Load profiles mentioned in script
-load :: Settings () -> Set String -> IO Biegunka
-load c = fmap (Biegunka . M.fromList) . loads c . toList
+load :: Settings () -> Set String -> IO DB
+load c = fmap (DB . M.fromList) . loads c . toList
 
 
 -- | Load profile data from file
@@ -109,7 +86,7 @@ load c = fmap (Biegunka . M.fromList) . loads c . toList
 --  * Cannot read from profile file (various reasons here)
 --
 --  * Cannot parse profile file (wrong format)
-loads :: Settings () -> [String] -> IO [(String, Map R (Map FilePath R))]
+loads :: Settings () -> [String] -> IO [(String, Map Record (Map FilePath Record))]
 loads c (p:ps) = do
   let name = profileFilePath c p
   Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
@@ -134,8 +111,8 @@ loads _ [] = return []
 --
 -- For example, profile @dotfiles@ is located in @~\/.biegunka\/dotfiles@ by default
 -- and profile @my\/dotfiles@ is located in @~\/.biegunka.my\/dotfiles@ by default.
-save :: Settings () -> Biegunka -> IO ()
-save c (Biegunka b) = do
+save :: Settings () -> DB -> IO ()
+save c (DB b) = do
   createDirectoryIfMissing False (view appData c)
   ifor_ b $ \p sourceData -> do
     let name = profileFilePath c p
@@ -170,12 +147,12 @@ profileFilePath settings name =
 
 
 -- | All destination files paths
-filepaths :: Biegunka -> [FilePath]
-filepaths = M.keys <=< M.elems <=< M.elems . unBiegunka
+filepaths :: DB -> [FilePath]
+filepaths = M.keys <=< M.elems <=< M.elems . view db
 
 -- | All sources paths
-sources :: Biegunka -> [FilePath]
-sources = map location . M.keys <=< M.elems . unBiegunka
+sources :: DB -> [FilePath]
+sources = map location . M.keys <=< M.elems . view db
 
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
@@ -186,25 +163,26 @@ fromStrict = BL.fromChunks . return
 
 
 -- | Extract terms data from script
-construct :: Free (Term Annotate Sources) a -> Biegunka
-construct = Biegunka . _biegunka . (`execState` def) . go
+construct :: Free (Term Annotate Sources) a -> DB
+construct z = execState (f z) mempty
  where
-  go :: Free (Term Annotate s) a -> State Construct ()
-  go (Free (TS (AS { asProfile = p }) (Source t u d _) i z)) = do
-    let s = R { recordtype = t, base = u, location = d }
-    biegunka . at p . non mempty <>= M.singleton s mempty
-    assign profile p
-    assign source s
-    go i
-    go z
-  go (Free (TA _ a z)) = do
-    p <- use profile
-    s <- use source
-    biegunka . at p . traverse . at s . traverse <>= h a
-    go z
+  f :: Free (Term Annotate Sources) a -> State DB ()
+  f (Free (TS (AS { asProfile = p }) (Source t u d _) i x)) = do
+    let s = Record { recordtype = t, base = u, location = d }
+    db . at p . non mempty <>= M.singleton s mempty
+    g p s i
+    f x
+  f (Free (TM _ x)) = f x
+  f (Pure _) = return ()
+
+  g :: String -> Record -> Free (Term Annotate Actions) a -> State DB ()
+  g p s (Free (TA _ a x)) = do
+    db . at p . traverse . at s . traverse <>= h a
+    g p s x
    where
-    h (Link src dst)       = M.singleton dst R { recordtype = "link",       base = src, location = dst }
-    h (Copy src dst)       = M.singleton dst R { recordtype = "copy",       base = src, location = dst }
-    h (Template src dst _) = M.singleton dst R { recordtype = "template",   base = src, location = dst }
-    h (Command {})           = mempty
-  go _ = return ()
+    h (Link src dst)       = M.singleton dst Record { recordtype = "link",     base = src, location = dst }
+    h (Copy src dst)       = M.singleton dst Record { recordtype = "copy",     base = src, location = dst }
+    h (Template src dst _) = M.singleton dst Record { recordtype = "template", base = src, location = dst }
+    h (Command {})         = mempty
+  g p s (Free (TM _ x)) = g p s x
+  g _ _ (Pure _) = return ()
