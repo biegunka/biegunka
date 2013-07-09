@@ -15,6 +15,7 @@ import Data.Monoid (mempty)
 import Control.Lens
 import Control.Monad.State
 import System.FilePath ((</>))
+import System.FilePath.Lens ((<</>=))
 import System.Process (CmdSpec(..))
 import Text.StringTemplate (newSTMP, render, setAttribute)
 
@@ -45,7 +46,11 @@ infixr 7 `chain`, <~>
 -- >     ...
 profile :: String -> Script Sources () -> Script Sources ()
 profile name inner = do
-  p <- Script $ profileName <<%= (</> name)
+  p <- Script $ do
+    p  <- use profileName
+    p' <- profileName <</>= name
+    profiles . contains p' .= True
+    return p
   inner
   Script $ profileName .= p
 {-# INLINE profile #-}

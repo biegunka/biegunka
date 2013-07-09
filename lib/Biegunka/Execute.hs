@@ -56,9 +56,9 @@ import Biegunka.Script
 
 -- | Real run interpreter
 run :: (Run -> Run) -> Interpreter
-run e = interpret $ \c s -> do
+run e = interpret $ \c (s, as) -> do
   let b = construct s
-  a <- load c s
+  a <- load c (as^.profiles)
   r <- initializeSTM ((e $ def) & mode.~Real)
   let c' = c & local.~r
   dropPriviledges r
@@ -84,9 +84,9 @@ dropPriviledges e =
 
 -- | Dru run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \c s -> do
+dryRun = interpret $ \c (s, as) -> do
   let b = construct s
-  a <- load c s
+  a <- load c (as^.profiles)
   e <- initializeSTM def
   let c' = c & local.~e
   runTask c' def newTask s

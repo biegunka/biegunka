@@ -5,22 +5,24 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 module Biegunka.Script
-  ( Script(..), Annotating, Annotate(..)
+  ( Script(..), Annotations, Annotate(..)
   , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, profileName, source, sourceURL, order
-  , runScript, evalScript
+  , token, app, profiles, profileName, source, sourceURL, order
+  , runScript, runScript', evalScript
   ) where
 
-import Control.Applicative (Applicative(..))
+import Control.Applicative (Applicative(..), (<$))
 import Control.Monad (when)
 import Data.List (isSuffixOf)
 
-import Control.Lens hiding (Action)
-import Control.Monad.Free (Free(..), iter, liftF)
-import Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
-import Data.Default (Default(..))
-import Data.Copointed (copoint)
-import System.FilePath.Lens
+import           Control.Lens hiding (Action)
+import           Control.Monad.Free (Free(..), iter, liftF)
+import           Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
+import           Data.Default (Default(..))
+import           Data.Copointed (copoint)
+import           Data.Set (Set)
+import qualified Data.Set as S
+import           System.FilePath.Lens
 
 import Biegunka.Language
 
@@ -33,7 +35,7 @@ data instance Annotate Actions  = AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder 
 
 -- | Newtype used to provide better error messages for type errors in DSL
 newtype Script s a = Script
-  { unScript :: StateT Annotating (Free (Term Annotate s)) a
+  { unScript :: StateT Annotations (Free (Term Annotate s)) a
   }
 
 instance Functor (Script s) where
@@ -57,12 +59,20 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: Annotating -> Script s a -> Free (Term Annotate s) (a, Annotating)
-runScript s = (`runStateT` s) . unScript
+runScript :: Annotations -> Script s a -> Free (Term Annotate s) (a, Annotations)
+runScript as (Script s) = runStateT s as
 {-# INLINE runScript #-}
 
+-- | Get DSL and resulting state from 'Script'
+runScript' :: Annotations -> Script s a -> (Free (Term Annotate s) a, Annotations)
+runScript' as (Script s) =
+  let ast      = runStateT s as
+      (a, as') = iter copoint ast
+  in (a <$ ast, as')
+{-# INLINE runScript' #-}
+
 -- | Get DSL from 'Script'
-evalScript :: Annotating -> Script s a -> Free (Term Annotate s) a
+evalScript :: Annotations -> Script s a -> Free (Term Annotate s) a
 evalScript = (fmap fst .) . runScript
 {-# INLINE evalScript #-}
 
@@ -70,20 +80,22 @@ evalScript = (fmap fst .) . runScript
 type URI = String
 
 -- | Script construction state
-data Annotating = Annotating
-  { _token :: Int          -- ^ Unique term token
-  , _app :: FilePath       -- ^ Biegunka root filepath
-  , _profileName :: String -- ^ Profile name
-  , _source :: FilePath    -- ^ Source root filepath
-  , _sourceURL :: URI      -- ^ Current source url
-  , _order :: Int          -- ^ Current action order
-  , _maxOrder :: Int       -- ^ Maximum action order in current source
+data Annotations = Annotations
+  { _token :: Int           -- ^ Unique term token
+  , _app :: FilePath        -- ^ Biegunka root filepath
+  , _profiles :: Set String -- ^ Profile name
+  , _profileName :: String  -- ^ Profile name
+  , _source :: FilePath     -- ^ Source root filepath
+  , _sourceURL :: URI       -- ^ Current source url
+  , _order :: Int           -- ^ Current action order
+  , _maxOrder :: Int        -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
-instance Default Annotating where
-  def = Annotating
+instance Default Annotations where
+  def = Annotations
     { _token = 0
     , _app = ""
+    , _profiles = S.empty
     , _profileName = ""
     , _source = ""
     , _sourceURL = ""
@@ -91,28 +103,31 @@ instance Default Annotating where
     , _maxOrder = 0
     }
 
-makeLensesWith ?? ''Annotating $ defaultRules & generateSignatures .~ False
+makeLensesWith ?? ''Annotations $ defaultRules & generateSignatures .~ False
 
 -- | Unique token for each 'TP'/'TS'
-token :: Lens' Annotating Int
+token :: Lens' Annotations Int
 
 -- | Biegunka filepath root
-app :: Lens' Annotating FilePath
+app :: Lens' Annotations FilePath
+
+-- | All profiles encountered so far
+profiles :: Lens' Annotations (Set String)
 
 -- | Current profile name
-profileName :: Lens' Annotating String
+profileName :: Lens' Annotations String
 
 -- | Current source filepath
-source :: Lens' Annotating FilePath
+source :: Lens' Annotations FilePath
 
 -- | Current source url
-sourceURL :: Lens' Annotating String
+sourceURL :: Lens' Annotations String
 
 -- | Current action order
-order :: Lens' Annotating Int
+order :: Lens' Annotations Int
 
 -- | Maximum action order in current source
-maxOrder :: Lens' Annotating Int
+maxOrder :: Lens' Annotations Int
 
 -- | Lift DSL term to the 'Script'
 script :: Term Annotate s a -> Script s a
@@ -120,7 +135,7 @@ script = Script . lift . liftF
 {-# INLINE script #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT Annotating (Free (Term Annotate t)) (Free (Term Annotate s) a)
+annotate :: Script s a -> StateT Annotations (Free (Term Annotate t)) (Free (Term Annotate s) a)
 annotate i = state $ \s ->
   let r = runScript s i
       ast = fmap fst r

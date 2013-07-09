@@ -32,7 +32,7 @@ import Biegunka.Script (Annotate(..))
 
 -- | Check interpreter
 check :: Interpreter
-check = interpret $ \c s -> do
+check = interpret $ \c (s, _) -> do
   failures <- execWriterT (verification c s)
   view logger c $
        text "Verification: "

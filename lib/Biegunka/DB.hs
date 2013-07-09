@@ -29,8 +29,10 @@ import qualified Data.ByteString.Lazy as BL
 import           Data.ByteString.Lazy (fromStrict)
 #endif
 import           Data.Default
+import           Data.Foldable (toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
+import           Data.Set (Set)
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
@@ -93,13 +95,8 @@ biegunka :: Lens' Construct (Map String (Map R (Map FilePath R)))
 
 
 -- | Load profiles mentioned in script
-load :: Settings () -> Free (Term Annotate Sources) a -> IO Biegunka
-load c = fmap (Biegunka . M.fromList) . loads c . profiles
- where
-  profiles :: Free (Term Annotate Sources) a -> [String]
-  profiles (Free (TS (AS { asProfile }) _ _ x)) = asProfile : profiles x
-  profiles (Free (TM _ x)) = profiles x
-  profiles (Pure _) = []
+load :: Settings () -> Set String -> IO Biegunka
+load c = fmap (Biegunka . M.fromList) . loads c . toList
 
 
 -- | Load profile data from file
