@@ -113,7 +113,7 @@ load c = fmap (Biegunka . M.fromList) . loads c . profiles
 --  * Cannot parse profile file (wrong format)
 loads :: Settings () -> [String] -> IO [(String, Map R (Map FilePath R))]
 loads c (p:ps) = do
-  let (name, _) = c & appData <</>~ p
+  let (name, _) = c & appData </>~ p & appData <<.>~ "profile"
   Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
   (v:) <$> loads c ps
  `mplus`
@@ -140,7 +140,7 @@ save :: Settings () -> Biegunka -> IO ()
 save c (Biegunka b) = do
   createDirectoryIfMissing False (view appData c)
   ifor_ b $ \p sourceData -> do
-    let (name, _) = c & appData <</>~ p -- Map profile to file name
+    let (name, _) = c & appData </>~ p & appData <<.>~ "profile" -- Map profile to file name
         dir = view directory name
         dirs = dir ^.. takingWhile (/= view appData c) (iterated (view directory))
     if M.null sourceData then do
