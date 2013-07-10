@@ -46,19 +46,20 @@ infixr 7 `prerequisiteOf`, <~>
 -- > profile "experimental" $ do
 -- >   git "https://github.com/ekmett/lens"
 -- >     ...
-profile :: String -> Script Sources () -> Script Sources ()
+profile :: String -> Script Sources a -> Script Sources a
 profile name inner = do
   p <- Script $ do
     p  <- use profileName
     p' <- profileName <</>= name
     profiles . contains p' .= True
     return p
-  inner
+  a <- inner
   Script $ profileName .= p
+  return a
 {-# INLINE profile #-}
 
 -- | Alias for 'profile'. May be useful for nested grouping
-group :: String -> Script Sources () -> Script Sources ()
+group :: String -> Script Sources a -> Script Sources a
 group = profile
 {-# INLINE group #-}
 
@@ -134,19 +135,21 @@ raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
-sudo :: String -> Script s () -> Script s ()
+sudo :: String -> Script s a -> Script s a
 sudo username inner = do
   script (TM (User (Just username)) ())
-  inner
+  a <- inner
   script (TM (User Nothing) ())
+  return a
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands
-reacting :: React -> Script s () -> Script s ()
+reacting :: React -> Script s a -> Script s a
 reacting reaction inner = do
   script (TM (Reacting (Just reaction)) ())
-  inner
+  a <- inner
   script (TM (Reacting Nothing) ())
+  return a
 {-# INLINE reacting #-}
 
 -- | Execute scripts sequentially
