@@ -6,11 +6,12 @@ import Data.Monoid (mempty)
 import Control.Lens
 import Control.Monad.Free (Free(..))
 import Data.Default (def)
-import Biegunka.Language (Term(..), Action(..), Source(..))
+import Data.Foldable (toList)
+import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
 import Biegunka.Primitive (chain, (<~>), link)
 import Biegunka.Script (Annotate(..), evalScript, app, source)
 import Biegunka.Source.Layout (layout_)
-import Test.Hspec (hspec, describe, context, it, pending)
+import Test.Hspec
 
 
 main :: IO ()
@@ -24,20 +25,22 @@ main = hspec $
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s /= t
           _ -> False
-      it "gives chained tasks the same id" $
+      it "gives chained tasks different ids" $
         let ast = evalScript def (layout_ mempty mempty `chain` layout_ mempty mempty)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
-            (Free (TS (AS { asToken = t }) _ (Pure ())
-              (Pure ())))) -> s == t
+            (Free (TM _
+              (Free (TS (AS { asToken = t }) _ (Pure ())
+                (Pure ())))))) -> s /= t
           _ -> False
-      it "gives chained tasks the same id (infix)" $
+      it "gives Wait modifier correct tasks ids" $
         let ast = evalScript def (layout_ mempty mempty <~> layout_ mempty mempty)
         in case ast of
-          Free (TS (AS { asToken = s })  _ (Pure ())
-            (Free (TS (AS { asToken = t }) _ (Pure ())
-              (Pure ())))) -> s == t
-          _ -> False
+          Free (TS _ _ (Pure ())
+            (Free (TM (Wait ids)
+              (Free (TS (AS { asToken = t }) _ (Pure ())
+                (Pure ())))))) -> toList ids `shouldBe` [0 .. t - 1]
+          _ -> expectationFailure "DSL pattern failed"
     context "relative paths" $ do
       it "mangles relative paths for Actions" $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (link "from" "to")

@@ -156,7 +156,7 @@ chain a b = do
   s <- Script $ use token
   a
   t <- Script $ use token
-  script (TM (Wait (S.fromList [s, t - 1])) ())
+  script (TM (Wait (S.fromList [s .. t - 1])) ())
   b
 
 -- | Infix alias for 'chain'
