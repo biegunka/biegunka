@@ -44,6 +44,7 @@ library
                    Biegunka.Primitive
                    Biegunka.Script
                    Biegunka.Source
+                   Biegunka.Source.Directory
                    Biegunka.Source.Dummy
                    Biegunka.Source.Git
                    Biegunka.Language
