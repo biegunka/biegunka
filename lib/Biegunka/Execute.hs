@@ -22,7 +22,7 @@ import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
-import           Control.Concurrent.STM (atomically)
+import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (runStateT, get, put)
@@ -63,7 +63,7 @@ run e = interpret $ \c (s, as) -> do
   let c' = c & local.~r
   dropPriviledges r
   runTask c' def newTask s
-  atomically (writeTQueue (c'^.local.sync.work) (Stop 0)) -- Can we assume script starts from id 0?
+  atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
   mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
   mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
@@ -82,7 +82,7 @@ dropPriviledges e =
  where
   setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
--- | Dru run interpreter
+-- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpret $ \c (s, as) -> do
   let b = construct s
@@ -90,11 +90,11 @@ dryRun = interpret $ \c (s, as) -> do
   e <- initializeSTM def
   let c' = c & local.~e
   runTask c' def newTask s
-  atomically (writeTQueue (e^.sync.work) (Stop 0)) -- Can we assume script starts from id 0?
+  atomically (writeTQueue (e^.sync.work) Stop)
   schedule (e^.sync.work)
   c'^.logger $ runChanges (c'^.colors) a b
 
--- | Dru run interpreter
+-- | Dry run interpreter
 pretend :: Interpreter
 pretend = dryRun
 {-# DEPRECATED pretend "Please, use `dryRun'" #-}
@@ -109,17 +109,22 @@ pretend = dryRun
 task :: Reifies t (Settings Execution)
      => Free (Term Annotate s) a
      -> Executor t ()
-task (Free c@(TS _ _ b d)) = do
+task (Free c@(TS (AS { asToken }) _ b d)) = do
   newTask d
   try (command c) >>= \e -> case e of
-    Left e' -> retry e' >>= \r -> case r of
+    Left e' -> checkRetryCountAndReact e' >>= \r -> case r of
       Retry    -> task (Free (Pure () <$ c))
-      Abortive -> return ()
-      Ignorant -> task b
-    Right _ -> task b
+      Abortive -> do
+        doneWith asToken
+      Ignorant -> do
+        task b
+        doneWith asToken
+    Right _ -> do
+      task b
+      doneWith asToken
 task a@(Free c) =
   try (command c) >>= \e -> case e of
-    Left e' -> retry e' >>= \r -> case r of
+    Left e' -> checkRetryCountAndReact e' >>= \r -> case r of
       Retry    -> task a
       Abortive -> return ()
       Ignorant -> task (copoint c)
@@ -138,10 +143,11 @@ try (TagT ex) = do
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-retry :: forall s. Reifies s (Settings Execution)
-      => SomeException
-      -> Executor s React
-retry exc = do
+checkRetryCountAndReact
+  :: forall s. Reifies s (Settings Execution)
+  => SomeException
+  -> Executor s React
+checkRetryCountAndReact exc = do
   e <- reflected
   let log = e^.logger
       scm = e^.colors
@@ -169,6 +175,12 @@ command (TM (Reacting (Just r)) _) = reactStack %= (r :)
 command (TM (Reacting Nothing) _)  = reactStack %= drop 1
 command (TM (User     (Just u)) _) = usersStack %= (u :)
 command (TM (User     Nothing) _)  = usersStack %= drop 1
+command (TM (Wait ts) _)           = do
+  ts' <- reflected <&> \e -> e^.local.sync.tasks
+  liftIO . atomically $ do
+    ts'' <- readTVar ts'
+    unless (ts `S.isSubsetOf` ts'')
+      retry
 command c = do
   e <- reflected
   let stv = e^.local.sync.sudoing
@@ -239,7 +251,7 @@ termOperation term = case term of
     case e of
       ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
       _ -> return ()
-  _ -> return $ return ()
+  TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do
     createDirectoryIfMissing True $ dropFileName dst
@@ -259,10 +271,14 @@ newTask (Pure _) = return ()
 newTask t = do
   e <- reflected
   s <- get
-  let i = case t of
-            Free (TS (AS { asToken }) _ _ _) -> asToken
-            _ -> error "???"
   liftIO . atomically . writeTQueue (e^.local.sync.work) $
-    Do i $ do
+    Do $ do
       runTask e s task t
-      atomically (writeTQueue (e^.local.sync.work) (Stop i))
+      atomically (writeTQueue (e^.local.sync.work) Stop)
+
+-- | Tell execution process that you're done with task
+doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
+doneWith n = do
+  ts' <- reflected <&> \e -> e^.local.sync.tasks
+  liftIO . atomically $
+    modifyTVar ts' (S.insert n)

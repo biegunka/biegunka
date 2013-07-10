@@ -14,12 +14,12 @@ module Biegunka.Primitive
 
 import Data.Monoid (mempty)
 
-import Control.Lens
-import Control.Monad.State
-import System.FilePath ((</>))
-import System.FilePath.Lens ((<</>=))
-import System.Process (CmdSpec(..))
-import Text.StringTemplate (newSTMP, render, setAttribute)
+import           Control.Lens
+import qualified Data.Set as S
+import           System.FilePath ((</>))
+import           System.FilePath.Lens ((<</>=))
+import           System.Process (CmdSpec(..))
+import           Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Biegunka.Language
 import Biegunka.Script
@@ -149,15 +149,17 @@ reacting reaction inner = do
   script (TM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
--- | Chain tasks sequentially
--- Connects two tasks which forces them to run sequentially one after another.
-chain :: Script s () -> Script s () -> Script s ()
-chain a b = Script $ do
-  s <- rewind token (annotate a >>= lift)
-  t <- rewind token (annotate b >>= lift)
-  token .= max s t
+-- | Chain scripts sequentially
+-- Connects two scripts which forces them to run sequentially one after another.
+chain :: Script Sources a -> Script Sources b -> Script Sources b
+chain a b = do
+  s <- Script $ use token
+  a
+  t <- Script $ use token
+  script (TM (Wait (S.fromList [s, t - 1])) ())
+  b
 
 -- | Infix alias for 'chain'
-(<~>) :: Script s () -> Script s () -> Script s ()
+(<~>) :: Script Sources () -> Script Sources () -> Script Sources ()
 (<~>) = chain
 {-# INLINE (<~>) #-}

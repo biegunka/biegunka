@@ -16,6 +16,7 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
 import Data.Default (Default(..))
+import Data.Set (Set)
 import Data.Text.Lazy (Text)
 import System.Process (CmdSpec)
 import Text.StringTemplate (ToSElem)
@@ -86,6 +87,7 @@ data Action =
 data Modifier =
     User (Maybe String)
   | Reacting (Maybe React)
+  | Wait (Set Int)
   | Chain
 
 -- | Failure reaction

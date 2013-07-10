@@ -9,7 +9,7 @@ module Biegunka.Execute.Control
   , Execution, Sync, Run
     -- * Lenses
   , sync, runs
-  , work, running, sudoing, repos
+  , work, running, sudoing, repos, tasks
   , priviledges, react, templates, retries, mode
     -- * Initializations
   , initializeSTM
@@ -79,12 +79,13 @@ data Sync = Sync
   , _sudoing :: TVar Bool         -- ^ Whether sudoed operation is in progress.
   , _running :: TVar Bool         -- ^ Whether any operation is in progress.
   , _repos   :: TVar (Set String) -- ^ Already updated repositories
+  , _tasks   :: TVar (Set Int)    -- ^ Done tasks
   }
 
 -- | Workload
 data Work =
-    Do Int (IO ()) -- ^ Task to come and its id
-  | Stop Int       -- ^ Task with that id is done
+    Do (IO ()) -- ^ Task to come and its id
+  | Stop       -- ^ Task with that id is done
 
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
@@ -151,6 +152,9 @@ running :: Lens' Sync (TVar Bool)
 -- | Already updated repositories
 repos :: Lens' Sync (TVar (Set String))
 
+-- | Done tasks
+tasks :: Lens' Sync (TVar (Set Int))
+
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
 
@@ -177,12 +181,14 @@ initializeSTM r = do
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
+  e <- newTVarIO mempty
   return $ Execution
     { _sync = Sync
         { _work = a
         , _running = b
         , _sudoing = c
         , _repos = d
+        , _tasks = e
         }
     , _runs = r
     }
