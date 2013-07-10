@@ -23,7 +23,7 @@ module Biegunka
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, chain, (<~>)
+  , sudo, reacting, prerequisiteOf, (<~>)
     -- * Types
   , Script, Scope(..)
     -- * TH

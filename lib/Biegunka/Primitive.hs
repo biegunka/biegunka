@@ -9,7 +9,7 @@ module Biegunka.Primitive
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, chain, (<~>)
+  , sudo, reacting, prerequisiteOf, (<~>)
   ) where
 
 import Data.Monoid (mempty)
@@ -25,7 +25,7 @@ import Biegunka.Language
 import Biegunka.Script
 
 
-infixr 7 `chain`, <~>
+infixr 7 `prerequisiteOf`, <~>
 
 
 -- | Provides convenient 'Sources' grouping. May be nested
@@ -149,17 +149,17 @@ reacting reaction inner = do
   script (TM (Reacting Nothing) ())
 {-# INLINE reacting #-}
 
--- | Chain scripts sequentially
+-- | Execute scripts sequentially
 -- Connects two scripts which forces them to run sequentially one after another.
-chain :: Script Sources a -> Script Sources b -> Script Sources b
-chain a b = do
+prerequisiteOf :: Script Sources a -> Script Sources b -> Script Sources b
+prerequisiteOf a b = do
   s <- Script $ use token
   a
   t <- Script $ use token
   script (TM (Wait (S.fromList [s .. t - 1])) ())
   b
 
--- | Infix alias for 'chain'
-(<~>) :: Script Sources () -> Script Sources () -> Script Sources ()
-(<~>) = chain
+-- | Infix alias for 'prerequisiteOf'
+(<~>) :: Script Sources a -> Script Sources b -> Script Sources b
+(<~>) = prerequisiteOf
 {-# INLINE (<~>) #-}

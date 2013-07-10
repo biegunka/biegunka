@@ -8,7 +8,7 @@ import Control.Monad.Free (Free(..))
 import Data.Default (def)
 import Data.Foldable (toList)
 import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
-import Biegunka.Primitive (chain, (<~>), link)
+import Biegunka.Primitive (prerequisiteOf, (<~>), link)
 import Biegunka.Script (Annotate(..), evalScript, app, source)
 import Biegunka.Source.Layout (layout_)
 import Test.Hspec
@@ -26,7 +26,7 @@ main = hspec $
               (Pure ())))) -> s /= t
           _ -> False
       it "gives chained tasks different ids" $
-        let ast = evalScript def (layout_ mempty mempty `chain` layout_ mempty mempty)
+        let ast = evalScript def (layout_ mempty mempty `prerequisiteOf` layout_ mempty mempty)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TM _
