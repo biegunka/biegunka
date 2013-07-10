@@ -45,7 +45,7 @@ library
                    Biegunka.Script
                    Biegunka.Source
                    Biegunka.Source.Directory
-                   Biegunka.Source.Dummy
+                   Biegunka.Source.Layout
                    Biegunka.Source.Git
                    Biegunka.Language
                    Biegunka.DB

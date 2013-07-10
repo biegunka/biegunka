@@ -3,7 +3,7 @@
 module Main (main) where
 
 import Biegunka hiding (check)
-import Biegunka.Source.Dummy
+import Biegunka.Source.Layout (layout)
 import Control.Lens
 import System.Directory.Layout
 import Test.Hspec
@@ -51,7 +51,7 @@ trivial_repo p = profile p $ return ()
 simple_repo_0 :: Script Sources ()
 simple_repo_0 =
   profile "biegunka-core-simple0" $
-    dummy l "tmp/biegunka-core-simple0" $
+    layout l "tmp/biegunka-core-simple0" $
       copy "src0" "tmp/dst0"
  where
   l = file "src0" "thisiscontents\n"
@@ -66,7 +66,7 @@ simple_layout_0 = do
 
 simple_repo_no_profile_0 :: Script Sources ()
 simple_repo_no_profile_0 =
-  dummy l "tmp/biegunka-core-simple0" $
+  layout l "tmp/biegunka-core-simple0" $
     copy "src0" "tmp/dst0"
  where
   l = file "src0" "thisiscontents\n"

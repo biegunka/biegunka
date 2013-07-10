@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds #-}
--- | Very simple Source using some existing directory
+-- | Very simple 'Source' using some existing directory
 module Biegunka.Source.Directory (directory) where
 
 import Control.Monad (unless)

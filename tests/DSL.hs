@@ -9,7 +9,7 @@ import Data.Default (def)
 import Biegunka.Language (Term(..), Action(..), Source(..))
 import Biegunka.Primitive (chain, (<~>), link)
 import Biegunka.Script (Annotate(..), evalScript, app, source)
-import Biegunka.Source.Dummy (dummy_)
+import Biegunka.Source.Layout (layout_)
 import Test.Hspec (hspec, describe, context, it, pending)
 
 
@@ -18,21 +18,21 @@ main = hspec $
   describe "Biegunka DSL" $ do
     context "chaining" $ do
       it "gives unchained tasks different ids" $
-        let ast = evalScript def (dummy_ mempty mempty >> dummy_ mempty mempty)
+        let ast = evalScript def (layout_ mempty mempty >> layout_ mempty mempty)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s /= t
           _ -> False
       it "gives chained tasks the same id" $
-        let ast = evalScript def (dummy_ mempty mempty `chain` dummy_ mempty mempty)
+        let ast = evalScript def (layout_ mempty mempty `chain` layout_ mempty mempty)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s == t
           _ -> False
       it "gives chained tasks the same id (infix)" $
-        let ast = evalScript def (dummy_ mempty mempty <~> dummy_ mempty mempty)
+        let ast = evalScript def (layout_ mempty mempty <~> layout_ mempty mempty)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TS (AS { asToken = t }) _ (Pure ())
@@ -45,7 +45,7 @@ main = hspec $
           Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
           _ -> False
       it "mangles relative paths for Sources" $
-        let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "to")
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (layout_ mempty "to")
         in case ast of
           Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
@@ -56,7 +56,7 @@ main = hspec $
           Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
           _ -> False
       it "does not mangle absolute paths for Sources" $
-        let ast = evalScript (def & app .~ "app" & source .~ "source") (dummy_ mempty "/to")
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (layout_ mempty "/to")
         in case ast of
           Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
