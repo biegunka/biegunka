@@ -16,6 +16,8 @@ makeOptionsParser ''Environments
 
 main :: IO ()
 main = do
+  -- Both settings changes do not touch the defaults, they
+  -- are just for illustration here
   -- Set ~ directory as root for all paths (except those which are rooted at source location)
   let biegunkaSettings = set root "~"
   -- Drop priviledges if user starts the script with sudo
@@ -27,10 +29,10 @@ main = do
     Default -> runBiegunka biegunkaSettings runSettings script
 
 -- Dotfiles script stub
-script :: Script Profiles ()
+script :: Script Sources ()
 script = do
   -- Default profile (named "my-dotfiles")
-  -- After successful run data will be found at ~/.biegunka/my-dotfiles
+  -- After successful run data will be found at ~/.biegunka/profiles/my-dotfiles.profile
   profile "my-dotfiles" $ do
     -- Your dotfiles repositories go here
     git "git@github.com:user/dotfiles" "somewhere/under/~" $
