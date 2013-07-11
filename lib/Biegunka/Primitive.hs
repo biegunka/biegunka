@@ -161,6 +161,7 @@ prerequisiteOf a b = do
   t <- Script $ use token
   script (TM (Wait (S.fromList [s .. t - 1])) ())
   b
+{-# INLINE prerequisiteOf #-}
 
 -- | Infix alias for 'prerequisiteOf'
 (<~>) :: Script Sources a -> Script Sources b -> Script Sources b

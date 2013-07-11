@@ -42,6 +42,9 @@ import Biegunka.Control (Settings, appData)
 import Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Biegunka.Script (Annotate(..))
 
+-- $setup
+-- >>> import Data.Default
+
 
 -- | Profiles data
 newtype DB = DB

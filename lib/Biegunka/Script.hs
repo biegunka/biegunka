@@ -188,8 +188,20 @@ actioned f = Script $ do
 
 -- | Construct destination 'FilePath'
 --
--- Trying to be smart: if provided filepath ends in @\/@,
--- then append source filepath's basename
+-- >>> constructDestinationFilepath "" "" ""
+-- ""
+--
+-- >>> constructDestinationFilepath "/root" "from" "to"
+-- "/root/to"
+--
+-- >>> constructDestinationFilepath "/root" "from" "/to"
+-- "/to"
+--
+-- >>> constructDestinationFilepath "/root" "from" "to/"
+-- "/root/to/from"
+--
+-- >>> constructDestinationFilepath "/root" "from" "/to/"
+-- "/to/from"
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
 constructDestinationFilepath r s d = execState ?? r $ do
   id </>= d
