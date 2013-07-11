@@ -163,6 +163,7 @@ sourced ty url path inner update = Script $ do
   order .= 0
   maxOrder .= size inner
   p <- use profileName
+  profiles . contains p .= True
   ast <- annotate inner
   lift . liftF $ TS (AS { asToken = tok, asProfile = p }) (Source ty url df update) ast ()
   token += 1

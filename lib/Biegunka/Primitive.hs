@@ -17,7 +17,7 @@ import Data.Monoid (mempty)
 import           Control.Lens
 import qualified Data.Set as S
 import           System.FilePath ((</>))
-import           System.FilePath.Lens ((<</>=))
+import           System.FilePath.Lens
 import           System.Process (CmdSpec(..))
 import           Text.StringTemplate (newSTMP, render, setAttribute)
 
@@ -48,11 +48,10 @@ infixr 7 `prerequisiteOf`, <~>
 -- >     ...
 profile :: String -> Script Sources a -> Script Sources a
 profile name inner = do
-  p <- Script $ do
-    p  <- use profileName
+  p <- Script $ use profileName
+  Script $ do
     p' <- profileName <</>= name
     profiles . contains p' .= True
-    return p
   a <- inner
   Script $ profileName .= p
   return a

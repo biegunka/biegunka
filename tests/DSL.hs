@@ -1,18 +1,18 @@
 {-# LANGUAGE GADTs #-}
 module Main where
 
-import Data.Monoid (mempty)
-
-import Control.Lens
-import Control.Monad.Free (Free(..))
-import Data.Default (def)
 import Data.Foldable (toList)
+
+import           Control.Lens
+import           Control.Monad.Free (Free(..))
+import           Data.Default (def)
+import qualified Data.Set as S
+import           Test.Hspec
+
 import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
 import Biegunka.Primitive
-import Biegunka.Script (Annotate(..), evalScript, app, source)
-import Biegunka.Source.Layout (layout_)
+import Biegunka.Script
 import Biegunka.Source.Directory (directory)
-import Test.Hspec
 
 
 main :: IO ()
@@ -20,14 +20,14 @@ main = hspec $
   describe "Biegunka DSL" $ do
     context "chaining" $ do
       it "gives unchained tasks different ids" $
-        let ast = evalScript def (layout_ mempty mempty >> layout_ mempty mempty)
+        let ast = evalScript def (directory "/" def >> directory "/" def)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))) -> s /= t
           _ -> False
       it "gives chained tasks different ids" $
-        let ast = evalScript def (layout_ mempty mempty `prerequisiteOf` layout_ mempty mempty)
+        let ast = evalScript def (directory "/" def `prerequisiteOf` directory "/" def)
         in case ast of
           Free (TS (AS { asToken = s })  _ (Pure ())
             (Free (TM _
@@ -35,7 +35,7 @@ main = hspec $
                 (Pure ())))))) -> s /= t
           _ -> False
       it "gives Wait modifier correct tasks ids" $
-        let ast = evalScript def (layout_ mempty mempty <~> layout_ mempty mempty)
+        let ast = evalScript def (directory "/" def <~> directory "/" def)
         in case ast of
           Free (TS _ _ (Pure ())
             (Free (TM (Wait ids)
@@ -49,7 +49,7 @@ main = hspec $
           Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
           _ -> False
       it "mangles relative paths for Sources" $
-        let ast = evalScript (def & app .~ "app" & source .~ "source") (layout_ mempty "to")
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (directory "to" def)
         in case ast of
           Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
@@ -60,7 +60,7 @@ main = hspec $
           Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
           _ -> False
       it "does not mangle absolute paths for Sources" $
-        let ast = evalScript (def & app .~ "app" & source .~ "source") (layout_ mempty "/to")
+        let ast = evalScript (def & app .~ "app" & source .~ "source") (directory "/to" def)
         in case ast of
           Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
           _ -> False
@@ -70,14 +70,33 @@ main = hspec $
               profile "foo" $
                 group "bar" $
                   group "baz" $
-                    directory "/" (return ())
+                    directory "/" def
             ast' = evalScript def $
               profile "foo/bar/baz" $
-                directory "/" (return ())
+                directory "/" def
         in case (ast, ast') of
           ( Free (TS AS { asProfile = p  } Source {} (Pure ()) (Pure ()))
            , Free (TS AS { asProfile = p' } Source {} (Pure ()) (Pure ()))
            ) -> p == p'
           _ -> False
+      it "collects all mentioned profiles no matter what" $
+        let (_, as) = runScript' def $ do
+              profile "foo" $ do
+                group "bar" $
+                  directory "/" def
+                directory "/" def
+              profile "baz" $ do
+                directory "/" def
+              profile "quux" $ do
+                return ()
+              directory "/" def
+        in as^.profiles == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
+      it "ignores \"\" if no ungrouped source is mentioned" $
+        let (_, as) = runScript' def $ do
+              profile "baz" $ do
+                directory "/" def
+              profile "quux" $ do
+                return ()
+        in as^.profiles == S.fromList ["baz", "quux"]
 
     it "does something useful" $ pending
