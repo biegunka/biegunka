@@ -5,7 +5,7 @@
 -- 'Sources' layer primitives are found in 'Biegunka.Source.*' modules
 module Biegunka.Primitive
   ( -- * Actions layer primitives
-    link, register, copy, substitute
+    link, register, copy, substitute, patch
   , shell, raw
     -- * Modifiers
   , profile, group
@@ -111,6 +111,10 @@ substitute src dst = actioned (\rfp sfp ->
   Template (sfp </> src) (constructDestinationFilepath rfp src dst)
     (\b -> render . setAttribute "template" b . newSTMP))
 {-# INLINE substitute #-}
+
+patch :: FilePath -> FilePath -> PatchSpec -> Script Actions ()
+patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spec)
+{-# INLINE patch #-}
 
 
 -- | Executes shell command with default shell

@@ -20,7 +20,7 @@ module Biegunka
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
-  , link, register, copy, substitute
+  , link, register, copy, substitute, patch
   , shell, raw
     -- * Modifiers
   , profile, group

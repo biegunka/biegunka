@@ -74,8 +74,8 @@ correct il = case il of
       d' <- B.readFile d
       return $ s' == d'
     Template _ d _ -> doesFileExist d
-    _ -> return True
-  _ -> return True
+    Command _ _ -> return True
+  TM _ _ -> return True
 
 
 -- | Describe current action and host where it happens
@@ -101,8 +101,8 @@ log sc il = nest 1 <$> case il of
           (sc^.dstColor) (text d)
       </> "is not a templated copy of"
       </> (sc^.srcColor) (text s)
-    _ -> Nothing
-  _ -> Nothing
+    Command _ _ -> Nothing
+  TM _ _ -> Nothing
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
