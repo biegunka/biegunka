@@ -1,17 +1,14 @@
-{-# LANGUAGE DataKinds #-}
 -- |
--- Checks that you cannot chain Actions
-module Chaining where
+-- Checks that actions scope cannot be top-level
+module Main where
 
 import Biegunka
 import Biegunka.Source.Git
 
 
-chained_script_0 :: Script Actions ()
-chained_script_0 =
-  shell "echo hello"
- <~>
-  shell "echo bye"
+main :: IO ()
+main = biegunka id (execute id) $ do
+  link ".xmonad/xmonad.hs" ".xmonad/xmonad.hs.bak"
 
 -- STDERR
 --     Couldn't match type 'Actions with 'Sources
