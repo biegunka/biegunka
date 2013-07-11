@@ -8,6 +8,7 @@ module Biegunka
   , errorColor, retryColor
   , noColors
     -- * Interpreters
+  , Interpreter
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
     -- * Execution environment hooks
@@ -31,7 +32,8 @@ module Biegunka
   ) where
 
 import Biegunka.Control
-  ( biegunka, Settings, root, appData, colors, pause, confirm
+  ( biegunka, Settings, root, appData, colors
+  , Interpreter, pause, confirm
   , ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor
