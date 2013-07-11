@@ -45,7 +45,7 @@ import           System.Posix.User (getEffectiveUserID, getUserEntryForName, use
 import           System.Process
 
 import Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
-import Biegunka.DB
+import qualified Biegunka.DB as DB
 import Biegunka.Execute.Control
 import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Biegunka.Execute.Exception
@@ -57,17 +57,17 @@ import Biegunka.Script
 -- | Real run interpreter
 run :: (Run -> Run) -> Interpreter
 run e = interpret $ \c (s, as) -> do
-  let b = construct s
-  a <- load c (as^.profiles)
+  let b = DB.fromScript s
+  a <- DB.load c (as^.profiles)
   r <- initializeSTM ((e $ def) & mode.~Real)
   let c' = c & local.~r
   dropPriviledges r
   runTask c' def newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
-  mapM_ (tryIOError . removeFile) (filepaths a \\ filepaths b)
-  mapM_ (tryIOError . removeDirectoryRecursive) (sources a \\ sources b)
-  save c (as^.profiles) b
+  mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
+  mapM_ (tryIOError . removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
+  DB.save c (as^.profiles) b
 
 -- | Real run interpreter
 execute :: (Run -> Run) -> Interpreter
@@ -85,8 +85,8 @@ dropPriviledges e =
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpret $ \c (s, as) -> do
-  let b = construct s
-  a <- load c (as^.profiles)
+  let b = DB.fromScript s
+  a <- DB.load c (as^.profiles)
   e <- initializeSTM def
   let c' = c & local.~e
   runTask c' def newTask s

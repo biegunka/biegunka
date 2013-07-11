@@ -9,7 +9,7 @@
 -- | Saved profiles data management
 module Biegunka.DB
   ( DB(..), Record(..)
-  , load, loads, save, construct
+  , load, loads, save, fromScript
   , filepaths, sources
   ) where
 
@@ -159,8 +159,8 @@ fromStrict = BL.fromChunks . return
 
 
 -- | Extract terms data from script
-construct :: Free (Term Annotate Sources) a -> DB
-construct z = execState (f z) mempty
+fromScript :: Free (Term Annotate Sources) a -> DB
+fromScript z = execState (f z) mempty
  where
   f :: Free (Term Annotate Sources) a -> State DB ()
   f (Free (TS (AS { asProfile = p }) (Source t u d _) i x)) = do
