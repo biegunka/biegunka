@@ -8,9 +8,10 @@ import Control.Monad.Free (Free(..))
 import Data.Default (def)
 import Data.Foldable (toList)
 import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
-import Biegunka.Primitive (prerequisiteOf, (<~>), link)
+import Biegunka.Primitive
 import Biegunka.Script (Annotate(..), evalScript, app, source)
 import Biegunka.Source.Layout (layout_)
+import Biegunka.Source.Directory (directory)
 import Test.Hspec
 
 
@@ -62,6 +63,21 @@ main = hspec $
         let ast = evalScript (def & app .~ "app" & source .~ "source") (layout_ mempty "/to")
         in case ast of
           Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
+          _ -> False
+    context "profiles" $ do
+      it "does not matter how nested profiles are constructed" $
+        let ast = evalScript def $
+              profile "foo" $
+                group "bar" $
+                  group "baz" $
+                    directory "/" (return ())
+            ast' = evalScript def $
+              profile "foo/bar/baz" $
+                directory "/" (return ())
+        in case (ast, ast') of
+          ( Free (TS AS { asProfile = p  } Source {} (Pure ()) (Pure ()))
+           , Free (TS AS { asProfile = p' } Source {} (Pure ()) (Pure ()))
+           ) -> p == p'
           _ -> False
 
     it "does something useful" $ pending
