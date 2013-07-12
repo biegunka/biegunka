@@ -12,8 +12,6 @@ module Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Control.Exception (Exception, SomeException(..), throwIO)
-import qualified Control.Exception as E
 import           Data.Foldable (traverse_)
 import           Data.List ((\\))
 import           Prelude hiding (log)
@@ -24,8 +22,9 @@ import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
+import           Control.Monad.Catch (SomeException, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (runStateT, get, put)
+import           Control.Monad.State (get)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Copointed (copoint)
 import           Data.Default (def)
@@ -132,14 +131,6 @@ task a@(Free c) =
 task (Pure _) = return ()
 
 
--- | If only I could come up with MonadBaseControl instance for 'Executor'
-try :: Exception e => Executor s a -> Executor s (Either e a)
-try (TagT ex) = do
-  eeas <- liftIO . E.try . runStateT ex =<< get
-  case eeas of
-    Left e       ->          return (Left e)
-    Right (a, s) -> put s >> return (Right a)
-
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
@@ -227,7 +218,7 @@ termOperation term = case term of
       unless updated $ do
         createDirectoryIfMissing True $ dropFileName dst
         update dst
-     `E.onException`
+     `onException`
       atomically (modifyTVar rstv (S.delete dst))
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
   TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
@@ -249,7 +240,7 @@ termOperation term = case term of
         }
     e <- waitForProcess ph
     case e of
-      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
+      ExitFailure _ -> T.hGetContents er >>= throwM . ShellCommandFailure sp
       _ -> return ()
   TM _ _ -> return $ return ()
  where
