@@ -87,14 +87,14 @@ data Action =
 
 -- | Patch settings
 data PatchSpec = PatchSpec
-  { strip    :: Int  -- ^ How many leading slashes to strip
-  , reversed :: Bool -- ^ Apply in reverse?
+  { strip     :: Int  -- ^ How many leading slashes to strip
+  , reversely :: Bool -- ^ Apply in reverse?
   }
 
 instance Default PatchSpec where
   def = PatchSpec
-    { strip    = 1
-    , reversed = False
+    { strip     = 1
+    , reversely = False
     }
 
 -- | Modificators for other datatypes

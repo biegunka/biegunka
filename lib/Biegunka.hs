@@ -20,7 +20,7 @@ module Biegunka
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
-  , link, register, copy, substitute, patch
+  , link, register, copy, substitute, patch, PatchSpec(..)
   , shell, raw
     -- * Modifiers
   , profile, group
@@ -48,7 +48,7 @@ import Biegunka.Execute.Control
   , Templates(..), templates
   , retries
   )
-import Biegunka.Language (Scope(..), React(..))
+import Biegunka.Language (Scope(..), React(..), PatchSpec(..))
 import Biegunka.Primitive
 import Biegunka.Script (Script)
 import Biegunka.TH (makeOptionsParser)

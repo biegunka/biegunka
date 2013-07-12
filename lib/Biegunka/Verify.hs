@@ -17,7 +17,11 @@ import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           Data.Copointed (copoint)
 import           System.Directory (doesDirectoryExist, doesFileExist)
+import           System.Exit (ExitCode(..))
+import           System.IO (IOMode(..), openFile)
+import           System.IO.Error (catchIOError)
 import           System.Posix.Files (readSymbolicLink)
+import           System.Process
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
@@ -26,7 +30,7 @@ import Biegunka.Control
   , ColorScheme(..), colors
   , sourceColor, srcColor, dstColor
   )
-import Biegunka.Language (Term(..), Source(..), Action(..))
+import Biegunka.Language
 import Biegunka.Script (Annotate(..))
 
 
@@ -73,8 +77,24 @@ correct il = case il of
       s' <- B.readFile s
       d' <- B.readFile d
       return $ s' == d'
-    Template _ d _ -> doesFileExist d
-    Command _ _ -> return True
+    Template _ d _ ->
+      doesFileExist d
+    Patch patch patchRoot PatchSpec { strip, reversely } -> do
+      stdin   <- openFile patch ReadMode
+      stdout  <- openFile "/dev/null" WriteMode
+      process <- runProcess "git"
+        (["apply", "--check", "-p", show strip] ++ if reversely then [] else ["--reverse"])
+        (Just patchRoot)
+        Nothing
+        (Just stdin)
+        (Just stdout)
+        (Just stdout)
+      status  <- waitForProcess process
+      return $ status == ExitSuccess
+    Command _ _ ->
+      return True
+   `catchIOError`
+      \_ -> return False
   TM _ _ -> return True
 
 
@@ -102,6 +122,12 @@ log sc il = nest 1 <$> case il of
       </> "is not a templated copy of"
       </> (sc^.srcColor) (text s)
     Command _ _ -> Nothing
+    Patch patch patchRoot PatchSpec { reversely } -> Just $
+          (sc^.srcColor) (text patch)
+      </> "is not correctly"
+      </> (if reversely then parens "reversely" </> "applied" else "applied")
+      </> "to"
+      </> (sc^.dstColor) (text patchRoot)
   TM _ _ -> Nothing
  where
   -- | Annotate action description with source name
