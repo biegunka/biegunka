@@ -76,10 +76,10 @@ action sc il = nest 3 $ case il of
         </> (sc^.srcColor) (text p)
       Patch patch root PatchSpec { reversely } ->
             (sc^.actionColor) "patch"
+        </> (sc^.srcColor) (text patch)
         </> (if reversely then parens "reversely" </> "applied" else "applied")
+        </> "to"
         </> (sc^.dstColor) (text root)
-        </> "with"
-        </> text patch
   _ -> mempty
  where
   -- | Annotate action description with source name

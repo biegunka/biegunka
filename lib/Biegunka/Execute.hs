@@ -44,7 +44,7 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Action (applyPatch)
+import Biegunka.Action (applyPatch, verifyAppliedPatch)
 import Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
 import qualified Biegunka.DB as DB
 import Biegunka.Execute.Control
@@ -252,8 +252,10 @@ termOperation term = case term of
     case e of
       ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
       _ -> return ()
-  TA _ (Patch patch root spec) _ -> return $
-    applyPatch patch root spec
+  TA _ (Patch patch root spec) _ -> return $ do
+    verified <- verifyAppliedPatch patch root spec
+    unless verified $
+      applyPatch patch root spec
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do
