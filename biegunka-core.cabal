@@ -43,22 +43,22 @@ library
   hs-source-dirs: lib
   exposed-modules:
     Biegunka
+    Biegunka.Action
+    Biegunka.Control
+    Biegunka.DB
+    Biegunka.Execute
+    Biegunka.Execute.Control
+    Biegunka.Execute.Describe
+    Biegunka.Execute.Exception
+    Biegunka.Execute.Schedule
+    Biegunka.Language
     Biegunka.Primitive
     Biegunka.Script
     Biegunka.Source
     Biegunka.Source.Directory
-    Biegunka.Source.Layout
     Biegunka.Source.Git
-    Biegunka.Action
-    Biegunka.Language
-    Biegunka.DB
-    Biegunka.Execute.Exception
+    Biegunka.Source.Layout
     Biegunka.TH
-    Biegunka.Control
-    Biegunka.Execute
-    Biegunka.Execute.Control
-    Biegunka.Execute.Describe
-    Biegunka.Execute.Schedule
     Biegunka.Verify
   ghc-options:
     -Wall
@@ -69,9 +69,9 @@ executable biegunka
   build-depends:
     base >= 3 && < 5,
     directory,
+    optparse-applicative,
     process,
     text,
-    optparse-applicative,
     wordexp
   hs-source-dirs: bin/biegunka
   main-is: Main.hs
@@ -86,8 +86,8 @@ test-suite behaviours
     base >= 4 && < 5,
     biegunka-core,
     directory-layout,
-    lens,
-    hspec
+    hspec,
+    lens
   hs-source-dirs: tests
   main-is: Behaviours.hs
   type: exitcode-stdio-1.0
@@ -98,10 +98,10 @@ test-suite dsl
     base >= 4 && < 5,
     biegunka-core,
     containers,
-    lens,
     data-default,
     free,
-    hspec
+    hspec,
+    lens
   hs-source-dirs: tests
   main-is: DSL.hs
   type: exitcode-stdio-1.0
