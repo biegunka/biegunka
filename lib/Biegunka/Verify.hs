@@ -17,14 +17,12 @@ import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           Data.Copointed (copoint)
 import           System.Directory (doesDirectoryExist, doesFileExist)
-import           System.Exit (ExitCode(..))
-import           System.IO (IOMode(..), openFile)
 import           System.IO.Error (catchIOError)
 import           System.Posix.Files (readSymbolicLink)
-import           System.Process
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
+import Biegunka.Action (verifyAppliedPatch)
 import Biegunka.Control
   ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
@@ -79,18 +77,8 @@ correct il = case il of
       return $ s' == d'
     Template _ d _ ->
       doesFileExist d
-    Patch patch patchRoot PatchSpec { strip, reversely } -> do
-      stdin   <- openFile patch ReadMode
-      stdout  <- openFile "/dev/null" WriteMode
-      process <- runProcess "git"
-        (["apply", "--check", "-p", show strip] ++ if reversely then [] else ["--reverse"])
-        (Just patchRoot)
-        Nothing
-        (Just stdin)
-        (Just stdout)
-        (Just stdout)
-      status  <- waitForProcess process
-      return $ status == ExitSuccess
+    Patch patch root spec ->
+      verifyAppliedPatch patch root spec
     Command _ _ ->
       return True
    `catchIOError`

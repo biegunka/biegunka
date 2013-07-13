@@ -47,6 +47,7 @@ library
                    Biegunka.Source.Directory
                    Biegunka.Source.Layout
                    Biegunka.Source.Git
+                   Biegunka.Action
                    Biegunka.Language
                    Biegunka.DB
                    Biegunka.Execute.Exception

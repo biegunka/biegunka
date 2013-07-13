@@ -20,13 +20,19 @@ import qualified Data.Text as T
 
 -- | Custom exceptions
 data BiegunkaException =
-    ShellCommandFailure CmdSpec Text    -- ^ Various shell failures with output
+    PatchFailure FilePath FilePath     -- ^ Various shell failures with output
+  | ShellCommandFailure CmdSpec Text   -- ^ Various shell failures with output
   | SourceFailure String FilePath Text -- ^ Source emerging failure with paths and output
     deriving (Typeable)
 
 instance Show BiegunkaException where
   show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
    where
+    pretty (PatchFailure patch root) =
+         "Patch "
+      <> T.pack patch
+      <> " has failed to apply at "
+      <> T.pack root
     pretty (ShellCommandFailure (ShellCommand c) o) =
       "Shell command `" <> T.pack c <> "' has failed\nFailures log:\n" <> o
     pretty (ShellCommandFailure (RawCommand c as) o) =
