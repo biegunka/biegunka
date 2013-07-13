@@ -6,7 +6,7 @@
 module Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
-  , React(..)
+  , PatchSpec(..), React(..)
   ) where
 
 import Control.Applicative((<$>))
@@ -82,6 +82,20 @@ data Action =
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
     -- | External command
   | Command FilePath CmdSpec
+    -- | Patch
+  | Patch FilePath FilePath PatchSpec
+
+-- | Patch settings
+data PatchSpec = PatchSpec
+  { strip     :: Int  -- ^ How many leading slashes to strip
+  , reversely :: Bool -- ^ Apply in reverse?
+  }
+
+instance Default PatchSpec where
+  def = PatchSpec
+    { strip     = 1
+    , reversely = False
+    }
 
 -- | Modificators for other datatypes
 data Modifier =

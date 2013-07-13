@@ -17,16 +17,18 @@ import           Control.Monad.Trans (liftIO)
 import qualified Data.ByteString.Lazy as B
 import           Data.Copointed (copoint)
 import           System.Directory (doesDirectoryExist, doesFileExist)
+import           System.IO.Error (catchIOError)
 import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
+import Biegunka.Action (verifyAppliedPatch)
 import Biegunka.Control
   ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
   , sourceColor, srcColor, dstColor
   )
-import Biegunka.Language (Term(..), Source(..), Action(..))
+import Biegunka.Language
 import Biegunka.Script (Annotate(..))
 
 
@@ -73,9 +75,15 @@ correct il = case il of
       s' <- B.readFile s
       d' <- B.readFile d
       return $ s' == d'
-    Template _ d _ -> doesFileExist d
-    _ -> return True
-  _ -> return True
+    Template _ d _ ->
+      doesFileExist d
+    Patch patch root spec ->
+      verifyAppliedPatch patch root spec
+    Command _ _ ->
+      return True
+   `catchIOError`
+      \_ -> return False
+  TM _ _ -> return True
 
 
 -- | Describe current action and host where it happens
@@ -101,8 +109,14 @@ log sc il = nest 1 <$> case il of
           (sc^.dstColor) (text d)
       </> "is not a templated copy of"
       </> (sc^.srcColor) (text s)
-    _ -> Nothing
-  _ -> Nothing
+    Command _ _ -> Nothing
+    Patch patch patchRoot PatchSpec { reversely } -> Just $
+          (sc^.srcColor) (text patch)
+      </> "is not correctly"
+      </> (if reversely then parens "reversely" </> "applied" else "applied")
+      </> "to"
+      </> (sc^.dstColor) (text patchRoot)
+  TM _ _ -> Nothing
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
