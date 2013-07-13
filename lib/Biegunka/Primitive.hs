@@ -3,6 +3,8 @@
 --
 -- Containts 'Actions' layer primitive and modifiers.
 -- 'Sources' layer primitives are found in 'Biegunka.Source.*' modules
+--
+-- All concrete primitives docs assume you have default settings
 module Biegunka.Primitive
   ( -- * Actions layer primitives
     link, register, copy, substitute, patch
@@ -32,7 +34,6 @@ infixr 7 `prerequisiteOf`, <~>
 --
 -- Information about sources and files related to a particular
 -- profile @profile@ could be found in @~\/.biegunka\/profiles\/@.
--- (Assuming default settings.)
 --
 -- Example usage:
 --
@@ -68,7 +69,6 @@ group = profile
 -- >   register "somewhere"
 --
 -- Links @~\/git\/source@ to @~\/somewhere@.
--- (Assuming default settings.)
 register :: FilePath -> Script Actions ()
 register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 {-# INLINE register #-}
@@ -79,7 +79,6 @@ register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 -- >   link "some-file" "anywhere"
 --
 -- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
--- (Assuming default settings.)
 link :: FilePath -> FilePath -> Script Actions ()
 link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE link #-}
@@ -90,7 +89,6 @@ link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFil
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
--- (Assuming default settings.)
 copy :: FilePath -> FilePath -> Script Actions ()
 copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (constructDestinationFilepath rfp src dst))
 {-# INLINE copy #-}
@@ -102,7 +100,6 @@ copy src dst = actioned (\rfp sfp -> Copy (sfp </> src) (constructDestinationFil
 -- >   substitute "some-file.template" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file.template@ to @~\/anywhere@.
--- (Assuming default settings.)
 --
 -- Substitutes templates in @~\/anywhere@ with values from
 -- 'templates' part of 'Controls'
@@ -112,6 +109,12 @@ substitute src dst = actioned (\rfp sfp ->
     (\b -> render . setAttribute "template" b . newSTMP))
 {-# INLINE substitute #-}
 
+-- | Applies the patch given the 'PatchSpec'
+--
+-- > git "https://example.com/source.git" "git/source" $
+-- >   patch "some-patch.patch" "anywhere" (def { reversely = True })
+--
+-- Applies @~\/git\/source\/some-patch.patch@ to @~\/anywhere@ reversely.
 patch :: FilePath -> FilePath -> PatchSpec -> Script Actions ()
 patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spec)
 {-# INLINE patch #-}

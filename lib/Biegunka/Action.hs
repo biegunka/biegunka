@@ -13,6 +13,7 @@ import Biegunka.Execute.Exception
 import Biegunka.Language
 
 
+-- | Generic patching function
 patching :: FilePath -> FilePath -> [String] -> (ExitCode -> IO a) -> IO a
 patching patch root arguments post = do
   stdin   <- openFile patch ReadMode
@@ -25,7 +26,12 @@ patching patch root arguments post = do
   status  <- waitForProcess process
   post status
 
-applyPatch :: FilePath -> FilePath -> PatchSpec -> IO ()
+-- | Apply patch given the patch spec
+applyPatch
+  :: FilePath  -- ^ Patch location
+  -> FilePath  -- ^ Patching root
+  -> PatchSpec
+  -> IO ()
 applyPatch patch root PatchSpec { strip, reversely } =
   patching patch root arguments post
  where
@@ -34,7 +40,12 @@ applyPatch patch root PatchSpec { strip, reversely } =
   post ExitSuccess     = return ()
   post (ExitFailure _) = throwIO $ PatchFailure patch root
 
-verifyAppliedPatch :: FilePath -> FilePath -> PatchSpec -> IO Bool
+-- | Verify applied patch given the patch spec
+verifyAppliedPatch
+  :: FilePath  -- ^ Patch location
+  -> FilePath  -- ^ Patching root
+  -> PatchSpec
+  -> IO Bool
 verifyAppliedPatch patch root PatchSpec { strip, reversely } =
   patching patch root arguments post
  where
