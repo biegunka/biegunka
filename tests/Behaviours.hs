@@ -11,23 +11,29 @@ import Test.Hspec
 
 main :: IO ()
 main = do
-  as <- trivial_script `resultsIn` trivial_layout
-  bs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
-  cs <- simple_repo_0 `resultsIn` simple_layout_0
-  ds <- trivial_repo "biegunka-core-simple0" `resultsIn` trivial_layout
-  es <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
-  fs <- trivial_repo "" `resultsIn` trivial_layout
   hspec $ do
     describe "Trivial biegunka script" $ do
-      it "should be trivial layout too" $ null as
+      it "should be trivial layout too" $ do
+        xs <- trivial_script `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Trivial biegunka profile script" $ do
-      it "should be trivial layout too" $ null bs
+      it "should be trivial layout too" $ do
+        xs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Simple biegunka profile script" $ do
-      it "should be simple layout too" $ null cs
-      it "should disappear after deletion" $ null ds
+      it "should be simple layout too" $ do
+        xs <- simple_repo_0 `resultsIn` simple_layout_0
+        null xs `shouldBe` True
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "biegunka-core-simple0" `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Simple biegunka no profile script" $ do
-      it "should be simple layout too" $ null es
-      it "should disappear after deletion" $ null fs
+      it "should be simple layout too" $ do
+        xs <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
+        null xs `shouldBe` True
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "" `resultsIn` trivial_layout
+        null xs `shouldBe` True
 
 
 resultsIn :: Script Sources () -> Layout -> IO [LayoutException]
