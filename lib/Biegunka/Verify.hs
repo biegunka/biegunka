@@ -14,7 +14,6 @@ import           Control.Lens
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Writer (WriterT, execWriterT, tell)
 import           Control.Monad.Trans (liftIO)
-import qualified Data.ByteString.Lazy as B
 import           Data.Copointed (copoint)
 import           System.Directory (doesDirectoryExist, doesFileExist)
 import           System.IO.Error (catchIOError)
@@ -22,7 +21,7 @@ import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
-import Biegunka.Action (verifyAppliedPatch)
+import Biegunka.Action (verifyAppliedPatch, verifyCopy)
 import Biegunka.Control
   ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
@@ -71,10 +70,8 @@ correct il = case il of
       dfe <- doesFileExist s'
       dde <- doesDirectoryExist s'
       return $ s == s' && (dfe || dde)
-    Copy s d _ -> do
-      s' <- B.readFile s
-      d' <- B.readFile d
-      return $ s' == d'
+    Copy source destination spec -> do
+      verifyCopy source destination spec
     Template _ d _ ->
       doesFileExist d
     Patch patch root spec ->
