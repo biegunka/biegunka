@@ -231,7 +231,7 @@ termOperation term = case term of
      `E.onException`
       atomically (modifyTVar rstv (S.delete dst))
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
-  TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
+  TA _ (Copy src dst _) _ -> return $ overWriteWith copyFile src dst
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- reflected <&> \e -> e^.local.runs.templates
     return $

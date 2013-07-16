@@ -177,7 +177,7 @@ fromScript z = execState (f z) mempty
     g p s x
    where
     h (Link src dst)       = M.singleton dst Record { recordtype = "link",     base = src, location = dst }
-    h (Copy src dst)       = M.singleton dst Record { recordtype = "copy",     base = src, location = dst }
+    h (Copy src dst _)     = M.singleton dst Record { recordtype = "copy",     base = src, location = dst }
     h (Template src dst _) = M.singleton dst Record { recordtype = "template", base = src, location = dst }
     h (Patch src dst _)    = M.singleton dst Record { recordtype = "patch",    base = src, location = dst }
     h (Command {})         = mempty

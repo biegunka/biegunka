@@ -51,7 +51,7 @@ action sc il = nest 3 $ case il of
         </> (sc^.srcColor) (text d)
         </> "to"
         </> (sc^.dstColor) (text s)
-      Copy s d       ->
+      Copy s d _     ->
             (sc^.actionColor) "copy"
         </> (sc^.srcColor) (text s)
         </> "to"

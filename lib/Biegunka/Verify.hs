@@ -71,7 +71,7 @@ correct il = case il of
       dfe <- doesFileExist s'
       dde <- doesDirectoryExist s'
       return $ s == s' && (dfe || dde)
-    Copy s d -> do
+    Copy s d _ -> do
       s' <- B.readFile s
       d' <- B.readFile d
       return $ s' == d'
@@ -101,7 +101,7 @@ log sc il = nest 1 <$> case il of
       </> "link to"
       </> (sc^.srcColor) (text s)
       </> "is broken"
-    Copy s d -> Just $
+    Copy s d _ -> Just $
           (sc^.dstColor) (text d)
       </> "is not a copy of"
       </> (sc^.srcColor) (text s)
