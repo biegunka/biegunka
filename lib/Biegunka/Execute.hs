@@ -250,7 +250,7 @@ termOperation term = case term of
         }
     e <- waitForProcess ph
     case e of
-      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellCommandFailure sp
+      ExitFailure _ -> T.hGetContents er >>= throwIO . ShellException sp
       _ -> return ()
   TA _ (Patch patch root spec) _ -> return $ do
     verified <- verifyAppliedPatch patch root spec

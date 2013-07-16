@@ -45,7 +45,7 @@ applyPatch patch root PatchSpec { strip, reversely } =
   arguments   = ["-p", show strip] ++ if reversely then ["--reverse"] else []
 
   post ExitSuccess     = return ()
-  post (ExitFailure _) = throwIO $ PatchFailure patch root
+  post (ExitFailure _) = throwIO $ PatchingException patch root
 
 -- | Verify applied patch given the patch spec
 verifyAppliedPatch
