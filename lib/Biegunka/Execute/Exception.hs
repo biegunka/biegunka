@@ -1,9 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Define Biegunka exceptions
+-- | Biegunka custom exceptions
 module Biegunka.Execute.Exception
   ( -- * Exceptions
-    BiegunkaException(..)
+    CopyingException(..)
+  , PatchingException(..)
+  , ShellException(..)
+  , SourceException(..)
     -- * Utility functions
   , sourceFailure
   ) where
@@ -18,31 +21,63 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 
 
--- | Custom exceptions
-data BiegunkaException =
-    PatchFailure FilePath FilePath     -- ^ Various shell failures with output
-  | ShellCommandFailure CmdSpec Text   -- ^ Various shell failures with output
-  | SourceFailure String FilePath Text -- ^ Source emerging failure with paths and output
+-- | Copying files/directories failure (with catched IO exception)
+data CopyingException = CopyingException FilePath FilePath String
     deriving (Typeable)
 
-instance Show BiegunkaException where
-  show = T.unpack . T.unlines . filter (not . T.null) . T.lines . pretty
-   where
-    pretty (PatchFailure patch root) =
-         "Patch "
-      <> T.pack patch
-      <> " has failed to apply at "
-      <> T.pack root
-    pretty (ShellCommandFailure (ShellCommand c) o) =
-      "Shell command `" <> T.pack c <> "' has failed\nFailures log:\n" <> o
-    pretty (ShellCommandFailure (RawCommand c as) o) =
-      "Command `" <> T.pack c <> " " <> T.pack (intercalate " " as) <> "` has failed\nFailures log:\n" <> o
-    pretty (SourceFailure up fp fs) =
-      "Biegunka has failed to update source " <> T.pack up <> " at " <> T.pack fp <> "\nFailures log:\n" <> fs
+instance Show CopyingException where
+  show (CopyingException source destination ioerror) = nicely $
+       "Copying "
+    <> T.pack source
+    <> " to "
+    <> T.pack destination
+    <> " has failed.\nExceptions log:\n"
+    <> T.pack ioerror
 
-instance Exception BiegunkaException
+instance Exception CopyingException
+
+
+-- | Patching directory failure
+data PatchingException = PatchingException FilePath FilePath
+    deriving (Typeable)
+
+instance Show PatchingException where
+  show (PatchingException patch root) = nicely $
+       "Patch "
+    <> T.pack patch
+    <> " has failed to apply at "
+    <> T.pack root
+
+instance Exception PatchingException
+
+
+-- | Various shell failures with output
+data ShellException = ShellException CmdSpec Text
+    deriving (Typeable)
+
+instance Show ShellException where
+  show (ShellException (ShellCommand c) o) = nicely $
+    "Shell command `" <> T.pack c <> "' has failed\nExceptions log:\n" <> o
+  show (ShellException (RawCommand c as) o) = nicely $
+    "Command `" <> T.pack c <> " " <> T.pack (intercalate " " as) <> "` has failed\nExceptions log:\n" <> o
+
+instance Exception ShellException
+
+
+-- | Source emerging failure with paths and output
+data SourceException = SourceException String FilePath Text
+    deriving (Typeable)
+
+instance Show SourceException where
+  show (SourceException up fp fs) = nicely $
+    "Biegunka has failed to update source " <> T.pack up <> " at " <> T.pack fp <> "\nExceptions log:\n" <> fs
+
+instance Exception SourceException
 
 
 -- | Report 'Source' emerge failure to Biegunka.
 sourceFailure :: String -> FilePath -> Text -> IO a
-sourceFailure up fp fs = throwIO $ SourceFailure up fp fs
+sourceFailure up fp fs = throwIO $ SourceException up fp fs
+
+nicely :: Text -> String
+nicely f = T.unpack . T.unlines . filter (not . T.null) $ T.lines f

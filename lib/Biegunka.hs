@@ -20,7 +20,7 @@ module Biegunka
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
-  , link, register, copy, substitute, patch, PatchSpec(..)
+  , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..)
   , shell, raw
     -- * Modifiers
   , profile, group

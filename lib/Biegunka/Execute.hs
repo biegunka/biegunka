@@ -35,15 +35,14 @@ import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import           System.Directory
-  ( removeDirectoryRecursive, removeFile, copyFile, createDirectoryIfMissing )
+import           System.Directory (removeDirectoryRecursive, removeFile, createDirectoryIfMissing)
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Action (applyPatch, verifyAppliedPatch)
+import Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
 import Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
 import qualified Biegunka.DB as DB
 import Biegunka.Execute.Control
@@ -222,7 +221,10 @@ termOperation term = case term of
      `onException`
       atomically (modifyTVar rstv (S.delete dst))
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
-  TA _ (Copy src dst) _ -> return $ overWriteWith copyFile src dst
+  TA _ (Copy src dst spec) _ -> return $ do
+    try (removeDirectoryRecursive dst) :: IO (Either IOError ())
+    createDirectoryIfMissing True $ dropFileName dst
+    copy src dst spec
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- reflected <&> \e -> e^.local.runs.templates
     return $
@@ -241,7 +243,7 @@ termOperation term = case term of
         }
     e <- waitForProcess ph
     case e of
-      ExitFailure _ -> T.hGetContents er >>= throwM . ShellCommandFailure sp
+      ExitFailure _ -> T.hGetContents er >>= throwM . ShellException sp
       _ -> return ()
   TA _ (Patch patch root spec) _ -> return $ do
     verified <- verifyAppliedPatch patch root spec

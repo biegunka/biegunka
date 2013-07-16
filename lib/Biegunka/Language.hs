@@ -6,7 +6,7 @@
 module Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
-  , PatchSpec(..), React(..)
+  , PatchSpec(..), CopySpec(..), React(..)
   ) where
 
 import Control.Applicative((<$>))
@@ -77,13 +77,19 @@ data Action =
     -- | Symbolic link
     Link FilePath FilePath
     -- | Verbatim copy
-  | Copy FilePath FilePath
+  | Copy FilePath FilePath CopySpec
     -- | Copy with template substitutions
   | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
     -- | External command
   | Command FilePath CmdSpec
     -- | Patch
   | Patch FilePath FilePath PatchSpec
+
+-- | Copying settings
+data CopySpec =
+    OnlyDirectories
+  | OnlyFiles
+  | BothDirectoriesAndFiles
 
 -- | Patch settings
 data PatchSpec = PatchSpec

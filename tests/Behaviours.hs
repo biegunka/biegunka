@@ -2,32 +2,49 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Biegunka hiding (check)
-import Biegunka.Source.Layout (layout)
-import Control.Lens
-import System.Directory.Layout
-import Test.Hspec
+import           Biegunka hiding (check)
+import           Biegunka.Source.Layout (layout)
+import qualified Biegunka.Source.Directory as D
+import           Control.Lens
+import           System.Directory.Layout
+import           Test.Hspec
 
 
 main :: IO ()
 main = do
-  as <- trivial_script `resultsIn` trivial_layout
-  bs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
-  cs <- simple_repo_0 `resultsIn` simple_layout_0
-  ds <- trivial_repo "biegunka-core-simple0" `resultsIn` trivial_layout
-  es <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
-  fs <- trivial_repo "" `resultsIn` trivial_layout
   hspec $ do
     describe "Trivial biegunka script" $ do
-      it "should be trivial layout too" $ null as
+      it "should be trivial layout too" $ do
+        xs <- trivial_script `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Trivial biegunka profile script" $ do
-      it "should be trivial layout too" $ null bs
+      it "should be trivial layout too" $ do
+        xs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Simple biegunka profile script" $ do
-      it "should be simple layout too" $ null cs
-      it "should disappear after deletion" $ null ds
+      it "should be simple layout too" $ do
+        xs <- simple_repo_0 `resultsIn` simple_layout_0
+        null xs `shouldBe` True
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "biegunka-core-simple0" `resultsIn` trivial_layout
+        null xs `shouldBe` True
     describe "Simple biegunka no profile script" $ do
-      it "should be simple layout too" $ null es
-      it "should disappear after deletion" $ null fs
+      it "should be simple layout too" $ do
+        xs <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
+        null xs `shouldBe` True
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "" `resultsIn` trivial_layout
+        null xs `shouldBe` True
+    describe "Simple copying" $ do
+      it "should copy the directory correctly" $ do
+        make (directory "a" simple_copying_layout_0) "/tmp"
+        biegunka (set root "/tmp" . set appData "/tmp/.biegunka") (run id) $
+          D.directory "/tmp" $
+            copy "a" "/tmp/b"
+        check (directory "b" simple_copying_layout_0) "/tmp" `shouldReturn` []
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "" `resultsIn` trivial_layout
+        null xs `shouldBe` True
 
 
 resultsIn :: Script Sources () -> Layout -> IO [LayoutException]
@@ -78,3 +95,10 @@ simple_layout_no_profile_0 = do
   directory ".biegunka" $
     directory "profiles" $
       file_ ".profile"
+
+simple_copying_layout_0 :: Layout
+simple_copying_layout_0 = do
+  file "foo" "foocontents\n"
+  file "bar" "barcontents\n"
+  directory "baz" $
+    file "quux" "quuxcontents\n"
