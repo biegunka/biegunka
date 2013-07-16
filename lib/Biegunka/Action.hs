@@ -65,23 +65,23 @@ copy :: FilePath -> FilePath -> CopySpec -> IO ()
 copy = undefined
 
 verifyCopy :: FilePath -> FilePath -> CopySpec -> IO Bool
-verifyCopy x y spec = case spec of
+verifyCopy source destination spec = case spec of
   OnlyDirectories -> do
-    True <- doesDirectoryExist x
-    True <- doesDirectoryExist y
-    verifyCopyDirectory x y
+    True <- doesDirectoryExist source
+    True <- doesDirectoryExist destination
+    verifyCopyDirectory source destination
    `mplus`
     return False
   OnlyFiles -> do
-    True <- doesFileExist x
-    True <- doesFileExist y
-    verifyCopyFile x y
+    True <- doesFileExist source
+    True <- doesFileExist destination
+    verifyCopyFile source destination
    `mplus`
     return False
   BothDirectoriesAndFiles -> do
-    verifyCopyDirectory x y
+    verifyCopyDirectory source destination
   `mplus`
-    verifyCopyFile x y
+    verifyCopyFile source destination
   `mplus`
     return False
  where
