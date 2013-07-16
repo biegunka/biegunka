@@ -35,7 +35,7 @@ import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import           System.Directory (removeDirectoryRecursive, removeFile, createDirectoryIfMissing)
+import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.Env (getEnv)
@@ -64,8 +64,8 @@ run e = interpret $ \c (s, as) -> do
   runTask c' def newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
-  mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
-  mapM_ (tryIOError . removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
+  mapM_ (tryIOError . D.removeFile) (DB.filepaths a \\ DB.filepaths b)
+  mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
   DB.save c (as^.profiles) b
 
 -- | Real run interpreter
@@ -216,14 +216,14 @@ termOperation term = case term of
             writeTVar rstv $ S.insert dst rs
             return False
       unless updated $ do
-        createDirectoryIfMissing True $ dropFileName dst
+        D.createDirectoryIfMissing True $ dropFileName dst
         update dst
      `onException`
       atomically (modifyTVar rstv (S.delete dst))
   TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
   TA _ (Copy src dst spec) _ -> return $ do
-    try (removeDirectoryRecursive dst) :: IO (Either IOError ())
-    createDirectoryIfMissing True $ dropFileName dst
+    try (D.removeDirectoryRecursive dst) :: IO (Either IOError ())
+    D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- reflected <&> \e -> e^.local.runs.templates
@@ -252,7 +252,7 @@ termOperation term = case term of
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do
-    createDirectoryIfMissing True $ dropFileName dst
+    D.createDirectoryIfMissing True $ dropFileName dst
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
