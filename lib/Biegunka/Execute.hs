@@ -64,9 +64,15 @@ run e = interpret $ \c (s, as) -> do
   runTask c' def newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
-  mapM_ (tryIOError . D.removeFile) (DB.filepaths a \\ DB.filepaths b)
+  mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
   mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
   DB.save c (as^.profiles) b
+ where
+  removeFile path = do
+    file <- D.doesFileExist path
+    case file of
+      True  -> D.removeFile path
+      False -> D.removeDirectoryRecursive path
 
 -- | Real run interpreter
 execute :: (Run -> Run) -> Interpreter
