@@ -12,7 +12,8 @@ import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import           Control.Monad (forever)
 import           Data.Char (toLower)
 import           Data.Foldable (asum)
-import           Data.List (intercalate, partition)
+import           Data.Traversable (for)
+import           Data.List (intercalate, isPrefixOf, partition)
 import           Data.Monoid (mempty)
 import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..))
@@ -90,10 +91,17 @@ initialize destination = do
 
 withScript :: FilePath -> Script -> [String] -> IO ()
 withScript destination script args = do
-  let (biegunkaArgs, ghcArgs) = partition (\arg -> "--" == take 2 arg) args
-  packageDBArg <- findPackageDBArg
+  let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
+  packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
+                     then return Nothing
+                     else findPackageDBArg
+  for packageDBArg $ \packageDB ->
+    putStrLn $ "* Found cabal package DB at " ++ packageDB
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
-    (ghcArgs ++ maybe [] pure packageDBArg ++ [destination, toOption script] ++ biegunkaArgs)
+         (ghcArgs
+      ++ maybe [] (\packageDB -> ["-package-db=" ++ packageDB]) packageDBArg
+      ++ [destination, toOption script]
+      ++ biegunkaArgs)
     Nothing
     Nothing
   hSetBuffering stdin' NoBuffering
@@ -118,11 +126,11 @@ findPackageDBArg :: IO (Maybe String)
 findPackageDBArg = do
   maybeCabalSandbox <- findCabalSandbox
   case maybeCabalSandbox of
-    Just cabalSandbox -> return . Just $ "-package-db=" ++ cabalSandbox
+    Just cabalSandbox -> return $ Just cabalSandbox
     Nothing -> do
       maybeCabalDevSandbox <- findCabalDevSandbox
       case maybeCabalDevSandbox of
-        Just cabalDevSandbox -> return . Just $ "-package-db=" ++ cabalDevSandbox
+        Just cabalDevSandbox -> return $ Just cabalDevSandbox
         Nothing -> return Nothing
  where
   findCabalSandbox    =
