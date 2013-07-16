@@ -8,12 +8,15 @@ module Biegunka.Action
 import           Control.Applicative (liftA2)
 import           Control.Monad (mplus)
 import           Control.Exception (throwIO)
+import           Data.Foldable (for_)
 import           Data.Traversable (for)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
+import qualified System.Directory as D
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
 import           System.IO (IOMode(..), openFile)
+import           System.IO.Error (catchIOError)
 import           System.Process (runProcess, waitForProcess)
 
 import Biegunka.Execute.Exception
@@ -62,7 +65,45 @@ verifyAppliedPatch patch root PatchSpec { strip, reversely } =
 
 
 copy :: FilePath -> FilePath -> CopySpec -> IO ()
-copy = undefined
+copy source destination spec = case spec of
+  OnlyFiles ->
+    copyFile source destination
+  OnlyDirectories ->
+    copyDirectory source destination
+  BothDirectoriesAndFiles -> do
+    file <- doesFileExist source
+    case file of
+      False -> copyDirectory source destination
+      True  -> copyFile source destination
+ where
+  copyFile :: FilePath -> FilePath -> IO ()
+  copyFile file file' = do
+    exists <- doesFileExist file
+    case exists of
+      False -> throwIO (CopyingException file file' ("File " ++ file ++ "does not exist"))
+      True  -> D.copyFile file file'
+   `catchIOError`
+    \exn -> throwIO (CopyingException file file' (show exn))
+
+  copyDirectory :: FilePath -> FilePath -> IO ()
+  copyDirectory directory directory' = do
+    exists <- doesDirectoryExist directory
+    case exists of
+      False ->
+        throwIO (CopyingException directory directory' ("Directory " ++ directory ++ "does not exist"))
+      True -> do
+        D.createDirectory directory'
+        contents <- getDirectoryContents directory
+        for_ (filter (`notElem` [".", ".."]) contents) $ \subpath -> do
+          let path  = directory  </> subpath
+              path' = directory' </> subpath
+          file <- doesFileExist path
+          case file of
+            False -> copyDirectory path path'
+            True  -> copyFile path path'
+   `catchIOError`
+    \exn -> throwIO (CopyingException directory directory' (show exn))
+
 
 verifyCopy :: FilePath -> FilePath -> CopySpec -> IO Bool
 verifyCopy source destination spec = case spec of

@@ -11,7 +11,7 @@ module Biegunka.Execute.Exception
   , sourceFailure
   ) where
 
-import Control.Exception (Exception, IOException, throwIO)
+import Control.Exception (Exception, throwIO)
 import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
@@ -22,7 +22,7 @@ import qualified Data.Text as T
 
 
 -- | Copying files/directories failure (with catched IO exception)
-data CopyingException = CopyingException FilePath FilePath IOException
+data CopyingException = CopyingException FilePath FilePath String
     deriving (Typeable)
 
 instance Show CopyingException where
@@ -32,7 +32,7 @@ instance Show CopyingException where
     <> " to "
     <> T.pack destination
     <> " has failed.\nExceptions log:\n"
-    <> T.pack (show ioerror)
+    <> T.pack ioerror
 
 instance Exception CopyingException
 
