@@ -2,11 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Biegunka hiding (check)
-import Biegunka.Source.Layout (layout)
-import Control.Lens
-import System.Directory.Layout
-import Test.Hspec
+import           Biegunka hiding (check)
+import           Biegunka.Source.Layout (layout)
+import qualified Biegunka.Source.Directory as D
+import           Control.Lens
+import           System.Directory.Layout
+import           Test.Hspec
 
 
 main :: IO ()
@@ -31,6 +32,16 @@ main = do
       it "should be simple layout too" $ do
         xs <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
         null xs `shouldBe` True
+      it "should disappear after deletion" $ do
+        xs <- trivial_repo "" `resultsIn` trivial_layout
+        null xs `shouldBe` True
+    describe "Simple copying" $ do
+      it "should copy the directory correctly" $ do
+        make (directory "a" simple_copying_layout_0) "/tmp"
+        biegunka (set root "/tmp" . set appData "/tmp/.biegunka") (run id) $
+          D.directory "/tmp" $
+            copy "a" "/tmp/b"
+        check (directory "b" simple_copying_layout_0) "/tmp" `shouldReturn` []
       it "should disappear after deletion" $ do
         xs <- trivial_repo "" `resultsIn` trivial_layout
         null xs `shouldBe` True
@@ -84,3 +95,10 @@ simple_layout_no_profile_0 = do
   directory ".biegunka" $
     directory "profiles" $
       file_ ".profile"
+
+simple_copying_layout_0 :: Layout
+simple_copying_layout_0 = do
+  file "foo" "foocontents\n"
+  file "bar" "barcontents\n"
+  directory "baz" $
+    file "quux" "quuxcontents\n"
