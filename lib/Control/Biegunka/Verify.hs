@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Check interpreter
-module Biegunka.Verify (check, verify) where
+module Control.Biegunka.Verify (check, verify) where
 
 import Control.Applicative
 import Control.Monad (mplus)
@@ -21,14 +21,14 @@ import           System.Posix.Files (readSymbolicLink)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
-import Biegunka.Action (verifyAppliedPatch, verifyCopy)
-import Biegunka.Control
+import Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
+import Control.Biegunka.Control
   ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
   , sourceColor, srcColor, dstColor
   )
-import Biegunka.Language
-import Biegunka.Script (Annotate(..))
+import Control.Biegunka.Language
+import Control.Biegunka.Script (Annotate(..))
 
 
 -- | Check interpreter

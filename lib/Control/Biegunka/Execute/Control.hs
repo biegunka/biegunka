@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
-module Biegunka.Execute.Control
+module Control.Biegunka.Execute.Control
   ( Executor
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
@@ -27,7 +27,7 @@ import Data.Monoid (mempty)
 import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
-import Biegunka.Language (React(..))
+import Control.Biegunka.Language (React(..))
 
 
 -- | Convenient type alias for task-local-state-ful IO

@@ -7,7 +7,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 -- | Saved profiles data management
-module Biegunka.DB
+module Control.Biegunka.DB
   ( DB(..), Record(..)
   , load, loads, save, fromScript
   , filepaths, sources
@@ -38,9 +38,9 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath ((</>), (<.>))
 import           System.FilePath.Lens (directory)
 
-import Biegunka.Control (Settings, appData)
-import Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
-import Biegunka.Script (Annotate(..))
+import Control.Biegunka.Control (Settings, appData)
+import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
+import Control.Biegunka.Script (Annotate(..))
 
 -- $setup
 -- >>> import Data.Default

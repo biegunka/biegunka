@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
-module Biegunka.Script
+module Control.Biegunka.Script
   ( Script(..), Annotations, Annotate(..)
   , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
   , token, app, profiles, profileName, source, sourceURL, order
@@ -24,7 +24,7 @@ import           Data.Set (Set)
 import qualified Data.Set as S
 import           System.FilePath.Lens
 
-import Biegunka.Language
+import Control.Biegunka.Language
 
 
 -- | Language 'Term' annotation depending on their 'Scope'

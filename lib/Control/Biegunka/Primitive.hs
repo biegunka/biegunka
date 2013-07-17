@@ -5,7 +5,7 @@
 -- 'Sources' layer primitives are found in 'Biegunka.Source.*' modules
 --
 -- All concrete primitives docs assume you have default settings
-module Biegunka.Primitive
+module Control.Biegunka.Primitive
   ( -- * Actions layer primitives
     link, register, copy, copyFile, copyDirectory, substitute, patch
   , shell, raw
@@ -23,8 +23,8 @@ import           System.FilePath.Lens
 import           System.Process (CmdSpec(..))
 import           Text.StringTemplate (newSTMP, render, setAttribute)
 
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 infixr 7 `prerequisiteOf`, <~>

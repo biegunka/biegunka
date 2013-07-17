@@ -3,7 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE Rank2Types #-}
 -- | Specifies configuration language
-module Biegunka.Language
+module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
   , PatchSpec(..), CopySpec(..), React(..)

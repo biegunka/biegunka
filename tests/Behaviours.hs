@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import           Biegunka hiding (check)
-import           Biegunka.Source.Layout (layout)
-import qualified Biegunka.Source.Directory as D
+import           Control.Biegunka hiding (check)
+import           Control.Biegunka.Source.Layout (layout)
+import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
 import           System.Directory.Layout
 import           Test.Hspec

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Biegunka custom exceptions
-module Biegunka.Execute.Exception
+module Control.Biegunka.Execute.Exception
   ( -- * Exceptions
     CopyingException(..)
   , PatchingException(..)
