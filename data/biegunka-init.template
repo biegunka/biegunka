@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- -*- mode: haskell -*-
 -- vi: set ft=haskell :
@@ -32,10 +32,10 @@ main = do
   case environment of
     Default -> runBiegunka biegunkaSettings runSettings script
 
--- Dotfiles script stub
+-- Biegunka script stub
 script :: Script Sources ()
 script = do
-  -- Default profile (named "my-dotfiles")
+  -- Custom profile (named "my-dotfiles")
   -- After successful run data will be found at ~/.biegunka/profiles/my-dotfiles.profile
   profile "my-dotfiles" $ do
     -- Your dotfiles repositories go here
