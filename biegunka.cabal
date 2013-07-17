@@ -1,6 +1,6 @@
 name: biegunka
-version: 0.1.0.0
-synopsis: DSL definitions, interpreters, templating
+version: 0.2.0.0
+synopsis: DSL definitions, interpreters, templating, git support
 license: MIT
 license-file: LICENSE
 author: Matvey Aksenov
