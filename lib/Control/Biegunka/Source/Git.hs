@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
 -- | Support for git repositories as 'Sources'
-module Biegunka.Source.Git
+module Control.Biegunka.Source.Git
   ( -- * Source layer
     git', git, git_
     -- * Types
@@ -26,10 +26,10 @@ import           System.Directory (getCurrentDirectory, setCurrentDirectory, doe
 import           System.FilePath ((</>))
 import           System.Process (readProcessWithExitCode)
 
-import Biegunka.Execute.Exception (sourceFailure)
-import Biegunka.Language (Scope(..))
-import Biegunka.Script (Script, URI, sourced)
-import Biegunka.Source (Sourceable(..))
+import Control.Biegunka.Execute.Exception (sourceFailure)
+import Control.Biegunka.Language (Scope(..))
+import Control.Biegunka.Script (Script, URI, sourced)
+import Control.Biegunka.Source (Sourceable(..))
 
 
 -- | Git repository's settings

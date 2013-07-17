@@ -1,5 +1,5 @@
 -- | Biegunka - configuration development library
-module Biegunka
+module Control.Biegunka
   ( -- * Interpreters control
     biegunka, Settings, root, appData, colors
   , ColorScheme(..)
@@ -31,7 +31,7 @@ module Biegunka
   , makeOptionsParser
   ) where
 
-import Biegunka.Control
+import Control.Biegunka.Control
   ( biegunka, Settings, root, appData, colors
   , Interpreter, pause, confirm
   , ColorScheme(..)
@@ -40,17 +40,17 @@ import Biegunka.Control
   , errorColor, retryColor
   , noColors
   )
-import Biegunka.Execute (run, execute, dryRun, pretend)
-import Biegunka.Execute.Control
+import Control.Biegunka.Execute (run, execute, dryRun, pretend)
+import Control.Biegunka.Execute.Control
   ( Run
   , Priviledges(..), priviledges
   , react
   , Templates(..), templates
   , retries
   )
-import Biegunka.Language (Scope(..), React(..), PatchSpec(..))
-import Biegunka.Primitive
-import Biegunka.Script (Script)
-import Biegunka.TH (makeOptionsParser)
-import Biegunka.Verify (check, verify)
-import Biegunka.Source (Sourceable(..))
+import Control.Biegunka.Language (Scope(..), React(..), PatchSpec(..))
+import Control.Biegunka.Primitive
+import Control.Biegunka.Script (Script)
+import Control.Biegunka.TH (makeOptionsParser)
+import Control.Biegunka.Verify (check, verify)
+import Control.Biegunka.Source (Sourceable(..))

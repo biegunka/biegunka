@@ -1,12 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 -- | Example 'Source' based on 'directory-layout'
-module Biegunka.Source.Layout (Layout, layout, layout_) where
+module Control.Biegunka.Source.Layout (Layout, layout, layout_) where
 
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout (Layout, directory, make)
 
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 -- | Make specified layout and use is as 'Source'

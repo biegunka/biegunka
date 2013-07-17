@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Making life easier with meta-programming
-module Biegunka.TH (makeOptionsParser) where
+module Control.Biegunka.TH (makeOptionsParser) where
 
 import Data.Char (toLower)
 import Data.Foldable (asum)
@@ -10,12 +10,12 @@ import Data.Foldable (asum)
 import Language.Haskell.TH
 import Options.Applicative
 
-import Biegunka.Control (Settings, biegunka, confirm)
-import Biegunka.Execute (run, dryRun)
-import Biegunka.Execute.Control (Run)
-import Biegunka.Language (Scope(Sources))
-import Biegunka.Script (Script)
-import Biegunka.Verify (check)
+import Control.Biegunka.Control (Settings, biegunka, confirm)
+import Control.Biegunka.Execute (run, dryRun)
+import Control.Biegunka.Execute.Control (Run)
+import Control.Biegunka.Language (Scope(Sources))
+import Control.Biegunka.Script (Script)
+import Control.Biegunka.Verify (check)
 
 
 -- | Make parser for biegunka and environment options

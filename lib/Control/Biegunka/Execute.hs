@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Real run interpreter
-module Biegunka.Execute
+module Control.Biegunka.Execute
   ( run, dryRun
   , execute, pretend
   ) where
@@ -42,15 +42,15 @@ import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
-import Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
-import qualified Biegunka.DB as DB
-import Biegunka.Execute.Control
-import Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
-import Biegunka.Execute.Exception
-import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
-import Biegunka.Execute.Schedule (runTask, schedule)
-import Biegunka.Script
+import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
+import Control.Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
+import qualified Control.Biegunka.DB as DB
+import Control.Biegunka.Execute.Control
+import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
+import Control.Biegunka.Execute.Exception
+import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
+import Control.Biegunka.Execute.Schedule (runTask, schedule)
+import Control.Biegunka.Script
 
 
 -- | Real run interpreter

@@ -3,8 +3,8 @@
 -- Checks that sudo works in any scope
 module Main where
 
-import Biegunka
-import Biegunka.Source.Git
+import Control.Biegunka
+import Control.Biegunka.Source.Git
 
 
 main :: IO ()

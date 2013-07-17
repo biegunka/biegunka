@@ -6,7 +6,7 @@
 -- Checks you cannot get convenient option parser from complex data declarations
 module TH where
 
-import           Biegunka
+import Control.Biegunka
 
 
 data Env = A Int | B Int

@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 -- | Execution tasks scheduler
-module Biegunka.Execute.Schedule
+module Control.Biegunka.Execute.Schedule
   ( runTask, schedule
   ) where
 
@@ -14,10 +14,10 @@ import           Data.Functor.Trans.Tagged (untag)
 import           Data.Proxy (Proxy)
 import           Data.Reflection (Reifies, reify)
 
-import Biegunka.Control
-import Biegunka.Execute.Control
-import Biegunka.Language (Term(..))
-import Biegunka.Script
+import Control.Biegunka.Control
+import Control.Biegunka.Execute.Control
+import Control.Biegunka.Language (Term(..))
+import Control.Biegunka.Script
 
 
 -- | Prepares environment to run task with given execution routine

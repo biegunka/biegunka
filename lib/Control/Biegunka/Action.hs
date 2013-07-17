@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 -- | Abstracted 'Actions' layer routines.
-module Biegunka.Action
+module Control.Biegunka.Action
   ( applyPatch, verifyAppliedPatch
   , copy, verifyCopy
   ) where
@@ -19,8 +19,8 @@ import           System.IO (IOMode(..), openFile)
 import           System.IO.Error (catchIOError)
 import           System.Process (runProcess, waitForProcess)
 
-import Biegunka.Execute.Exception
-import Biegunka.Language
+import Control.Biegunka.Execute.Exception
+import Control.Biegunka.Language
 
 
 -- | Generic patching function

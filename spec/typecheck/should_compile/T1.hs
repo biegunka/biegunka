@@ -4,8 +4,8 @@
 -- Checks you /can/ have script with Source under profile
 module Main where
 
-import Biegunka
-import Biegunka.Source.Git
+import Control.Biegunka
+import Control.Biegunka.Source.Git
 
 
 main :: IO ()

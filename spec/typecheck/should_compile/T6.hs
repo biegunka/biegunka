@@ -2,7 +2,7 @@
 -- Checks that profiles (and groups) /can/ be nested
 module Main where
 
-import Biegunka
+import Control.Biegunka
 
 
 main :: IO ()

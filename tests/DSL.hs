@@ -9,10 +9,10 @@ import           Data.Default (def)
 import qualified Data.Set as S
 import           Test.Hspec
 
-import Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
-import Biegunka.Primitive
-import Biegunka.Script
-import Biegunka.Source.Directory (directory)
+import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
+import Control.Biegunka.Primitive
+import Control.Biegunka.Script
+import Control.Biegunka.Source.Directory (directory)
 
 
 main :: IO ()

@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
-module Biegunka.Control
+module Control.Biegunka.Control
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
     -- * Settings common for all interpreters
@@ -32,8 +32,8 @@ import qualified System.Console.Terminal.Size as Term
 import           System.Wordexp (wordexp, nosubst, noundef)
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 -- | Settings common for all interpreters and also specific for this one

@@ -1,13 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 -- | Generally useful 'Sources' related definitions
-module Biegunka.Source
+module Control.Biegunka.Source
   ( Sourceable(..)
   ) where
 
 import Control.Lens
 
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 -- | Common 'Sources' structure

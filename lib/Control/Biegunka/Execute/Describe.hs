@@ -2,7 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Describe execution I/O actions
-module Biegunka.Execute.Describe
+module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
     termDescription, runChanges
     -- * Specific description formatting
@@ -18,15 +18,15 @@ import Control.Lens
 import System.Process (CmdSpec(..))
 import Text.PrettyPrint.ANSI.Leijen
 
-import Biegunka.Control
+import Control.Biegunka.Control
   ( ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor
   , errorColor, retryColor
   )
-import Biegunka.DB (DB, filepaths, sources)
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.DB (DB, filepaths, sources)
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 -- | Describe current action and host where it happens

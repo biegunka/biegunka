@@ -1,10 +1,14 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- -*- mode: haskell -*-
 -- vi: set ft=haskell :
-import Biegunka            -- Import biegunka library primitives
-import Biegunka.Source.Git -- Import git support (most likely you will need it)
-import Control.Lens        -- Auxiliary functions, no need to know what 'lens' is
+
+-- Import biegunka library primitives
+import Control.Biegunka
+-- Import git support (most likely you will need it)
+import Control.Biegunka.Source.Git
+-- Auxiliary functions, no need to know what 'lens' is
+import Control.Lens
 
 
 -- Supported environments. Extend this if needed
@@ -28,10 +32,10 @@ main = do
   case environment of
     Default -> runBiegunka biegunkaSettings runSettings script
 
--- Dotfiles script stub
+-- Biegunka script stub
 script :: Script Sources ()
 script = do
-  -- Default profile (named "my-dotfiles")
+  -- Custom profile (named "my-dotfiles")
   -- After successful run data will be found at ~/.biegunka/profiles/my-dotfiles.profile
   profile "my-dotfiles" $ do
     -- Your dotfiles repositories go here

@@ -25,7 +25,7 @@ import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.Wordexp (wordexp, nosubst, noundef)
 
-import Paths_biegunka_core
+import Paths_biegunka
 
 
 data BiegunkaCommand
@@ -55,7 +55,7 @@ opts = info (helper <*> subcommands) fullDesc
       , pure Safe
       ]
 
-    destination = argument Just (value "Dotfiles.hs")
+    destination = argument Just (value "Biegunka.hs")
 
     otherArguments = arguments Just mempty
 

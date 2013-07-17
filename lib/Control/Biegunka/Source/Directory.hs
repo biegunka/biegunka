@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 -- | Very simple 'Source' using some existing directory
-module Biegunka.Source.Directory (directory) where
+module Control.Biegunka.Source.Directory (directory) where
 
 import Control.Monad (unless)
 
 import qualified Data.Text as T
 import           System.Directory (doesDirectoryExist)
 
-import Biegunka.Execute.Exception (sourceFailure)
-import Biegunka.Language
-import Biegunka.Script
+import Control.Biegunka.Execute.Exception (sourceFailure)
+import Control.Biegunka.Language
+import Control.Biegunka.Script
 
 
 -- | Use the directory located as specified by first argument as 'Source'
