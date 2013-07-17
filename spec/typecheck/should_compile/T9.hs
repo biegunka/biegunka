@@ -5,7 +5,7 @@
 -- Checks you /can/ combine interpreters nicely
 module Interpreters where
 
-import           Biegunka
+import           Control.Biegunka
 import           Data.Default (def)
 import qualified Data.Monoid as M
 import qualified Data.Semigroup as S

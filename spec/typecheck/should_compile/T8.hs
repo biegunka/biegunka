@@ -5,8 +5,8 @@
 -- Checks you /can/ declare tasks prerequisites of another
 module Chaining where
 
-import Biegunka
-import Biegunka.Source.Directory
+import Control.Biegunka
+import Control.Biegunka.Source.Directory
 import Data.Default (def)
 
 

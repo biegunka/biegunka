@@ -3,8 +3,8 @@
 -- Checks that you cannot chain Actions
 module Chaining where
 
-import Biegunka
-import Biegunka.Source.Git
+import Control.Biegunka
+import Control.Biegunka.Source.Git
 
 
 chained_script_0 :: Script Actions ()
