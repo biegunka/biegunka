@@ -19,14 +19,14 @@ main = do
         null xs `shouldBe` True
     describe "Trivial biegunka profile script" $ do
       it "should be trivial layout too" $ do
-        xs <- trivial_repo "biegunka-core-test" `resultsIn` trivial_layout
+        xs <- trivial_repo "biegunka-test" `resultsIn` trivial_layout
         null xs `shouldBe` True
     describe "Simple biegunka profile script" $ do
       it "should be simple layout too" $ do
         xs <- simple_repo_0 `resultsIn` simple_layout_0
         null xs `shouldBe` True
       it "should disappear after deletion" $ do
-        xs <- trivial_repo "biegunka-core-simple0" `resultsIn` trivial_layout
+        xs <- trivial_repo "biegunka-simple0" `resultsIn` trivial_layout
         null xs `shouldBe` True
     describe "Simple biegunka no profile script" $ do
       it "should be simple layout too" $ do
@@ -67,8 +67,8 @@ trivial_repo p = profile p $ return ()
 
 simple_repo_0 :: Script Sources ()
 simple_repo_0 =
-  profile "biegunka-core-simple0" $
-    layout l "tmp/biegunka-core-simple0" $
+  profile "biegunka-simple0" $
+    layout l "tmp/biegunka-simple0" $
       copy "src0" "tmp/dst0"
  where
   l = file "src0" "thisiscontents\n"
@@ -79,11 +79,11 @@ simple_layout_0 = do
     file "dst0" "thisiscontents\n"
   directory ".biegunka" $
     directory "profiles" $
-      file_ "biegunka-core-simple0.profile"
+      file_ "biegunka-simple0.profile"
 
 simple_repo_no_profile_0 :: Script Sources ()
 simple_repo_no_profile_0 =
-  layout l "tmp/biegunka-core-simple0" $
+  layout l "tmp/biegunka-simple0" $
     copy "src0" "tmp/dst0"
  where
   l = file "src0" "thisiscontents\n"
