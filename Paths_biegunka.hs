@@ -1,4 +1,4 @@
-module Paths_biegunka_core (getDataFileName) where
+module Paths_biegunka (getDataFileName) where
 
 getDataFileName :: FilePath -> IO FilePath
 getDataFileName = return
