@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -25,9 +24,7 @@ import           Data.Aeson.Encode
 import           Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 706
 import           Data.ByteString.Lazy (fromStrict)
-#endif
 import           Data.Foldable (for_, toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -149,13 +146,6 @@ filepaths = M.keys <=< M.elems <=< M.elems . view db
 -- | All sources paths
 sources :: DB -> [FilePath]
 sources = map location . M.keys <=< M.elems . view db
-
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 706
--- | Convert strict bytestring into lazy one
-fromStrict :: B.ByteString -> BL.ByteString
-fromStrict = BL.fromChunks . return
-#endif
 
 
 -- | Extract terms data from script
