@@ -18,7 +18,7 @@ import Data.Function (on)
 import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
-import           Control.Monad.Free (Free(..))
+import           Control.Monad.Free (Free(..), iterM)
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
 import           Data.Aeson.Encode
@@ -200,26 +200,31 @@ sources = map sourcePath . M.keys <=< M.elems . view db
 
 -- | Extract terms data from script
 fromScript :: Free (Term Annotate Sources) a -> DB
-fromScript z = execState (f z) mempty
+fromScript script = execState (iterM construct script) mempty
  where
-  f :: Free (Term Annotate Sources) a -> State DB ()
-  f (Free (TS (AS { asProfile = p }) (Source t u d _) i x)) = do
-    let s = SR { sourceType = t, fromLocation = u, sourcePath = d }
-    db . at p . non mempty <>= M.singleton s mempty
-    g p s i
-    f x
-  f (Free (TM _ x)) = f x
-  f (Pure _) = return ()
+  construct :: Term Annotate Sources (State DB a) -> State DB a
+  construct term = case term of
+    TS (AS { asProfile }) (Source sourceType fromLocation sourcePath _) i next -> do
+      let record = SR { sourceType, fromLocation, sourcePath }
+      db . at asProfile . non mempty <>= M.singleton record mempty
+      iterM (populate asProfile record) i
+      next
+    TM _ next -> next
 
-  g :: String -> SourceRecord -> Free (Term Annotate Actions) a -> State DB ()
-  g p s (Free (TA _ a x)) = do
-    db . at p . traverse . at s . traverse <>= h a
-    g p s x
+  populate
+    :: String                             -- ^ Profile name
+    -> SourceRecord                       -- ^ Source info record
+    -> Term Annotate Actions (State DB a) -- ^ Current script term
+    -> State DB a
+  populate profile source term = case term of
+    TA _ action next -> do
+      for_ (toRecord action) $ \record ->
+        assign (db.ix profile.ix source.contains record) True
+      next
+    TM _ next -> next
    where
-    h (Link src dst)       = S.singleton FR { fileType = "link", fromSource = src, filePath = dst }
-    h (Copy src dst _)     = S.singleton FR { fileType = "copy", fromSource = src, filePath = dst }
-    h (Template src dst _) = S.singleton FR { fileType = "template", fromSource = src, filePath = dst }
-    h (Patch src dst _)    = S.singleton FR { fileType = "patch", fromSource = src, filePath = dst }
-    h (Command {})         = mempty
-  g p s (Free (TM _ x)) = g p s x
-  g _ _ (Pure _) = return ()
+    toRecord (Link src dst)       = Just FR { fileType = "link",     fromSource = src, filePath = dst }
+    toRecord (Copy src dst _)     = Just FR { fileType = "copy",     fromSource = src, filePath = dst }
+    toRecord (Template src dst _) = Just FR { fileType = "template", fromSource = src, filePath = dst }
+    toRecord (Patch src dst _)    = Just FR { fileType = "patch",    fromSource = src, filePath = dst }
+    toRecord (Command {})         = Nothing
