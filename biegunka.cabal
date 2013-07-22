@@ -71,9 +71,11 @@ executable biegunka
     base >= 3 && < 5,
     directory,
     either,
+    lens,
     optparse-applicative,
     process,
     text,
+    transformers,
     wordexp
   hs-source-dirs: bin/biegunka
   main-is: Main.hs
