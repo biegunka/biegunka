@@ -7,13 +7,14 @@
 {-# LANGUAGE TupleSections #-}
 -- | Saved profiles data management
 module Control.Biegunka.DB
-  ( DB(..), Record(..)
+  ( DB(..), SourceRecord(..), FileRecord(..)
   , load, loads, save, fromScript
   , filepaths, sources
   ) where
 
 import Control.Applicative
 import Control.Monad ((<=<), forM, mplus)
+import Data.Function (on)
 import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
@@ -29,6 +30,7 @@ import           Data.Foldable (for_, toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set, (\\))
+import qualified Data.Set as S
 import qualified Data.Text.Lazy.Builder as T
 import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
@@ -45,22 +47,55 @@ import Control.Biegunka.Script (Annotate(..))
 
 -- | Profiles data
 newtype DB = DB
-  { _db :: Map String (Map Record (Map FilePath Record))
-  } deriving (Show, Read, Eq, Ord, Monoid)
+  { _db :: Map String (Map SourceRecord (Set FileRecord))
+  } deriving (Show, Read, Monoid)
 
--- | File record
-data Record = Record
-  { recordtype :: String
-  , base       :: FilePath
-  , location   :: FilePath
-  } deriving (Show, Read, Eq, Ord)
+-- | Source record
+data SourceRecord = SR
+  { sourceType   :: String
+  , fromLocation :: FilePath
+  , sourcePath   :: FilePath
+  } deriving (Show, Read)
 
-instance FromJSON Record where
-  parseJSON (Object o) = liftA3 Record (o .: "recordtype") (o .: "base") (o .: "location")
+-- | Only destination filepath matters
+instance Eq SourceRecord where
+  (==) = (==) `on` sourcePath
+
+-- | Only destination filepath matters
+instance Ord SourceRecord where
+  (<=) = (<=) `on` sourcePath
+
+instance FromJSON SourceRecord where
+  parseJSON (Object o) = liftA3 SR (o .: "recordtype") (o .: "base") (o .: "location")
   parseJSON _          = empty
 
-instance ToJSON Record where
-  toJSON Record { recordtype = ft, base = bs, location = lc } = object
+instance ToJSON SourceRecord where
+  toJSON SR { sourceType = ft, fromLocation = bs, sourcePath = lc } = object
+    [ "recordtype" .= ft
+    , "base" .= bs
+    , "location" .= lc
+    ]
+
+data FileRecord = FR
+  { fileType   :: String
+  , fromSource :: FilePath
+  , filePath   :: FilePath
+  } deriving (Show, Read)
+
+-- | Only destination filepath matters
+instance Eq FileRecord where
+  (==) = (==) `on` filePath
+
+-- | Only destination filepath matters
+instance Ord FileRecord where
+  (<=) = (<=) `on` filePath
+
+instance FromJSON FileRecord where
+  parseJSON (Object o) = liftA3 FR (o .: "recordtype") (o .: "base") (o .: "location")
+  parseJSON _          = empty
+
+instance ToJSON FileRecord where
+  toJSON FR { fileType = ft, fromSource = bs, filePath = lc } = object
     [ "recordtype" .= ft
     , "base" .= bs
     , "location" .= lc
@@ -69,7 +104,7 @@ instance ToJSON Record where
 makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 
 -- | Profiles data
-db :: Lens' DB (Map String (Map Record (Map FilePath Record)))
+db :: Lens' DB (Map String (Map SourceRecord (Set FileRecord)))
 
 
 -- | Load profiles mentioned in script
@@ -77,7 +112,7 @@ load :: Settings () -> Set String -> IO DB
 load c = fmap (DB . M.fromList) . loads c . toList
 
 -- | Load profile data from disk
-loads :: Settings () -> [String] -> IO [(String, Map Record (Map FilePath Record))]
+loads :: Settings () -> [String] -> IO [(String, Map SourceRecord (Set FileRecord))]
 loads c (p:ps) = do
   let name = profileFilePath c p
   Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
@@ -89,8 +124,8 @@ loads c (p:ps) = do
     ss <- o .: "sources"
     forM ss $ \s -> do
       t  <- s .: "info"
-      fs <- s .: "files" >>= mapM parseJSON
-      return (t, M.fromList fs)
+      fs <- s .: "files" >>= mapM parseJSON :: Parser [(FilePath, FileRecord)]
+      return (t, S.fromList (map snd fs))
   parser _ = empty
 loads _ [] = return []
 
@@ -121,8 +156,9 @@ save c ps (DB b) = do
     return ()
  where
   encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
-  unparser t  = object [             "sources" .= map repo   (M.toList t)]
-  repo (k, v) = object ["info" .= k, "files"   .= map toJSON (M.toList v)]
+  unparser t  = object [             "sources" .= map repo (M.toList t)]
+  repo (k, v) = object ["info" .= k, "files"   .= map file (S.toList v)]
+  file ks     = toJSON (filePath ks, ks)
 
 
 -- | Compute profiles' filepaths with current settings
@@ -141,11 +177,11 @@ profileFilePath settings name =
 
 -- | All destination files paths
 filepaths :: DB -> [FilePath]
-filepaths = M.keys <=< M.elems <=< M.elems . view db
+filepaths = map filePath . S.elems <=< M.elems <=< M.elems . view db
 
 -- | All sources paths
 sources :: DB -> [FilePath]
-sources = map location . M.keys <=< M.elems . view db
+sources = map sourcePath . M.keys <=< M.elems . view db
 
 
 -- | Extract terms data from script
@@ -154,22 +190,22 @@ fromScript z = execState (f z) mempty
  where
   f :: Free (Term Annotate Sources) a -> State DB ()
   f (Free (TS (AS { asProfile = p }) (Source t u d _) i x)) = do
-    let s = Record { recordtype = t, base = u, location = d }
+    let s = SR { sourceType = t, fromLocation = u, sourcePath = d }
     db . at p . non mempty <>= M.singleton s mempty
     g p s i
     f x
   f (Free (TM _ x)) = f x
   f (Pure _) = return ()
 
-  g :: String -> Record -> Free (Term Annotate Actions) a -> State DB ()
+  g :: String -> SourceRecord -> Free (Term Annotate Actions) a -> State DB ()
   g p s (Free (TA _ a x)) = do
     db . at p . traverse . at s . traverse <>= h a
     g p s x
    where
-    h (Link src dst)       = M.singleton dst Record { recordtype = "link",     base = src, location = dst }
-    h (Copy src dst _)     = M.singleton dst Record { recordtype = "copy",     base = src, location = dst }
-    h (Template src dst _) = M.singleton dst Record { recordtype = "template", base = src, location = dst }
-    h (Patch src dst _)    = M.singleton dst Record { recordtype = "patch",    base = src, location = dst }
+    h (Link src dst)       = S.singleton FR { fileType = "link", fromSource = src, filePath = dst }
+    h (Copy src dst _)     = S.singleton FR { fileType = "copy", fromSource = src, filePath = dst }
+    h (Template src dst _) = S.singleton FR { fileType = "template", fromSource = src, filePath = dst }
+    h (Patch src dst _)    = S.singleton FR { fileType = "patch", fromSource = src, filePath = dst }
     h (Command {})         = mempty
   g p s (Free (TM _ x)) = g p s x
   g _ _ (Pure _) = return ()
