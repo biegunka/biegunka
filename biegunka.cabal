@@ -70,12 +70,15 @@ executable biegunka
   build-depends:
     base >= 3 && < 5,
     directory,
+    either,
     optparse-applicative,
     process,
     text,
     wordexp
   hs-source-dirs: bin/biegunka
   main-is: Main.hs
+  other-modules:
+    Options
   ghc-options:
     -Wall
     -fno-warn-unused-do-bind

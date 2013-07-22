@@ -9,12 +9,12 @@ import           Control.Concurrent (forkFinally)
 #endif
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import           Control.Lens
 import           Control.Monad (forever)
+import           Control.Monad.Trans.Either
+import           Control.Monad.IO.Class (liftIO)
 import           Data.Char (toLower)
-import           Data.Foldable (asum)
-import           Data.Traversable (for)
 import           Data.List (intercalate, isPrefixOf, partition)
-import           Data.Monoid (mempty)
 import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..))
 import           Options.Applicative
@@ -25,39 +25,8 @@ import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.Wordexp (wordexp, nosubst, noundef)
 
+import Options
 import Paths_biegunka
-
-
-data BiegunkaCommand
-  = Init FilePath
-  | Script FilePath Script [String]
-
-data Script = Run Run | Check
-
-data Run = Dry | Safe | Force | Full
-
-
-opts :: ParserInfo BiegunkaCommand
-opts = info (helper <*> subcommands) fullDesc
- where
-  subcommands = subparser $
-    command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
-    command "run"  (info (Script <$> destination <*> (Run <$> runVariant) <*> otherArguments)
-      (progDesc "Run biegunka script")) <>
-    command "check"  (info (Script <$> destination <*> pure Check <*> otherArguments)
-      (progDesc "Check biegunka script"))
-   where
-    runVariant = asum
-      [ flag' Dry   (long "dry"   <> help "Only display a forecast and stats")
-      , flag' Force (long "force" <> help "Skip confirmation")
-      , flag' Full  (long "full"  <> help "Composition of run --dry, run --safe and check")
-      , flag' Safe  (long "safe"  <> help "Run with confirmation [default]")
-      , pure Safe
-      ]
-
-    destination = argument Just (value "Biegunka.hs")
-
-    otherArguments = arguments Just mempty
 
 
 main :: IO ()
@@ -93,14 +62,13 @@ withScript :: FilePath -> Script -> [String] -> IO ()
 withScript destination script args = do
   let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
   packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
-                     then return Nothing
+                     then return (Right ())
                      else findPackageDBArg
-  for packageDBArg $ \packageDB ->
-    putStrLn $ "* Found cabal package DB at " ++ packageDB
+  packageDBArg^!_Left.act (putStrLn . mappend "* Found cabal package DB at ")
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
          (ghcArgs
-      ++ maybe [] (\packageDB -> ["-package-db=" ++ packageDB]) packageDBArg
-      ++ [destination, toOption script]
+      ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
+      ++ [destination, toScriptOption script]
       ++ biegunkaArgs)
     Nothing
     Nothing
@@ -122,16 +90,10 @@ withScript destination script args = do
   tell handle = forkIO . forever $ T.getLine >>= T.hPutStrLn handle
 
 
-findPackageDBArg :: IO (Maybe String)
-findPackageDBArg = do
-  maybeCabalSandbox <- findCabalSandbox
-  case maybeCabalSandbox of
-    Just cabalSandbox -> return $ Just cabalSandbox
-    Nothing -> do
-      maybeCabalDevSandbox <- findCabalDevSandbox
-      case maybeCabalDevSandbox of
-        Just cabalDevSandbox -> return $ Just cabalDevSandbox
-        Nothing -> return Nothing
+findPackageDBArg :: IO (Either String ())
+findPackageDBArg = runEitherT $ do
+  findCabalSandbox
+  findCabalDevSandbox
  where
   findCabalSandbox    =
     findSandbox $ "cabal-dev/packages-" ++ compilerVersionString compilerVersion ++ "*.conf"
@@ -140,26 +102,18 @@ findPackageDBArg = do
          ".cabal-sandbox/" ++ arch ++ "-" ++ os ++ "-" ++ compilerName ++ "-"
       ++ compilerVersionString compilerVersion ++ "*-packages.conf.d"
 
+  findSandbox :: String -> EitherT String IO ()
   findSandbox pattern = do
-    findings <- wordexp (nosubst <> noundef) pattern
+    findings <- liftIO $ wordexp (nosubst <> noundef) pattern
     case findings of
       Right [sandbox]
-        | sandbox /= pattern -> return (Just sandbox)
+        | sandbox /= pattern -> left sandbox
       Right (sandbox:_:_) -> do
-        putStrLn $ "Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
-        return (Just sandbox)
-      Right _ -> return Nothing
-      Left _ -> return Nothing
+        liftIO . putStrLn $ "Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
+        left sandbox
+      _ -> right ()
 
   compilerVersionString = intercalate "." . map show . versionBranch
-
-
-toOption :: Script -> String
-toOption (Run Force) = "--run"
-toOption (Run Safe)  = "--safe-run"
-toOption (Run Dry)   = "--dry-run"
-toOption (Run Full)  = "--full"
-toOption Check       = "--check"
 
 
 prompt :: String -> IO Bool

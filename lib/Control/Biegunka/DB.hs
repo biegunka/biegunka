@@ -54,8 +54,8 @@ newtype DB = DB
 -- | File record
 data Record = Record
   { recordtype :: String
-  , base :: FilePath
-  , location :: FilePath
+  , base       :: FilePath
+  , location   :: FilePath
   } deriving (Show, Read, Eq, Ord)
 
 instance FromJSON Record where
