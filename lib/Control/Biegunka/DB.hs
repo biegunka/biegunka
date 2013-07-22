@@ -50,6 +50,7 @@ newtype DB = DB
   { _db :: Map String (Map SourceRecord (Set FileRecord))
   } deriving (Show, Read, Monoid)
 
+
 -- | Source record
 data SourceRecord = SR
   { sourceType   :: String
@@ -66,16 +67,21 @@ instance Ord SourceRecord where
   (<=) = (<=) `on` sourcePath
 
 instance FromJSON SourceRecord where
-  parseJSON (Object o) = liftA3 SR (o .: "recordtype") (o .: "base") (o .: "location")
-  parseJSON _          = empty
+  parseJSON (Object o) = SR
+    <$> (o .: "recordtype" <|> o .: "type")
+    <*> (o .: "base"       <|> o .: "from")
+    <*> (o .: "location"   <|> o .: "path")
+  parseJSON _ = empty
 
 instance ToJSON SourceRecord where
-  toJSON SR { sourceType = ft, fromLocation = bs, sourcePath = lc } = object
-    [ "recordtype" .= ft
-    , "base" .= bs
-    , "location" .= lc
+  toJSON SR { sourceType, fromLocation, sourcePath } = object
+    [ "type" .= sourceType
+    , "from" .= fromLocation
+    , "path" .= sourcePath
     ]
 
+
+-- | File record
 data FileRecord = FR
   { fileType   :: String
   , fromSource :: FilePath
@@ -91,14 +97,17 @@ instance Ord FileRecord where
   (<=) = (<=) `on` filePath
 
 instance FromJSON FileRecord where
-  parseJSON (Object o) = liftA3 FR (o .: "recordtype") (o .: "base") (o .: "location")
-  parseJSON _          = empty
+  parseJSON (Object o) = FR
+    <$> (o .: "recordtype" <|> o .: "type")
+    <*> (o .: "base"       <|> o .: "from")
+    <*> (o .: "location"   <|> o .: "path")
+  parseJSON _ = empty
 
 instance ToJSON FileRecord where
-  toJSON FR { fileType = ft, fromSource = bs, filePath = lc } = object
-    [ "recordtype" .= ft
-    , "base" .= bs
-    , "location" .= lc
+  toJSON FR { fileType, fromSource, filePath } = object
+    [ "type" .= fileType
+    , "from" .= fromSource
+    , "path" .= filePath
     ]
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
@@ -124,9 +133,15 @@ loads c (p:ps) = do
     ss <- o .: "sources"
     forM ss $ \s -> do
       t  <- s .: "info"
-      fs <- s .: "files" >>= mapM parseJSON :: Parser [(FilePath, FileRecord)]
-      return (t, S.fromList (map snd fs))
+      fs <- (s .: "files" >>= mapM (fmap snd . parseFF)) <|> (s .: "files" >>= mapM parseF)
+      return (t, S.fromList fs)
   parser _ = empty
+
+  parseFF :: Value -> Parser (FilePath, FileRecord)
+  parseFF = parseJSON
+
+  parseF :: Value -> Parser FileRecord
+  parseF = parseJSON
 loads _ [] = return []
 
 
@@ -156,9 +171,8 @@ save c ps (DB b) = do
     return ()
  where
   encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
-  unparser t  = object [             "sources" .= map repo (M.toList t)]
-  repo (k, v) = object ["info" .= k, "files"   .= map file (S.toList v)]
-  file ks     = toJSON (filePath ks, ks)
+  unparser t  = object [             "sources" .= map repo   (M.toList t)]
+  repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
 
 
 -- | Compute profiles' filepaths with current settings
