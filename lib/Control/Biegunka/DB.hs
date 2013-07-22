@@ -68,9 +68,9 @@ instance Ord SourceRecord where
 
 instance FromJSON SourceRecord where
   parseJSON (Object o) = SR
-    <$> (o .: "recordtype" <|> o .: "type")
-    <*> (o .: "base"       <|> o .: "from")
-    <*> (o .: "location"   <|> o .: "path")
+    <$> (o .: "type" <|> o .: "recordtype")
+    <*> (o .: "from" <|> o .: "base")
+    <*> (o .: "path" <|> o .: "location")
   parseJSON _ = empty
 
 instance ToJSON SourceRecord where
@@ -98,9 +98,9 @@ instance Ord FileRecord where
 
 instance FromJSON FileRecord where
   parseJSON (Object o) = FR
-    <$> (o .: "recordtype" <|> o .: "type")
-    <*> (o .: "base"       <|> o .: "from")
-    <*> (o .: "location"   <|> o .: "path")
+    <$> (o .: "type" <|> o .: "recordtype")
+    <*> (o .: "from" <|> o .: "base")
+    <*> (o .: "path" <|> o .: "location")
   parseJSON _ = empty
 
 instance ToJSON FileRecord where
@@ -133,7 +133,7 @@ loads c (p:ps) = do
     ss <- o .: "sources"
     forM ss $ \s -> do
       t  <- s .: "info"
-      fs <- (s .: "files" >>= mapM (fmap snd . parseFF)) <|> (s .: "files" >>= mapM parseF)
+      fs <- (s .: "files" >>= mapM parseF) <|> (s .: "files" >>= mapM (fmap snd . parseFF))
       return (t, S.fromList fs)
   parser _ = empty
 
