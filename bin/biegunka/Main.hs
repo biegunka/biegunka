@@ -1,20 +1,25 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import           Control.Concurrent (forkFinally)
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import           Control.Lens
+import           Control.Lens hiding ((<.>))
 import           Control.Monad (forever)
 import           Control.Monad.Trans.Either
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Char (toLower)
+import           Data.Foldable (for_)
 import           Data.List (intercalate, isPrefixOf, partition)
+import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..))
 import           Options.Applicative
 import           System.Directory (copyFile, doesFileExist)
 import           System.Exit (ExitCode(..), exitWith)
-import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
+import           System.FilePath ((</>), (<.>))
+import           System.IO (hFlush, hSetBuffering, BufferMode(..), stderr, stdout)
+import           System.IO.Error (catchIOError)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.Wordexp (wordexp, nosubst, noundef)
@@ -28,8 +33,9 @@ main = do
   hSetBuffering stdout NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
   case biegunkaCommand of
-    Init destination -> initialize destination
+    Init destination               -> initialize destination
     Script destination script args -> withScript destination script args
+    List datadir profiles          -> list datadir profiles
 
 
 initialize :: FilePath -> IO ()
@@ -108,6 +114,23 @@ findPackageDBArg = runEitherT $ do
       _ -> right ()
 
   compilerVersionString = intercalate "." . map show . versionBranch
+
+
+list :: FilePath -> [String] -> IO ()
+list datadirglob profiles = do
+  mdatadir <- wordexp (nosubst <> noundef) datadirglob
+  case mdatadir of
+    Left  _         -> badglob -- wordexp failed
+    Right (_:_:_)   -> badglob -- multiple matches
+    Right []        -> badglob -- wordexp found nothing
+    Right [datadir] ->
+      for_ profiles $ \profile -> do
+        profileData <- T.readFile (datadir </> "profiles" </> profile <.> "profile")
+        T.putStrLn profileData
+       `catchIOError`
+        \_ -> T.hPutStrLn stderr ("Profile " <> T.pack profile <> " is not found under " <> T.pack datadir)
+ where
+  badglob = putStrLn $ "Bad glob pattern: " ++ datadirglob
 
 
 prompt :: String -> IO Bool

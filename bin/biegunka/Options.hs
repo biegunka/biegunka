@@ -11,6 +11,7 @@ data BiegunkaCommand
   = Init FilePath -- ^ @biegunka init@
   | Script        -- ^ @biegunka run@ or @biegunka check@
       FilePath Script [String]
+  | List FilePath [String] -- ^ @biegunka list@
 
 -- | Disambiguate between @biegunka run@ and @biegunka check@
 data Script = Run Run | Check
@@ -28,7 +29,9 @@ opts = info (helper <*> subcommands) fullDesc
     command "run"  (info (Script <$> destination <*> (Run <$> runVariant) <*> otherArguments)
       (progDesc "Run biegunka script")) <>
     command "check"  (info (Script <$> destination <*> pure Check <*> otherArguments)
-      (progDesc "Check biegunka script"))
+      (progDesc "Check biegunka script")) <>
+    command "list"  (info listOptions
+      (progDesc "List biegunka profiles data"))
    where
     runVariant = asum
       [ flag' Dry   (long "dry"   <> help "Only display a forecast and stats")
@@ -37,6 +40,10 @@ opts = info (helper <*> subcommands) fullDesc
       , flag' Safe  (long "safe"  <> help "Run with confirmation [default]")
       , pure Safe
       ]
+
+    listOptions = List
+      <$> strOption (long "data-dir" <> value "~/.biegunka" <> help "Biegunka data directory")
+      <*> otherArguments
 
     destination = argument Just (value defaultBiegunkaScriptName)
 
