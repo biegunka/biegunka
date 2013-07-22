@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import           Control.Applicative ((<$>))
 import           Control.Concurrent (forkFinally)
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
@@ -9,17 +10,18 @@ import           Control.Monad (forever)
 import           Control.Monad.Trans.Either
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Char (toLower)
-import           Data.Foldable (for_)
-import           Data.List (intercalate, isPrefixOf, partition)
-import qualified Data.Text.Lazy as T
+import           Data.List (intercalate, isPrefixOf, partition, sort)
+import           Data.List.Lens
+import           Data.Monoid (Monoid(..), (<>))
 import qualified Data.Text.Lazy.IO as T
+import           Data.Traversable (for)
 import           Data.Version (Version(..))
-import           Options.Applicative
-import           System.Directory (copyFile, doesFileExist)
+import           Options.Applicative (customExecParser, prefs, showHelpOnError)
+import qualified System.Directory as D
 import           System.Exit (ExitCode(..), exitWith)
-import           System.FilePath ((</>), (<.>))
-import           System.IO (hFlush, hSetBuffering, BufferMode(..), stderr, stdout)
-import           System.IO.Error (catchIOError)
+import           System.FilePath ((</>))
+import           System.FilePath.Lens
+import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.Wordexp (wordexp, nosubst, noundef)
@@ -41,7 +43,7 @@ main = do
 initialize :: FilePath -> IO ()
 initialize destination = do
   template <- getDataFileName "data/biegunka-init.template"
-  destinationExists <- doesFileExist destination
+  destinationExists <- D.doesFileExist destination
   case destinationExists of
     True -> do
       response <- prompt $ destination ++ " already exists! Overwrite?"
@@ -54,7 +56,7 @@ initialize destination = do
  where
   move :: FilePath -> IO ()
   move source = do
-    copyFile source destination
+    D.copyFile source destination
     putStrLn $ "Initialized biegunka script at " ++ destination
 
 
@@ -123,14 +125,25 @@ list datadirglob profiles = do
     Left  _         -> badglob -- wordexp failed
     Right (_:_:_)   -> badglob -- multiple matches
     Right []        -> badglob -- wordexp found nothing
-    Right [datadir] ->
-      for_ profiles $ \profile -> do
-        profileData <- T.readFile (datadir </> "profiles" </> profile <.> "profile")
-        T.putStrLn profileData
-       `catchIOError`
-        \_ -> T.hPutStrLn stderr ("Profile " <> T.pack profile <> " is not found under " <> T.pack datadir)
+    Right [datadir] -> do
+      case profiles of
+        [] -> getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
  where
   badglob = putStrLn $ "Bad glob pattern: " ++ datadirglob
+
+getProfiles :: FilePath -> IO [String]
+getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & sort
+ where
+  go subroot = do
+    isDirectory <- D.doesDirectoryExist subroot
+    case isDirectory of
+      False -> return $ case subroot^.extension of
+        ".profile" -> [subroot&extension.~mempty]
+        _          -> []
+      True  -> do
+        contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])
+        concat <$> for contents (\path -> go (subroot </> path))
+
 
 
 prompt :: String -> IO Bool
