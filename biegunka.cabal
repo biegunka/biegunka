@@ -83,6 +83,7 @@ executable biegunka
   hs-source-dirs: bin/biegunka
   main-is: Main.hs
   other-modules:
+    List
     Options
   ghc-options:
     -Wall

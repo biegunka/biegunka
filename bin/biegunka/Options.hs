@@ -11,7 +11,7 @@ data BiegunkaCommand
   = Init FilePath -- ^ @biegunka init@
   | Script        -- ^ @biegunka run@ or @biegunka check@
       FilePath Script [String]
-  | List FilePath [String] -- ^ @biegunka list@
+  | List FilePath String [String] -- ^ @biegunka list@
 
 -- | Disambiguate between @biegunka run@ and @biegunka check@
 data Script = Run Run | Check
@@ -42,7 +42,10 @@ opts = info (helper <*> subcommands) fullDesc
       ]
 
     listOptions = List
-      <$> strOption (long "data-dir" <> value "~/.biegunka" <> help "Biegunka data directory")
+      <$> strOption (long "data-dir" <> value "~/.biegunka"       <> help "Biegunka data directory")
+      <*> strOption (long "format"
+        <> value "Profile %n;  Source %p;    %T %p"
+        <> help "Output format")
       <*> otherArguments
 
     destination = argument Just (value defaultBiegunkaScriptName)
