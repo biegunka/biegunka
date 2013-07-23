@@ -73,11 +73,10 @@ getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & so
         concat <$> for contents (\path -> go (subroot </> path))
 
 format :: String -> Either String (Formatted String)
-format xs =
-  let (x, ys) = break (== ';') xs
-      (y, zs) = break (== ';') (drop 1 ys)
-      z       = drop 1 zs
-  in Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
+format xs = do
+  (x, ys) <- breaking xs
+  (y, z)  <- breaking ys
+  Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
  where
   formatProfile = formatting "n" $ \profile -> \case
     'n' -> profile
@@ -96,10 +95,14 @@ format xs =
     'p' -> filePath file
     _   -> error "Impossible"
 
+  breaking us = case break (== ';') us of
+    (_, [])   -> Left "Section missing"
+    (v, _:ws) -> Right (v, ws)
+
   formatting :: String -> (a -> Char -> String) -> String -> Either String (a -> String)
   formatting us h = \case
+    '%':'%':vs -> (\g r -> '%' : g r) <$> formatting us h vs
     '%':vs -> case vs of
-      '%':ws -> (\g r -> '%' : g r) <$> formatting us h ws
       w:ws
         | w `elem` us -> (\g r -> h r w ++ g r) <$> formatting us h ws
         | otherwise   -> Left ("%" ++ [w] ++ " is not a placeholder")
