@@ -3,12 +3,16 @@ module List where
 
 import           Control.Applicative ((<$>), (<*>))
 import           Control.Lens hiding ((<.>))
+import           Control.Monad.Trans.Writer (execWriter, tell)
 import           Data.Char (toUpper)
 import           Data.Default (def)
 import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
 import           Data.Monoid (Monoid(..), (<>))
+import           Data.Text.Lazy (Text)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.IO as T
 import           Data.Traversable (for)
 import qualified System.Directory as D
 import           System.FilePath ((</>))
@@ -37,24 +41,24 @@ list datadirglob profiles pattern = do
     Left  _         -> badglob -- wordexp failed
     Right (_:_:_)   -> badglob -- multiple matches
     Right []        -> badglob -- wordexp found nothing
-    Right [datadir] -> do
-      case profiles of
-        [] ->
-          getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
-        profiles' -> do
-          DB db <- load (def & appData .~ datadir) profiles'
-          case format pattern of
-            Left errorMessage ->
-              badformat errorMessage
-            Right formatted -> do
-              ifor_ db $ \profileName profileData -> do
-                putStr $ profileFormat formatted profileName
-                ifor_ profileData $ \sourceRecord fileRecords -> do
-                  putStr $ sourceFormat formatted sourceRecord
-                  for_ fileRecords $ \fileRecord ->
-                    putStr $ fileFormat formatted fileRecord
-              hFlush stdout
+    Right [datadir] -> case profiles of
+      []        -> getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
+      profiles' -> case formatText pattern of
+        Left errorMessage ->
+          badformat errorMessage
+        Right formatted -> do
+          db <- load (def & appData .~ datadir) profiles'
+          T.putStr (execWriter (info formatted db))
+          hFlush stdout
  where
+  info formatted (DB db) =
+    ifor_ db $ \profileName profileData -> do
+      tell $ profileFormat formatted profileName
+      ifor_ profileData $ \sourceRecord fileRecords -> do
+        tell $ sourceFormat formatted sourceRecord
+        for_ fileRecords $ \fileRecord ->
+          tell $ fileFormat formatted fileRecord
+
   badglob = hPutStrLn stderr $
     "Bad glob pattern: " ++ datadirglob
   badformat message = hPutStrLn stderr $
@@ -72,6 +76,9 @@ getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & so
       True  -> do
         contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])
         concat <$> for contents (\path -> go (subroot </> path))
+
+formatText :: String -> Either String (Formatted Text)
+formatText = (fmap . fmap) T.pack . format
 
 format :: String -> Either String (Formatted String)
 format xs = do
