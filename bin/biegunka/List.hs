@@ -57,7 +57,7 @@ list datadirglob profiles pattern = do
   badglob = hPutStrLn stderr $
     "Bad glob pattern: " ++ datadirglob
   badformat message = hPutStrLn stderr $
-    "Bad format pattern: " ++ pattern ++ " - " ++ message
+    "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
 
 getProfiles :: FilePath -> IO [String]
 getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & sort
@@ -78,36 +78,37 @@ format xs = do
   (y, z)  <- breaking ys
   Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
  where
-  formatProfile = formatting "n" $ \profile -> \case
-    'n' -> profile
-    _   -> error "Impossible"
+  formatProfile = formatting $ \case
+    'n' -> Right id
+    c   -> Left ("%" ++ [c] ++ " is not a profile info placeholder")
 
-  formatSource = formatting "tlp" $ \source -> \case
-    't' -> sourceType source
-    'l' -> fromLocation source
-    'p' -> sourcePath source
-    _   -> error "Impossible"
+  formatSource = formatting $ \case
+    't' -> Right sourceType
+    'l' -> Right fromLocation
+    'p' -> Right sourcePath
+    c   -> Left ("%" ++ [c] ++ " is not a source info placeholder")
 
-  formatFile = formatting "tTlp" $ \file -> \case
-    't' -> fileType file
-    'T' -> capitalize (fileType file)
-    'l' -> fromSource file
-    'p' -> filePath file
-    _   -> error "Impossible"
+  formatFile = formatting $ \case
+    't' -> Right fileType
+    'T' -> Right (capitalize . fileType)
+    'l' -> Right fromSource
+    'p' -> Right filePath
+    c   -> Left ("%" ++ [c] ++ " is not a file info placeholder")
 
   breaking us = case break (== ';') us of
     (_, [])   -> Left "Section missing"
     (v, _:ws) -> Right (v, ws)
 
-  formatting :: String -> (a -> Char -> String) -> String -> Either String (a -> String)
-  formatting us h = \case
-    '%':'%':vs -> (\g r -> '%' : g r) <$> formatting us h vs
+  formatting :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
+  formatting rules = \case
+    '%':'%':vs -> (\g r -> '%' : g r) <$> formatting rules vs
     '%':vs -> case vs of
-      w:ws
-        | w `elem` us -> (\g r -> h r w ++ g r) <$> formatting us h ws
-        | otherwise   -> Left ("%" ++ [w] ++ " is not a placeholder")
+      c:cs -> do
+        s <- rules c
+        t <- formatting rules cs
+        return (\a -> s a ++ t a)
       _ -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\g r -> v : g r) <$> formatting us h vs
+    v:vs -> (\g r -> v : g r) <$> formatting rules vs
     []   -> Right (const "")
 
 capitalize :: String -> String
