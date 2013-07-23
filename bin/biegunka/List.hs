@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module List where
 
 import           Control.Applicative ((<$>), (<*>))
@@ -78,34 +79,32 @@ format xs =
       z       = drop 1 zs
   in Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
  where
-  formatProfile :: String -> Either String (String -> String)
-  formatProfile us = case us of
+  formatProfile = formatting "n" $ \profile -> \case
+    'n' -> profile
+    _   -> error "Impossible"
+
+  formatSource = formatting "tlp" $ \source -> \case
+    't' -> sourceType source
+    'l' -> fromLocation source
+    'p' -> sourcePath source
+    _   -> error "Impossible"
+
+  formatFile = formatting "tTlp" $ \file -> \case
+    't' -> fileType file
+    'T' -> capitalize (fileType file)
+    'l' -> fromSource file
+    'p' -> filePath file
+    _   -> error "Impossible"
+
+  formatting :: String -> (a -> Char -> String) -> String -> Either String (a -> String)
+  formatting us h = \case
     '%':vs -> case vs of
-      'n':ws -> (\f profile -> profile ++ f profile) <$> formatProfile ws
-      w:_    -> Left ("%" ++ [w] ++ " is not a placeholder")
-      _      -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\f r -> v : f r) <$> formatProfile vs
-    []   -> Right (const "")
-  formatSource :: String -> Either String (SourceRecord -> String)
-  formatSource us = case us of
-    '%':vs -> case vs of
-      't':ws -> (\f source -> sourceType   source ++ f source) <$> formatSource ws
-      'l':ws -> (\f source -> fromLocation source ++ f source) <$> formatSource ws
-      'p':ws -> (\f source -> sourcePath   source ++ f source) <$> formatSource ws
-      w:_    -> Left ("%" ++ [w] ++ " is not a placeholder")
-      _      -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\f r -> v : f r) <$> formatSource vs
-    []   -> Right (const "")
-  formatFile :: String -> Either String (FileRecord -> String)
-  formatFile us = case us of
-    '%':vs -> case vs of
-      't':ws -> (\f file -> fileType             file  ++ f file) <$> formatFile ws
-      'T':ws -> (\f file -> capitalize (fileType file) ++ f file) <$> formatFile ws
-      'l':ws -> (\f file -> fromSource           file  ++ f file) <$> formatFile ws
-      'p':ws -> (\f file -> filePath             file  ++ f file) <$> formatFile ws
-      w:_    -> Left ("%" ++ [w] ++ " is not a placeholder")
-      _      -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\f r -> v : f r) <$> formatFile vs
+      '%':ws -> (\g r -> '%' : g r) <$> formatting us h ws
+      w:ws
+        | w `elem` us -> (\g r -> h r w ++ g r) <$> formatting us h ws
+        | otherwise   -> Left ("%" ++ [w] ++ " is not a placeholder")
+      _ -> Left ("incomplete %-placeholder at the end")
+    v:vs -> (\g r -> v : g r) <$> formatting us h vs
     []   -> Right (const "")
 
 capitalize :: String -> String
