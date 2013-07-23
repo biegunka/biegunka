@@ -12,7 +12,7 @@ import           Data.Monoid (Monoid(..), (<>))
 import           Data.Traversable (for)
 import qualified System.Directory as D
 import           System.FilePath ((</>))
-import           System.IO (hPutStrLn, stderr)
+import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 import           System.FilePath.Lens
 import           System.Wordexp (wordexp, nosubst, noundef)
 
@@ -46,13 +46,14 @@ list datadirglob profiles pattern = do
           case format pattern of
             Left errorMessage ->
               badformat errorMessage
-            Right formatted ->
+            Right formatted -> do
               ifor_ db $ \profileName profileData -> do
-                putStrLn $ profileFormat formatted profileName
+                putStr $ profileFormat formatted profileName
                 ifor_ profileData $ \sourceRecord fileRecords -> do
-                  putStrLn $ sourceFormat formatted sourceRecord
+                  putStr $ sourceFormat formatted sourceRecord
                   for_ fileRecords $ \fileRecord ->
-                    putStrLn $ fileFormat formatted fileRecord
+                    putStr $ fileFormat formatted fileRecord
+              hFlush stdout
  where
   badglob = hPutStrLn stderr $
     "Bad glob pattern: " ++ datadirglob
@@ -79,7 +80,7 @@ format xs = do
   Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
  where
   formatProfile = formatting $ \case
-    'n' -> Right id
+    'p' -> Right id
     c   -> Left ("%" ++ [c] ++ " is not a profile info placeholder")
 
   formatSource = formatting $ \case
@@ -98,6 +99,7 @@ format xs = do
   formatting :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
   formatting rules = \case
     '%':'%':vs -> (\g r -> '%' : g r) <$> formatting rules vs
+    '%':'n':vs -> (\g r -> '\n' : g r) <$> formatting rules vs
     '%':vs -> case vs of
       c:cs -> do
         s <- rules c
