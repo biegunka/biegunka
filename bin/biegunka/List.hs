@@ -95,10 +95,6 @@ format xs = do
     'p' -> Right filePath
     c   -> Left ("%" ++ [c] ++ " is not a file info placeholder")
 
-  breaking us = case break (== ';') us of
-    (_, [])   -> Left "Section missing"
-    (v, _:ws) -> Right (v, ws)
-
   formatting :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
   formatting rules = \case
     '%':'%':vs -> (\g r -> '%' : g r) <$> formatting rules vs
@@ -111,6 +107,44 @@ format xs = do
     v:vs -> (\g r -> v : g r) <$> formatting rules vs
     []   -> Right (const "")
 
+-- | Break string on "%;"
+--
+-- >>> breaking "hello%;world"
+-- Right ("hello","world")
+--
+-- >>> breaking "hello%;"
+-- Right ("hello","")
+--
+-- >>> breaking "%;world"
+-- Right ("","world")
+--
+-- >>> breaking "%;"
+-- Right ("","")
+--
+-- >>> breaking "he%nllo%;wo%mrld"
+-- Right ("he%nllo","wo%mrld")
+--
+-- >>> breaking "%"
+-- Left "Formatting section is missing"
+--
+-- >>> breaking "123hello"
+-- Left "Formatting section is missing"
+breaking :: String -> Either String (String, String)
+breaking xs = case break (== '%') xs of
+  (ys, _:';':zs) -> Right (ys, zs)
+  (ys, _:c:zs)   -> (\(a, b) -> (ys ++ ['%',c] ++ a, b)) <$> breaking zs
+  (_, _)         -> Left "Formatting section is missing"
+
+-- | Make word's first letter uppercase
+--
+-- >>> capitalize "hello"
+-- "Hello"
+--
+-- >>> capitalize "Hello"
+-- "Hello"
+--
+-- >>> capitalize "123hello"
+-- "123hello"
 capitalize :: String -> String
 capitalize (c:cs) = toUpper c : cs
 capitalize ""     = ""
