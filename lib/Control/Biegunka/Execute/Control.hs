@@ -43,9 +43,9 @@ type Executor s a = TaggedT s (StateT TaskLocal IO) a
 --
 --   * Retry count for current task.
 data TaskLocal = TaskLocal
-  { _reactStack  :: [React]  -- ^ Saved reactions modificators. Topmost is active
-  , _usersStack  :: [String] -- ^ Saved user chaning modificators. Topmost is active
-  , _retryCount  :: Int      -- ^ Performed retries for task
+  { _reactStack :: [React]  -- ^ Saved reactions modificators. Topmost is active
+  , _usersStack :: [String] -- ^ Saved user chaning modificators. Topmost is active
+  , _retryCount :: Int      -- ^ Performed retries for task
   } deriving (Show, Read, Eq, Ord)
 
 instance Default TaskLocal where

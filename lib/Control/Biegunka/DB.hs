@@ -26,7 +26,7 @@ import           Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import           Data.ByteString.Lazy (fromStrict)
-import           Data.Foldable (for_, toList)
+import           Data.Foldable (Foldable, for_, toList)
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set, (\\))
@@ -110,6 +110,7 @@ instance ToJSON FileRecord where
     , "path" .= filePath
     ]
 
+
 makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 
 -- | Profiles data
@@ -117,7 +118,7 @@ db :: Lens' DB (Map String (Map SourceRecord (Set FileRecord)))
 
 
 -- | Load profiles mentioned in script
-load :: Settings () -> Set String -> IO DB
+load :: Foldable t => Settings () -> t String -> IO DB
 load c = fmap (DB . M.fromList) . loads c . toList
 
 -- | Load profile data from disk

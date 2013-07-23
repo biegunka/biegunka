@@ -10,6 +10,8 @@ import           Control.Monad (forever)
 import           Control.Monad.Trans.Either
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Char (toLower)
+import           Data.Default (def)
+import           Data.Foldable (for_)
 import           Data.List (intercalate, isPrefixOf, partition, sort)
 import           Data.List.Lens
 import           Data.Monoid (Monoid(..), (<>))
@@ -25,6 +27,9 @@ import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.Wordexp (wordexp, nosubst, noundef)
+
+import           Control.Biegunka.Control (appData)
+import           Control.Biegunka.DB (DB(..), SourceRecord(..), FileRecord(..), load)
 
 import Options
 import Paths_biegunka
@@ -127,7 +132,16 @@ list datadirglob profiles = do
     Right []        -> badglob -- wordexp found nothing
     Right [datadir] -> do
       case profiles of
-        [] -> getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
+        [] ->
+          getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
+        profiles' -> do
+          DB db <- load (def & appData .~ datadir) profiles'
+          ifor_ db $ \profileName profileData -> do
+            putStrLn $ "Profile " ++ profileName
+            ifor_ profileData $ \sourceRecord fileRecords -> do
+              putStrLn $ "  Source " ++ sourcePath sourceRecord
+              for_ fileRecords $ \fileRecord ->
+                putStrLn $ "    File " ++ filePath fileRecord
  where
   badglob = putStrLn $ "Bad glob pattern: " ++ datadirglob
 
