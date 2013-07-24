@@ -2,20 +2,12 @@
 module Control.Biegunka
   ( -- * Interpreters control
     biegunka, Settings, root, appData, colors
-  , ColorScheme(..)
-  , actionColor, sourceColor
-  , srcColor, dstColor
-  , errorColor, retryColor
-  , noColors
     -- * Interpreters
   , Interpreter
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
-    -- * Execution environment hooks
-  , Run
-  , React(..), react
-  , Templates(..), templates
-  , retries
+    -- * Types
+  , Script, Scope(..)
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
@@ -24,10 +16,19 @@ module Control.Biegunka
     -- * Modifiers
   , profile, group
   , sudo, User(..), reacting, prerequisiteOf, (<~>)
-    -- * Types
-  , Script, Scope(..)
+    -- * Execution environment hooks
+  , Run
+  , React(..), react
+  , Templates(..), templates
+  , retries
     -- * TH
   , makeOptionsParser
+    -- ** Colors
+  , ColorScheme(..)
+  , actionColor, sourceColor
+  , srcColor, dstColor
+  , errorColor, retryColor
+  , noColors
   ) where
 
 import Control.Biegunka.Settings
