@@ -27,7 +27,7 @@ import Data.Monoid (mempty)
 import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
-import Control.Biegunka.Language (React(..))
+import Control.Biegunka.Language (React(..), User(..))
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -43,10 +43,10 @@ type Executor s a = TaggedT s (StateT TaskLocal IO) a
 --
 --   * Retry count for current task.
 data TaskLocal = TaskLocal
-  { _reactStack :: [React]  -- ^ Saved reactions modificators. Topmost is active
-  , _usersStack :: [String] -- ^ Saved user chaning modificators. Topmost is active
-  , _retryCount :: Int      -- ^ Performed retries for task
-  } deriving (Show, Read, Eq, Ord)
+  { _reactStack :: [React] -- ^ Saved reactions modificators. Topmost is active
+  , _usersStack :: [User]  -- ^ Saved user chaning modificators. Topmost is active
+  , _retryCount :: Int     -- ^ Performed retries for task
+  } deriving (Show, Read)
 
 instance Default TaskLocal where
   def = TaskLocal
@@ -61,7 +61,7 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''TaskLocal
 reactStack :: Lens' TaskLocal [React]
 
 -- | Saved user chaning modificators. Topmost is active
-usersStack :: Lens' TaskLocal [String]
+usersStack :: Lens' TaskLocal [User]
 
 -- | Performed retries for task
 retryCount :: Lens' TaskLocal Int

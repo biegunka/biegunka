@@ -23,7 +23,7 @@ module Control.Biegunka
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, prerequisiteOf, (<~>)
+  , sudo, User(..), reacting, prerequisiteOf, (<~>)
     -- * Types
   , Script, Scope(..)
     -- * TH
@@ -46,7 +46,7 @@ import Control.Biegunka.Execute.Control
   , Templates(..), templates
   , retries
   )
-import Control.Biegunka.Language (Scope(..), React(..), PatchSpec(..))
+import Control.Biegunka.Language (Scope(..), React(..), User(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script)
 import Control.Biegunka.TH (makeOptionsParser)

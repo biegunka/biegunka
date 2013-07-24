@@ -46,7 +46,7 @@ import qualified Control.Biegunka.DB as DB
 import Control.Biegunka.Execute.Control
 import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
+import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..), User(..))
 import Control.Biegunka.Execute.Schedule (runTask, schedule)
 import Control.Biegunka.Script
 
@@ -189,12 +189,15 @@ command c = do
         guard (not $ s || r)
         writeTVar stv True
       uid  <- getEffectiveUserID
-      uid' <- userID <$> getUserEntryForName u
-      setEffectiveUserID uid'
+      uid' <- getUID u
       log (termDescription (action scm c))
+      setEffectiveUserID uid'
       op
       setEffectiveUserID uid
       atomically $ writeTVar stv False
+ where
+  getUID (UserID i)   = return i
+  getUID (Username n) = userID <$> getUserEntryForName n
 
 termOperation :: Reifies t (Settings Execution)
               => Term Annotate s a
