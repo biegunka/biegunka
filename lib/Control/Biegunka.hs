@@ -30,7 +30,7 @@ module Control.Biegunka
   , makeOptionsParser
   ) where
 
-import Control.Biegunka.Control
+import Control.Biegunka.Settings
   ( biegunka, Settings, root, appData, colors
   , Interpreter, pause, confirm
   , ColorScheme(..)
@@ -40,7 +40,7 @@ import Control.Biegunka.Control
   , noColors
   )
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
-import Control.Biegunka.Execute.Control
+import Control.Biegunka.Execute.Settings
   ( Run
   , react
   , Templates(..), templates

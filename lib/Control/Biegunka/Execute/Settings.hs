@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
-module Control.Biegunka.Execute.Control
+module Control.Biegunka.Execute.Settings
   ( Executor
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount

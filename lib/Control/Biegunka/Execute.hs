@@ -41,9 +41,9 @@ import           System.Posix.User (getEffectiveUserID, getUserEntryForName, use
 import           System.Process
 
 import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Control.Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
+import Control.Biegunka.Settings (Settings, Interpreter(..), interpret, local, logger, colors)
 import qualified Control.Biegunka.DB as DB
-import Control.Biegunka.Execute.Control
+import Control.Biegunka.Execute.Settings
 import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Control.Biegunka.Execute.Exception
 import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..), User(..))

@@ -22,7 +22,7 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 import qualified Text.PrettyPrint.ANSI.Leijen as L
 
 import Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
-import Control.Biegunka.Control
+import Control.Biegunka.Settings
   ( Interpreter(..), Settings, interpret, logger
   , ColorScheme(..), colors
   , sourceColor, srcColor, dstColor

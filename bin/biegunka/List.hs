@@ -20,7 +20,7 @@ import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 import           System.FilePath.Lens
 import           System.Wordexp (wordexp, nosubst, noundef)
 
-import           Control.Biegunka.Control (appData)
+import           Control.Biegunka.Settings (appData)
 import           Control.Biegunka.DB (DB(..), SourceRecord(..), FileRecord(..), load)
 
 

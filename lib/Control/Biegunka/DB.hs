@@ -37,7 +37,7 @@ import           System.Directory (createDirectoryIfMissing, removeDirectory, re
 import           System.FilePath ((</>), (<.>))
 import           System.FilePath.Lens (directory)
 
-import Control.Biegunka.Control (Settings, appData)
+import Control.Biegunka.Settings (Settings, appData)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..))
 
