@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Checks that sudo works in any scope
 module Main where
@@ -18,5 +19,10 @@ sources =
 
 actions :: Script Actions ()
 actions =
-  sudo "nobody" $
+  sudo (UserID 0) $
+    link "source" "destination"
+
+actions' :: Script Actions ()
+actions' =
+  sudo (Username "nobody") $
     link "source" "destination"
