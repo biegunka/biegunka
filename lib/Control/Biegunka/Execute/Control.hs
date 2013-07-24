@@ -10,11 +10,11 @@ module Control.Biegunka.Execute.Control
     -- * Lenses
   , sync, runs
   , work, running, sudoing, repos, tasks
-  , priviledges, react, templates, retries, mode
+  , react, templates, retries, mode
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
-  , Work(..), Templates(..), Priviledges(..), Mode(..)
+  , Work(..), Templates(..), Mode(..)
   ) where
 
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
@@ -90,31 +90,19 @@ data Work =
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
 data Run = Run
-  { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
-  , _react       :: React       -- ^ How to react on failures
-  , _templates   :: Templates   -- ^ Templates mapping
-  , _retries     :: Int         -- ^ Maximum retries count
-  , _mode        :: Mode        -- ^ Executor mode
+  { _react     :: React       -- ^ How to react on failures
+  , _templates :: Templates   -- ^ Templates mapping
+  , _retries   :: Int         -- ^ Maximum retries count
+  , _mode      :: Mode        -- ^ Executor mode
   }
 
 instance Default Run where
   def = Run
-    { _priviledges = def
-    , _react       = def
-    , _templates   = Templates ()
-    , _retries     = 1
-    , _mode        = Dry
+    { _react     = def
+    , _templates = Templates ()
+    , _retries   = 1
+    , _mode      = Dry
     }
-
--- | Priviledges control.
--- Controls how to behave if started with sudo
-data Priviledges =
-    Drop     -- ^ Drop priviledges
-  | Preserve -- ^ Preserve priviledges
-    deriving (Show, Read, Eq, Ord)
-
-instance Default Priviledges where
-  def = Drop
 
 -- | How to do execution
 data Mode =
@@ -157,9 +145,6 @@ tasks :: Lens' Sync (TVar (Set Int))
 
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
-
--- | What to do with priviledges if ran in sudo
-priviledges :: Lens' Run Priviledges
 
 -- | How to react on failures
 react :: Lens' Run React

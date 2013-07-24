@@ -13,7 +13,6 @@ module Control.Biegunka
   , pretend, execute, verify
     -- * Execution environment hooks
   , Run
-  , Priviledges(..), priviledges
   , React(..), react
   , Templates(..), templates
   , retries
@@ -43,7 +42,6 @@ import Control.Biegunka.Control
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
 import Control.Biegunka.Execute.Control
   ( Run
-  , Priviledges(..), priviledges
   , react
   , Templates(..), templates
   , retries
