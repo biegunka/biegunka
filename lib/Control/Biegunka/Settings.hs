@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
-module Control.Biegunka.Control
+module Control.Biegunka.Settings
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
     -- * Settings common for all interpreters

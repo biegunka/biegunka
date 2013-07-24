@@ -18,7 +18,7 @@ import Control.Lens
 import System.Process (CmdSpec(..))
 import Text.PrettyPrint.ANSI.Leijen
 
-import Control.Biegunka.Control
+import Control.Biegunka.Settings
   ( ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor

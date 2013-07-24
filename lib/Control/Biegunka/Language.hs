@@ -6,11 +6,12 @@
 module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
-  , PatchSpec(..), CopySpec(..), React(..)
+  , PatchSpec(..), CopySpec(..), React(..), User(..)
   ) where
 
 import Control.Applicative((<$>))
 import Data.Foldable (Foldable(..))
+import Data.String (IsString(..))
 import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
@@ -18,6 +19,7 @@ import Data.Copointed (Copointed(..))
 import Data.Default (Default(..))
 import Data.Set (Set)
 import Data.Text.Lazy (Text)
+import System.Posix.Types (CUid)
 import System.Process (CmdSpec)
 import Text.StringTemplate (ToSElem)
 import Text.StringTemplate.GenericStandard ()
@@ -105,10 +107,19 @@ instance Default PatchSpec where
 
 -- | Modificators for other datatypes
 data Modifier =
-    User (Maybe String)
+    User (Maybe User)
   | Reacting (Maybe React)
   | Wait (Set Int)
   | Chain
+
+-- | User setting modifier
+data User =
+    UserID CUid     -- ^ Set user with ID
+  | Username String -- ^ Set user with username
+    deriving (Show, Read)
+
+instance IsString User where
+  fromString = Username
 
 -- | Failure reaction
 data React = Ignorant | Abortive | Retry

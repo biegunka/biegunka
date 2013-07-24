@@ -12,7 +12,6 @@ module Control.Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.Foldable (traverse_)
 import           Data.List ((\\))
 import           Prelude hiding (log)
 import           System.Exit (ExitCode(..))
@@ -38,17 +37,16 @@ import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
-import           System.Posix.Env (getEnv)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import           System.Process
 
 import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Control.Biegunka.Control (Settings, Interpreter(..), interpret, local, logger, colors)
+import Control.Biegunka.Settings (Settings, Interpreter(..), interpret, local, logger, colors)
 import qualified Control.Biegunka.DB as DB
-import Control.Biegunka.Execute.Control
+import Control.Biegunka.Execute.Settings
 import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..))
+import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..), User(..))
 import Control.Biegunka.Execute.Schedule (runTask, schedule)
 import Control.Biegunka.Script
 
@@ -60,7 +58,6 @@ run e = interpret $ \c (s, as) -> do
   a <- DB.load c (as^.profiles)
   r <- initializeSTM ((e $ def) & mode.~Real)
   let c' = c & local.~r
-  dropPriviledges r
   runTask c' def newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
@@ -78,14 +75,6 @@ run e = interpret $ \c (s, as) -> do
 execute :: (Run -> Run) -> Interpreter
 execute = run
 {-# DEPRECATED execute "Please, use `run'" #-}
-
-dropPriviledges :: Execution -> IO ()
-dropPriviledges e =
-  case e^.runs.priviledges of
-    Drop     -> getEnv "SUDO_USER" >>= traverse_ setUser
-    Preserve -> return ()
- where
-  setUser n = getUserEntryForName n >>= setEffectiveUserID . userID
 
 -- | Dry run interpreter
 dryRun :: Interpreter
@@ -200,12 +189,15 @@ command c = do
         guard (not $ s || r)
         writeTVar stv True
       uid  <- getEffectiveUserID
-      uid' <- userID <$> getUserEntryForName u
-      setEffectiveUserID uid'
+      uid' <- getUID u
       log (termDescription (action scm c))
+      setEffectiveUserID uid'
       op
       setEffectiveUserID uid
       atomically $ writeTVar stv False
+ where
+  getUID (UserID i)   = return i
+  getUID (Username n) = userID <$> getUserEntryForName n
 
 termOperation :: Reifies t (Settings Execution)
               => Term Annotate s a

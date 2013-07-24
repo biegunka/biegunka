@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
-module Control.Biegunka.Execute.Control
+module Control.Biegunka.Execute.Settings
   ( Executor
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
@@ -10,11 +10,11 @@ module Control.Biegunka.Execute.Control
     -- * Lenses
   , sync, runs
   , work, running, sudoing, repos, tasks
-  , priviledges, react, templates, retries, mode
+  , react, templates, retries, mode
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
-  , Work(..), Templates(..), Priviledges(..), Mode(..)
+  , Work(..), Templates(..), Mode(..)
   ) where
 
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
@@ -27,7 +27,7 @@ import Data.Monoid (mempty)
 import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
-import Control.Biegunka.Language (React(..))
+import Control.Biegunka.Language (React(..), User(..))
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -43,10 +43,10 @@ type Executor s a = TaggedT s (StateT TaskLocal IO) a
 --
 --   * Retry count for current task.
 data TaskLocal = TaskLocal
-  { _reactStack :: [React]  -- ^ Saved reactions modificators. Topmost is active
-  , _usersStack :: [String] -- ^ Saved user chaning modificators. Topmost is active
-  , _retryCount :: Int      -- ^ Performed retries for task
-  } deriving (Show, Read, Eq, Ord)
+  { _reactStack :: [React] -- ^ Saved reactions modificators. Topmost is active
+  , _usersStack :: [User]  -- ^ Saved user chaning modificators. Topmost is active
+  , _retryCount :: Int     -- ^ Performed retries for task
+  } deriving (Show, Read)
 
 instance Default TaskLocal where
   def = TaskLocal
@@ -61,7 +61,7 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''TaskLocal
 reactStack :: Lens' TaskLocal [React]
 
 -- | Saved user chaning modificators. Topmost is active
-usersStack :: Lens' TaskLocal [String]
+usersStack :: Lens' TaskLocal [User]
 
 -- | Performed retries for task
 retryCount :: Lens' TaskLocal Int
@@ -90,31 +90,19 @@ data Work =
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
 data Run = Run
-  { _priviledges :: Priviledges -- ^ What to do with priviledges if ran in sudo
-  , _react       :: React       -- ^ How to react on failures
-  , _templates   :: Templates   -- ^ Templates mapping
-  , _retries     :: Int         -- ^ Maximum retries count
-  , _mode        :: Mode        -- ^ Executor mode
+  { _react     :: React       -- ^ How to react on failures
+  , _templates :: Templates   -- ^ Templates mapping
+  , _retries   :: Int         -- ^ Maximum retries count
+  , _mode      :: Mode        -- ^ Executor mode
   }
 
 instance Default Run where
   def = Run
-    { _priviledges = def
-    , _react       = def
-    , _templates   = Templates ()
-    , _retries     = 1
-    , _mode        = Dry
+    { _react     = def
+    , _templates = Templates ()
+    , _retries   = 1
+    , _mode      = Dry
     }
-
--- | Priviledges control.
--- Controls how to behave if started with sudo
-data Priviledges =
-    Drop     -- ^ Drop priviledges
-  | Preserve -- ^ Preserve priviledges
-    deriving (Show, Read, Eq, Ord)
-
-instance Default Priviledges where
-  def = Drop
 
 -- | How to do execution
 data Mode =
@@ -157,9 +145,6 @@ tasks :: Lens' Sync (TVar (Set Int))
 
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
-
--- | What to do with priviledges if ran in sudo
-priviledges :: Lens' Run Priviledges
 
 -- | How to react on failures
 react :: Lens' Run React

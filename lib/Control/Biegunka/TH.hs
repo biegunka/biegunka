@@ -10,9 +10,9 @@ import Data.Foldable (asum)
 import Language.Haskell.TH
 import Options.Applicative
 
-import Control.Biegunka.Control (Settings, biegunka, confirm)
+import Control.Biegunka.Settings (Settings, biegunka, confirm)
 import Control.Biegunka.Execute (run, dryRun)
-import Control.Biegunka.Execute.Control (Run)
+import Control.Biegunka.Execute.Settings (Run)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Script (Script)
 import Control.Biegunka.Verify (check)

@@ -2,21 +2,12 @@
 module Control.Biegunka
   ( -- * Interpreters control
     biegunka, Settings, root, appData, colors
-  , ColorScheme(..)
-  , actionColor, sourceColor
-  , srcColor, dstColor
-  , errorColor, retryColor
-  , noColors
     -- * Interpreters
   , Interpreter
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
-    -- * Execution environment hooks
-  , Run
-  , Priviledges(..), priviledges
-  , React(..), react
-  , Templates(..), templates
-  , retries
+    -- * Types
+  , Script, Scope(..)
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
@@ -24,14 +15,23 @@ module Control.Biegunka
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, prerequisiteOf, (<~>)
-    -- * Types
-  , Script, Scope(..)
+  , sudo, User(..), reacting, prerequisiteOf, (<~>)
+    -- * Execution environment hooks
+  , Run
+  , React(..), react
+  , Templates(..), templates
+  , retries
     -- * TH
   , makeOptionsParser
+    -- ** Colors
+  , ColorScheme(..)
+  , actionColor, sourceColor
+  , srcColor, dstColor
+  , errorColor, retryColor
+  , noColors
   ) where
 
-import Control.Biegunka.Control
+import Control.Biegunka.Settings
   ( biegunka, Settings, root, appData, colors
   , Interpreter, pause, confirm
   , ColorScheme(..)
@@ -41,14 +41,13 @@ import Control.Biegunka.Control
   , noColors
   )
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
-import Control.Biegunka.Execute.Control
+import Control.Biegunka.Execute.Settings
   ( Run
-  , Priviledges(..), priviledges
   , react
   , Templates(..), templates
   , retries
   )
-import Control.Biegunka.Language (Scope(..), React(..), PatchSpec(..))
+import Control.Biegunka.Language (Scope(..), React(..), User(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script)
 import Control.Biegunka.TH (makeOptionsParser)

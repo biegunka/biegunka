@@ -20,12 +20,12 @@ makeOptionsParser ''Environments
 
 main :: IO ()
 main = do
-  -- Both settings changes do not touch the defaults, they
-  -- are just for illustration here
+  -- Both settings do not change the defaults, they
+  -- are purely for illustration here
   -- Set ~ directory as root for all paths (except those which are rooted at source location)
   let biegunkaSettings = set root "~"
-  -- Drop priviledges if user starts the script with sudo
-      runSettings      = set priviledges Drop
+  -- Retry once on failure (saves from occasional network failures and such)
+      runSettings      = set retries 1
   -- Use generated options parser to get environment to run scripts in
   (environment, runBiegunka) <- optionsParser
   -- Detect environment and act accordingly

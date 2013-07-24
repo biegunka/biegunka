@@ -14,8 +14,8 @@ import           Data.Functor.Trans.Tagged (untag)
 import           Data.Proxy (Proxy)
 import           Data.Reflection (Reifies, reify)
 
-import Control.Biegunka.Control
-import Control.Biegunka.Execute.Control
+import Control.Biegunka.Settings
+import Control.Biegunka.Execute.Settings
 import Control.Biegunka.Language (Term(..))
 import Control.Biegunka.Script
 
