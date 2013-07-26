@@ -63,7 +63,7 @@ instance Show ShellException where
           ShellCommand c  -> ["Shell command >>>", T.pack c, "<<<"]
           RawCommand c as -> ["Command >>>", T.pack c] ++ map T.pack as ++ ["<<<"]
         statusLine  = ["exited with status", T.pack (show status)]
-    in T.unlines [T.unwords (commandLine <> statusLine)]
+    in T.unlines [T.unwords (commandLine <> statusLine), errors]
 
 instance Exception ShellException
 
