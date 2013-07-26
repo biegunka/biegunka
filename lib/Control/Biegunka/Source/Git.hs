@@ -17,7 +17,6 @@ import Control.Exception (bracket)
 import Control.Monad (forM_)
 import Data.Foldable (for_)
 import Data.Monoid (mempty)
-import System.Exit (ExitCode(..))
 
 import           Control.Lens
 import           Data.Default (Default(..))
@@ -26,7 +25,7 @@ import           System.Directory (getCurrentDirectory, setCurrentDirectory, doe
 import           System.FilePath ((</>))
 import           System.Process (readProcessWithExitCode)
 
-import Control.Biegunka.Execute.Exception (sourceFailure)
+import Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
 import Control.Biegunka.Language (Scope(..))
 import Control.Biegunka.Script (Script, URI, sourced)
 import Control.Biegunka.Source (Sourceable(..))
@@ -125,8 +124,6 @@ updateGit u rs br p = do
     getCurrentDirectory
     setCurrentDirectory $ \_ -> do
       for_ workingDirectory setCurrentDirectory
-      (exitcode, _, stderr) <- readProcessWithExitCode "git" args mempty
-      case exitcode of
-        ExitFailure _ -> do
-          sourceFailure u p (T.pack stderr)
-        ExitSuccess -> return ()
+      (exitcode, _, errors) <- readProcessWithExitCode "git" args mempty
+      exitcode `onFailure`
+        \_ -> sourceFailure u p (T.pack errors)

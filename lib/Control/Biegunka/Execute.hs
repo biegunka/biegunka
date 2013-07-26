@@ -14,7 +14,6 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.List ((\\))
 import           Prelude hiding (log)
-import           System.Exit (ExitCode(..))
 import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.STM.TQueue (writeTQueue)
@@ -227,10 +226,10 @@ termOperation term = case term of
     Templates ts <- reflected <&> \e -> e^.local.runs.templates
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
-  TA _ (Command p sp) _ -> return $ do
-    (_, _, Just er, ph) <- createProcess $
+  TA _ (Command p spec) _ -> return $ do
+    (_, _, Just errors, ph) <- createProcess $
       CreateProcess
-        { cmdspec      = sp
+        { cmdspec      = spec
         , cwd          = Just p
         , env          = Nothing
         , std_in       = Inherit
@@ -240,9 +239,8 @@ termOperation term = case term of
         , create_group = False
         }
     e <- waitForProcess ph
-    case e of
-      ExitFailure _ -> T.hGetContents er >>= throwM . ShellException sp
-      _ -> return ()
+    e `onFailure` \status ->
+      T.hGetContents errors >>= throwM . ShellException spec status
   TA _ (Patch patch root spec) _ -> return $ do
     verified <- verifyAppliedPatch patch root spec
     unless verified $

@@ -9,12 +9,14 @@ module Control.Biegunka.Execute.Exception
   , SourceException(..)
     -- * Utility functions
   , sourceFailure
+  , onFailure
   ) where
 
+import Control.Applicative ((<$), pure)
 import Control.Exception (Exception, throwIO)
-import Data.List (intercalate)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
+import System.Exit (ExitCode(..))
 import System.Process (CmdSpec(..))
 
 import           Data.Text (Text)
@@ -52,14 +54,16 @@ instance Exception PatchingException
 
 
 -- | Various shell failures with output
-data ShellException = ShellException CmdSpec Text
+data ShellException = ShellException CmdSpec Int Text
     deriving (Typeable)
 
 instance Show ShellException where
-  show (ShellException (ShellCommand c) o) = nicely $
-    "Shell command `" <> T.pack c <> "' has failed\nExceptions log:\n" <> o
-  show (ShellException (RawCommand c as) o) = nicely $
-    "Command `" <> T.pack c <> " " <> T.pack (intercalate " " as) <> "` has failed\nExceptions log:\n" <> o
+  show (ShellException spec status errors) = nicely $
+    let commandLine = case spec of
+          ShellCommand c  -> ["Shell command >>>", T.pack c, "<<<"]
+          RawCommand c as -> ["Command >>>", T.pack c] ++ map T.pack as ++ ["<<<"]
+        statusLine  = ["exited with status", T.pack (show status)]
+    in T.unlines [T.unwords (commandLine <> statusLine)]
 
 instance Exception ShellException
 
@@ -81,3 +85,8 @@ sourceFailure up fp fs = throwIO $ SourceException up fp fs
 
 nicely :: Text -> String
 nicely f = T.unpack . T.unlines . filter (not . T.null) $ T.lines f
+
+-- | Check process exit code and perform 'IO' action on failure
+onFailure :: ExitCode -> (Int -> IO a) -> IO ()
+onFailure (ExitFailure s) f = () <$ f s
+onFailure ExitSuccess _     = pure ()

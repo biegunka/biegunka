@@ -43,12 +43,10 @@ applyPatch
   -> PatchSpec
   -> IO ()
 applyPatch patch root PatchSpec { strip, reversely } =
-  patching patch root arguments post
+  patching patch root arguments $ \e ->
+    e `onFailure` \_ -> throwIO $ PatchingException patch root
  where
   arguments   = ["-p", show strip] ++ if reversely then ["--reverse"] else []
-
-  post ExitSuccess     = return ()
-  post (ExitFailure _) = throwIO $ PatchingException patch root
 
 -- | Verify applied patch given the patch spec
 verifyAppliedPatch
