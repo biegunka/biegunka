@@ -94,7 +94,7 @@ action sc il = nest 3 $ case il of
 -- | Describe handled exception
 exception :: ColorScheme -> SomeException -> Doc
 exception sc e = nest 3 $
-  ((sc^.errorColor) "FAIL" <//> colon) <$> vcat (map text . lines $ show e)
+  ((sc^.errorColor) "ERROR" <//> colon) <$> vcat (map text . lines $ show e)
 
 
 -- | Describe retry counter
