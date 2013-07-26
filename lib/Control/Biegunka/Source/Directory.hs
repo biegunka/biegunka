@@ -18,11 +18,9 @@ directory
   -> Script Actions ()
   -> Script Sources ()
 directory relpath inner =
-  sourced "directory" url relpath inner update
+  sourced "directory" relpath relpath inner update
  where
   update abspath = do
     exists <- doesDirectoryExist abspath
     unless exists $
-      sourceFailure url abspath (T.pack "No directory found here!")
-
-  url = "localhost"
+      sourceFailure abspath abspath (T.pack "No directory found!")
