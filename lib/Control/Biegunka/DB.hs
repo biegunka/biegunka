@@ -1,10 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 -- | Saved profiles data management
 module Control.Biegunka.DB
   ( DB(..), SourceRecord(..), FileRecord(..)
@@ -48,7 +46,7 @@ import Control.Biegunka.Script (Annotate(..))
 -- | Profiles data
 newtype DB = DB
   { _db :: Map String (Map SourceRecord (Set FileRecord))
-  } deriving (Show, Read, Monoid)
+  } deriving (Show, Read)
 
 
 -- | Source record
@@ -130,7 +128,7 @@ loads c (p:ps) = do
  `mplus`
   loads c ps
  where
-  parser (Object o) = (p, ) . M.fromList <$> do
+  parser (Object o) = (,) p . M.fromList <$> do
     ss <- o .: "sources"
     forM ss $ \s -> do
       t  <- s .: "info"
@@ -201,7 +199,7 @@ sources = map sourcePath . M.keys <=< M.elems . view db
 
 -- | Extract terms data from script
 fromScript :: Free (Term Annotate Sources) a -> DB
-fromScript script = execState (iterM construct script) mempty
+fromScript script = execState (iterM construct script) (DB mempty)
  where
   construct :: Term Annotate Sources (State DB a) -> State DB a
   construct term = case term of
