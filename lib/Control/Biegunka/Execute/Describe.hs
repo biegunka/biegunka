@@ -98,8 +98,13 @@ exception sc e = nest 3 $
 
 
 -- | Describe retry counter
-retryCounter :: ColorScheme -> Int -> Doc
-retryCounter sc n = (sc^.retryColor) "Retry" <//> colon </> text (show n)
+retryCounter :: ColorScheme -> Int -> Int -> Doc
+retryCounter sc m n =
+      (sc^.retryColor) "Retry"
+  </> text (show m)
+  </> (sc^.retryColor) "out of"
+  </> text (show n)
+  <//> (sc^.retryColor) colon
 
 
 -- | Describe changes which will happen after the run

@@ -137,9 +137,10 @@ checkRetryCountAndReact exc = do
   let log = e^.logger
       scm = e^.colors
   liftIO . log . termDescription $ exception scm exc
-  rc <- retryCount <<%= (+1)
-  if rc < (reflect (Proxy :: Proxy s))^.local.runs.retries then do
-    liftIO . log . termDescription $ retryCounter scm (rc + 1)
+  doneRetries <- retryCount <%= (+1)
+  let maximumRetries = reflect (Proxy :: Proxy s)^.local.runs.retries
+  if doneRetries <= maximumRetries then do
+    liftIO . log . termDescription $ retryCounter scm doneRetries maximumRetries
     return Retry
   else do
     retryCount .= 0
