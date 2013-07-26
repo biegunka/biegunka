@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
 module Control.Biegunka.Execute.Settings
-  ( Executor
+  ( Executor, env
     -- * Executor task-local state control
   , TaskLocal, reactStack, usersStack, retryCount
     -- * Executor environment
@@ -17,6 +17,7 @@ module Control.Biegunka.Execute.Settings
   , Work(..), Templates(..), Mode(..)
   ) where
 
+import Control.Applicative (Applicative)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
@@ -24,6 +25,7 @@ import Control.Monad.State (StateT)
 import Data.Default
 import Data.Functor.Trans.Tagged
 import Data.Monoid (mempty)
+import Data.Reflection (Reifies)
 import Data.Set (Set)
 import Text.StringTemplate (ToSElem(..))
 
@@ -33,6 +35,9 @@ import Control.Biegunka.Language (React(..), User(..))
 -- | Convenient type alias for task-local-state-ful IO
 -- tagged with crosstask execution environment @s@
 type Executor s a = TaggedT s (StateT TaskLocal IO) a
+
+env :: (Applicative m, Reifies s a) => TaggedT s m a
+env = reflected
 
 
 -- | 'Executor' task-local state. Contains:

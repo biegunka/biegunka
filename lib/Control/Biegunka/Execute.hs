@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -26,9 +27,7 @@ import           Control.Monad.State (get)
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Copointed (copoint)
 import           Data.Default (def)
-import           Data.Proxy
-import           Data.Reflection
-import           Data.Functor.Trans.Tagged
+import           Data.Reflection (Reifies)
 import qualified Data.Set as S
 import           Data.Text.Lazy (toStrict)
 import qualified Data.Text as T
@@ -37,7 +36,7 @@ import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
-import           System.Process
+import qualified System.Process as P
 
 import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
 import Control.Biegunka.Settings (Settings, Interpreter(..), interpret, local, logger, colors)
@@ -133,12 +132,11 @@ checkRetryCountAndReact
   => SomeException
   -> Executor s React
 checkRetryCountAndReact exc = do
-  e <- reflected
-  let log = e^.logger
-      scm = e^.colors
+  log <- env^!acts.logger
+  scm <- env^!acts.colors
   liftIO . log . termDescription $ exception scm exc
   doneRetries <- retryCount <%= (+1)
-  let maximumRetries = reflect (Proxy :: Proxy s)^.local.runs.retries
+  maximumRetries <- env^!acts.local.runs.retries
   if doneRetries <= maximumRetries then do
     liftIO . log . termDescription $ retryCounter scm doneRetries maximumRetries
     return Retry
@@ -150,7 +148,10 @@ checkRetryCountAndReact exc = do
 --
 -- Note: 'head' is safe here because list is always non-empty
 reaction :: forall s. Reifies s (Settings Execution) => Executor s React
-reaction = head . (++ [(reflect (Proxy :: Proxy s))^.local.runs.react]) <$> use reactStack
+reaction = do
+  defaultReact <- env^!acts.local.runs.react
+  reacts       <- use reactStack
+  return (head (reacts ++ [defaultReact]))
 
 
 -- | Single command execution
@@ -162,21 +163,18 @@ command (TM (Reacting Nothing) _)  = reactStack %= drop 1
 command (TM (User     (Just u)) _) = usersStack %= (u :)
 command (TM (User     Nothing) _)  = usersStack %= drop 1
 command (TM (Wait ts) _)           = do
-  ts' <- reflected <&> \e -> e^.local.sync.tasks
+  ts' <- env^!acts.local.sync.tasks
   liftIO . atomically $ do
     ts'' <- readTVar ts'
     unless (ts `S.isSubsetOf` ts'')
       retry
 command c = do
-  e <- reflected
-  let stv = e^.local.sync.sudoing
-      rtv = e^.local.sync.running
-      log = e^.logger
-      scm = e^.colors
+  stv <- env^!acts.local.sync.sudoing
+  rtv <- env^!acts.local.sync.running
+  log <- env^!acts.logger
+  scm <- env^!acts.colors
   xs <- use usersStack
-  op  <- case e^.local.runs.mode of
-          Dry  -> termEmptyOperation c
-          Real -> termOperation c
+  op <- env^!acts.local.runs.mode.act (\case Dry -> termEmptyOperation c; Real -> termOperation c)
   liftIO $ case xs of
     []  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
@@ -204,7 +202,7 @@ termOperation :: Reifies t (Settings Execution)
               -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- reflected <&> \e -> e^.local.sync.repos
+    rstv <- env^!acts.local.sync.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -224,22 +222,22 @@ termOperation term = case term of
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- reflected <&> \e -> e^.local.runs.templates
+    Templates ts <- env^!acts.local.runs.templates
     return $
       overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
   TA _ (Command p spec) _ -> return $ do
-    (_, _, Just errors, ph) <- createProcess $
-      CreateProcess
-        { cmdspec      = spec
-        , cwd          = Just p
-        , env          = Nothing
-        , std_in       = Inherit
-        , std_out      = CreatePipe
-        , std_err      = CreatePipe
-        , close_fds    = False
-        , create_group = False
+    (_, _, Just errors, ph) <- P.createProcess $
+      P.CreateProcess
+        { P.cmdspec      = spec
+        , P.cwd          = Just p
+        , P.env          = Nothing
+        , P.std_in       = P.Inherit
+        , P.std_out      = P.CreatePipe
+        , P.std_err      = P.CreatePipe
+        , P.close_fds    = False
+        , P.create_group = False
         }
-    e <- waitForProcess ph
+    e <- P.waitForProcess ph
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
   TA _ (Patch patch root spec) _ -> return $ do
@@ -264,7 +262,7 @@ newTask :: forall a s t. Reifies t (Settings Execution)
         -> Executor t ()
 newTask (Pure _) = return ()
 newTask t = do
-  e <- reflected
+  e <- env
   s <- get
   liftIO . atomically . writeTQueue (e^.local.sync.work) $
     Do $ do
@@ -274,6 +272,6 @@ newTask t = do
 -- | Tell execution process that you're done with task
 doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
 doneWith n = do
-  ts' <- reflected <&> \e -> e^.local.sync.tasks
+  ts <- env^!acts.local.sync.tasks
   liftIO . atomically $
-    modifyTVar ts' (S.insert n)
+    modifyTVar ts (S.insert n)
