@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -23,7 +24,6 @@ import           Control.Monad.Catch (SomeException, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.State (get)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Copointed (copoint)
 import           Data.Default (def)
 import           Data.Reflection (Reifies)
 import qualified Data.Set as S
@@ -90,36 +90,48 @@ pretend = dryRun
 {-# DEPRECATED pretend "Please, use `dryRun'" #-}
 
 
--- | Run single task command by command
+-- | Run single 'Sources' task
 --
--- "Forks" on 'Task' 'True'.
--- Note: current thread continues to execute what's inside task, but all the other stuff is queued
---
--- Complexity comes from forking and responding to errors. Otherwise that is dead simple function
-task :: Reifies t (Settings Execution)
-     => Free (Term Annotate s) a
-     -> Executor t ()
+-- "Forks" on 'TS'.
+-- Note: current thread continues to execute what's inside the
+-- task, but all the other stuff is queued for execution in scheduler
+task
+  :: Reifies t (Settings Execution)
+  => Free (Term Annotate Sources) a
+  -> Executor t ()
 task (Free c@(TS (AS { asToken }) _ b d)) = do
   newTask d
-  try (command c) >>= \e -> case e of
-    Left e' -> checkRetryCountAndReact e' >>= \r -> case r of
+  try (command c) >>= \case
+    Left e -> checkRetryCountAndReact e >>= \case
       Retry    -> task (Free (Pure () <$ c))
-      Abortive -> do
-        doneWith asToken
+      Abortive -> doneWith asToken
       Ignorant -> do
-        task b
+        taskAction b
         doneWith asToken
     Right _ -> do
-      task b
+      taskAction b
       doneWith asToken
-task a@(Free c) =
-  try (command c) >>= \e -> case e of
-    Left e' -> checkRetryCountAndReact e' >>= \r -> case r of
-      Retry    -> task a
-      Abortive -> return ()
-      Ignorant -> task (copoint c)
-    Right _ -> task (copoint c)
+task (Free c@(TM _ x)) = do
+  command c
+  task x
 task (Pure _) = return ()
+
+-- | Run single 'Actions' task
+taskAction
+  :: Reifies t (Settings Execution)
+  => Free (Term Annotate Actions) a
+  -> Executor t ()
+taskAction a@(Free c@(TA _ _ x)) =
+  try (command c) >>= \case
+    Left e -> checkRetryCountAndReact e >>= \case
+      Retry    -> taskAction a
+      Abortive -> return ()
+      Ignorant -> taskAction x
+    Right _ -> taskAction x
+taskAction (Free c@(TM _ x)) = do
+  command c
+  taskAction x
+taskAction (Pure _) = return ()
 
 
 -- | Get response from task failure processing
@@ -252,8 +264,8 @@ termEmptyOperation :: Reifies t (Settings Execution)
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a s t. Reifies t (Settings Execution)
-        => Free (Term Annotate s) a
+newTask :: forall a t. Reifies t (Settings Execution)
+        => Free (Term Annotate Sources) a
         -> Executor t ()
 newTask (Pure _) = return ()
 newTask t = do
