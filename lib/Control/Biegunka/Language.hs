@@ -7,6 +7,8 @@ module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
   , PatchSpec(..), CopySpec(..), React(..), User(..)
+
+  , defaultReaction
   ) where
 
 import Control.Applicative((<$>))
@@ -126,4 +128,7 @@ data React = Ignorant | Abortive | Retry
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Default React where
-  def = Ignorant
+  def = defaultReaction
+
+defaultReaction :: React
+defaultReaction = Ignorant

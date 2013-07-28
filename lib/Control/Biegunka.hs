@@ -15,10 +15,9 @@ module Control.Biegunka
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, User(..), reacting, prerequisiteOf, (<~>)
+  , sudo, User(..), reacting, React(..), prerequisiteOf, (<~>)
     -- * Execution environment hooks
   , Run
-  , React(..), react
   , Templates(..), templates
   , retries
     -- * TH
@@ -35,18 +34,10 @@ import Control.Biegunka.Settings
   ( biegunka, Settings, root, appData, colors
   , Interpreter, pause, confirm
   , ColorScheme(..)
-  , actionColor, sourceColor
-  , srcColor, dstColor
-  , errorColor, retryColor
-  , noColors
+  , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   )
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
-import Control.Biegunka.Execute.Settings
-  ( Run
-  , react
-  , Templates(..), templates
-  , retries
-  )
+import Control.Biegunka.Execute.Settings (Run, Templates(..), templates, retries)
 import Control.Biegunka.Language (Scope(..), React(..), User(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script)

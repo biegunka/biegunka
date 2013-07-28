@@ -42,7 +42,7 @@ import qualified Control.Biegunka.DB as DB
 import Control.Biegunka.Execute.Settings
 import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
 import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..), React(..), User(..))
+import Control.Biegunka.Language
 import Control.Biegunka.Execute.Schedule (runTask, schedule)
 import Control.Biegunka.Script
 
@@ -145,11 +145,8 @@ checkRetryCountAndReact exc = do
 -- | Get current reaction setting from environment
 --
 -- Note: 'head' is safe here because list is always non-empty
-reaction :: forall s. Reifies s (Settings Execution) => Executor s React
-reaction = do
-  defaultReact <- env^!acts.local.runs.react
-  reacts       <- use reactStack
-  return (head (reacts ++ [defaultReact]))
+reaction :: Executor s React
+reaction = uses reactStack (\reacts -> head (reacts ++ [defaultReaction]))
 
 
 -- | Single command execution
