@@ -79,8 +79,8 @@ register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 -- >   link "some-file" "anywhere"
 --
 -- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
-link :: FilePath -> FilePath -> Script Actions ()
-link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFilepath rfp src dst))
+link :: FilePath -> To -> Script Actions ()
+link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructToFilepath rfp src dst))
 {-# INLINE link #-}
 
 -- | Copies file or directory to specified filepath
@@ -89,7 +89,7 @@ link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructDestinationFil
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copy :: FilePath -> FilePath -> Script Actions ()
+copy :: FilePath -> To -> Script Actions ()
 copy = copy' BothDirectoriesAndFiles
 {-# INLINE copy #-}
 
@@ -99,7 +99,7 @@ copy = copy' BothDirectoriesAndFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyFile :: FilePath -> FilePath -> Script Actions ()
+copyFile :: FilePath -> To -> Script Actions ()
 copyFile = copy' OnlyFiles
 {-# INLINE copyFile #-}
 
@@ -109,13 +109,13 @@ copyFile = copy' OnlyFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyDirectory :: FilePath -> FilePath -> Script Actions ()
+copyDirectory :: FilePath -> To -> Script Actions ()
 copyDirectory = copy' OnlyDirectories
 {-# INLINE copyDirectory #-}
 
-copy' :: CopySpec -> FilePath -> FilePath -> Script Actions ()
+copy' :: CopySpec -> FilePath -> To -> Script Actions ()
 copy' spec src dst = actioned (\rfp sfp ->
-  Copy (sfp </> src) (constructDestinationFilepath rfp src dst) spec)
+  Copy (sfp </> src) (constructToFilepath rfp src dst) spec)
 {-# INLINE copy' #-}
 
 -- | Substitutes templates in @HStringTemplate@ syntax
@@ -128,9 +128,9 @@ copy' spec src dst = actioned (\rfp sfp ->
 --
 -- Substitutes templates in @~\/anywhere@ with values from
 -- 'templates' part of 'Controls'
-substitute :: FilePath -> FilePath -> Script Actions ()
+substitute :: FilePath -> To -> Script Actions ()
 substitute src dst = actioned (\rfp sfp ->
-  Template (sfp </> src) (constructDestinationFilepath rfp src dst)
+  Template (sfp </> src) (constructToFilepath rfp src dst)
     (\b -> render . setAttribute "template" b . newSTMP))
 {-# INLINE substitute #-}
 

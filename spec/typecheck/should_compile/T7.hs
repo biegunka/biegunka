@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Checks that grouping and sourcing can be on the same 'level' of hierachy
 module Main where

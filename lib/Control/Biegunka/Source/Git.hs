@@ -27,7 +27,7 @@ import           System.Process (readProcessWithExitCode)
 
 import Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
 import Control.Biegunka.Language (Scope(..))
-import Control.Biegunka.Script (Script, URI, sourced)
+import Control.Biegunka.Script (To, Script, URI, sourced)
 import Control.Biegunka.Source (Sourceable(..))
 
 
@@ -92,18 +92,18 @@ type Remote = String
 --  4. Checkout to @develop@
 --
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
-git' :: URI -> FilePath -> Git -> Script Sources ()
+git' :: URI -> To -> Git -> Script Sources ()
 git' url path (Git { gitactions, _remotes, _branch }) =
   sourced "git" url path gitactions (updateGit url _remotes _branch)
 {-# INLINE git' #-}
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field
-git :: URI -> FilePath -> Script Actions () -> Script Sources ()
+git :: URI -> To -> Script Actions () -> Script Sources ()
 git u p s = git' u p def { gitactions = s }
 {-# INLINE git #-}
 
 -- | Wrapper over 'git' that does not provide anything
-git_ :: URI -> FilePath -> Script Sources ()
+git_ :: URI -> To -> Script Sources ()
 git_ u p = git u p def
 {-# INLINE git_ #-}
 

@@ -1,30 +1,39 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 module Control.Biegunka.Script
   ( Script(..), Annotations, Annotate(..)
-  , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  , script, annotate, rewind, URI, sourced, actioned, constructToFilepath
   , token, app, profiles, profileName, source, sourceURL, order
   , runScript, runScript', evalScript
+  , To(..), into
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
-import Control.Monad (when)
-import Data.List (isSuffixOf)
 
-import           Control.Lens hiding (Action)
+import           Control.Lens.At
+import           Control.Lens.Getter
+import           Control.Lens.Operators ((<+=), (&), (??))
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Lens.Type (Lens')
 import           Control.Monad.Free (Free(..), iter, liftF)
 import           Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
 import           Data.Default (Default(..))
+import           Data.String (IsString(..))
 import           Data.Copointed (copoint)
 import           Data.Set (Set)
 import qualified Data.Set as S
 import           System.FilePath.Lens
 
 import Control.Biegunka.Language
+
+-- $setup
+-- >>> :set -XOverloadedStrings
 
 
 -- | Language 'Term' annotation depending on their 'Scope'
@@ -152,12 +161,12 @@ rewind l mb = do
   return a'
 
 -- | Abstract away all plumbing needed to make source
-sourced :: String -> URI -> FilePath
+sourced :: String -> URI -> To
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- use app
   tok <- use token
-  let df = constructDestinationFilepath rfp url path
+  let df = constructToFilepath rfp url path
   source .= df
   sourceURL .= url
   order .= 0
@@ -187,24 +196,45 @@ actioned f = Script $ do
   mo <- use maxOrder
   lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
+
+data To =
+    To FilePath
+  | Into FilePath
+    deriving (Show, Read)
+
+instance IsString To where
+  fromString = To
+
+-- | Place stuff /into/ directory instead of using filename directly
+into :: FilePath -> To
+into = Into
+
 -- | Construct destination 'FilePath'
 --
--- >>> constructDestinationFilepath "" "" ""
+-- >>> constructToFilepath "" "" ""
 -- ""
 --
--- >>> constructDestinationFilepath "/root" "from" "to"
+-- >>> constructToFilepath "/root" "from" "to"
 -- "/root/to"
 --
--- >>> constructDestinationFilepath "/root" "from" "/to"
--- "/to"
+-- >>> constructToFilepath "/root" "from" "to/"
+-- "/root/to/"
 --
--- >>> constructDestinationFilepath "/root" "from" "to/"
+-- >>> constructToFilepath "/root" "from" (into "to")
 -- "/root/to/from"
 --
--- >>> constructDestinationFilepath "/root" "from" "/to/"
+-- >>> constructToFilepath "/root" "from" "/to"
+-- "/to"
+--
+-- >>> constructToFilepath "/root" "from" "/to/"
+-- "/to/"
+--
+-- >>> constructToFilepath "/root" "from" (into "/to")
 -- "/to/from"
-constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
-constructDestinationFilepath r s d = execState ?? r $ do
-  id </>= d
-  when ("/" `isSuffixOf` d) $
-    id </>= (s^.filename)
+constructToFilepath :: FilePath -> FilePath -> To -> FilePath
+constructToFilepath r s = (execState ?? r) . \case
+  To path ->
+    id </>= path
+  Into path -> do
+    id </>= path
+    id </>= s^.filename
