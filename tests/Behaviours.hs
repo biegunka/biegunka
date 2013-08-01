@@ -1,11 +1,11 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
 import           Control.Biegunka hiding (check)
 import           Control.Biegunka.Source.Layout (layout)
 import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
+import           Data.String (fromString)
 import           System.Directory.Layout
 import           Test.Hspec
 
@@ -71,12 +71,12 @@ simple_repo_0 =
     layout l "tmp/biegunka-simple0" $
       copy "src0" "tmp/dst0"
  where
-  l = file "src0" "thisiscontents\n"
+  l = file "src0" (fromString "thisiscontents\n")
 
 simple_layout_0 :: Layout
 simple_layout_0 = do
   directory "tmp" $
-    file "dst0" "thisiscontents\n"
+    file "dst0" (fromString "thisiscontents\n")
   directory ".biegunka" $
     directory "profiles" $
       file_ "biegunka-simple0.profile"
@@ -86,19 +86,19 @@ simple_repo_no_profile_0 =
   layout l "tmp/biegunka-simple0" $
     copy "src0" "tmp/dst0"
  where
-  l = file "src0" "thisiscontents\n"
+  l = file "src0" (fromString "thisiscontents\n")
 
 simple_layout_no_profile_0 :: Layout
 simple_layout_no_profile_0 = do
   directory "tmp" $
-    file "dst0" "thisiscontents\n"
+    file "dst0" (fromString "thisiscontents\n")
   directory ".biegunka" $
     directory "profiles" $
       file_ ".profile"
 
 simple_copying_layout_0 :: Layout
 simple_copying_layout_0 = do
-  file "foo" "foocontents\n"
-  file "bar" "barcontents\n"
+  file "foo" (fromString "foocontents\n")
+  file "bar" (fromString "barcontents\n")
   directory "baz" $
-    file "quux" "quuxcontents\n"
+    file "quux" (fromString "quuxcontents\n")

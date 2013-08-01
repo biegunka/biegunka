@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Checks that sudo works in any scope
 module Main where
@@ -13,16 +12,11 @@ main = return ()
 
 sources :: Script Sources ()
 sources =
-  sudo "nobody" $
+  sudo (Username "nobody") $
     git "https://example.com/dotfiles.git" "/" $
       return ()
 
 actions :: Script Actions ()
 actions =
   sudo (UserID 0) $
-    link "source" "destination"
-
-actions' :: Script Actions ()
-actions' =
-  sudo (Username "nobody") $
     link "source" "destination"
