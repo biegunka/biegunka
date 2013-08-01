@@ -27,13 +27,11 @@
 <a name="line-18"></a>  <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span>
 <a name="line-19"></a>  <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
 <a name="line-20"></a><span class='hs-definition'>directory</span> <span class='hs-varid'>relpath</span> <span class='hs-varid'>inner</span> <span class='hs-keyglyph'>=</span>
-<a name="line-21"></a>  <span class='hs-varid'>sourced</span> <span class='hs-str'>"directory"</span> <span class='hs-varid'>url</span> <span class='hs-varid'>relpath</span> <span class='hs-varid'>inner</span> <span class='hs-varid'>update</span>
+<a name="line-21"></a>  <span class='hs-varid'>sourced</span> <span class='hs-str'>"directory"</span> <span class='hs-varid'>relpath</span> <span class='hs-varid'>relpath</span> <span class='hs-varid'>inner</span> <span class='hs-varid'>update</span>
 <a name="line-22"></a> <span class='hs-keyword'>where</span>
 <a name="line-23"></a>  <span class='hs-varid'>update</span> <span class='hs-varid'>abspath</span> <span class='hs-keyglyph'>=</span> <span class='hs-keyword'>do</span>
 <a name="line-24"></a>    <span class='hs-varid'>exists</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>doesDirectoryExist</span> <span class='hs-varid'>abspath</span>
 <a name="line-25"></a>    <span class='hs-varid'>unless</span> <span class='hs-varid'>exists</span> <span class='hs-varop'>$</span>
-<a name="line-26"></a>      <span class='hs-varid'>sourceFailure</span> <span class='hs-varid'>url</span> <span class='hs-varid'>abspath</span> <span class='hs-layout'>(</span><span class='hs-conid'>T</span><span class='hs-varop'>.</span><span class='hs-varid'>pack</span> <span class='hs-str'>"No directory found here!"</span><span class='hs-layout'>)</span>
-<a name="line-27"></a>
-<a name="line-28"></a>  <span class='hs-varid'>url</span> <span class='hs-keyglyph'>=</span> <span class='hs-str'>"localhost"</span>
+<a name="line-26"></a>      <span class='hs-varid'>sourceFailure</span> <span class='hs-varid'>abspath</span> <span class='hs-varid'>abspath</span> <span class='hs-layout'>(</span><span class='hs-conid'>T</span><span class='hs-varop'>.</span><span class='hs-varid'>pack</span> <span class='hs-str'>"No directory found!"</span><span class='hs-layout'>)</span>
 </pre></body>
 </html>
