@@ -18,7 +18,7 @@ directory
   -> Script Actions ()
   -> Script Sources ()
 directory relpath inner =
-  sourced "directory" relpath (To relpath) inner update
+  sourced "directory" relpath relpath inner update
  where
   update abspath = do
     exists <- doesDirectoryExist abspath

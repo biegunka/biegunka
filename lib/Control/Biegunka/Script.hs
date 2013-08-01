@@ -1,16 +1,18 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 -- | Configuration script machinery
 module Control.Biegunka.Script
   ( Script(..), Annotations, Annotate(..)
   , script, annotate, rewind, URI, sourced, actioned, constructToFilepath
   , token, app, profiles, profileName, source, sourceURL, order
   , runScript, runScript', evalScript
-  , To(..), into
+  , Path(..), into
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -24,10 +26,10 @@ import           Control.Lens.Type (Lens')
 import           Control.Monad.Free (Free(..), iter, liftF)
 import           Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
 import           Data.Default (Default(..))
-import           Data.String (IsString(..))
 import           Data.Copointed (copoint)
 import           Data.Set (Set)
 import qualified Data.Set as S
+import           System.FilePath
 import           System.FilePath.Lens
 
 import Control.Biegunka.Language
@@ -161,7 +163,7 @@ rewind l mb = do
   return a'
 
 -- | Abstract away all plumbing needed to make source
-sourced :: String -> URI -> To
+sourced :: Path p => String -> URI -> p
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- use app
@@ -197,16 +199,21 @@ actioned f = Script $ do
   lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
 
-data To =
-    To FilePath
-  | Into FilePath
-    deriving (Show, Read)
+class Path p where
+  destination :: p -> FilePath -> FilePath
 
-instance IsString To where
-  fromString = To
+instance Path FilePath where
+  destination = const
+
+
+newtype Into = Into { unInto :: FilePath }
+  deriving (Show, Read)
+
+instance Path Into where
+  destination p filepath = unInto p </> filepath
 
 -- | Place stuff /into/ directory instead of using filename directly
-into :: FilePath -> To
+into :: FilePath -> Into
 into = Into
 
 -- | Construct destination 'FilePath'
@@ -231,10 +238,6 @@ into = Into
 --
 -- >>> constructToFilepath "/root" "from" (into "/to")
 -- "/to/from"
-constructToFilepath :: FilePath -> FilePath -> To -> FilePath
-constructToFilepath r s = (execState ?? r) . \case
-  To path ->
-    id </>= path
-  Into path -> do
-    id </>= path
-    id </>= s^.filename
+constructToFilepath :: Path p => FilePath -> FilePath -> p -> FilePath
+constructToFilepath root s path =
+  root </> destination path (s^.filename)

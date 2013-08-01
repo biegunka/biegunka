@@ -7,7 +7,7 @@ module Control.Biegunka
   , pause, confirm, dryRun, run, check
   , pretend, execute, verify
     -- * Types
-  , Script, Scope(..), To
+  , Script, Scope(..), Path
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
@@ -42,7 +42,7 @@ import Control.Biegunka.Execute (run, execute, dryRun, pretend)
 import Control.Biegunka.Execute.Settings (Run, Templates(..), templates, retries)
 import Control.Biegunka.Language (Scope(..), React(..), User(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (Script, To, into)
+import Control.Biegunka.Script (Script, Path, into)
 import Control.Biegunka.TH (makeOptionsParser)
 import Control.Biegunka.Verify (check, verify)
 import Control.Biegunka.Source (Sourceable(..))
