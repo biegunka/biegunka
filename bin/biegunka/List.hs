@@ -21,7 +21,7 @@ import           System.FilePath.Lens
 import           System.Wordexp (wordexp, nosubst, noundef)
 
 import           Control.Biegunka.Settings (appData)
-import           Control.Biegunka.DB (DB(..), SourceRecord(..), FileRecord(..), load)
+import           Control.Biegunka.DB (DB(..), GroupRecord(..), SourceRecord(..), FileRecord(..), load)
 
 
 data Formatted a = Formatted
@@ -52,7 +52,7 @@ list datadirglob profiles pattern = do
           hFlush stdout
  where
   info formatted (DB db) =
-    ifor_ db $ \profileName profileData -> do
+    ifor_ db $ \profileName (GR profileData) -> do
       tell $ profileFormat formatted profileName
       ifor_ profileData $ \sourceRecord fileRecords -> do
         tell $ sourceFormat formatted sourceRecord

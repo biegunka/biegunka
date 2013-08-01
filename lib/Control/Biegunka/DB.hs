@@ -1,11 +1,14 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 -- | Saved profiles data management
 module Control.Biegunka.DB
-  ( DB(..), SourceRecord(..), FileRecord(..)
+  ( DB(..), GroupRecord(..), SourceRecord(..), FileRecord(..)
   , load, loads, save, fromScript
   , filepaths, sources
   ) where
@@ -19,7 +22,6 @@ import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad.Free (Free(..), iterM)
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
-import           Data.Aeson.Encode
 import           Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
@@ -29,8 +31,6 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set, (\\))
 import qualified Data.Set as S
-import qualified Data.Text.Lazy.Builder as T
-import qualified Data.Text.Lazy.Encoding as T
 import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
 import           System.FilePath ((</>), (<.>))
 import           System.FilePath.Lens (directory)
@@ -43,10 +43,46 @@ import Control.Biegunka.Script (Annotate(..))
 -- >>> import Data.Default
 
 
--- | Profiles data
+-- | All groups data
 newtype DB = DB
-  { _db :: Map String (Map SourceRecord (Set FileRecord))
+  { _db :: Map String GroupRecord
   } deriving (Show, Read)
+
+
+-- | Group record
+newtype GroupRecord = GR
+  { unGR :: Map SourceRecord (Set FileRecord)
+  } deriving (Show, Read, Eq)
+
+instance Monoid GroupRecord where
+  mempty = GR mempty
+  GR a `mappend` GR b = GR (a `mappend` b)
+
+type instance Index GroupRecord = SourceRecord
+type instance IxValue GroupRecord = Set FileRecord
+
+instance Applicative f => Ixed f GroupRecord where
+  ix k f (GR x) = GR <$> ix k f x
+
+instance FromJSON GroupRecord where
+  parseJSON obj = GR . M.fromList <$> do
+    o       <- parseJSON obj
+    sources <- o .: "sources"
+    forM sources $ \s -> do
+      t  <- s .: "info"
+      fs <- (s .: "files" >>= mapM parseF) <|> (s .: "files" >>= mapM (fmap snd . parseFF))
+      return (t, S.fromList fs)
+   where
+    parseFF :: Value -> Parser (FilePath, FileRecord)
+    parseFF = parseJSON
+
+    parseF :: Value -> Parser FileRecord
+    parseF = parseJSON
+
+instance ToJSON GroupRecord where
+  toJSON (GR t) = object [             "sources" .= map repo   (M.toList t)]
+   where
+    repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
 
 
 -- | Source record
@@ -112,7 +148,7 @@ instance ToJSON FileRecord where
 makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 
 -- | Profiles data
-db :: Lens' DB (Map String (Map SourceRecord (Set FileRecord)))
+db :: Lens' DB (Map String GroupRecord)
 
 
 -- | Load profiles mentioned in script
@@ -120,27 +156,13 @@ load :: Foldable t => Settings () -> t String -> IO DB
 load c = fmap (DB . M.fromList) . loads c . toList
 
 -- | Load profile data from disk
-loads :: Settings () -> [String] -> IO [(String, Map SourceRecord (Set FileRecord))]
+loads :: Settings () -> [String] -> IO [(String, GroupRecord)]
 loads c (p:ps) = do
   let name = profileFilePath c p
-  Just v <- (parseMaybe parser <=< decode . fromStrict) <$> B.readFile name
-  (v:) <$> loads c ps
+  Just v <- (parseMaybe parseJSON <=< decode . fromStrict) <$> B.readFile name
+  ((p,v):) <$> loads c ps
  `mplus`
   loads c ps
- where
-  parser (Object o) = (,) p . M.fromList <$> do
-    ss <- o .: "sources"
-    forM ss $ \s -> do
-      t  <- s .: "info"
-      fs <- (s .: "files" >>= mapM parseF) <|> (s .: "files" >>= mapM (fmap snd . parseFF))
-      return (t, S.fromList fs)
-  parser _ = empty
-
-  parseFF :: Value -> Parser (FilePath, FileRecord)
-  parseFF = parseJSON
-
-  parseF :: Value -> Parser FileRecord
-  parseF = parseJSON
 loads _ [] = return []
 
 
@@ -157,7 +179,7 @@ save c ps (DB b) = do
     -- Create missing directories for nested profile files
     createDirectoryIfMissing True (name^.directory)
     -- Finally encode profile as JSON
-    BL.writeFile name $ encode' sourceData
+    BL.writeFile name $ encode sourceData
   -- Remove mentioned but empty profiles data
   for_ (ps \\ M.keysSet b) $ \p -> do
     let name = profileFilePath c p
@@ -168,10 +190,6 @@ save c ps (DB b) = do
    `mplus`
     -- Ignore failures, they are not critical in any way here
     return ()
- where
-  encode' = T.encodeUtf8 . T.toLazyText . fromValue . unparser
-  unparser t  = object [             "sources" .= map repo   (M.toList t)]
-  repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
 
 
 -- | Compute profiles' filepaths with current settings
@@ -190,11 +208,11 @@ profileFilePath settings name =
 
 -- | All destination files paths
 filepaths :: DB -> [FilePath]
-filepaths = map filePath . S.elems <=< M.elems <=< M.elems . view db
+filepaths = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view db
 
 -- | All sources paths
 sources :: DB -> [FilePath]
-sources = map sourcePath . M.keys <=< M.elems . view db
+sources = map sourcePath . M.keys . unGR <=< M.elems . view db
 
 
 -- | Extract terms data from script
@@ -205,7 +223,7 @@ fromScript script = execState (iterM construct script) (DB mempty)
   construct term = case term of
     TS (AS { asProfile }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath }
-      db . at asProfile . non mempty <>= M.singleton record mempty
+      db . at asProfile . non mempty <>= GR (M.singleton record mempty)
       iterM (populate asProfile record) i
       next
     TM _ next -> next
