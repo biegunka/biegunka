@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+-- | Generic TemplateSystem interface
 module Control.Biegunka.Templates
   ( TemplateSystem(..)
   , Templates(..)

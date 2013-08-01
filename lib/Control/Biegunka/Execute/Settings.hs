@@ -37,6 +37,7 @@ import Control.Biegunka.Templates.HStringTemplate
 -- tagged with crosstask execution environment @s@
 type Executor s a = TaggedT s (StateT TaskLocal IO) a
 
+-- | Get execution environment
 env :: (Applicative m, Reifies s a) => TaggedT s m a
 env = reflected
 

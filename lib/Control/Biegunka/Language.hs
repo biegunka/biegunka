@@ -130,5 +130,6 @@ data React = Ignorant | Abortive | Retry
 instance Default React where
   def = defaultReaction
 
+-- | The default failure reaction when all retries were unsuccessful
 defaultReaction :: React
 defaultReaction = Ignorant
