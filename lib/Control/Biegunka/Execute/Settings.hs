@@ -27,9 +27,10 @@ import Data.Functor.Trans.Tagged
 import Data.Monoid (mempty)
 import Data.Reflection (Reifies)
 import Data.Set (Set)
-import Text.StringTemplate (ToSElem(..))
 
-import Control.Biegunka.Language (React(..), User(..))
+import Control.Biegunka.Language
+import Control.Biegunka.Templates
+import Control.Biegunka.Templates.HStringTemplate
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -102,7 +103,7 @@ data Run = Run
 
 instance Default Run where
   def = Run
-    { _templates = Templates ()
+    { _templates = hStringTemplate ()
     , _retries   = 1
     , _mode      = Dry
     }
@@ -112,10 +113,6 @@ data Mode =
     Dry  -- ^ Dry run mode
   | Real -- ^ Real run mode
     deriving (Show, Read, Eq, Ord)
-
--- | Wrapper for templates to not have to specify `t' type on 'ExecutionState'
--- Existence of that wrapper is what made 'Default' instance possible
-data Templates = forall t. ToSElem t => Templates t
 
 
 -- * Lenses

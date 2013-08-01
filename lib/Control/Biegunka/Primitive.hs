@@ -21,10 +21,10 @@ import qualified Data.Set as S
 import           System.FilePath ((</>))
 import           System.FilePath.Lens
 import           System.Process (CmdSpec(..))
-import           Text.StringTemplate (newSTMP, render, setAttribute)
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
+import Control.Biegunka.Templates
 
 
 infixr 7 `prerequisiteOf`, <~>
@@ -130,8 +130,7 @@ copy' spec src dst = actioned (\rfp sfp ->
 -- 'templates' part of 'Controls'
 substitute :: FilePath -> FilePath -> Script Actions ()
 substitute src dst = actioned (\rfp sfp ->
-  Template (sfp </> src) (constructDestinationFilepath rfp src dst)
-    (\b -> render . setAttribute "template" b . newSTMP))
+  Template (sfp </> src) (constructDestinationFilepath rfp src dst) templating)
 {-# INLINE substitute #-}
 
 -- | Applies the patch given the 'PatchSpec'

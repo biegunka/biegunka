@@ -27,8 +27,6 @@ import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (def)
 import           Data.Reflection (Reifies)
 import qualified Data.Set as S
-import           Data.Text.Lazy (toStrict)
-import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
@@ -231,7 +229,7 @@ termOperation term = case term of
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- env^!acts.local.runs.templates
     return $
-      overWriteWith (\s d -> toStrict . substitute ts . T.unpack <$> T.readFile s >>= T.writeFile d) src dst
+      overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
   TA _ (Command p spec) _ -> return $ do
     (_, _, Just errors, ph) <- P.createProcess $
       P.CreateProcess

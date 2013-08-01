@@ -59,6 +59,8 @@ library
     Control.Biegunka.Source.Directory
     Control.Biegunka.Source.Git
     Control.Biegunka.Source.Layout
+    Control.Biegunka.Templates
+    Control.Biegunka.Templates.HStringTemplate
     Control.Biegunka.TH
     Control.Biegunka.Verify
   ghc-options:

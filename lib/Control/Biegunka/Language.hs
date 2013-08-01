@@ -20,11 +20,11 @@ import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
 import Data.Default (Default(..))
 import Data.Set (Set)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import System.Posix.Types (CUid)
 import System.Process (CmdSpec)
-import Text.StringTemplate (ToSElem)
-import Text.StringTemplate.GenericStandard ()
+
+import Control.Biegunka.Templates
 
 
 -- | Language terms scopes [kind]
@@ -83,7 +83,7 @@ data Action =
     -- | Verbatim copy
   | Copy FilePath FilePath CopySpec
     -- | Copy with template substitutions
-  | Template FilePath FilePath (forall t. ToSElem t => t -> String -> Text)
+  | Template FilePath FilePath (forall t. TemplateSystem t => t -> Text -> Text)
     -- | External command
   | Command FilePath CmdSpec
     -- | Patch
