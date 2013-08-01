@@ -4,6 +4,8 @@ module List where
 import           Control.Applicative ((<$>), (<*>))
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (execWriter, tell)
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as B
 import           Data.Char (toUpper)
 import           Data.Default (def)
 import           Data.Foldable (for_)
@@ -23,6 +25,8 @@ import           System.Wordexp (wordexp, nosubst, noundef)
 import           Control.Biegunka.Settings (appData)
 import           Control.Biegunka.DB (DB(..), GroupRecord(..), SourceRecord(..), FileRecord(..), load)
 
+import Options
+
 
 data Formatted a = Formatted
   { profileFormat :: String       -> a
@@ -34,8 +38,8 @@ instance Functor Formatted where
   fmap g (Formatted p s f) = Formatted (g . p) (g . s) (g . f)
 
 
-list :: FilePath -> [String] -> String -> IO ()
-list datadirglob profiles pattern = do
+list :: FilePath -> [String] -> Format -> IO ()
+list datadirglob profiles format = do
   mdatadir <- wordexp (nosubst <> noundef) datadirglob
   case mdatadir of
     Left  _         -> badglob -- wordexp failed
@@ -43,13 +47,17 @@ list datadirglob profiles pattern = do
     Right []        -> badglob -- wordexp found nothing
     Right [datadir] -> case profiles of
       []        -> getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
-      profiles' -> case formatText pattern of
-        Left errorMessage ->
-          badformat errorMessage
-        Right formatted -> do
-          db <- load (def & appData .~ datadir) profiles'
-          T.putStr (execWriter (info formatted db))
-          hFlush stdout
+      profiles' -> case format of
+        Format pattern -> case formattingText pattern of
+          Left errorMessage ->
+            badformat errorMessage pattern
+          Right formatted -> do
+            db <- load (def & appData .~ datadir) profiles'
+            T.putStr (execWriter (info formatted db))
+            hFlush stdout
+        JSON -> do
+          DB db <- load (def & appData .~ datadir) profiles'
+          for_ db $ B.putStrLn . A.encode
  where
   info formatted (DB db) =
     ifor_ db $ \profileName (GR profileData) -> do
@@ -61,7 +69,7 @@ list datadirglob profiles pattern = do
 
   badglob = hPutStrLn stderr $
     "Bad glob pattern: " ++ datadirglob
-  badformat message = hPutStrLn stderr $
+  badformat message pattern = hPutStrLn stderr $
     "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
 
 getProfiles :: FilePath -> IO [String]
@@ -77,43 +85,43 @@ getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & so
         contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])
         concat <$> for contents (\path -> go (subroot </> path))
 
-formatText :: String -> Either String (Formatted Text)
-formatText = (fmap . fmap) T.pack . format
+formattingText :: String -> Either String (Formatted Text)
+formattingText = (fmap . fmap) T.pack . formatting
 
-format :: String -> Either String (Formatted String)
-format xs = do
+formatting :: String -> Either String (Formatted String)
+formatting xs = do
   (x, ys) <- breaking xs
   (y, z)  <- breaking ys
   Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
  where
-  formatProfile = formatting $ \case
+  formatProfile = format $ \case
     'p' -> Right id
     c   -> Left ("%" ++ [c] ++ " is not a profile info placeholder")
 
-  formatSource = formatting $ \case
+  formatSource = format $ \case
     't' -> Right sourceType
     'l' -> Right fromLocation
     'p' -> Right sourcePath
     c   -> Left ("%" ++ [c] ++ " is not a source info placeholder")
 
-  formatFile = formatting $ \case
+  formatFile = format $ \case
     't' -> Right fileType
     'T' -> Right (capitalize . fileType)
     'l' -> Right fromSource
     'p' -> Right filePath
     c   -> Left ("%" ++ [c] ++ " is not a file info placeholder")
 
-  formatting :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
-  formatting rules = \case
-    '%':'%':vs -> (\g r -> '%' : g r) <$> formatting rules vs
-    '%':'n':vs -> (\g r -> '\n' : g r) <$> formatting rules vs
+  format :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
+  format rules = \case
+    '%':'%':vs -> (\g r -> '%' : g r) <$> format rules vs
+    '%':'n':vs -> (\g r -> '\n' : g r) <$> format rules vs
     '%':vs -> case vs of
       c:cs -> do
         s <- rules c
-        t <- formatting rules cs
+        t <- format rules cs
         return (\a -> s a ++ t a)
       _ -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\g r -> v : g r) <$> formatting rules vs
+    v:vs -> (\g r -> v : g r) <$> format rules vs
     []   -> Right (const "")
 
 -- | Break string on "%;"

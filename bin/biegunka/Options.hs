@@ -11,13 +11,18 @@ data BiegunkaCommand
   = Init FilePath -- ^ @biegunka init@
   | Script        -- ^ @biegunka run@ or @biegunka check@
       FilePath Script [String]
-  | List FilePath String [String] -- ^ @biegunka list@
+  | List FilePath Format [String] -- ^ @biegunka list@
 
 -- | Disambiguate between @biegunka run@ and @biegunka check@
 data Script = Run Run | Check
 
 -- | @biegunka run@ mode
 data Run = Dry | Safe | Force | Full
+
+-- | @biegunka list@ formats
+data Format =
+    JSON
+  | Format String
 
 
 -- | @biegunka@ tool command line options parser
@@ -45,10 +50,15 @@ opts = info (helper <*> subcommands) fullDesc
       <$> strOption (long "data-dir"
         <> value defaultBiegunkaDataDirectory
         <> help "Biegunka data directory")
-      <*> strOption (long "format"
-        <> value defaultBiegunkaListFormat
-        <> help "Output format")
+      <*> listFormats
       <*> otherArguments
+    listFormats =
+      Format <$> strOption (long "format"
+        <> value defaultBiegunkaListFormat
+        <> help "Output format string")
+     <|>
+      flag' JSON (long "json"
+        <> help "JSON Output format")
 
     destination = argument Just (value defaultBiegunkaScriptName)
 
