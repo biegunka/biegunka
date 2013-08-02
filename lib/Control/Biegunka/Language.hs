@@ -111,7 +111,6 @@ instance Default PatchSpec where
 data Modifier =
     Reacting (Maybe React)
   | Wait (Set Int)
-  | Chain
 
 -- | User setting modifier
 data User =
