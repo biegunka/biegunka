@@ -164,9 +164,15 @@ raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
 
 -- | Change effective user id for wrapped commands
 sudo :: User -> Script s a -> Script s a
-sudo user inner = Script $ do
-  local (activeUser ?~ user) (unScript inner)
+sudo user (Script inner) = Script $ do
+  (activeUser ?~ user) `local` inner
 {-# INLINE sudo #-}
+
+-- | Change maximum retries count
+retries :: Int -> Script s a -> Script s a
+retries count (Script inner) = Script $ do
+  set maxRetries count `local` inner
+{-# INLINE retries #-}
 
 -- | Change reaction pattern when retries are all failed
 reacting :: React -> Script s a -> Script s a
@@ -176,11 +182,6 @@ reacting reaction inner = do
   script (TM (Reacting Nothing) ())
   return a
 {-# INLINE reacting #-}
-
--- | Change maximum retries count
-retries :: Int -> Script s a -> Script s a
-retries count inner = Script $ do
-  local (maxRetries .~ count) (unScript inner)
 
 -- | Execute scripts sequentially
 -- Connects two scripts which forces them to run sequentially one after another.

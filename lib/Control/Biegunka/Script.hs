@@ -148,20 +148,20 @@ instance Default AnnotationsState where
   {-# INLINE def #-}
 
 data AnnotationsEnv = AEnv
-  { _profileName :: String     -- ^ Profile name
+  { _app         :: FilePath   -- ^ Biegunka root filepath
+  , _profileName :: String     -- ^ Profile name
   , _sourcePath  :: FilePath   -- ^ Source root filepath
   , _sourceURL   :: URI        -- ^ Current source url
-  , _app         :: FilePath   -- ^ Biegunka root filepath
   , _activeUser  :: Maybe User -- ^ Maximum action order in current source
   , _maxRetries  :: Int        -- ^ Maximum retries count
   } deriving (Show, Read)
 
 instance Default AnnotationsEnv where
   def = AEnv
-    { _profileName = def
+    { _app = def
+    , _profileName = def
     , _sourcePath = def
     , _sourceURL = def
-    , _app = def
     , _activeUser = def
     , _maxRetries = 1
     }
