@@ -12,27 +12,27 @@ module Control.Biegunka.Script
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
+import Control.Lens hiding (Action)
 import Control.Monad (when)
+import Control.Monad.Free (Free(..), iter, liftF)
+import Control.Monad.State (StateT(..), State, execState)
+import Control.Monad.Reader (ReaderT(..), local)
+import Control.Monad.Trans (lift)
+import Data.Copointed (copoint)
+import Data.Default (Default(..))
 import Data.List (isSuffixOf)
-
-import           Control.Lens hiding (Action)
-import           Control.Monad.Free (Free(..), iter, liftF)
-import           Control.Monad.State (StateT(..), State, execState)
-import           Control.Monad.Reader (ReaderT(..), local)
-import           Control.Monad.Trans (lift)
-import           Data.Default (Default(..))
-import           Data.Copointed (copoint)
-import           Data.Set (Set)
-import qualified Data.Set as S
-import           System.FilePath.Lens
+import Data.Set (Set)
+import System.FilePath.Lens
 
 import Control.Biegunka.Language
 
 
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
-data instance Annotate Sources  = AS { asToken :: Int, asProfile :: String }
-data instance Annotate Actions  = AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int }
+data instance Annotate Sources =
+  AS { asToken :: Int, asProfile :: String }
+data instance Annotate Actions =
+  AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -91,6 +91,12 @@ evalScript
 evalScript = ((fmap fst .) .) . runScript
 {-# INLINE evalScript #-}
 
+-- | Lift DSL term to the 'Script'
+script :: Term Annotate s a -> Script s a
+script = Script . lift . liftF
+{-# INLINE script #-}
+
+
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
 type URI = String
 
@@ -104,27 +110,31 @@ data AnnotationsState = AState
 
 instance Default AnnotationsState where
   def = AState
-    { _token = 0
-    , _profiles = S.empty
-    , _order = 0
-    , _maxOrder = 0
+    { _token = def
+    , _profiles = def
+    , _order = def
+    , _maxOrder = def
     }
+  {-# INLINE def #-}
 
 data AnnotationsEnv = AEnv
   { _profileName :: String  -- ^ Profile name
   , _sourcePath :: FilePath -- ^ Source root filepath
   , _sourceURL :: URI       -- ^ Current source url
   , _app :: FilePath        -- ^ Biegunka root filepath
-  }
+  } deriving (Show, Read)
 
 instance Default AnnotationsEnv where
   def = AEnv
-    { _profileName = ""
-    , _sourcePath = ""
-    , _sourceURL = ""
-    , _app = ""
+    { _profileName = def
+    , _sourcePath = def
+    , _sourceURL = def
+    , _app = def
     }
+  {-# INLINE def #-}
 
+
+-- * Lenses
 
 makeLensesWith ?? ''AnnotationsState $ defaultRules & generateSignatures .~ False
 
@@ -154,15 +164,14 @@ sourcePath :: Lens' AnnotationsEnv FilePath
 -- | Current source url
 sourceURL :: Lens' AnnotationsEnv String
 
--- | Lift DSL term to the 'Script'
-script :: Term Annotate s a -> Script s a
-script = Script . lift . liftF
-{-# INLINE script #-}
+
+-- * Script mangling
 
 -- | Annotate DSL
 annotate
   :: Script s a
-  -> ReaderT AnnotationsEnv (StateT AnnotationsState (Free (Term Annotate t))) (Free (Term Annotate s) a)
+  -> ReaderT AnnotationsEnv
+      (StateT AnnotationsState (Free (Term Annotate t))) (Free (Term Annotate s) a)
 annotate i =
   ReaderT $ \e ->
     StateT $ \s ->
@@ -172,19 +181,24 @@ annotate i =
       in return (ast, s')
 
 -- | Abstract away all plumbing needed to make source
-sourced :: String -> URI -> FilePath
-        -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
+sourced
+  :: String -> URI -> FilePath
+  -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- view app
   tok <- use token
   let df = constructDestinationFilepath rfp url path
   local (set sourcePath df . set sourceURL url) $ do
-    order .= 0
+    order    .= 0
     maxOrder .= size inner
-    p <- view profileName
-    profiles . contains p .= True
-    ast <- annotate inner
-    lift . liftF $ TS (AS { asToken = tok, asProfile = p }) (Source ty url df update) ast ()
+
+    profile <- view profileName
+    profiles . contains profile .= True
+
+    source <- view sourcePath
+    ast    <- annotate inner
+    lift . liftF $ TS (AS { asToken = tok, asProfile = profile }) (Source ty url source update) ast ()
+
     token += 1
 
 -- | 'Actions' scope script size (in actual actions)
@@ -202,8 +216,8 @@ actioned f = Script $ do
   rfp <- view app
   sfp <- view sourcePath
   url <- view sourceURL
-  o <- order <+= 1
-  mo <- use maxOrder
+  o   <- order <+= 1
+  mo  <- use maxOrder
   lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
 -- | Construct destination 'FilePath'
