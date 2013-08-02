@@ -1,16 +1,25 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
+--
+-- Gets interesting static information from script
+-- before passing it to interpreters, which then make use of it
 module Control.Biegunka.Script
-  ( Script(..), AnnotationsState, AnnotationsEnv, Annotate(..)
-  , script, annotate, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, profiles, profileName, sourcePath, sourceURL, order
-  , activeUser
+  ( -- * Script types
+    Script(..), Annotate(..)
+    -- ** Implementation details
+  , AnnotationsState, AnnotationsEnv
+    -- * Get annotated script
   , runScript, runScript', evalScript
-  , User(..), maxRetries, React(..), sourceReaction, actionReaction
+    -- * Script mangling
+  , script, annotate, sourced, actioned, constructDestinationFilepath
+    -- * Lenses
+  , app, profileName, sourcePath, sourceURL, profiles
+  , token, order, sourceReaction, actionReaction, activeUser, maxRetries
+    -- ** Misc
+  , URI, User(..), React(..)
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -50,7 +59,8 @@ data instance Annotate Actions = AA
   }
 
 
--- | Newtype used to provide better error messages for type errors in DSL
+-- | Newtype used to provide better error messages
+-- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
   { unScript :: ReaderT AnnotationsEnv
       (StateT AnnotationsState (Free (Term Annotate s))) a
@@ -76,7 +86,7 @@ instance Default a => Default (Script s a) where
   def = return def
   {-# INLINE def #-}
 
--- | Get DSL and resulting state from 'Script'
+-- | Get annotated DSL and resulting state
 runScript
   :: AnnotationsState
   -> AnnotationsEnv
@@ -85,7 +95,7 @@ runScript
 runScript as ae (Script s) = runStateT (runReaderT s ae) as
 {-# INLINE runScript #-}
 
--- | Get DSL and resulting state from 'Script'
+-- | Get annotated DSL and resulting state
 runScript'
   :: AnnotationsState
   -> AnnotationsEnv
@@ -97,7 +107,7 @@ runScript' as ae s =
   in (a <$ ast, as')
 {-# INLINE runScript' #-}
 
--- | Get DSL from 'Script'
+-- | Get annotated DSL
 evalScript
   :: AnnotationsState
   -> AnnotationsEnv
