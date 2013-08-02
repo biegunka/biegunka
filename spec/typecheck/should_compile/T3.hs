@@ -17,9 +17,15 @@ sources =
     git "https://example.com/dotfiles.git" "/" $
       return ()
 
+sources' :: Script Sources ()
+sources' =
+  sudo (Username "nobody") $
+    git "https://example.com/dotfiles.git" "/" $
+      return ()
+
 actions :: Script Actions ()
 actions =
-  sudo (UserID 0) $
+  sudo 0 $
     link "source" "destination"
 
 actions' :: Script Actions ()

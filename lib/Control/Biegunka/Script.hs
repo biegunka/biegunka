@@ -10,6 +10,7 @@ module Control.Biegunka.Script
   , token, app, profiles, profileName, sourcePath, sourceURL, order
   , activeUser
   , runScript, runScript', evalScript
+  , User(..)
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -23,7 +24,9 @@ import Data.Copointed (copoint)
 import Data.Default (Default(..))
 import Data.List (isSuffixOf)
 import Data.Set (Set)
+import Data.String (IsString(..))
 import System.FilePath.Lens
+import System.Posix.Types (CUid)
 
 import Control.Biegunka.Language
 
@@ -100,6 +103,23 @@ script = Script . lift . liftF
 
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
 type URI = String
+
+-- | User setting modifier
+data User =
+    UserID   CUid   -- ^ Set user with ID
+  | Username String -- ^ Set user with username
+    deriving (Show, Read)
+
+instance IsString User where
+  fromString = Username
+
+-- | Because I can
+instance Num User where
+  _ + _       = error "(+) is not defined for User"
+  _ * _       = error "(*) is not defined for User"
+  abs _       = error "abs is not defined for User"
+  signum _    = error "signum is not defined for User"
+  fromInteger = UserID . fromInteger
 
 -- | Script construction state
 data AnnotationsState = AState

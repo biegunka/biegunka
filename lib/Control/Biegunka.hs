@@ -38,9 +38,9 @@ import Control.Biegunka.Settings
   )
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
 import Control.Biegunka.Execute.Settings (Run, Templates(..), templates, retries)
-import Control.Biegunka.Language (Scope(..), React(..), User(..), PatchSpec(..))
+import Control.Biegunka.Language (Scope(..), React(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (Script)
+import Control.Biegunka.Script (Script, User(..))
 import Control.Biegunka.TH (makeOptionsParser)
 import Control.Biegunka.Verify (check, verify)
 import Control.Biegunka.Source (Sourceable(..))
