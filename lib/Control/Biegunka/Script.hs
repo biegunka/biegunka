@@ -6,7 +6,7 @@
 -- | Configuration script machinery
 module Control.Biegunka.Script
   ( Script(..), Annotations, Annotate(..)
-  , script, annotate, rewind, URI, sourced, actioned, constructDestinationFilepath
+  , script, annotate, URI, sourced, actioned, constructDestinationFilepath
   , token, app, profiles, profileName, source, sourceURL, order
   , runScript, runScript', evalScript
   ) where
@@ -141,15 +141,6 @@ annotate i = state $ \s ->
       ast = fmap fst r
       s' = iter copoint $ fmap snd r
   in (ast, s')
-
--- | Rewind state part pointed by a 'Lens\'' after monadic action execution
-rewind :: MonadState s m => Lens' s a -> m b -> m a
-rewind l mb = do
-  a <- use l
-  mb
-  a' <- use l
-  l .= a
-  return a'
 
 -- | Abstract away all plumbing needed to make source
 sourced :: String -> URI -> FilePath
