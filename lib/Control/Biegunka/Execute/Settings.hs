@@ -8,11 +8,11 @@ module Control.Biegunka.Execute.Settings
     -- * Lenses
   , sync, runs
   , work, running, sudoing, repos, tasks
-  , templates, mode
+  , mode
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
-  , Work(..), Templates(..), Mode(..)
+  , Work(..), Mode(..)
   ) where
 
 import Control.Applicative (Applicative)
@@ -24,9 +24,6 @@ import Data.Functor.Trans.Tagged
 import Data.Monoid (mempty)
 import Data.Reflection (Reifies)
 import Data.Set (Set)
-
-import Control.Biegunka.Templates
-import Control.Biegunka.Templates.HStringTemplate
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -61,14 +58,12 @@ data Work =
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
 data Run = Run
-  { _templates :: Templates   -- ^ Templates mapping
-  , _mode      :: Mode        -- ^ Executor mode
+  { _mode :: Mode -- ^ Executor mode
   }
 
 instance Default Run where
   def = Run
-    { _templates = hStringTemplate ()
-    , _mode      = Dry
+    { _mode = Dry
     }
 
 -- | How to do execution
@@ -108,9 +103,6 @@ tasks :: Lens' Sync (TVar (Set Int))
 
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
-
--- | Templates mapping
-templates :: Lens' Run Templates
 
 -- | Executor mode
 mode :: Lens' Run Mode

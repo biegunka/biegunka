@@ -6,7 +6,7 @@ module Control.Biegunka.Settings
   ( -- * Wrap/unwrap biegunka interpreters
     biegunka, Interpreter(..), interpret
     -- * Settings common for all interpreters
-  , Settings, root, appData, logger, colors, local
+  , Settings, root, appData, logger, colors, local, templates, Templates(..)
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
@@ -33,15 +33,18 @@ import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
+import Control.Biegunka.Templates
+import Control.Biegunka.Templates.HStringTemplate
 
 
 -- | Settings common for all interpreters and also specific for this one
 data Settings a = Settings
-  { _root        :: FilePath    -- ^ Root path for 'Source' layer
-  , _appData     :: FilePath    -- ^ Biegunka profile files path
-  , _logger      :: Doc -> IO () -- ^ Logger channel
-  , _colors      :: ColorScheme -- ^ Pretty printing
-  , _local       :: a          -- ^ Interpreter specific settings
+  { _root      :: FilePath    -- ^ Root path for 'Source' layer
+  , _appData   :: FilePath    -- ^ Biegunka profile files path
+  , _logger    :: Doc -> IO () -- ^ Logger channel
+  , _colors    :: ColorScheme -- ^ Pretty printing
+  , _local     :: a           -- ^ Interpreter specific settings
+  , _templates :: Templates   -- ^ Templates mapping
   }
 
 -- | Colors used in logger
@@ -112,13 +115,17 @@ colors :: Lens' (Settings a) ColorScheme
 -- | Interpreter controls
 local :: Lens (Settings a) (Settings b) a b
 
+-- | Templates mapping
+templates :: Lens' (Settings a) Templates
+
 instance Default a => Default (Settings a) where
   def = Settings
-    { _root    = "~"
-    , _appData = "~/.biegunka"
-    , _logger  = const (return ())
-    , _colors  = def
-    , _local   = def
+    { _root      = "~"
+    , _appData   = "~/.biegunka"
+    , _logger    = const (return ())
+    , _colors    = def
+    , _local     = def
+    , _templates = hStringTemplate ()
     }
 
 

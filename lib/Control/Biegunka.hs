@@ -34,9 +34,10 @@ import Control.Biegunka.Settings
   , Interpreter, pause, confirm
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
+  , Templates(..), templates
   )
 import Control.Biegunka.Execute (run, execute, dryRun, pretend)
-import Control.Biegunka.Execute.Settings (Run, Templates(..), templates)
+import Control.Biegunka.Execute.Settings (Run)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script, User(..), React(..))

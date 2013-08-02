@@ -34,7 +34,8 @@ import           System.Posix.User (getEffectiveUserID, getUserEntryForName, use
 import qualified System.Process as P
 
 import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Control.Biegunka.Settings (Settings, Interpreter(..), interpret, local, logger, colors)
+import Control.Biegunka.Settings
+  (Settings, Templates(..), Interpreter(..), templates, interpret, local, logger, colors)
 import qualified Control.Biegunka.DB as DB
 import Control.Biegunka.Execute.Settings
 import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
@@ -193,9 +194,10 @@ command c = do
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
 
-termOperation :: Reifies t (Settings Execution)
-              => Term Annotate s a
-              -> Executor t (IO ())
+termOperation
+  :: Reifies t (Settings Execution)
+  => Term Annotate s a
+  -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
     rstv <- env^!acts.local.sync.repos
@@ -218,7 +220,7 @@ termOperation term = case term of
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- env^!acts.local.runs.templates
+    Templates ts <- env^!acts.templates
     return $
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
   TA _ (Command p spec) _ -> return $ do
@@ -247,15 +249,17 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation :: Reifies t (Settings Execution)
-                   => Term Annotate s a
-                   -> Executor t (IO ())
+termEmptyOperation
+  :: Reifies t (Settings Execution)
+  => Term Annotate s a
+  -> Executor t (IO ())
 termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
-newTask :: forall a t. Reifies t (Settings Execution)
-        => Free (Term Annotate Sources) a
-        -> Executor t ()
+newTask
+  :: forall a t. Reifies t (Settings Execution)
+  => Free (Term Annotate Sources) a
+  -> Executor t ()
 newTask (Pure _) = return ()
 newTask t = do
   e <- env
