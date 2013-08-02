@@ -86,8 +86,8 @@ data Sync = Sync
 
 -- | Workload
 data Work =
-    Do (IO ()) -- ^ Task to come and its id
-  | Stop       -- ^ Task with that id is done
+    Do (IO ()) -- ^ Task to come
+  | Stop       -- ^ Task is done
 
 -- | 'Executor' environment.
 -- Denotes default failure reaction, templates used and more
