@@ -163,9 +163,9 @@ raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
-sudo :: User -> Script s a -> Script s a
+sudo :: User u -> Script s a -> Script s a
 sudo user (Script inner) = Script $
-  (activeUser ?~ user) `local` inner
+  (activeUser ?~ UserW user) `local` inner
 {-# INLINE sudo #-}
 
 -- | Change maximum retries count

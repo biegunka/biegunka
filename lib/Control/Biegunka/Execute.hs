@@ -167,7 +167,7 @@ command c = do
       log (termDescription (action scm c))
       op
       atomically $ writeTVar rtv False
-    Just user -> do
+    Just (UserW user) -> do
       atomically $ do
         [s, r] <- mapM readTVar [stv, rtv]
         guard (not $ s || r)
@@ -272,7 +272,7 @@ getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
 getRetries (TM _ _) = def
 
 -- | Get user associated with term
-getUser :: Term Annotate s a -> Maybe User
+getUser :: Term Annotate s a -> Maybe UserW
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
 getUser (TM _ _) = Nothing

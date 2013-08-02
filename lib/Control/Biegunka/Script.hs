@@ -1,7 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -- | Configuration script machinery
 --
 -- Gets interesting static information from script
@@ -19,7 +22,7 @@ module Control.Biegunka.Script
   , app, profileName, sourcePath, sourceURL, profiles
   , token, order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..), Retry(..), incr
+  , URI, UserW(..), User(..), React(..), Retry(..), incr
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -45,7 +48,7 @@ data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
   { asToken :: Int
   , asProfile :: String
-  , asUser :: Maybe User
+  , asUser :: Maybe UserW
   , asMaxRetries :: Retry
   , asReaction :: React
   }
@@ -53,7 +56,7 @@ data instance Annotate Actions = AA
   { aaURI :: URI
   , aaOrder :: Int
   , aaMaxOrder :: Int
-  , aaUser :: Maybe User
+  , aaUser :: Maybe UserW
   , aaMaxRetries :: Retry
   , aaReaction :: React
   }
@@ -126,21 +129,26 @@ script = Script . lift . liftF
 type URI = String
 
 -- | User setting modifier
-data User =
-    UserID   CUid   -- ^ Set user with ID
-  | Username String -- ^ Set user with username
-    deriving (Show, Read)
+data User u where
+  UserID   :: CUid -> User CUid     -- ^ Set user with ID
+  Username :: String -> User String -- ^ Set user with username
 
-instance IsString User where
+instance Show (User u)
+
+instance u ~ String => IsString (User u) where
   fromString = Username
 
 -- | Because I can
-instance Num User where
-  _ + _       = error "(+) is not defined for User"
-  _ * _       = error "(*) is not defined for User"
-  abs _       = error "abs is not defined for User"
-  signum _    = error "signum is not defined for User"
-  fromInteger = UserID . fromInteger
+instance u ~ CUid => Num (User u) where
+  UserID a + UserID b = UserID (a + b)
+  UserID a * UserID b = UserID (a * b)
+  abs (UserID a)      = UserID (abs a)
+  signum (UserID a)   = signum (UserID a)
+  fromInteger         = UserID . fromInteger
+
+data UserW = forall u. UserW (User u)
+
+deriving instance Show UserW
 
 -- | Failure reaction
 data React = Ignorant | Abortive
@@ -173,15 +181,17 @@ instance Default AnnotationsState where
   {-# INLINE def #-}
 
 data AnnotationsEnv = AEnv
-  { _app         :: FilePath   -- ^ Biegunka root filepath
-  , _profileName :: String     -- ^ Profile name
-  , _sourcePath  :: FilePath   -- ^ Source root filepath
-  , _sourceURL   :: URI        -- ^ Current source url
-  , _activeUser  :: Maybe User -- ^ Maximum action order in current source
-  , _maxRetries  :: Retry      -- ^ Maximum retries count
-  , _sourceReaction :: React   -- ^ How to react on source failure
-  , _actionReaction :: React   -- ^ How to react on action failure
-  } deriving (Show, Read)
+  { _app         :: FilePath    -- ^ Biegunka root filepath
+  , _profileName :: String      -- ^ Profile name
+  , _sourcePath  :: FilePath    -- ^ Source root filepath
+  , _sourceURL   :: URI         -- ^ Current source url
+  , _activeUser  :: Maybe UserW -- ^ Maximum action order in current source
+  , _maxRetries  :: Retry       -- ^ Maximum retries count
+  , _sourceReaction :: React    -- ^ How to react on source failure
+  , _actionReaction :: React    -- ^ How to react on action failure
+  }
+
+deriving instance Show AnnotationsEnv
 
 instance Default AnnotationsEnv where
   def = AEnv
@@ -228,7 +238,7 @@ sourcePath :: Lens' AnnotationsEnv FilePath
 sourceURL :: Lens' AnnotationsEnv String
 
 -- | Current user
-activeUser :: Lens' AnnotationsEnv (Maybe User)
+activeUser :: Lens' AnnotationsEnv (Maybe UserW)
 
 -- | Maximum retries count
 maxRetries :: Lens' AnnotationsEnv Retry
