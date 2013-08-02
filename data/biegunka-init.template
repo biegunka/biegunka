@@ -20,17 +20,13 @@ makeOptionsParser ''Environments
 
 main :: IO ()
 main = do
-  -- Both settings do not change the defaults, they
-  -- are purely for illustration here
   -- Set ~ directory as root for all paths (except those which are rooted at source location)
   let biegunkaSettings = set root "~"
-  -- Retry once on failure (saves from occasional network failures and such)
-      runSettings      = set retries 1
   -- Use generated options parser to get environment to run scripts in
   (environment, runBiegunka) <- optionsParser
   -- Detect environment and act accordingly
   case environment of
-    Default -> runBiegunka biegunkaSettings runSettings script
+    Default -> runBiegunka biegunkaSettings script
 
 -- Biegunka script stub
 script :: Script Sources ()
