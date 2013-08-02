@@ -2,10 +2,10 @@
 module Control.Biegunka
   ( -- * Interpreters control
     biegunka, Settings, root, appData, colors
+  , Templates(..), templates
     -- * Interpreters
   , Interpreter
   , pause, confirm, dryRun, run, check
-  , pretend, execute, verify
     -- * Types
   , Script, Scope(..)
     -- * Sources layer primitives
@@ -16,9 +16,6 @@ module Control.Biegunka
     -- * Modifiers
   , profile, group
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
-    -- * Execution environment hooks
-  , Run
-  , Templates(..), templates
     -- * TH
   , makeOptionsParser
     -- ** Colors
@@ -36,11 +33,10 @@ import Control.Biegunka.Settings
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates
   )
-import Control.Biegunka.Execute (run, execute, dryRun, pretend)
-import Control.Biegunka.Execute.Settings (Run)
+import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script, User(..), React(..))
 import Control.Biegunka.TH (makeOptionsParser)
-import Control.Biegunka.Verify (check, verify)
+import Control.Biegunka.Verify (check)
 import Control.Biegunka.Source (Sourceable(..))

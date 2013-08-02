@@ -7,7 +7,7 @@ import Control.Biegunka.Source.Git
 
 
 main :: IO ()
-main = biegunka id (execute id) $ do
+main = biegunka id run $ do
   link ".xmonad/xmonad.hs" ".xmonad/xmonad.hs.bak"
 
 -- STDERR

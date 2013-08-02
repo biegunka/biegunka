@@ -38,7 +38,7 @@ main = do
     describe "Simple copying" $ do
       it "should copy the directory correctly" $ do
         make (directory "a" simple_copying_layout_0) "/tmp"
-        biegunka (set root "/tmp" . set appData "/tmp/.biegunka") (run id) $
+        biegunka (set root "/tmp" . set appData "/tmp/.biegunka") run $
           D.directory "/tmp" $
             copy "a" "/tmp/b"
         check (directory "b" simple_copying_layout_0) "/tmp" `shouldReturn` []
@@ -49,7 +49,7 @@ main = do
 
 resultsIn :: Script Sources () -> Layout -> IO [LayoutException]
 resultsIn s l = do
-  biegunka (set root "/tmp" . set appData "/tmp/.biegunka") (run id) s
+  biegunka (set root "/tmp" . set appData "/tmp/.biegunka") run s
   check l "/tmp"
 
 

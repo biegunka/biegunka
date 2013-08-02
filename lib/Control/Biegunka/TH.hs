@@ -12,7 +12,6 @@ import Options.Applicative
 
 import Control.Biegunka.Settings (Settings, biegunka, confirm)
 import Control.Biegunka.Execute (run, dryRun)
-import Control.Biegunka.Execute.Settings (Run)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Script (Script)
 import Control.Biegunka.Verify (check)
@@ -50,23 +49,23 @@ makeOptionsParser name = do
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> (Run -> Run) -> Script Sources () -> IO ())
+        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
         optionsParser = customExecParser (prefs showHelpOnError) opts
          where
           opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
 
           interpreters =
-            let safeRun = const confirm <> run
-            in (\i cs -> biegunka cs . i) <$> asum
+            let safeRun = confirm <> run
+            in (\i cs -> biegunka cs i) <$> asum
               [ flag' run (long "run" <>
                   help ("Do real run"))
               , flag' safeRun (long "safe-run" <>
                   help ("Do real run (after confirmation)"))
-              , flag' (const dryRun <> safeRun <> const check) (long "full" <>
+              , flag' (dryRun <> safeRun <> check) (long "full" <>
                   help ("Do dry run, real run (after confirmation) and then check results"))
-              , flag' (const dryRun) (long "dry-run" <>
+              , flag' dryRun (long "dry-run" <>
                   help ("Do only dry run, do not touch anything"))
-              , flag' (const check) (long "check" <>
+              , flag' check (long "check" <>
                   help ("Compare current filesystem state against script"))
               , pure safeRun
               ]

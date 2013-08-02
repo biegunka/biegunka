@@ -7,7 +7,6 @@
 -- | Real run interpreter
 module Control.Biegunka.Execute
   ( run, dryRun
-  , execute, pretend
   ) where
 
 import           Control.Applicative
@@ -46,11 +45,11 @@ import Control.Biegunka.Script
 
 
 -- | Real run interpreter
-run :: (Run -> Run) -> Interpreter
-run e = interpret $ \c (s, as) -> do
+run :: Interpreter
+run = interpret $ \c (s, as) -> do
   let b = DB.fromScript s
   a <- DB.load c (as^.profiles)
-  r <- initializeSTM ((e $ def) & mode.~Real)
+  r <- initializeSTM (def & mode.~Real)
   let c' = c & local.~r
   runTask c' newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
@@ -65,11 +64,6 @@ run e = interpret $ \c (s, as) -> do
       True  -> D.removeFile path
       False -> D.removeDirectoryRecursive path
 
--- | Real run interpreter
-execute :: (Run -> Run) -> Interpreter
-execute = run
-{-# DEPRECATED execute "Please, use `run'" #-}
-
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpret $ \c (s, as) -> do
@@ -81,11 +75,6 @@ dryRun = interpret $ \c (s, as) -> do
   atomically (writeTQueue (e^.sync.work) Stop)
   schedule (e^.sync.work)
   c'^.logger $ runChanges (c'^.colors) a b
-
--- | Dry run interpreter
-pretend :: Interpreter
-pretend = dryRun
-{-# DEPRECATED pretend "Please, use `dryRun'" #-}
 
 
 -- | Run single 'Sources' task

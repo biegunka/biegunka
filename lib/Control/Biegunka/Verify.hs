@@ -2,7 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Check interpreter
-module Control.Biegunka.Verify (check, verify) where
+module Control.Biegunka.Verify (check) where
 
 import Control.Applicative
 import Control.Monad (mplus)
@@ -40,11 +40,6 @@ check = interpret $ \c (s, _) -> do
       [] -> green "OK"
       _  -> line <> vcat failures
     <> line
-
--- | Check interpreter
-verify :: Interpreter
-verify = check
-{-# DEPRECATED verify "Please, use `check'" #-}
 
 -- | Check layout correctness instruction by instruction creating failures log line by line
 verification :: Settings () -> Free (Term Annotate s) () -> WriterT [Doc] IO ()

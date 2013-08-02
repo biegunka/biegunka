@@ -6,7 +6,7 @@ import Control.Biegunka
 
 
 main :: IO ()
-main = biegunka id (run id) $ do
+main = biegunka id run $ do
   profile "outer" $
     profile "inner" $
       return ()
