@@ -6,9 +6,7 @@
 module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
-  , PatchSpec(..), CopySpec(..), React(..)
-
-  , defaultReaction
+  , PatchSpec(..), CopySpec(..)
   ) where
 
 import Control.Applicative((<$>))
@@ -106,17 +104,4 @@ instance Default PatchSpec where
     }
 
 -- | Modificators for other datatypes
-data Modifier =
-    Reacting (Maybe React)
-  | Wait (Set Int)
-
--- | Failure reaction
-data React = Ignorant | Abortive
-  deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-instance Default React where
-  def = defaultReaction
-
--- | The default failure reaction when all retries were unsuccessful
-defaultReaction :: React
-defaultReaction = Ignorant
+data Modifier = Wait (Set Int)

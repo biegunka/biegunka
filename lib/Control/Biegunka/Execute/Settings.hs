@@ -4,7 +4,7 @@
 module Control.Biegunka.Execute.Settings
   ( Executor, env
     -- * Executor task-local state control
-  , TaskLocal, reactStack, retryCount
+  , TaskLocal, retryCount
     -- * Executor environment
   , Execution, Sync, Run
     -- * Lenses
@@ -28,7 +28,6 @@ import Data.Monoid (mempty)
 import Data.Reflection (Reifies)
 import Data.Set (Set)
 
-import Control.Biegunka.Language
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
 
@@ -50,20 +49,15 @@ env = reflected
 --
 --   * Retry count for current task.
 data TaskLocal = TaskLocal
-  { _reactStack :: [React] -- ^ Saved reactions modificators. Topmost is active
-  , _retryCount :: Int     -- ^ Performed retries for task
+  { _retryCount :: Int     -- ^ Performed retries for task
   } deriving (Show, Read)
 
 instance Default TaskLocal where
   def = TaskLocal
-    { _reactStack = []
-    , _retryCount = 0
+    { _retryCount = 0
     }
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''TaskLocal
-
--- | Saved reactions modificators. Topmost is active
-reactStack :: Lens' TaskLocal [React]
 
 -- | Performed retries for task
 retryCount :: Lens' TaskLocal Int

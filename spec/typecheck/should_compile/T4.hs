@@ -12,7 +12,7 @@ main = return ()
 
 sources :: Script Sources ()
 sources =
-  reacting Retry $
+  reacting Ignorant $
     git "https://example.com/dotfiles.git" "/" $
       return ()
 

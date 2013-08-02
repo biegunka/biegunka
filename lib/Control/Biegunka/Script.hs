@@ -10,7 +10,7 @@ module Control.Biegunka.Script
   , token, app, profiles, profileName, sourcePath, sourceURL, order
   , activeUser
   , runScript, runScript', evalScript
-  , User(..), maxRetries
+  , User(..), maxRetries, React(..), sourceReaction, actionReaction
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -38,6 +38,7 @@ data instance Annotate Sources = AS
   , asProfile :: String
   , asUser :: Maybe User
   , asMaxRetries :: Int
+  , asReaction :: React
   }
 data instance Annotate Actions = AA
   { aaURI :: URI
@@ -45,6 +46,7 @@ data instance Annotate Actions = AA
   , aaMaxOrder :: Int
   , aaUser :: Maybe User
   , aaMaxRetries :: Int
+  , aaReaction :: React
   }
 
 
@@ -130,6 +132,10 @@ instance Num User where
   signum _    = error "signum is not defined for User"
   fromInteger = UserID . fromInteger
 
+-- | Failure reaction
+data React = Ignorant | Abortive
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
 -- | Script construction state
 data AnnotationsState = AState
   { _token :: Int           -- ^ Unique term token
@@ -154,6 +160,8 @@ data AnnotationsEnv = AEnv
   , _sourceURL   :: URI        -- ^ Current source url
   , _activeUser  :: Maybe User -- ^ Maximum action order in current source
   , _maxRetries  :: Int        -- ^ Maximum retries count
+  , _sourceReaction :: React   -- ^ How to react on source failure
+  , _actionReaction :: React   -- ^ How to react on action failure
   } deriving (Show, Read)
 
 instance Default AnnotationsEnv where
@@ -164,6 +172,8 @@ instance Default AnnotationsEnv where
     , _sourceURL = def
     , _activeUser = def
     , _maxRetries = 1
+    , _sourceReaction = Abortive
+    , _actionReaction = Ignorant
     }
   {-# INLINE def #-}
 
@@ -204,6 +214,12 @@ activeUser :: Lens' AnnotationsEnv (Maybe User)
 -- | Maximum retries count
 maxRetries :: Lens' AnnotationsEnv Int
 
+-- | How to react on source failure
+sourceReaction :: Lens' AnnotationsEnv React
+
+-- | How to react on action failure
+actionReaction :: Lens' AnnotationsEnv React
+
 
 -- * Script mangling
 
@@ -239,7 +255,14 @@ sourced ty url path inner update = Script $ do
     user    <- view activeUser
     source  <- view sourcePath
     ast     <- annotate inner
-    let annotation = AS { asToken = tok, asProfile = profile, asUser = user, asMaxRetries = retries }
+    react   <- view sourceReaction
+    let annotation = AS
+          { asToken = tok
+          , asProfile = profile
+          , asUser = user
+          , asMaxRetries = retries
+          , asReaction = react
+          }
     lift . liftF $
       TS annotation (Source ty url source update) ast ()
 
@@ -264,7 +287,15 @@ actioned f = Script $ do
   mo      <- use maxOrder
   user    <- view activeUser
   retries <- view maxRetries
-  let annotation = AA { aaURI = url, aaOrder = o, aaMaxOrder = mo, aaUser = user, aaMaxRetries = retries }
+  react   <- view actionReaction
+  let annotation = AA
+       { aaURI = url
+       , aaOrder = o
+       , aaMaxOrder = mo
+       , aaUser = user
+       , aaMaxRetries = retries
+       , aaReaction = react
+       }
   lift . liftF $
     TA annotation (f rfp sfp) ()
 

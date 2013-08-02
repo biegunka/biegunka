@@ -102,7 +102,7 @@ task (Free c@(TS (AS { asToken }) _ b d)) = do
   try (command c) >>= \case
     Left e -> checkRetryCount (getRetries c) e >>= \case
       True  -> task (Free (Pure () <$ c))
-      False -> reaction >>= \case
+      False -> case getReaction c of
         Abortive -> doneWith asToken
         Ignorant -> do
           taskAction b
@@ -124,7 +124,7 @@ taskAction a@(Free c@(TA _ _ x)) =
   try (command c) >>= \case
     Left e -> checkRetryCount (getRetries c) e >>= \case
       True  -> taskAction a
-      False -> reaction >>= \case
+      False -> case getReaction c of
         Abortive -> return ()
         Ignorant -> taskAction x
     Right _ -> taskAction x
@@ -132,13 +132,6 @@ taskAction (Free c@(TM _ x)) = do
   command c
   taskAction x
 taskAction (Pure _) = return ()
-
-
--- | Get retries maximum associated with term
-getRetries :: Term Annotate a b -> Int
-getRetries (TS (AS { asMaxRetries }) _ _ _) = asMaxRetries
-getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
-getRetries (TM _ _) = 0
 
 
 -- | Get response from task failure processing
@@ -161,19 +154,11 @@ checkRetryCount maximumRetries exc = do
     retryCount .= 0
     return False
 
--- | Get current reaction setting from environment
---
--- Note: 'head' is safe here because list is always non-empty
-reaction :: Executor s React
-reaction = uses reactStack (\reacts -> head (reacts ++ [defaultReaction]))
-
 
 -- | Single command execution
 command :: Reifies t (Settings Execution)
         => Term Annotate s a
         -> Executor t ()
-command (TM (Reacting (Just r)) _) = reactStack %= (r :)
-command (TM (Reacting Nothing) _)  = reactStack %= drop 1
 command (TM (Wait ts) _)           = do
   ts' <- env^!acts.local.sync.tasks
   liftIO . atomically $ do
@@ -207,10 +192,6 @@ command c = do
  where
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
-
-  getUser (TS (AS { asUser }) _ _ _) = asUser
-  getUser (TA (AA { aaUser }) _ _)   = aaUser
-  getUser (TM _ _)                   = Nothing
 
 termOperation :: Reifies t (Settings Execution)
               => Term Annotate s a
@@ -290,3 +271,22 @@ doneWith n = do
   ts <- env^!acts.local.sync.tasks
   liftIO . atomically $
     modifyTVar ts (S.insert n)
+
+
+-- | Get retries maximum associated with term
+getRetries :: Term Annotate s a -> Int
+getRetries (TS (AS { asMaxRetries }) _ _ _) = asMaxRetries
+getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
+getRetries (TM _ _) = 0
+
+-- | Get user associated with term
+getUser :: Term Annotate s a -> Maybe User
+getUser (TS (AS { asUser }) _ _ _) = asUser
+getUser (TA (AA { aaUser }) _ _) = aaUser
+getUser (TM _ _) = Nothing
+
+-- | Get reaction associated with term
+getReaction :: Term Annotate s a -> React
+getReaction (TS (AS { asReaction }) _ _ _) = asReaction
+getReaction (TA (AA { aaReaction }) _ _) = aaReaction
+getReaction (TM _ _) = Ignorant
