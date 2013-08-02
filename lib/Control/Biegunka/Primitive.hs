@@ -164,11 +164,8 @@ raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
 
 -- | Change effective user id for wrapped commands
 sudo :: User -> Script s a -> Script s a
-sudo user inner = do
-  script (TM (User (Just user)) ())
-  a <- inner
-  script (TM (User Nothing) ())
-  return a
+sudo user inner = Script $ do
+  local (activeUser ?~ user) (unScript inner)
 {-# INLINE sudo #-}
 
 -- | Change reaction pattern for wrapped commands

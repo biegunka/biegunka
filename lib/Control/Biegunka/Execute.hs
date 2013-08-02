@@ -165,8 +165,6 @@ command :: Reifies t (Settings Execution)
         -> Executor t ()
 command (TM (Reacting (Just r)) _) = reactStack %= (r :)
 command (TM (Reacting Nothing) _)  = reactStack %= drop 1
-command (TM (User     (Just u)) _) = usersStack %= (u :)
-command (TM (User     Nothing) _)  = usersStack %= drop 1
 command (TM (Wait ts) _)           = do
   ts' <- env^!acts.local.sync.tasks
   liftIO . atomically $ do
@@ -178,21 +176,20 @@ command c = do
   rtv <- env^!acts.local.sync.running
   log <- env^!acts.logger
   scm <- env^!acts.colors
-  xs <- use usersStack
-  op <- env^!acts.local.runs.mode.act (\case Dry -> termEmptyOperation c; Real -> termOperation c)
-  liftIO $ case xs of
-    []  -> do
+  op  <- env^!acts.local.runs.mode.act (\case Dry -> termEmptyOperation c; Real -> termOperation c)
+  liftIO $ case getUser c of
+    Nothing  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
       log (termDescription (action scm c))
       op
       atomically $ writeTVar rtv False
-    u:_ -> do
+    Just user -> do
       atomically $ do
         [s, r] <- mapM readTVar [stv, rtv]
         guard (not $ s || r)
         writeTVar stv True
       uid  <- getEffectiveUserID
-      uid' <- getUID u
+      uid' <- getUID user
       log (termDescription (action scm c))
       setEffectiveUserID uid'
       op
@@ -201,6 +198,10 @@ command c = do
  where
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
+
+  getUser (TS (AS { asUser }) _ _ _) = asUser
+  getUser (TA (AA { aaUser }) _ _)   = aaUser
+  getUser (TM _ _)                   = Nothing
 
 termOperation :: Reifies t (Settings Execution)
               => Term Annotate s a

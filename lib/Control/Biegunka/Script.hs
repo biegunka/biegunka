@@ -8,6 +8,7 @@ module Control.Biegunka.Script
   ( Script(..), AnnotationsState, AnnotationsEnv, Annotate(..)
   , script, annotate, URI, sourced, actioned, constructDestinationFilepath
   , token, app, profiles, profileName, sourcePath, sourceURL, order
+  , activeUser
   , runScript, runScript', evalScript
   ) where
 
@@ -30,9 +31,9 @@ import Control.Biegunka.Language
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources =
-  AS { asToken :: Int, asProfile :: String }
+  AS { asToken :: Int, asProfile :: String, asUser :: Maybe User }
 data instance Annotate Actions =
-  AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int }
+  AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int, aaUser :: Maybe User }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -118,10 +119,11 @@ instance Default AnnotationsState where
   {-# INLINE def #-}
 
 data AnnotationsEnv = AEnv
-  { _profileName :: String  -- ^ Profile name
-  , _sourcePath :: FilePath -- ^ Source root filepath
-  , _sourceURL :: URI       -- ^ Current source url
-  , _app :: FilePath        -- ^ Biegunka root filepath
+  { _profileName :: String     -- ^ Profile name
+  , _sourcePath  :: FilePath   -- ^ Source root filepath
+  , _sourceURL   :: URI        -- ^ Current source url
+  , _app         :: FilePath   -- ^ Biegunka root filepath
+  , _activeUser  :: Maybe User -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
 instance Default AnnotationsEnv where
@@ -130,6 +132,7 @@ instance Default AnnotationsEnv where
     , _sourcePath = def
     , _sourceURL = def
     , _app = def
+    , _activeUser = def
     }
   {-# INLINE def #-}
 
@@ -164,6 +167,9 @@ sourcePath :: Lens' AnnotationsEnv FilePath
 -- | Current source url
 sourceURL :: Lens' AnnotationsEnv String
 
+-- | Current user
+activeUser :: Lens' AnnotationsEnv (Maybe User)
+
 
 -- * Script mangling
 
@@ -195,9 +201,12 @@ sourced ty url path inner update = Script $ do
     profile <- view profileName
     profiles . contains profile .= True
 
+    user   <- view activeUser
     source <- view sourcePath
     ast    <- annotate inner
-    lift . liftF $ TS (AS { asToken = tok, asProfile = profile }) (Source ty url source update) ast ()
+    let annotation = AS { asToken = tok, asProfile = profile, asUser = user }
+    lift . liftF $
+      TS annotation (Source ty url source update) ast ()
 
     token += 1
 
@@ -213,12 +222,15 @@ size = (`execState` 0) . go . evalScript def def
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
 actioned f = Script $ do
-  rfp <- view app
-  sfp <- view sourcePath
-  url <- view sourceURL
-  o   <- order <+= 1
-  mo  <- use maxOrder
-  lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
+  rfp  <- view app
+  sfp  <- view sourcePath
+  url  <- view sourceURL
+  o    <- order <+= 1
+  mo   <- use maxOrder
+  user <- view activeUser
+  let annotation = AA { aaURI = url, aaOrder = o, aaMaxOrder = mo, aaUser = user }
+  lift . liftF $
+    TA annotation (f rfp sfp) ()
 
 -- | Construct destination 'FilePath'
 --

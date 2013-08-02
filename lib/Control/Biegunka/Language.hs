@@ -109,8 +109,7 @@ instance Default PatchSpec where
 
 -- | Modificators for other datatypes
 data Modifier =
-    User (Maybe User)
-  | Reacting (Maybe React)
+    Reacting (Maybe React)
   | Wait (Set Int)
   | Chain
 
