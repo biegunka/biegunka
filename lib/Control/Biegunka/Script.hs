@@ -19,7 +19,7 @@ module Control.Biegunka.Script
   , app, profileName, sourcePath, sourceURL, profiles
   , token, order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..)
+  , URI, User(..), React(..), Retry(..), incr
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -46,7 +46,7 @@ data instance Annotate Sources = AS
   { asToken :: Int
   , asProfile :: String
   , asUser :: Maybe User
-  , asMaxRetries :: Int
+  , asMaxRetries :: Retry
   , asReaction :: React
   }
 data instance Annotate Actions = AA
@@ -54,7 +54,7 @@ data instance Annotate Actions = AA
   , aaOrder :: Int
   , aaMaxOrder :: Int
   , aaUser :: Maybe User
-  , aaMaxRetries :: Int
+  , aaMaxRetries :: Retry
   , aaReaction :: React
   }
 
@@ -146,6 +146,15 @@ instance Num User where
 data React = Ignorant | Abortive
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
+newtype Retry = Retry { unRetry :: Int }
+    deriving (Show, Read, Eq, Ord)
+
+instance Default Retry where
+  def = Retry def
+
+incr :: Retry -> Retry
+incr (Retry n) = Retry (succ n)
+
 -- | Script construction state
 data AnnotationsState = AState
   { _token :: Int           -- ^ Unique term token
@@ -169,7 +178,7 @@ data AnnotationsEnv = AEnv
   , _sourcePath  :: FilePath   -- ^ Source root filepath
   , _sourceURL   :: URI        -- ^ Current source url
   , _activeUser  :: Maybe User -- ^ Maximum action order in current source
-  , _maxRetries  :: Int        -- ^ Maximum retries count
+  , _maxRetries  :: Retry      -- ^ Maximum retries count
   , _sourceReaction :: React   -- ^ How to react on source failure
   , _actionReaction :: React   -- ^ How to react on action failure
   } deriving (Show, Read)
@@ -181,7 +190,7 @@ instance Default AnnotationsEnv where
     , _sourcePath = def
     , _sourceURL = def
     , _activeUser = def
-    , _maxRetries = 1
+    , _maxRetries = Retry 1
     , _sourceReaction = Abortive
     , _actionReaction = Ignorant
     }
@@ -222,7 +231,7 @@ sourceURL :: Lens' AnnotationsEnv String
 activeUser :: Lens' AnnotationsEnv (Maybe User)
 
 -- | Maximum retries count
-maxRetries :: Lens' AnnotationsEnv Int
+maxRetries :: Lens' AnnotationsEnv Retry
 
 -- | How to react on source failure
 sourceReaction :: Lens' AnnotationsEnv React

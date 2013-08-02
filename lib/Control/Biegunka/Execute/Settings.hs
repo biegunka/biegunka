@@ -3,8 +3,6 @@
 -- | Controlling execution
 module Control.Biegunka.Execute.Settings
   ( Executor, env
-    -- * Executor task-local state control
-  , TaskLocal, retryCount
     -- * Executor environment
   , Execution, Sync, Run
     -- * Lenses
@@ -21,7 +19,6 @@ import Control.Applicative (Applicative)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
-import Control.Monad.State (StateT)
 import Data.Default
 import Data.Functor.Trans.Tagged
 import Data.Monoid (mempty)
@@ -34,33 +31,11 @@ import Control.Biegunka.Templates.HStringTemplate
 
 -- | Convenient type alias for task-local-state-ful IO
 -- tagged with crosstask execution environment @s@
-type Executor s a = TaggedT s (StateT TaskLocal IO) a
+type Executor s a = TaggedT s IO a
 
 -- | Get execution environment
 env :: (Applicative m, Reifies s a) => TaggedT s m a
 env = reflected
-
-
--- | 'Executor' task-local state. Contains:
---
---   * Active failure reactions stack.
---
---   * Effective users names stack.
---
---   * Retry count for current task.
-data TaskLocal = TaskLocal
-  { _retryCount :: Int     -- ^ Performed retries for task
-  } deriving (Show, Read)
-
-instance Default TaskLocal where
-  def = TaskLocal
-    { _retryCount = 0
-    }
-
-makeLensesWith (defaultRules & generateSignatures .~ False) ''TaskLocal
-
--- | Performed retries for task
-retryCount :: Lens' TaskLocal Int
 
 
 -- | Both 'Executor' environment and synced multithread state

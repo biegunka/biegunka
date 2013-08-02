@@ -171,7 +171,7 @@ sudo user (Script inner) = Script $
 -- | Change maximum retries count
 retries :: Int -> Script s a -> Script s a
 retries count (Script inner) = Script $
-  set maxRetries count `local` inner
+  set maxRetries (Retry count) `local` inner
 {-# INLINE retries #-}
 
 -- | Change reaction pattern when retries are all failed

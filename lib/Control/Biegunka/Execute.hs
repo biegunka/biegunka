@@ -22,9 +22,8 @@ import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.Catch (SomeException, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (get)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Default (def)
+import           Data.Default (Default(..))
 import           Data.Reflection (Reifies)
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
@@ -52,7 +51,7 @@ run e = interpret $ \c (s, as) -> do
   a <- DB.load c (as^.profiles)
   r <- initializeSTM ((e $ def) & mode.~Real)
   let c' = c & local.~r
-  runTask c' def newTask s
+  runTask c' newTask s
   atomically (writeTQueue (c'^.local.sync.work) Stop)
   schedule (c'^.local.sync.work)
   mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
@@ -77,7 +76,7 @@ dryRun = interpret $ \c (s, as) -> do
   a <- DB.load c (as^.profiles)
   e <- initializeSTM def
   let c' = c & local.~e
-  runTask c' def newTask s
+  runTask c' newTask s
   atomically (writeTQueue (e^.sync.work) Stop)
   schedule (e^.sync.work)
   c'^.logger $ runChanges (c'^.colors) a b
@@ -95,43 +94,45 @@ pretend = dryRun
 -- task, but all the other stuff is queued for execution in scheduler
 task
   :: Reifies t (Settings Execution)
-  => Free (Term Annotate Sources) a
+  => Retry
+  -> Free (Term Annotate Sources) a
   -> Executor t ()
-task (Free c@(TS (AS { asToken }) _ b d)) = do
+task retries (Free c@(TS (AS { asToken }) _ b d)) = do
   newTask d
   try (command c) >>= \case
-    Left e -> checkRetryCount (getRetries c) e >>= \case
-      True  -> task (Free (Pure () <$ c))
+    Left e -> checkRetryCount retries (getRetries c) e >>= \case
+      True  -> task (incr retries) (Free (Pure () <$ c))
       False -> case getReaction c of
         Abortive -> doneWith asToken
         Ignorant -> do
-          taskAction b
+          taskAction def b
           doneWith asToken
     Right _ -> do
-      taskAction b
+      taskAction def b
       doneWith asToken
-task (Free c@(TM _ x)) = do
+task _ (Free c@(TM _ x)) = do
   command c
-  task x
-task (Pure _) = return ()
+  task def x
+task _ (Pure _) = return ()
 
 -- | Run single 'Actions' task
 taskAction
   :: Reifies t (Settings Execution)
-  => Free (Term Annotate Actions) a
+  => Retry
+  -> Free (Term Annotate Actions) a
   -> Executor t ()
-taskAction a@(Free c@(TA _ _ x)) =
+taskAction retries a@(Free c@(TA _ _ x)) =
   try (command c) >>= \case
-    Left e -> checkRetryCount (getRetries c) e >>= \case
-      True  -> taskAction a
+    Left e -> checkRetryCount retries (getRetries c) e >>= \case
+      True  -> taskAction (incr retries) a
       False -> case getReaction c of
         Abortive -> return ()
-        Ignorant -> taskAction x
-    Right _ -> taskAction x
-taskAction (Free c@(TM _ x)) = do
+        Ignorant -> taskAction def x
+    Right _ -> taskAction def x
+taskAction _ (Free c@(TM _ x)) = do
   command c
-  taskAction x
-taskAction (Pure _) = return ()
+  taskAction def x
+taskAction _ (Pure _) = return ()
 
 
 -- | Get response from task failure processing
@@ -139,19 +140,18 @@ taskAction (Pure _) = return ()
 -- Possible responses: retry command execution or ignore failure or abort task
 checkRetryCount
   :: forall s. Reifies s (Settings Execution)
-  => Int
+  => Retry
+  -> Retry
   -> SomeException
   -> Executor s Bool
-checkRetryCount maximumRetries exc = do
+checkRetryCount doneRetries maximumRetries exc = do
   log <- env^!acts.logger
   scm <- env^!acts.colors
   liftIO . log . termDescription $ exception scm exc
-  doneRetries <- retryCount <%= (+1)
-  if doneRetries <= maximumRetries then do
-    liftIO . log . termDescription $ retryCounter scm doneRetries maximumRetries
+  if doneRetries < maximumRetries then do
+    liftIO . log . termDescription $ retryCounter scm (unRetry (incr doneRetries)) (unRetry maximumRetries)
     return True
   else do
-    retryCount .= 0
     return False
 
 
@@ -259,10 +259,9 @@ newTask :: forall a t. Reifies t (Settings Execution)
 newTask (Pure _) = return ()
 newTask t = do
   e <- env
-  s <- get
   liftIO . atomically . writeTQueue (e^.local.sync.work) $
     Do $ do
-      runTask e s task t
+      runTask e (task def) t
       atomically (writeTQueue (e^.local.sync.work) Stop)
 
 -- | Tell execution process that you're done with task
@@ -274,10 +273,10 @@ doneWith n = do
 
 
 -- | Get retries maximum associated with term
-getRetries :: Term Annotate s a -> Int
+getRetries :: Term Annotate s a -> Retry
 getRetries (TS (AS { asMaxRetries }) _ _ _) = asMaxRetries
 getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
-getRetries (TM _ _) = 0
+getRetries (TM _ _) = def
 
 -- | Get user associated with term
 getUser :: Term Annotate s a -> Maybe User

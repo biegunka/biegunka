@@ -9,7 +9,6 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue (TQueue, readTQueue)
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.State (evalStateT)
 import           Data.Functor.Trans.Tagged (untag)
 import           Data.Proxy (Proxy)
 import           Data.Reflection (Reifies, reify)
@@ -22,14 +21,13 @@ import Control.Biegunka.Script
 
 -- | Prepares environment to run task with given execution routine
 runTask :: forall a e s. Settings e -- ^ Environment settings
-        -> TaskLocal -- ^ Context
         -> (forall t. Reifies t (Settings e)
                 => Free (Term Annotate s) a
                 -> Executor t ()) -- ^ Task routine
         -> (Free (Term Annotate s) a) -- ^ Task contents
         -> IO ()
-runTask e s f i =
-  reify e ((`evalStateT` s) . untag . asProxyOf (f i))
+runTask e f i =
+  reify e (untag . asProxyOf (f i))
 {-# INLINE runTask #-}
 
 -- | Thread `s' parameter to 'task' function
