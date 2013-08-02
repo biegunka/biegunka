@@ -100,12 +100,13 @@ task
 task (Free c@(TS (AS { asToken }) _ b d)) = do
   newTask d
   try (command c) >>= \case
-    Left e -> checkRetryCountAndReact e >>= \case
-      Retry    -> task (Free (Pure () <$ c))
-      Abortive -> doneWith asToken
-      Ignorant -> do
-        taskAction b
-        doneWith asToken
+    Left e -> checkRetryCount (getRetries c) e >>= \case
+      True  -> task (Free (Pure () <$ c))
+      False -> reaction >>= \case
+        Abortive -> doneWith asToken
+        Ignorant -> do
+          taskAction b
+          doneWith asToken
     Right _ -> do
       taskAction b
       doneWith asToken
@@ -121,10 +122,11 @@ taskAction
   -> Executor t ()
 taskAction a@(Free c@(TA _ _ x)) =
   try (command c) >>= \case
-    Left e -> checkRetryCountAndReact e >>= \case
-      Retry    -> taskAction a
-      Abortive -> return ()
-      Ignorant -> taskAction x
+    Left e -> checkRetryCount (getRetries c) e >>= \case
+      True  -> taskAction a
+      False -> reaction >>= \case
+        Abortive -> return ()
+        Ignorant -> taskAction x
     Right _ -> taskAction x
 taskAction (Free c@(TM _ x)) = do
   command c
@@ -132,25 +134,32 @@ taskAction (Free c@(TM _ x)) = do
 taskAction (Pure _) = return ()
 
 
+-- | Get retries maximum associated with term
+getRetries :: Term Annotate a b -> Int
+getRetries (TS (AS { asMaxRetries }) _ _ _) = asMaxRetries
+getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
+getRetries (TM _ _) = 0
+
+
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-checkRetryCountAndReact
+checkRetryCount
   :: forall s. Reifies s (Settings Execution)
-  => SomeException
-  -> Executor s React
-checkRetryCountAndReact exc = do
+  => Int
+  -> SomeException
+  -> Executor s Bool
+checkRetryCount maximumRetries exc = do
   log <- env^!acts.logger
   scm <- env^!acts.colors
   liftIO . log . termDescription $ exception scm exc
   doneRetries <- retryCount <%= (+1)
-  maximumRetries <- env^!acts.local.runs.retries
   if doneRetries <= maximumRetries then do
     liftIO . log . termDescription $ retryCounter scm doneRetries maximumRetries
-    return Retry
+    return True
   else do
     retryCount .= 0
-    reaction
+    return False
 
 -- | Get current reaction setting from environment
 --

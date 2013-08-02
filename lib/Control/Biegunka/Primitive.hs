@@ -11,7 +11,7 @@ module Control.Biegunka.Primitive
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, prerequisiteOf, (<~>)
+  , sudo, reacting, retries, prerequisiteOf, (<~>)
   ) where
 
 import Data.Monoid (mempty)
@@ -168,7 +168,7 @@ sudo user inner = Script $ do
   local (activeUser ?~ user) (unScript inner)
 {-# INLINE sudo #-}
 
--- | Change reaction pattern for wrapped commands
+-- | Change reaction pattern when retries are all failed
 reacting :: React -> Script s a -> Script s a
 reacting reaction inner = do
   script (TM (Reacting (Just reaction)) ())
@@ -176,6 +176,11 @@ reacting reaction inner = do
   script (TM (Reacting Nothing) ())
   return a
 {-# INLINE reacting #-}
+
+-- | Change maximum retries count
+retries :: Int -> Script s a -> Script s a
+retries count inner = Script $ do
+  local (maxRetries .~ count) (unScript inner)
 
 -- | Execute scripts sequentially
 -- Connects two scripts which forces them to run sequentially one after another.

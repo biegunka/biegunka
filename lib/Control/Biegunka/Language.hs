@@ -111,7 +111,7 @@ data Modifier =
   | Wait (Set Int)
 
 -- | Failure reaction
-data React = Ignorant | Abortive | Retry
+data React = Ignorant | Abortive
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Default React where

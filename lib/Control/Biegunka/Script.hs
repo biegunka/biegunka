@@ -10,7 +10,7 @@ module Control.Biegunka.Script
   , token, app, profiles, profileName, sourcePath, sourceURL, order
   , activeUser
   , runScript, runScript', evalScript
-  , User(..)
+  , User(..), maxRetries
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -33,10 +33,19 @@ import Control.Biegunka.Language
 
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
-data instance Annotate Sources =
-  AS { asToken :: Int, asProfile :: String, asUser :: Maybe User }
-data instance Annotate Actions =
-  AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder :: Int, aaUser :: Maybe User }
+data instance Annotate Sources = AS
+  { asToken :: Int
+  , asProfile :: String
+  , asUser :: Maybe User
+  , asMaxRetries :: Int
+  }
+data instance Annotate Actions = AA
+  { aaURI :: URI
+  , aaOrder :: Int
+  , aaMaxOrder :: Int
+  , aaUser :: Maybe User
+  , aaMaxRetries :: Int
+  }
 
 
 -- | Newtype used to provide better error messages for type errors in DSL
@@ -144,6 +153,7 @@ data AnnotationsEnv = AEnv
   , _sourceURL   :: URI        -- ^ Current source url
   , _app         :: FilePath   -- ^ Biegunka root filepath
   , _activeUser  :: Maybe User -- ^ Maximum action order in current source
+  , _maxRetries  :: Int        -- ^ Maximum retries count
   } deriving (Show, Read)
 
 instance Default AnnotationsEnv where
@@ -153,6 +163,7 @@ instance Default AnnotationsEnv where
     , _sourceURL = def
     , _app = def
     , _activeUser = def
+    , _maxRetries = 1
     }
   {-# INLINE def #-}
 
@@ -190,6 +201,9 @@ sourceURL :: Lens' AnnotationsEnv String
 -- | Current user
 activeUser :: Lens' AnnotationsEnv (Maybe User)
 
+-- | Maximum retries count
+maxRetries :: Lens' AnnotationsEnv Int
+
 
 -- * Script mangling
 
@@ -221,10 +235,11 @@ sourced ty url path inner update = Script $ do
     profile <- view profileName
     profiles . contains profile .= True
 
-    user   <- view activeUser
-    source <- view sourcePath
-    ast    <- annotate inner
-    let annotation = AS { asToken = tok, asProfile = profile, asUser = user }
+    retries <- view maxRetries
+    user    <- view activeUser
+    source  <- view sourcePath
+    ast     <- annotate inner
+    let annotation = AS { asToken = tok, asProfile = profile, asUser = user, asMaxRetries = retries }
     lift . liftF $
       TS annotation (Source ty url source update) ast ()
 
@@ -242,13 +257,14 @@ size = (`execState` 0) . go . evalScript def def
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
 actioned f = Script $ do
-  rfp  <- view app
-  sfp  <- view sourcePath
-  url  <- view sourceURL
-  o    <- order <+= 1
-  mo   <- use maxOrder
-  user <- view activeUser
-  let annotation = AA { aaURI = url, aaOrder = o, aaMaxOrder = mo, aaUser = user }
+  rfp     <- view app
+  sfp     <- view sourcePath
+  url     <- view sourceURL
+  o       <- order <+= 1
+  mo      <- use maxOrder
+  user    <- view activeUser
+  retries <- view maxRetries
+  let annotation = AA { aaURI = url, aaOrder = o, aaMaxOrder = mo, aaUser = user, aaMaxRetries = retries }
   lift . liftF $
     TA annotation (f rfp sfp) ()
 

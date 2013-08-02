@@ -10,7 +10,7 @@ module Control.Biegunka.Execute.Settings
     -- * Lenses
   , sync, runs
   , work, running, sudoing, repos, tasks
-  , templates, retries, mode
+  , templates, mode
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
@@ -93,14 +93,12 @@ data Work =
 -- Denotes default failure reaction, templates used and more
 data Run = Run
   { _templates :: Templates   -- ^ Templates mapping
-  , _retries   :: Int         -- ^ Maximum retries count
   , _mode      :: Mode        -- ^ Executor mode
   }
 
 instance Default Run where
   def = Run
     { _templates = hStringTemplate ()
-    , _retries   = 1
     , _mode      = Dry
     }
 
@@ -144,9 +142,6 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
 
 -- | Templates mapping
 templates :: Lens' Run Templates
-
--- | Maximum retries count
-retries :: Lens' Run Int
 
 -- | Executor mode
 mode :: Lens' Run Mode
