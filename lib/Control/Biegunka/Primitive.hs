@@ -17,6 +17,7 @@ module Control.Biegunka.Primitive
 import Data.Monoid (mempty)
 
 import           Control.Lens
+import           Control.Monad.Reader (local)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
 import           System.FilePath.Lens
@@ -48,14 +49,11 @@ infixr 7 `prerequisiteOf`, <~>
 -- >   git "https://github.com/ekmett/lens"
 -- >     ...
 profile :: String -> Script Sources a -> Script Sources a
-profile name inner = do
-  p <- Script $ use profileName
-  Script $ do
-    p' <- profileName <</>= name
+profile name (Script inner) = Script $
+  local (profileName </>~ name) $ do
+    p' <- view profileName
     profiles . contains p' .= True
-  a <- inner
-  Script $ profileName .= p
-  return a
+    inner
 {-# INLINE profile #-}
 
 -- | Alias for 'profile'. May be useful for nested grouping

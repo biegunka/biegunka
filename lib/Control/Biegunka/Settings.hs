@@ -124,7 +124,11 @@ instance Default a => Default (Settings a) where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter :: Settings () -> (Free (Term Annotate Sources) (), Annotations) -> IO () -> IO ()
+  { runInterpreter
+      :: Settings ()
+      -> (Free (Term Annotate Sources) (), AnnotationsState)
+      -> IO ()
+      -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
@@ -138,7 +142,9 @@ instance Monoid Interpreter where
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
-interpret :: (Settings () -> (Free (Term Annotate Sources) (), Annotations) -> IO ()) -> Interpreter
+interpret
+  :: (Settings () -> (Free (Term Annotate Sources) (), AnnotationsState) -> IO ())
+  -> Interpreter
 interpret f = I (\c s k -> f c s >> k)
 
 
@@ -153,7 +159,7 @@ biegunka (($ def) -> c) (I f) s = do
   l <- newTQueueIO
   forkIO $ log l
   f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l))
-    (runScript' (def & app .~ r) s)
+    (runScript' def (def & app .~ r) s)
     (return ())
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)

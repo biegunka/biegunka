@@ -5,9 +5,9 @@
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 module Control.Biegunka.Script
-  ( Script(..), Annotations, Annotate(..)
+  ( Script(..), AnnotationsState, AnnotationsEnv, Annotate(..)
   , script, annotate, URI, sourced, actioned, constructDestinationFilepath
-  , token, app, profiles, profileName, source, sourceURL, order
+  , token, app, profiles, profileName, sourcePath, sourceURL, order
   , runScript, runScript', evalScript
   ) where
 
@@ -17,7 +17,9 @@ import Data.List (isSuffixOf)
 
 import           Control.Lens hiding (Action)
 import           Control.Monad.Free (Free(..), iter, liftF)
-import           Control.Monad.State (MonadState(..), StateT(..), State, execState, lift, state)
+import           Control.Monad.State (StateT(..), State, execState)
+import           Control.Monad.Reader (ReaderT(..), local)
+import           Control.Monad.Trans (lift)
 import           Data.Default (Default(..))
 import           Data.Copointed (copoint)
 import           Data.Set (Set)
@@ -35,7 +37,8 @@ data instance Annotate Actions  = AA { aaURI :: URI, aaOrder :: Int, aaMaxOrder 
 
 -- | Newtype used to provide better error messages for type errors in DSL
 newtype Script s a = Script
-  { unScript :: StateT Annotations (Free (Term Annotate s)) a
+  { unScript :: ReaderT AnnotationsEnv
+      (StateT AnnotationsState (Free (Term Annotate s))) a
   }
 
 instance Functor (Script s) where
@@ -59,75 +62,97 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript :: Annotations -> Script s a -> Free (Term Annotate s) (a, Annotations)
-runScript as (Script s) = runStateT s as
+runScript
+  :: AnnotationsState
+  -> AnnotationsEnv
+  -> Script s a
+  -> Free (Term Annotate s) (a, AnnotationsState)
+runScript as ae (Script s) = runStateT (runReaderT s ae) as
 {-# INLINE runScript #-}
 
 -- | Get DSL and resulting state from 'Script'
-runScript' :: Annotations -> Script s a -> (Free (Term Annotate s) a, Annotations)
-runScript' as (Script s) =
-  let ast      = runStateT s as
+runScript'
+  :: AnnotationsState
+  -> AnnotationsEnv
+  -> Script s a
+  -> (Free (Term Annotate s) a, AnnotationsState)
+runScript' as ae s =
+  let ast      = runScript as ae s
       (a, as') = iter copoint ast
   in (a <$ ast, as')
 {-# INLINE runScript' #-}
 
 -- | Get DSL from 'Script'
-evalScript :: Annotations -> Script s a -> Free (Term Annotate s) a
-evalScript = (fmap fst .) . runScript
+evalScript
+  :: AnnotationsState
+  -> AnnotationsEnv
+  -> Script s a
+  -> Free (Term Annotate s) a
+evalScript = ((fmap fst .) .) . runScript
 {-# INLINE evalScript #-}
 
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
 type URI = String
 
 -- | Script construction state
-data Annotations = Annotations
+data AnnotationsState = AState
   { _token :: Int           -- ^ Unique term token
-  , _app :: FilePath        -- ^ Biegunka root filepath
   , _profiles :: Set String -- ^ Profile name
-  , _profileName :: String  -- ^ Profile name
-  , _source :: FilePath     -- ^ Source root filepath
-  , _sourceURL :: URI       -- ^ Current source url
   , _order :: Int           -- ^ Current action order
   , _maxOrder :: Int        -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
-instance Default Annotations where
-  def = Annotations
+instance Default AnnotationsState where
+  def = AState
     { _token = 0
-    , _app = ""
     , _profiles = S.empty
-    , _profileName = ""
-    , _source = ""
-    , _sourceURL = ""
     , _order = 0
     , _maxOrder = 0
     }
 
-makeLensesWith ?? ''Annotations $ defaultRules & generateSignatures .~ False
+data AnnotationsEnv = AEnv
+  { _profileName :: String  -- ^ Profile name
+  , _sourcePath :: FilePath -- ^ Source root filepath
+  , _sourceURL :: URI       -- ^ Current source url
+  , _app :: FilePath        -- ^ Biegunka root filepath
+  }
+
+instance Default AnnotationsEnv where
+  def = AEnv
+    { _profileName = ""
+    , _sourcePath = ""
+    , _sourceURL = ""
+    , _app = ""
+    }
+
+
+makeLensesWith ?? ''AnnotationsState $ defaultRules & generateSignatures .~ False
 
 -- | Unique token for each 'TP'/'TS'
-token :: Lens' Annotations Int
-
--- | Biegunka filepath root
-app :: Lens' Annotations FilePath
+token :: Lens' AnnotationsState Int
 
 -- | All profiles encountered so far
-profiles :: Lens' Annotations (Set String)
-
--- | Current profile name
-profileName :: Lens' Annotations String
-
--- | Current source filepath
-source :: Lens' Annotations FilePath
-
--- | Current source url
-sourceURL :: Lens' Annotations String
+profiles :: Lens' AnnotationsState (Set String)
 
 -- | Current action order
-order :: Lens' Annotations Int
+order :: Lens' AnnotationsState Int
 
 -- | Maximum action order in current source
-maxOrder :: Lens' Annotations Int
+maxOrder :: Lens' AnnotationsState Int
+
+makeLensesWith ?? ''AnnotationsEnv   $ defaultRules & generateSignatures .~ False
+
+-- | Biegunka filepath root
+app :: Lens' AnnotationsEnv FilePath
+
+-- | Current profile name
+profileName :: Lens' AnnotationsEnv String
+
+-- | Current source filepath
+sourcePath :: Lens' AnnotationsEnv FilePath
+
+-- | Current source url
+sourceURL :: Lens' AnnotationsEnv String
 
 -- | Lift DSL term to the 'Script'
 script :: Term Annotate s a -> Script s a
@@ -135,33 +160,36 @@ script = Script . lift . liftF
 {-# INLINE script #-}
 
 -- | Annotate DSL
-annotate :: Script s a -> StateT Annotations (Free (Term Annotate t)) (Free (Term Annotate s) a)
-annotate i = state $ \s ->
-  let r = runScript s i
-      ast = fmap fst r
-      s' = iter copoint $ fmap snd r
-  in (ast, s')
+annotate
+  :: Script s a
+  -> ReaderT AnnotationsEnv (StateT AnnotationsState (Free (Term Annotate t))) (Free (Term Annotate s) a)
+annotate i =
+  ReaderT $ \e ->
+    StateT $ \s ->
+      let r = runScript s e i
+          ast = fmap fst r
+          s' = iter copoint $ fmap snd r
+      in return (ast, s')
 
 -- | Abstract away all plumbing needed to make source
 sourced :: String -> URI -> FilePath
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
-  rfp <- use app
+  rfp <- view app
   tok <- use token
   let df = constructDestinationFilepath rfp url path
-  source .= df
-  sourceURL .= url
-  order .= 0
-  maxOrder .= size inner
-  p <- use profileName
-  profiles . contains p .= True
-  ast <- annotate inner
-  lift . liftF $ TS (AS { asToken = tok, asProfile = p }) (Source ty url df update) ast ()
-  token += 1
+  local (set sourcePath df . set sourceURL url) $ do
+    order .= 0
+    maxOrder .= size inner
+    p <- view profileName
+    profiles . contains p .= True
+    ast <- annotate inner
+    lift . liftF $ TS (AS { asToken = tok, asProfile = p }) (Source ty url df update) ast ()
+    token += 1
 
 -- | 'Actions' scope script size (in actual actions)
 size :: Script Actions a -> Int
-size = (`execState` 0) . go . evalScript def
+size = (`execState` 0) . go . evalScript def def
  where
   go :: Free (Term Annotate Actions) a -> State Int ()
   go (Free c@(TA {})) = id %= succ >> go (copoint c)
@@ -171,9 +199,9 @@ size = (`execState` 0) . go . evalScript def
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
 actioned f = Script $ do
-  rfp <- use app
-  sfp <- use source
-  url <- use sourceURL
+  rfp <- view app
+  sfp <- view sourcePath
+  url <- view sourceURL
   o <- order <+= 1
   mo <- use maxOrder
   lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
