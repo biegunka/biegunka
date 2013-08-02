@@ -223,7 +223,8 @@ actioned f = Script $ do
 -- >>> constructDestinationFilepath "/root" "from" "/to/"
 -- "/to/from"
 constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
-constructDestinationFilepath r s d = execState ?? r $ do
-  id </>= d
-  when ("/" `isSuffixOf` d) $
-    id </>= (s^.filename)
+constructDestinationFilepath root source destination =
+  execState ?? root $ do
+    id </>= destination
+    when ("/" `isSuffixOf` destination) $
+      id </>= (source^.filename)
