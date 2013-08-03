@@ -11,7 +11,7 @@ module Control.Biegunka.Primitive
   , shell, raw
     -- * Modifiers
   , profile, group
-  , sudo, reacting, retries, prerequisiteOf, (<~>)
+  , sudo, retries, reacting, prerequisiteOf, (<~>)
   ) where
 
 import Data.Monoid (mempty)
