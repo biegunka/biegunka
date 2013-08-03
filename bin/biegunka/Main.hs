@@ -16,6 +16,7 @@ import           Data.Version (Version(..))
 import           Options.Applicative (customExecParser, prefs, showHelpOnError)
 import qualified System.Directory as D
 import           System.Exit (ExitCode(..), exitWith)
+import           System.FilePath ((</>))
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
@@ -38,20 +39,23 @@ main = do
 
 initialize :: FilePath -> IO ()
 initialize destination = do
-  template <- getDataFileName "data/biegunka-init.template"
-  destinationExists <- D.doesFileExist destination
-  case destinationExists of
-    True -> do
-      response <- prompt $ destination ++ " already exists! Overwrite?"
-      case response of
-        True  -> move template
-        False -> do
-          putStrLn $ "Failed to initialize biegunka script: Already Exists"
-          exitWith (ExitFailure 1)
-    False -> move template
+  destinationIsDirectory <- D.doesDirectoryExist destination
+  case destinationIsDirectory of
+    True  -> initialize (destination </> defaultBiegunkaScriptName)
+    False -> do
+      template <- getDataFileName "data/biegunka-init.template"
+      destinationExists <- D.doesFileExist destination
+      case destinationExists of
+        True -> do
+          response <- prompt $ destination ++ " already exists! Overwrite?"
+          case response of
+            True  -> copy template
+            False -> do
+              putStrLn $ "Failed to initialize biegunka script: Already Exists"
+              exitWith (ExitFailure 1)
+        False -> copy template
  where
-  move :: FilePath -> IO ()
-  move source = do
+  copy source = do
     D.copyFile source destination
     putStrLn $ "Initialized biegunka script at " ++ destination
 
