@@ -130,8 +130,8 @@ type URI = String
 
 -- | User setting modifier
 data User u where
-  UserID   :: CUid -> User CUid     -- ^ Set user with ID
-  Username :: String -> User String -- ^ Set user with username
+  UserID   :: CUid -> User CUid
+  Username :: String -> User String
 
 instance Show (User u)
 
