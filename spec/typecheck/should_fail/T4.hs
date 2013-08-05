@@ -11,10 +11,9 @@ import Control.Biegunka
 
 data Env = A Int | B Int
 
-makeOptionsParser ''Env
+biegunkaOptions ''Env
 
 
 -- STDERR
---     Couldn't match type `Int -> Env' with `Env'
+--     Couldn't match expected type `Env' with actual type `Int -> Env'
 --
-

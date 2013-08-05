@@ -11,4 +11,4 @@ import Control.Biegunka
 
 data Env = A | B
 
-makeOptionsParser ''Env
+biegunkaOptions ''Env
