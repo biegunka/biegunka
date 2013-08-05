@@ -2,22 +2,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Making life easier with meta-programming
-module Control.Biegunka.TH (makeOptionsParser) where
+module Control.Biegunka.TH
+  ( biegunkaOptions
+  ) where
 
-import Data.Char (toLower)
+import Data.Char
 import Data.Foldable (asum)
-
 import Language.Haskell.TH
 import Options.Applicative
 
-import Control.Biegunka.Settings (Settings, biegunka, confirm)
+import Control.Biegunka.Settings (Interpreter, Settings, biegunka, confirm)
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Script (Script)
 import Control.Biegunka.Verify (check)
 
 
--- | Make parser for biegunka and environment options
+-- | Make command line parser for biegunka library
+-- and script environments options
 --
 -- The following options become available:
 --
@@ -33,54 +35,55 @@ import Control.Biegunka.Verify (check)
 --
 --   * Also one option for each environment (the --lowercased environment name)
 --
+-- Supports only "simple" sum types. ("Simple" here means non-empty, non-parametrized.)
+--
 -- The usage is trivial:
 --
 -- > data Environments = X220 | T510
 -- >
--- > makeOptionsParser ''Environment
+-- > biegunkaOptions ''Environments
 -- >
 -- > main :: IO ()
 -- > main = do
--- >   (environment, runBiegunka) <- optionsParser
--- >   ...
-makeOptionsParser :: Name -> Q [Dec]
-makeOptionsParser name = do
+-- >   (environment, runBiegunka) <- options
+-- >   case environment of
+-- >     X220 -> runBiegunka ...
+-- >     T510 -> runBiegunka ...
+biegunkaOptions :: Name -> Q [Dec]
+biegunkaOptions name = do
   inf <- reify name
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        optionsParser :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
-        optionsParser = customExecParser (prefs showHelpOnError) opts
+        options :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
+        options = flip biegunka .: customExecParser (prefs showHelpOnError) __opts__
+
+        __opts__ :: ParserInfo ($(conT tyCon), Interpreter)
+        __opts__ = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
          where
-          opts = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
-
-          interpreters =
-            let safeRun = confirm <> run
-            in (\i cs -> biegunka cs i) <$> asum
-              [ flag' run (long "run" <>
-                  help ("Do real run"))
-              , flag' safeRun (long "safe-run" <>
-                  help ("Do real run (after confirmation)"))
-              , flag' (dryRun <> safeRun <> check) (long "full" <>
-                  help ("Do dry run, real run (after confirmation) and then check results"))
-              , flag' dryRun (long "dry-run" <>
-                  help ("Do only dry run, do not touch anything"))
-              , flag' check (long "check" <>
-                  help ("Compare current filesystem state against script"))
-              , pure safeRun
-              ]
+          interpreters = asum
+            [ flag' run (long "run" <>
+                help ("Run script"))
+            , flag' safeRun (long "safe-run" <>
+                help ("Run script after confirmation"))
+            , flag' (dryRun <> safeRun <> check) (long "full" <>
+                help ("Dry run, run after confirmation and then check results"))
+            , flag' dryRun (long "dry-run" <>
+                help ("Dry run"))
+            , flag' check (long "check" <>
+                help ("Check script"))
+            , pure safeRun
+            ]
+           where
+            safeRun = confirm <> run
         |]
-    _ -> fail "makeOptionsParser: Unsupported data type"
-
+    _ -> fail "biegunkaOptions: Unsupported data type"
 
 makeEnvironmentFlag :: Name -> Q Exp
-makeEnvironmentFlag name = case nameBase name of
-  (toLower -> b):ase ->
-    let longOptionName = b:ase in [e|
-       flag' $(return (ConE name)) (long longOptionName <> help ("Use " ++ longOptionName ++ " settings"))
-     |]
-  _ -> fail "makeFlag: Anonymous data constructor (???)"
-
+makeEnvironmentFlag name =
+  let longOption = transformString (nameBase name) in [e|
+     flag' $(return (ConE name)) (long longOption <> help ("Use " ++ longOption ++ " settings"))
+   |]
 
 conToName :: Con -> Name
 conToName con = case con of
@@ -88,3 +91,14 @@ conToName con = case con of
   RecC n _      -> n
   InfixC _ n _  -> n
   ForallC _ _ c -> conToName c
+
+transformString :: String -> String
+transformString (x:xs) = toLower x : concatMap transformChar xs
+ where
+  transformChar y
+    | isUpper y = ['-', toLower y]
+    | otherwise = [y]
+transformString [] = []
+
+(.:) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(.:) = fmap . fmap

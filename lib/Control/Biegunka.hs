@@ -17,7 +17,7 @@ module Control.Biegunka
   , profile, group
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * TH
-  , makeOptionsParser
+  , biegunkaOptions
     -- ** Colors
   , ColorScheme(..)
   , actionColor, sourceColor
@@ -37,6 +37,6 @@ import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script, User(..), React(..))
-import Control.Biegunka.TH (makeOptionsParser)
+import Control.Biegunka.TH (biegunkaOptions)
 import Control.Biegunka.Verify (check)
 import Control.Biegunka.Source (Sourceable(..))
