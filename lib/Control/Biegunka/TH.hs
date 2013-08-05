@@ -92,6 +92,19 @@ conToName con = case con of
   InfixC _ n _  -> n
   ForallC _ _ c -> conToName c
 
+-- | Transform data constructor name into command line option
+--
+-- >>> transformString ""
+-- ""
+--
+-- >>> transformString "foo"
+-- "foo"
+--
+-- >>> transformString "Foo"
+-- "foo"
+--
+-- >>> transformString "FooBarBaz"
+-- "foo-bar-baz"
 transformString :: String -> String
 transformString (x:xs) = toLower x : concatMap transformChar xs
  where
