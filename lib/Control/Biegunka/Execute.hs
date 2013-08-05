@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | Real run interpreter
 module Control.Biegunka.Execute
@@ -49,11 +50,11 @@ run :: Interpreter
 run = interpret $ \c (s, as) -> do
   let b = DB.fromScript s
   a <- DB.load c (as^.profiles)
-  r <- initializeSTM (def & mode.~Real)
+  r <- initializeSTM
   let c' = c & local.~r
-  runTask c' newTask s
-  atomically (writeTQueue (c'^.local.sync.work) Stop)
-  schedule (c'^.local.sync.work)
+  runTask c' (newTask termOperation) s
+  atomically (writeTQueue (c'^.local.work) Stop)
+  schedule (c'^.local.work)
   mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
   mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
   DB.save c (as^.profiles) b
@@ -69,11 +70,11 @@ dryRun :: Interpreter
 dryRun = interpret $ \c (s, as) -> do
   let b = DB.fromScript s
   a <- DB.load c (as^.profiles)
-  e <- initializeSTM def
+  e <- initializeSTM
   let c' = c & local.~e
-  runTask c' newTask s
-  atomically (writeTQueue (e^.sync.work) Stop)
-  schedule (e^.sync.work)
+  runTask c' (newTask termEmptyOperation) s
+  atomically (writeTQueue (e^.work) Stop)
+  schedule (e^.work)
   c'^.logger $ runChanges (c'^.colors) a b
 
 
@@ -83,46 +84,62 @@ dryRun = interpret $ \c (s, as) -> do
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: Reifies t (Settings Execution)
-  => Retry
-  -> Free (Term Annotate Sources) a
+  :: forall t. Reifies t (Settings Execution)
+  => (forall s b t'. Reifies t' (Settings Execution) => Term Annotate s b -> Executor t' (IO ()))
+  -> Retry
+  -> Free (Term Annotate Sources) ()
   -> Executor t ()
-task retries (Free c@(TS (AS { asToken }) _ b d)) = do
-  newTask d
-  try (command c) >>= \case
-    Left e -> checkRetryCount retries (getRetries c) e >>= \case
-      True  -> task (incr retries) (Free (Pure () <$ c))
-      False -> case getReaction c of
-        Abortive -> doneWith asToken
-        Ignorant -> do
-          taskAction def b
-          doneWith asToken
-    Right _ -> do
-      taskAction def b
-      doneWith asToken
-task _ (Free c@(TM _ x)) = do
-  command c
-  task def x
-task _ (Pure _) = return ()
+task f = go
+ where
+  go
+    :: Reifies t (Settings Execution)
+    => Retry
+    -> Free (Term Annotate Sources) ()
+    -> Executor t ()
+  go retries (Free c@(TS (AS { asToken }) _ b d)) = do
+    newTask f d
+    try (command f c) >>= \case
+      Left e -> checkRetryCount retries (getRetries c) e >>= \case
+        True  -> go (incr retries) (Free (Pure () <$ c))
+        False -> case getReaction c of
+          Abortive -> doneWith asToken
+          Ignorant -> do
+            taskAction f def b
+            doneWith asToken
+      Right _ -> do
+        taskAction f def b
+        doneWith asToken
+  go _ (Free c@(TM _ x)) = do
+    command f c
+    go def x
+  go _ (Pure _) = return ()
 
 -- | Run single 'Actions' task
 taskAction
-  :: Reifies t (Settings Execution)
-  => Retry
-  -> Free (Term Annotate Actions) a
+  :: forall t. Reifies t (Settings Execution)
+  => (forall a s. Term Annotate s a -> Executor t (IO ()))
+  -> Retry
+  -> Free (Term Annotate Actions) ()
   -> Executor t ()
-taskAction retries a@(Free c@(TA _ _ x)) =
-  try (command c) >>= \case
-    Left e -> checkRetryCount retries (getRetries c) e >>= \case
-      True  -> taskAction (incr retries) a
-      False -> case getReaction c of
-        Abortive -> return ()
-        Ignorant -> taskAction def x
-    Right _ -> taskAction def x
-taskAction _ (Free c@(TM _ x)) = do
-  command c
-  taskAction def x
-taskAction _ (Pure _) = return ()
+taskAction f = go
+ where
+  go
+    :: Reifies t (Settings Execution)
+    => Retry
+    -> Free (Term Annotate Actions) a
+    -> Executor t ()
+  go retries a@(Free c@(TA _ _ x)) =
+    try (command f c) >>= \case
+      Left e -> checkRetryCount retries (getRetries c) e >>= \case
+        True  -> go (incr retries) a
+        False -> case getReaction c of
+          Abortive -> return ()
+          Ignorant -> go def x
+      Right _ -> go def x
+  go _ (Free c@(TM _ x)) = do
+    command f c
+    go def x
+  go _ (Pure _) = return ()
 
 
 -- | Get response from task failure processing
@@ -146,21 +163,23 @@ checkRetryCount doneRetries maximumRetries exc = do
 
 
 -- | Single command execution
-command :: Reifies t (Settings Execution)
-        => Term Annotate s a
-        -> Executor t ()
-command (TM (Wait ts) _)           = do
-  ts' <- env^!acts.local.sync.tasks
+command
+  :: Reifies t (Settings Execution)
+  => (Term Annotate s a -> Executor t (IO ()))
+  => Term Annotate s a
+  -> Executor t ()
+command _ (TM (Wait ts) _) = do
+  ts' <- env^!acts.local.tasks
   liftIO . atomically $ do
     ts'' <- readTVar ts'
     unless (ts `S.isSubsetOf` ts'')
       retry
-command c = do
-  stv <- env^!acts.local.sync.sudoing
-  rtv <- env^!acts.local.sync.running
+command f c = do
+  stv <- env^!acts.local.sudoing
+  rtv <- env^!acts.local.running
   log <- env^!acts.logger
   scm <- env^!acts.colors
-  op  <- env^!acts.local.runs.mode.act (\case Dry -> termEmptyOperation c; Real -> termOperation c)
+  op  <- f c
   liftIO $ case getUser c of
     Nothing  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
@@ -189,7 +208,7 @@ termOperation
   -> Executor t (IO ())
 termOperation term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- env^!acts.local.sync.repos
+    rstv <- env^!acts.local.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -246,21 +265,22 @@ termEmptyOperation _ = return (return ())
 
 -- | Queue next task in scheduler
 newTask
-  :: forall a t. Reifies t (Settings Execution)
-  => Free (Term Annotate Sources) a
+  :: forall t. Reifies t (Settings Execution)
+  => (forall s b t'. Reifies t' (Settings Execution) => Term Annotate s b -> Executor t' (IO ()))
+  -> Free (Term Annotate Sources) ()
   -> Executor t ()
-newTask (Pure _) = return ()
-newTask t = do
+newTask _ (Pure _) = return ()
+newTask f t = do
   e <- env
-  liftIO . atomically . writeTQueue (e^.local.sync.work) $
+  liftIO . atomically . writeTQueue (e^.local.work) $
     Do $ do
-      runTask e (task def) t
-      atomically (writeTQueue (e^.local.sync.work) Stop)
+      runTask e (task f def) t
+      atomically (writeTQueue (e^.local.work) Stop)
 
 -- | Tell execution process that you're done with task
 doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
 doneWith n = do
-  ts <- env^!acts.local.sync.tasks
+  ts <- env^!acts.local.tasks
   liftIO . atomically $
     modifyTVar ts (S.insert n)
 

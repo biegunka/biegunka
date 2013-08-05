@@ -4,22 +4,19 @@
 module Control.Biegunka.Execute.Settings
   ( Executor, env
     -- * Executor environment
-  , Execution, Sync, Run
+  , Execution
     -- * Lenses
-  , sync, runs
   , work, running, sudoing, repos, tasks
-  , mode
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
-  , Work(..), Mode(..)
+  , Work(..)
   ) where
 
 import Control.Applicative (Applicative)
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
-import Data.Default
 import Data.Functor.Trans.Tagged
 import Data.Monoid (mempty)
 import Data.Reflection (Reifies)
@@ -35,14 +32,8 @@ env :: (Applicative m, Reifies s a) => TaggedT s m a
 env = reflected
 
 
--- | Both 'Executor' environment and synced multithread state
+-- | Multithread accessable parts
 data Execution = Execution
-  { _sync :: Sync
-  , _runs :: Run
-  }
-
--- | Multithread accessable parts of 'Execution'
-data Sync = Sync
   { _work    :: TQueue Work       -- ^ Task queue
   , _sudoing :: TVar Bool         -- ^ Whether sudoed operation is in progress.
   , _running :: TVar Bool         -- ^ Whether any operation is in progress.
@@ -55,74 +46,41 @@ data Work =
     Do (IO ()) -- ^ Task to come
   | Stop       -- ^ Task is done
 
--- | 'Executor' environment.
--- Denotes default failure reaction, templates used and more
-data Run = Run
-  { _mode :: Mode -- ^ Executor mode
-  }
-
-instance Default Run where
-  def = Run
-    { _mode = Dry
-    }
-
--- | How to do execution
-data Mode =
-    Dry  -- ^ Dry run mode
-  | Real -- ^ Real run mode
-    deriving (Show, Read, Eq, Ord)
-
 
 -- * Lenses
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 
 -- | Executor cross-thread state
-sync :: Lens' Execution Sync
-
--- | Executor environment
-runs :: Lens' Execution Run
-
-
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Sync
 
 -- | Task queue
-work :: Lens' Sync (TQueue Work)
+work :: Lens' Execution (TQueue Work)
 
 -- | Whether sudoed operation is in progress.
-sudoing :: Lens' Sync (TVar Bool)
+sudoing :: Lens' Execution (TVar Bool)
 
 -- | Whether any operation is in progress.
-running :: Lens' Sync (TVar Bool)
+running :: Lens' Execution (TVar Bool)
 
 -- | Already updated repositories
-repos :: Lens' Sync (TVar (Set String))
+repos :: Lens' Execution (TVar (Set String))
 
 -- | Done tasks
-tasks :: Lens' Sync (TVar (Set Int))
-
-
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Run
-
--- | Executor mode
-mode :: Lens' Run Mode
+tasks :: Lens' Execution (TVar (Set Int))
 
 
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: Run -> IO Execution
-initializeSTM r = do
+initializeSTM :: IO Execution
+initializeSTM = do
   a <- newTQueueIO
   b <- newTVarIO False
   c <- newTVarIO False
   d <- newTVarIO mempty
   e <- newTVarIO mempty
   return $ Execution
-    { _sync = Sync
-        { _work = a
-        , _running = b
-        , _sudoing = c
-        , _repos = d
-        , _tasks = e
-        }
-    , _runs = r
+    { _work = a
+    , _running = b
+    , _sudoing = c
+    , _repos = d
+    , _tasks = e
     }
