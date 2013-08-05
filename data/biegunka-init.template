@@ -15,7 +15,7 @@ import Control.Lens
 data Environments = Default
 
 -- Generate a parser for a bunch of convenient command line options with TH
-makeOptionsParser ''Environments
+biegunkaOptions ''Environments
 
 
 main :: IO ()
@@ -23,7 +23,7 @@ main = do
   -- Set ~ directory as root for all paths (except those which are rooted at source location)
   let biegunkaSettings = set root "~"
   -- Use generated options parser to get environment to run scripts in
-  (environment, runBiegunka) <- optionsParser
+  (environment, runBiegunka) <- options
   -- Detect environment and act accordingly
   case environment of
     Default -> runBiegunka biegunkaSettings script
