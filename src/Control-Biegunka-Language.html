@@ -99,20 +99,21 @@
 <a name="line-90"></a>    <span class='hs-conid'>OnlyDirectories</span>
 <a name="line-91"></a>  <span class='hs-keyglyph'>|</span> <span class='hs-conid'>OnlyFiles</span>
 <a name="line-92"></a>  <span class='hs-keyglyph'>|</span> <span class='hs-conid'>BothDirectoriesAndFiles</span>
-<a name="line-93"></a>
-<a name="line-94"></a><a name="PatchSpec"></a><span class='hs-comment'>-- | Patch settings</span>
-<a name="line-95"></a><a name="PatchSpec"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>PatchSpec</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>PatchSpec</span>
-<a name="line-96"></a>  <span class='hs-layout'>{</span> <span class='hs-varid'>strip</span>     <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Int</span>  <span class='hs-comment'>-- ^ How many leading slashes to strip</span>
-<a name="line-97"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>reversely</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Bool</span> <span class='hs-comment'>-- ^ Apply in reverse?</span>
-<a name="line-98"></a>  <span class='hs-layout'>}</span>
-<a name="line-99"></a>
-<a name="line-100"></a><a name="instance%20Default%20PatchSpec"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Default</span> <span class='hs-conid'>PatchSpec</span> <span class='hs-keyword'>where</span>
-<a name="line-101"></a>  <span class='hs-varid'>def</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>PatchSpec</span>
-<a name="line-102"></a>    <span class='hs-layout'>{</span> <span class='hs-varid'>strip</span>     <span class='hs-keyglyph'>=</span> <span class='hs-num'>1</span>
-<a name="line-103"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>reversely</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>False</span>
-<a name="line-104"></a>    <span class='hs-layout'>}</span>
-<a name="line-105"></a>
-<a name="line-106"></a><a name="Modifier"></a><span class='hs-comment'>-- | Modificators for other datatypes</span>
-<a name="line-107"></a><a name="Modifier"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>Modifier</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Wait</span> <span class='hs-layout'>(</span><span class='hs-conid'>Set</span> <span class='hs-conid'>Int</span><span class='hs-layout'>)</span>
+<a name="line-93"></a>    <span class='hs-keyword'>deriving</span> <span class='hs-layout'>(</span><span class='hs-conid'>Show</span><span class='hs-layout'>,</span> <span class='hs-conid'>Read</span><span class='hs-layout'>)</span>
+<a name="line-94"></a>
+<a name="line-95"></a><a name="PatchSpec"></a><span class='hs-comment'>-- | Patch settings</span>
+<a name="line-96"></a><a name="PatchSpec"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>PatchSpec</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>PatchSpec</span>
+<a name="line-97"></a>  <span class='hs-layout'>{</span> <span class='hs-varid'>strip</span>     <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Int</span>  <span class='hs-comment'>-- ^ How many leading slashes to strip</span>
+<a name="line-98"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>reversely</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Bool</span> <span class='hs-comment'>-- ^ Apply in reverse?</span>
+<a name="line-99"></a>  <span class='hs-layout'>}</span> <span class='hs-keyword'>deriving</span> <span class='hs-layout'>(</span><span class='hs-conid'>Show</span><span class='hs-layout'>,</span> <span class='hs-conid'>Read</span><span class='hs-layout'>)</span>
+<a name="line-100"></a>
+<a name="line-101"></a><a name="instance%20Default%20PatchSpec"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Default</span> <span class='hs-conid'>PatchSpec</span> <span class='hs-keyword'>where</span>
+<a name="line-102"></a>  <span class='hs-varid'>def</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>PatchSpec</span>
+<a name="line-103"></a>    <span class='hs-layout'>{</span> <span class='hs-varid'>strip</span>     <span class='hs-keyglyph'>=</span> <span class='hs-num'>1</span>
+<a name="line-104"></a>    <span class='hs-layout'>,</span> <span class='hs-varid'>reversely</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>False</span>
+<a name="line-105"></a>    <span class='hs-layout'>}</span>
+<a name="line-106"></a>
+<a name="line-107"></a><a name="Modifier"></a><span class='hs-comment'>-- | Modificators for other datatypes</span>
+<a name="line-108"></a><a name="Modifier"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>Modifier</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Wait</span> <span class='hs-layout'>(</span><span class='hs-conid'>Set</span> <span class='hs-conid'>Int</span><span class='hs-layout'>)</span>
 </pre></body>
 </html>
