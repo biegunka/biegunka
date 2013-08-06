@@ -47,7 +47,7 @@ import Control.Biegunka.Script
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \c (s, as) -> do
+run = interpret $ \c s as -> do
   let b = DB.fromScript s
   a <- DB.load c (as^.profiles)
   r <- initializeSTM
@@ -67,7 +67,7 @@ run = interpret $ \c (s, as) -> do
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \c (s, as) -> do
+dryRun = interpret $ \c s as -> do
   let b = DB.fromScript s
   a <- DB.load c (as^.profiles)
   e <- initializeSTM

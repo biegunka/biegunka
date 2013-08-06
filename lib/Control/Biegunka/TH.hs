@@ -15,7 +15,7 @@ import Control.Biegunka.Settings (Interpreter, Settings, biegunka, confirm)
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Script (Script)
-import Control.Biegunka.Verify (check)
+import Control.Biegunka.Check (check)
 
 
 -- | Make command line parser for biegunka library

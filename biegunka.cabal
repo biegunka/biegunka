@@ -45,6 +45,7 @@ library
   exposed-modules:
     Control.Biegunka
     Control.Biegunka.Action
+    Control.Biegunka.Check
     Control.Biegunka.DB
     Control.Biegunka.Execute
     Control.Biegunka.Execute.Describe
@@ -62,7 +63,6 @@ library
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
     Control.Biegunka.TH
-    Control.Biegunka.Verify
   ghc-options:
     -Wall
     -fno-warn-unused-do-bind

@@ -133,26 +133,27 @@ instance Default a => Default (Settings a) where
 newtype Interpreter = I
   { runInterpreter
       :: Settings ()
-      -> (Free (Term Annotate Sources) (), AnnotationsState)
+      -> Free (Term Annotate Sources) ()
+      -> AnnotationsState
       -> IO ()
       -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Semigroup Interpreter where
-  I f <> I g = I $ \c s k -> f c s (g c s k)
+  I f <> I g = I $ \c s a k -> f c s a (g c s a k)
 
 -- | Empty 'Interpreter' does nothing.
 -- Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Monoid Interpreter where
-  mempty = I $ \_ _ k -> k
+  mempty = I $ \_ _ _ k -> k
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
 interpret
-  :: (Settings () -> (Free (Term Annotate Sources) (), AnnotationsState) -> IO ())
+  :: (Settings () -> Free (Term Annotate Sources) () -> AnnotationsState -> IO ())
   -> Interpreter
-interpret f = I (\c s k -> f c s >> k)
+interpret f = I (\c s a k -> f c s a >> k)
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
@@ -165,9 +166,8 @@ biegunka (($ def) -> c) (I f) s = do
   ad <- c^.appData.to expand
   l <- newTQueueIO
   forkIO $ log l
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l))
-    (runScript' def (def & app .~ r) s)
-    (return ())
+  let (s', a) = runScript' def (def & app .~ r) s
+  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l)) s' a (return ())
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
 
@@ -183,7 +183,7 @@ expand x = do
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
+pause = interpret $ \c _ _ -> view logger c (text "Press any key to continue" <//> line) >> getch
  where
   getch = do
     hSetBuffering stdin NoBuffering
@@ -192,7 +192,7 @@ pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//>
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
-confirm = I $ \c _ k -> do
+confirm = I $ \c _ _ k -> do
   r <- prompt (view logger c) (text "Proceed? [y/n] ")
   case r of
     True  -> k

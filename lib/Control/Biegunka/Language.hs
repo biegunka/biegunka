@@ -90,12 +90,13 @@ data CopySpec =
     OnlyDirectories
   | OnlyFiles
   | BothDirectoriesAndFiles
+    deriving (Show, Read)
 
 -- | Patch settings
 data PatchSpec = PatchSpec
   { strip     :: Int  -- ^ How many leading slashes to strip
   , reversely :: Bool -- ^ Apply in reverse?
-  }
+  } deriving (Show, Read)
 
 instance Default PatchSpec where
   def = PatchSpec

@@ -38,5 +38,5 @@ import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (Script, User(..), React(..))
 import Control.Biegunka.TH (biegunkaOptions)
-import Control.Biegunka.Verify (check)
+import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
