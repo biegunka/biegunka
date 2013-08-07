@@ -166,7 +166,7 @@ checkRetryCount doneRetries maximumRetries exc = do
 command
   :: Reifies t (Settings Execution)
   => (Term Annotate s a -> Executor t (IO ()))
-  => Term Annotate s a
+  -> Term Annotate s a
   -> Executor t ()
 command _ (TM (Wait ts) _) = do
   ts' <- env^!acts.local.tasks
