@@ -11,7 +11,7 @@ import Control.Biegunka.Script
 
 -- | Make specified layout and use is as 'Source'
 layout
-  :: Path p
+  :: Target p
   => Layout            -- ^ Layout to make
   -> p                 -- ^ Layout root
   -> Script Actions () -- ^ What to do with layout files
@@ -25,7 +25,7 @@ layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner updat
 
 -- | Make specified layout and do nothing
 layout_
-  :: Path p
+  :: Target p
   => Layout -- ^ Layout to make
   -> p      -- ^ Layout root
   -> Script Sources ()

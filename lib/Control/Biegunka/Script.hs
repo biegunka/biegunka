@@ -12,7 +12,7 @@ module Control.Biegunka.Script
   , script, annotate, rewind, URI, sourced, actioned, constructToFilepath
   , token, app, profiles, profileName, source, sourceURL, order
   , runScript, runScript', evalScript
-  , Path(..), into
+  , Target(..), into
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
@@ -163,7 +163,7 @@ rewind l mb = do
   return a'
 
 -- | Abstract away all plumbing needed to make source
-sourced :: Path p => String -> URI -> p
+sourced :: Target p => String -> URI -> p
         -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- use app
@@ -199,21 +199,21 @@ actioned f = Script $ do
   lift . liftF $ TA (AA { aaURI = url, aaOrder = o, aaMaxOrder = mo }) (f rfp sfp) ()
 
 
-class Path p where
+class Target p where
   destination :: p -> FilePath -> FilePath
 
-instance Path FilePath where
+instance Target FilePath where
   destination = const
 
 
-newtype Into = Into { unInto :: FilePath }
+newtype Into a = Into { unInto :: a }
   deriving (Show, Read)
 
-instance Path Into where
+instance a ~ FilePath => Target (Into a) where
   destination p filepath = unInto p </> filepath
 
 -- | Place stuff /into/ directory instead of using filename directly
-into :: FilePath -> Into
+into :: FilePath -> Into FilePath
 into = Into
 
 -- | Construct destination 'FilePath'
@@ -238,6 +238,6 @@ into = Into
 --
 -- >>> constructToFilepath "/root" "from" (into "/to")
 -- "/to/from"
-constructToFilepath :: Path p => FilePath -> FilePath -> p -> FilePath
+constructToFilepath :: Target p => FilePath -> FilePath -> p -> FilePath
 constructToFilepath root s path =
   root </> destination path (s^.filename)

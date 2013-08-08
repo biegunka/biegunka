@@ -79,7 +79,7 @@ register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
 -- >   link "some-file" "anywhere"
 --
 -- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
-link :: Path p => FilePath -> p -> Script Actions ()
+link :: Target p => FilePath -> p -> Script Actions ()
 link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructToFilepath rfp src dst))
 {-# INLINE link #-}
 
@@ -89,7 +89,7 @@ link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructToFilepath rfp
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copy :: Path p => FilePath -> p -> Script Actions ()
+copy :: Target p => FilePath -> p -> Script Actions ()
 copy = copy' BothDirectoriesAndFiles
 {-# INLINE copy #-}
 
@@ -99,7 +99,7 @@ copy = copy' BothDirectoriesAndFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyFile :: Path p => FilePath -> p -> Script Actions ()
+copyFile :: Target p => FilePath -> p -> Script Actions ()
 copyFile = copy' OnlyFiles
 {-# INLINE copyFile #-}
 
@@ -109,11 +109,11 @@ copyFile = copy' OnlyFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyDirectory :: Path p => FilePath -> p -> Script Actions ()
+copyDirectory :: Target p => FilePath -> p -> Script Actions ()
 copyDirectory = copy' OnlyDirectories
 {-# INLINE copyDirectory #-}
 
-copy' :: Path p => CopySpec -> FilePath -> p -> Script Actions ()
+copy' :: Target p => CopySpec -> FilePath -> p -> Script Actions ()
 copy' spec src dst = actioned (\rfp sfp ->
   Copy (sfp </> src) (constructToFilepath rfp src dst) spec)
 {-# INLINE copy' #-}
@@ -128,7 +128,7 @@ copy' spec src dst = actioned (\rfp sfp ->
 --
 -- Substitutes templates in @~\/anywhere@ with values from
 -- 'templates' part of 'Controls'
-substitute :: Path p => FilePath -> p -> Script Actions ()
+substitute :: Target p => FilePath -> p -> Script Actions ()
 substitute src dst = actioned (\rfp sfp ->
   Template (sfp </> src) (constructToFilepath rfp src dst)
     (\b -> render . setAttribute "template" b . newSTMP))
