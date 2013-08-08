@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -7,7 +8,7 @@
 module Control.Biegunka.Check (check) where
 
 import Control.Applicative
-import Control.Lens
+import Control.Lens hiding (Action)
 import Control.Monad
 import Control.Monad.Catch (MonadCatch, catchIOError)
 import Control.Monad.Free (Free(..), iterM)
@@ -39,6 +40,7 @@ data CheckFailure =
   | FilePath `NotATemplateInstanceOf` FilePath
   | NotPatchedWith FilePath FilePath PatchSpec
   | String `IncorrectOwnerOf` FilePath
+  | CannotDetermineOwnerOf FilePath
     deriving (Show, Read)
 
 
@@ -64,48 +66,59 @@ verification = iterM $ \case
       False -> tell [NonExistingSource spath suri]
     next
   TA (AA { aaUser }) action next -> do
-    case action of
-      Link source target -> do
-        source' <- io $ readSymbolicLink target
-        dfe     <- io $ doesFileExist source'
-        dde     <- io $ doesDirectoryExist source'
-        unless (source == source' && (dfe || dde)) $
-          failure (target `NotALinkTo` source)
-        checkOwnage aaUser target
-       `catchedIOError`
-        tell [target `NotALinkTo` source]
-      Copy source target spec -> do
-        copy <- io $ verifyCopy source target spec
-        unless copy $
-          failure (target `NotACopyOf` source)
-        checkOwnage aaUser target
-       `catchedIOError`
-        failure (target `NotACopyOf` source)
-      Template source target _ -> do
-        exists <- io $ doesFileExist target
-        unless exists $
-          failure (target `NotATemplateInstanceOf` source)
-        checkOwnage aaUser target
-       `catchedIOError`
-        failure (target `NotATemplateInstanceOf` source)
-      Patch patch target spec -> do
-        verified <- io $ verifyAppliedPatch patch target spec
-        unless verified $
-          failure ((target `NotPatchedWith` patch) spec)
-        checkOwnage aaUser target
-       `catchedIOError`
-        failure ((target `NotPatchedWith` patch) spec)
-      Command _ _ ->
-        return ()
+    checkActionResult action
+    checkOwnage aaUser action
     next
   TM _ next -> next
 
+-- | Check that result of term execution is what's expected
+checkActionResult :: Action -> WriterT [CheckFailure] IO ()
+checkActionResult = \case
+  Link source target -> do
+    source' <- io $ readSymbolicLink target
+    dfe     <- io $ doesFileExist source'
+    dde     <- io $ doesDirectoryExist source'
+    unless (source == source' && (dfe || dde)) $
+      failure (target `NotALinkTo` source)
+   `catchedIOError`
+    tell [target `NotALinkTo` source]
+  Copy source target spec -> do
+    copy <- io $ verifyCopy source target spec
+    unless copy $
+      failure (target `NotACopyOf` source)
+   `catchedIOError`
+    failure (target `NotACopyOf` source)
+  Template source target _ -> do
+    exists <- io $ doesFileExist target
+    unless exists $
+      failure (target `NotATemplateInstanceOf` source)
+   `catchedIOError`
+    failure (target `NotATemplateInstanceOf` source)
+  Patch patch target spec -> do
+    verified <- io $ verifyAppliedPatch patch target spec
+    unless verified $
+      failure ((target `NotPatchedWith` patch) spec)
+   `catchedIOError`
+    failure ((target `NotPatchedWith` patch) spec)
+  Command _ _ ->
+    return ()
 
-checkOwnage :: Maybe UserW -> FilePath -> WriterT [CheckFailure] IO ()
-checkOwnage auser target = do
-  owning  <- io $ compareUsers auser target
-  for_ owning $ \user ->
-    failure $ user `IncorrectOwnerOf` target
+-- | Check that stuff is owned by correct user
+checkOwnage :: Maybe UserW -> Action -> WriterT [CheckFailure] IO ()
+checkOwnage auser = \case
+  Link _ target       -> ownage target
+  Copy _ target _     -> ownage target
+  Template _ target _ -> ownage target
+  Patch _ target _    -> ownage target
+  Command _ _         -> return ()
+ where
+  ownage :: FilePath -> WriterT [CheckFailure] IO ()
+  ownage target = do
+    owning <- io $ compareUsers auser target
+    for_ owning $ \user ->
+      failure $ user `IncorrectOwnerOf` target
+   `catchedIOError`
+    failure (CannotDetermineOwnerOf target)
 
 compareUsers :: Maybe UserW -> FilePath -> IO (Maybe String)
 compareUsers mu path = do
@@ -151,6 +164,9 @@ documentCheckFailure scheme = \case
         (scheme^.dstColor) (text target)
     </> "is incorrectly owned by"
     </> (scheme^.sourceColor) (text name)
+  CannotDetermineOwnerOf target ->
+        "cannot determine who owns"
+    </> (scheme^.dstColor) (text target)
 
 catchedIOError :: MonadCatch m => m a -> m a -> m a
 catchedIOError ma ma' = ma `catchIOError` \_ -> ma'
