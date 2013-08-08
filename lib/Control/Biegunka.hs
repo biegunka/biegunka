@@ -7,7 +7,7 @@ module Control.Biegunka
   , Interpreter
   , pause, confirm, dryRun, run, check
     -- * Types
-  , Script, Scope(..)
+  , Script, Scope(..), Target
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
@@ -16,6 +16,8 @@ module Control.Biegunka
     -- * Modifiers
   , profile, group
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
+    -- * Auxiliary
+  , Into, into
     -- * TH
   , biegunkaOptions
     -- ** Colors
@@ -36,7 +38,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (Script, User(..), React(..))
+import Control.Biegunka.Script (Script, User(..), React(..), Target, Into, into)
 import Control.Biegunka.TH (biegunkaOptions)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))

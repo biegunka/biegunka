@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -17,30 +18,33 @@ module Control.Biegunka.Script
     -- * Get annotated script
   , runScript, runScript', evalScript
     -- * Script mangling
-  , script, annotate, sourced, actioned, constructDestinationFilepath
+  , script, annotate, sourced, actioned, constructTargetFilePath
     -- * Lenses
   , app, profileName, sourcePath, sourceURL, profiles
   , token, order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
   , URI, UserW(..), User(..), React(..), Retry(..), incr
+  , Target(..), Into, into
   ) where
 
 import Control.Applicative (Applicative(..), (<$))
 import Control.Lens hiding (Action)
-import Control.Monad (when)
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (StateT(..), State, execState)
 import Control.Monad.Reader (ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
 import Data.Default (Default(..))
-import Data.List (isSuffixOf)
 import Data.Set (Set)
 import Data.String (IsString(..))
+import System.FilePath ((</>))
 import System.FilePath.Lens
 import System.Posix.Types (CUid)
 
 import Control.Biegunka.Language
+
+-- $setup
+-- >>> :set -XOverloadedStrings
 
 
 -- | Language 'Term' annotation depending on their 'Scope'
@@ -267,12 +271,12 @@ annotate i =
 
 -- | Abstract away all plumbing needed to make source
 sourced
-  :: String -> URI -> FilePath
+  :: Target p => String -> URI -> p
   -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- view app
   tok <- use token
-  let df = constructDestinationFilepath rfp url path
+  let df = constructTargetFilePath rfp url path
   local (set sourcePath df . set sourceURL url) $ do
     order    .= 0
     maxOrder .= size inner
@@ -328,25 +332,46 @@ actioned f = Script $ do
   lift . liftF $
     TA annotation (f rfp sfp) ()
 
+
+class Target p where
+  destination :: p -> FilePath -> FilePath
+
+instance Target FilePath where
+  destination = const
+
+
+newtype Into a = Into { unInto :: a }
+  deriving (Show, Read)
+
+instance a ~ FilePath => Target (Into a) where
+  destination p filepath = unInto p </> filepath
+
+-- | Place stuff /into/ directory instead of using filename directly
+into :: FilePath -> Into FilePath
+into = Into
+
 -- | Construct destination 'FilePath'
 --
--- >>> constructDestinationFilepath "" "" ""
+-- >>> constructToFilepath "" "" ""
 -- ""
 --
--- >>> constructDestinationFilepath "/root" "from" "to"
+-- >>> constructTargetFilePath "/root" "from" "to"
 -- "/root/to"
 --
--- >>> constructDestinationFilepath "/root" "from" "/to"
--- "/to"
+-- >>> constructTargetFilePath "/root" "from" "to/"
+-- "/root/to/"
 --
--- >>> constructDestinationFilepath "/root" "from" "to/"
+-- >>> constructTargetFilePath "/root" "from" (into "to")
 -- "/root/to/from"
 --
--- >>> constructDestinationFilepath "/root" "from" "/to/"
+-- >>> constructTargetFilePath "/root" "from" "/to"
+-- "/to"
+--
+-- >>> constructTargetFilePath "/root" "from" "/to/"
+-- "/to/"
+--
+-- >>> constructTargetFilePath "/root" "from" (into "/to")
 -- "/to/from"
-constructDestinationFilepath :: FilePath -> FilePath -> FilePath -> FilePath
-constructDestinationFilepath root source destination =
-  execState ?? root $ do
-    id </>= destination
-    when ("/" `isSuffixOf` destination) $
-      id </>= (source^.filename)
+constructTargetFilePath :: Target p => FilePath -> FilePath -> p -> FilePath
+constructTargetFilePath root s path =
+  root </> destination path (s^.filename)
