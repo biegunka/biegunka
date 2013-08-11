@@ -14,7 +14,7 @@ module Control.Biegunka
   , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..)
   , shell, raw
     -- * Modifiers
-  , profile, group
+  , profile, group, role
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * Auxiliary
   , Into, into

@@ -10,7 +10,7 @@ module Control.Biegunka.Primitive
     link, register, copy, copyFile, copyDirectory, substitute, patch
   , shell, raw
     -- * Modifiers
-  , profile, group
+  , profile, group, role
   , sudo, retries, reacting, prerequisiteOf, (<~>)
   ) where
 
@@ -60,6 +60,11 @@ profile name (Script inner) = Script $
 group :: String -> Script Sources a -> Script Sources a
 group = profile
 {-# INLINE group #-}
+
+-- | Alias for 'profile'. Everyone uses roles for something
+role :: String -> Script Sources a -> Script Sources a
+role = profile
+{-# INLINE role #-}
 
 -- | Links source to specified filepath
 --
