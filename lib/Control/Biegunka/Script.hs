@@ -27,10 +27,10 @@ module Control.Biegunka.Script
   , Target(..), Into, into
   ) where
 
-import Control.Applicative (Applicative(..), (<$))
+import Control.Applicative (Applicative(..), (<$), (<$>))
 import Control.Lens hiding (Action)
 import Control.Monad.Free (Free(..), iter, liftF)
-import Control.Monad.State (StateT(..), State, execState)
+import Control.Monad.State (StateT(..))
 import Control.Monad.Reader (ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
@@ -169,9 +169,9 @@ incr (Retry n) = Retry (succ n)
 
 -- | Script construction state
 data AnnotationsState = AState
-  { _token :: Int           -- ^ Unique term token
+  { _token    :: Int        -- ^ Unique term token
   , _profiles :: Set String -- ^ Profile name
-  , _order :: Int           -- ^ Current action order
+  , _order    :: Int        -- ^ Current action order
   , _maxOrder :: Int        -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
@@ -185,14 +185,14 @@ instance Default AnnotationsState where
   {-# INLINE def #-}
 
 data AnnotationsEnv = AEnv
-  { _app         :: FilePath    -- ^ Biegunka root filepath
-  , _profileName :: String      -- ^ Profile name
-  , _sourcePath  :: FilePath    -- ^ Source root filepath
-  , _sourceURL   :: URI         -- ^ Current source url
-  , _activeUser  :: Maybe UserW -- ^ Maximum action order in current source
-  , _maxRetries  :: Retry       -- ^ Maximum retries count
-  , _sourceReaction :: React    -- ^ How to react on source failure
-  , _actionReaction :: React    -- ^ How to react on action failure
+  { _app            :: FilePath    -- ^ Biegunka root filepath
+  , _profileName    :: String      -- ^ Profile name
+  , _sourcePath     :: FilePath    -- ^ Source root filepath
+  , _sourceURL      :: URI         -- ^ Current source url
+  , _activeUser     :: Maybe UserW -- ^ Maximum action order in current source
+  , _maxRetries     :: Retry       -- ^ Maximum retries count
+  , _sourceReaction :: React       -- ^ How to react on source failure
+  , _actionReaction :: React       -- ^ How to react on action failure
   }
 
 deriving instance Show AnnotationsEnv
@@ -200,11 +200,11 @@ deriving instance Show AnnotationsEnv
 instance Default AnnotationsEnv where
   def = AEnv
     { _app = def
-    , _profileName = def
-    , _sourcePath = def
-    , _sourceURL = def
-    , _activeUser = def
-    , _maxRetries = Retry 1
+    , _profileName    = def
+    , _sourcePath     = def
+    , _sourceURL      = def
+    , _activeUser     = def
+    , _maxRetries     = Retry 1
     , _sourceReaction = Abortive
     , _actionReaction = Ignorant
     }
@@ -301,14 +301,23 @@ sourced ty url path inner update = Script $ do
 
     token += 1
 
--- | 'Actions' scope script size (in actual actions)
+-- | Get 'Actions' scoped script size measured in actions
 size :: Script Actions a -> Int
-size = (`execState` 0) . go . evalScript def def
+size = iterFrom 0 go . evalScript def def
  where
-  go :: Free (Term Annotate Actions) a -> State Int ()
-  go (Free c@(TA {})) = id %= succ >> go (copoint c)
-  go (Free c@(TM {})) = go (copoint c)
-  go (Pure _) = return ()
+  go :: Term Annotate Actions Int -> Int
+  go (TA _ _ result) = succ result
+  go (TM _ result)   = result
+
+-- | Inline '<$' into 'iter'
+--
+-- > iterFrom x f = iter f . (x <$)
+iterFrom :: Functor f => a -> (f a -> a) -> Free f b -> a
+iterFrom zero phi = go where
+  go (Pure _) = zero
+  go (Free m) = phi (go <$> m)
+  {-# INLINE go #-}
+{-# INLINE iterFrom #-}
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
