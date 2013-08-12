@@ -80,7 +80,7 @@ main = hspec $
            ) -> p == p'
           _ -> False
       it "collects all mentioned profiles no matter what" $
-        let (_, as) = runScript' def def $ do
+        let (_, as) = runScript def def $ do
               profile "foo" $ do
                 group "bar" $
                   directory "/" def
@@ -92,7 +92,7 @@ main = hspec $
               directory "/" def
         in as^.profiles == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
       it "ignores \"\" if no ungrouped source is mentioned" $
-        let (_, as) = runScript' def def $ do
+        let (_, as) = runScript def def $ do
               profile "baz" $ do
                 directory "/" def
               profile "quux" $ do
