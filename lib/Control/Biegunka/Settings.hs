@@ -134,7 +134,7 @@ newtype Interpreter = I
   { runInterpreter
       :: Settings ()
       -> Free (Term Annotate Sources) ()
-      -> AnnotationsState
+      -> MAnnotations
       -> IO ()
       -> IO ()
   }
@@ -151,7 +151,7 @@ instance Monoid Interpreter where
 
 -- | Interpreter that calls its continuation after interpretation
 interpret
-  :: (Settings () -> Free (Term Annotate Sources) () -> AnnotationsState -> IO ())
+  :: (Settings () -> Free (Term Annotate Sources) () -> MAnnotations -> IO ())
   -> Interpreter
 interpret f = I (\c s a k -> f c s a >> k)
 
@@ -166,7 +166,7 @@ biegunka (($ def) -> c) (I f) s = do
   ad <- c^.appData.to expand
   l <- newTQueueIO
   forkIO $ log l
-  let (s', a) = runScript' def (def & app .~ r) s
+  let (s', a) = runScript def (def & app .~ r) s
   f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l)) s' a (return ())
   fix $ \wait ->
     atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)

@@ -14,9 +14,9 @@ module Control.Biegunka.Script
   ( -- * Script types
     Script(..), Annotate(..)
     -- ** Implementation details
-  , AnnotationsState, AnnotationsEnv
+  , MAnnotations, Annotations
     -- * Get annotated script
-  , runScript, runScript', evalScript
+  , runScript, evalScript
     -- * Script mangling
   , script, annotate, sourced, actioned, constructTargetFilePath
     -- * Lenses
@@ -47,7 +47,10 @@ import Control.Biegunka.Language
 -- >>> :set -XOverloadedStrings
 
 
--- | Language 'Term' annotation depending on their 'Scope'
+-- | Language 'Term' annotations
+--
+-- Different scopes require different kinds of
+-- annotations, so it is a family of them
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
   { asToken      :: Int
@@ -69,8 +72,8 @@ data instance Annotate Actions = AA
 -- | Newtype used to provide better error messages
 -- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
-  { unScript :: ReaderT AnnotationsEnv
-      (StateT AnnotationsState (Free (Term Annotate s))) a
+  { unScript :: ReaderT Annotations
+      (StateT MAnnotations (Free (Term Annotate s))) a
   }
 
 instance Functor (Script s) where
@@ -93,38 +96,29 @@ instance Default a => Default (Script s a) where
   def = return def
   {-# INLINE def #-}
 
--- | Get annotated DSL and resulting state
+-- | Get annotated DSL and resulting annotations alongside
 runScript
-  :: AnnotationsState
-  -> AnnotationsEnv
+  :: MAnnotations
+  -> Annotations
   -> Script s a
-  -> Free (Term Annotate s) (a, AnnotationsState)
-runScript as ae (Script s) = runStateT (runReaderT s ae) as
-{-# INLINE runScript #-}
-
--- | Get annotated DSL and resulting state
-runScript'
-  :: AnnotationsState
-  -> AnnotationsEnv
-  -> Script s a
-  -> (Free (Term Annotate s) a, AnnotationsState)
-runScript' s e i =
-  let r       = runScript s e i
+  -> (Free (Term Annotate s) a, MAnnotations)
+runScript s e (Script i) =
+  let r       = runStateT (runReaderT i e) s
       ast     = fmap fst r
       (_, as) = iter copoint r
   in (ast, as)
-{-# INLINE runScript' #-}
+{-# INLINE runScript #-}
 
--- | Get annotated DSL
+-- | Get annotated DSL without annotations
 evalScript
-  :: AnnotationsState
-  -> AnnotationsEnv
+  :: MAnnotations
+  -> Annotations
   -> Script s a
   -> Free (Term Annotate s) a
-evalScript = ((fmap fst .) .) . runScript
+evalScript = ((fst .) .) . runScript
 {-# INLINE evalScript #-}
 
--- | Lift DSL term to 'Script'
+-- | Lift DSL term to annotated 'Script'
 script :: Term Annotate s a -> Script s a
 script = Script . liftS
 {-# INLINE script #-}
@@ -132,7 +126,7 @@ script = Script . liftS
 -- | Half-lift DSL term to 'Script'
 liftS
   :: Term Annotate s a
-  -> ReaderT AnnotationsEnv (StateT AnnotationsState (Free (Term Annotate s))) a
+  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 
@@ -158,42 +152,32 @@ instance u ~ CUid => Num (User u) where
   signum (UserID a)   = signum (UserID a)
   fromInteger         = UserID . fromInteger
 
+-- | Wrapper around 'User' hiding particular
+-- implementation from the type sistem
 data UserW = forall u. UserW (User u)
 
 deriving instance Show UserW
 
 -- | Failure reaction
+--
+-- Used then all retries errored
 data React = Ignorant | Abortive
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
+-- | Retries count
 newtype Retry = Retry { unRetry :: Int }
     deriving (Show, Read, Eq, Ord)
 
 instance Default Retry where
   def = Retry def
 
+-- | Increment retry count
 incr :: Retry -> Retry
 incr (Retry n) = Retry (succ n)
 {-# INLINE incr #-}
 
--- | Script construction state
-data AnnotationsState = AState
-  { _token    :: Int        -- ^ Unique term token
-  , _profiles :: Set String -- ^ Profile name
-  , _order    :: Int        -- ^ Current action order
-  , _maxOrder :: Int        -- ^ Maximum action order in current source
-  } deriving (Show, Read)
-
-instance Default AnnotationsState where
-  def = AState
-    { _token    = def
-    , _profiles = def
-    , _order    = def
-    , _maxOrder = def
-    }
-  {-# INLINE def #-}
-
-data AnnotationsEnv = AEnv
+-- | Script annotations environment
+data Annotations = Annotations
   { _app            :: FilePath    -- ^ Biegunka root filepath
   , _profileName    :: String      -- ^ Profile name
   , _sourcePath     :: FilePath    -- ^ Source root filepath
@@ -204,10 +188,10 @@ data AnnotationsEnv = AEnv
   , _actionReaction :: React       -- ^ How to react on action failure
   }
 
-deriving instance Show AnnotationsEnv
+deriving instance Show Annotations
 
-instance Default AnnotationsEnv where
-  def = AEnv
+instance Default Annotations where
+  def = Annotations
     { _app = def
     , _profileName    = def
     , _sourcePath     = def
@@ -219,55 +203,75 @@ instance Default AnnotationsEnv where
     }
   {-# INLINE def #-}
 
+-- | Script annotations state
+--
+-- Mnemonic is 'Mutable Annotations'
+data MAnnotations = MAnnotations
+  { _token    :: Int        -- ^ Unique term token
+  , _profiles :: Set String -- ^ Profile name
+  , _order    :: Int        -- ^ Current action order
+  , _maxOrder :: Int        -- ^ Maximum action order in current source
+  } deriving (Show, Read)
+
+instance Default MAnnotations where
+  def = MAnnotations
+    { _token    = def
+    , _profiles = def
+    , _order    = def
+    , _maxOrder = def
+    }
+  {-# INLINE def #-}
+
 
 -- * Lenses
 
-makeLensesWith ?? ''AnnotationsState $ defaultRules & generateSignatures .~ False
-
--- | Unique token for each 'TP'/'TS'
-token :: Lens' AnnotationsState Int
-
--- | All profiles encountered so far
-profiles :: Lens' AnnotationsState (Set String)
-
--- | Current action order
-order :: Lens' AnnotationsState Int
-
--- | Maximum action order in current source
-maxOrder :: Lens' AnnotationsState Int
-
-makeLensesWith ?? ''AnnotationsEnv   $ defaultRules & generateSignatures .~ False
+makeLensesWith ?? ''Annotations   $ defaultRules & generateSignatures .~ False
 
 -- | Biegunka filepath root
-app :: Lens' AnnotationsEnv FilePath
+app :: Lens' Annotations FilePath
 
 -- | Current profile name
-profileName :: Lens' AnnotationsEnv String
+profileName :: Lens' Annotations String
 
 -- | Current source filepath
-sourcePath :: Lens' AnnotationsEnv FilePath
+sourcePath :: Lens' Annotations FilePath
 
 -- | Current source url
-sourceURL :: Lens' AnnotationsEnv String
+sourceURL :: Lens' Annotations String
 
 -- | Current user
-activeUser :: Lens' AnnotationsEnv (Maybe UserW)
+activeUser :: Lens' Annotations (Maybe UserW)
 
 -- | Maximum retries count
-maxRetries :: Lens' AnnotationsEnv Retry
+maxRetries :: Lens' Annotations Retry
 
 -- | How to react on source failure
-sourceReaction :: Lens' AnnotationsEnv React
+sourceReaction :: Lens' Annotations React
 
 -- | How to react on action failure
-actionReaction :: Lens' AnnotationsEnv React
+actionReaction :: Lens' Annotations React
+
+makeLensesWith ?? ''MAnnotations $ defaultRules & generateSignatures .~ False
+
+-- | Unique token for each 'TP'/'TS'
+token :: Lens' MAnnotations Int
+
+-- | All profiles encountered so far
+profiles :: Lens' MAnnotations (Set String)
+
+-- | Current action order
+order :: Lens' MAnnotations Int
+
+-- | Maximum action order in current source
+maxOrder :: Lens' MAnnotations Int
+
 
 -- | Annotate DSL
 annotate
   :: Script s a
-  -> ReaderT AnnotationsEnv
-      (StateT AnnotationsState (Free (Term Annotate t))) (Free (Term Annotate s) a)
-annotate i = ReaderT $ \e -> StateT $ \s -> return (runScript' s e i)
+  -> ReaderT Annotations
+      (StateT MAnnotations (Free (Term Annotate t))) (Free (Term Annotate s) a)
+annotate i = ReaderT $ \e -> StateT $ \s -> return (runScript s e i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
@@ -328,6 +332,7 @@ actioned f = Script $ do
   liftS $ TA annotation (f rfp sfp) ()
 
 
+-- | Possible file targeting options
 class Target p where
   destination :: p -> FilePath -> FilePath
 
@@ -336,6 +341,7 @@ instance Target FilePath where
   {-# INLINE destination #-}
 
 
+-- | Targeting inside specified path
 newtype Into a = Into { unInto :: a }
   deriving (Show, Read)
 
