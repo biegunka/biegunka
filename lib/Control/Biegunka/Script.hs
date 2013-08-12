@@ -27,7 +27,7 @@ module Control.Biegunka.Script
   , Target(..), Into, into
   ) where
 
-import Control.Applicative (Applicative(..), (<$), (<$>))
+import Control.Applicative (Applicative(..), (<$>))
 import Control.Lens hiding (Action)
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (StateT(..))
@@ -50,19 +50,19 @@ import Control.Biegunka.Language
 -- | Language 'Term' annotation depending on their 'Scope'
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
-  { asToken :: Int
-  , asProfile :: String
-  , asUser :: Maybe UserW
+  { asToken      :: Int
+  , asProfile    :: String
+  , asUser       :: Maybe UserW
   , asMaxRetries :: Retry
-  , asReaction :: React
+  , asReaction   :: React
   }
 data instance Annotate Actions = AA
-  { aaURI :: URI
-  , aaOrder :: Int
-  , aaMaxOrder :: Int
-  , aaUser :: Maybe UserW
+  { aaURI        :: URI
+  , aaOrder      :: Int
+  , aaMaxOrder   :: Int
+  , aaUser       :: Maybe UserW
   , aaMaxRetries :: Retry
-  , aaReaction :: React
+  , aaReaction   :: React
   }
 
 
@@ -108,10 +108,11 @@ runScript'
   -> AnnotationsEnv
   -> Script s a
   -> (Free (Term Annotate s) a, AnnotationsState)
-runScript' as ae s =
-  let ast      = runScript as ae s
-      (a, as') = iter copoint ast
-  in (a <$ ast, as')
+runScript' s e i =
+  let r       = runScript s e i
+      ast     = fmap fst r
+      (_, as) = iter copoint r
+  in (ast, as)
 {-# INLINE runScript' #-}
 
 -- | Get annotated DSL
@@ -166,6 +167,7 @@ instance Default Retry where
 
 incr :: Retry -> Retry
 incr (Retry n) = Retry (succ n)
+{-# INLINE incr #-}
 
 -- | Script construction state
 data AnnotationsState = AState
@@ -177,9 +179,9 @@ data AnnotationsState = AState
 
 instance Default AnnotationsState where
   def = AState
-    { _token = def
+    { _token    = def
     , _profiles = def
-    , _order = def
+    , _order    = def
     , _maxOrder = def
     }
   {-# INLINE def #-}
@@ -253,21 +255,12 @@ sourceReaction :: Lens' AnnotationsEnv React
 -- | How to react on action failure
 actionReaction :: Lens' AnnotationsEnv React
 
-
--- * Script mangling
-
 -- | Annotate DSL
 annotate
   :: Script s a
   -> ReaderT AnnotationsEnv
       (StateT AnnotationsState (Free (Term Annotate t))) (Free (Term Annotate s) a)
-annotate i =
-  ReaderT $ \e ->
-    StateT $ \s ->
-      let r = runScript s e i
-          ast = fmap fst r
-          s' = iter copoint $ fmap snd r
-      in return (ast, s')
+annotate i = ReaderT $ \e -> StateT $ \s -> return (runScript' s e i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
