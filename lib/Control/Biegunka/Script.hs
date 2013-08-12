@@ -275,30 +275,24 @@ sourced
   -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- view app
-  tok <- use token
-  let df = constructTargetFilePath rfp url path
-  local (set sourcePath df . set sourceURL url) $ do
+  local (set sourcePath (constructTargetFilePath rfp url path) . set sourceURL url) $ do
+    annotation <- AS
+      <$> use token
+      <*> view profileName
+      <*> view activeUser
+      <*> view maxRetries
+      <*> view sourceReaction
+
     order    .= 0
     maxOrder .= size inner
+    ast    <- annotate inner
 
-    profile <- view profileName
-    profiles . contains profile .= True
+    source <- view sourcePath
 
-    retries <- view maxRetries
-    user    <- view activeUser
-    source  <- view sourcePath
-    ast     <- annotate inner
-    react   <- view sourceReaction
-    let annotation = AS
-          { asToken = tok
-          , asProfile = profile
-          , asUser = user
-          , asMaxRetries = retries
-          , asReaction = react
-          }
     lift . liftF $
       TS annotation (Source ty url source update) ast ()
 
+    profiles . contains (asProfile annotation) .= True
     token += 1
 
 -- | Get 'Actions' scoped script size measured in actions
