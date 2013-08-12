@@ -124,10 +124,17 @@ evalScript
 evalScript = ((fmap fst .) .) . runScript
 {-# INLINE evalScript #-}
 
--- | Lift DSL term to the 'Script'
+-- | Lift DSL term to 'Script'
 script :: Term Annotate s a -> Script s a
-script = Script . lift . liftF
+script = Script . liftS
 {-# INLINE script #-}
+
+-- | Half-lift DSL term to 'Script'
+liftS
+  :: Term Annotate s a
+  -> ReaderT AnnotationsEnv (StateT AnnotationsState (Free (Term Annotate s))) a
+liftS = lift . liftF
+{-# INLINE liftS #-}
 
 
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
@@ -282,8 +289,7 @@ sourced ty url path inner update = Script $ do
 
     source <- view sourcePath
 
-    lift . liftF $
-      TS annotation (Source ty url source update) ast ()
+    liftS $ TS annotation (Source ty url source update) ast ()
 
     profiles . contains (asProfile annotation) .= True
     token += 1
@@ -318,8 +324,8 @@ actioned f = Script $ do
     <*> view actionReaction
   rfp <- view app
   sfp <- view sourcePath
-  lift . liftF $
-    TA annotation (f rfp sfp) ()
+
+  liftS $ TA annotation (f rfp sfp) ()
 
 
 class Target p where
