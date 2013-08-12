@@ -322,22 +322,15 @@ iterFrom zero phi = go where
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
 actioned f = Script $ do
-  rfp     <- view app
-  sfp     <- view sourcePath
-  url     <- view sourceURL
-  o       <- order <+= 1
-  mo      <- use maxOrder
-  user    <- view activeUser
-  retries <- view maxRetries
-  react   <- view actionReaction
-  let annotation = AA
-       { aaURI = url
-       , aaOrder = o
-       , aaMaxOrder = mo
-       , aaUser = user
-       , aaMaxRetries = retries
-       , aaReaction = react
-       }
+  annotation <- AA
+    <$> view sourceURL
+    <*> (order <+= 1)
+    <*> use maxOrder
+    <*> view activeUser
+    <*> view maxRetries
+    <*> view actionReaction
+  rfp <- view app
+  sfp <- view sourcePath
   lift . liftF $
     TA annotation (f rfp sfp) ()
 
@@ -347,6 +340,7 @@ class Target p where
 
 instance Target FilePath where
   destination = const
+  {-# INLINE destination #-}
 
 
 newtype Into a = Into { unInto :: a }
@@ -354,10 +348,12 @@ newtype Into a = Into { unInto :: a }
 
 instance a ~ FilePath => Target (Into a) where
   destination p filepath = unInto p </> filepath
+  {-# INLINE destination #-}
 
 -- | Place stuff /into/ directory instead of using filename directly
 into :: FilePath -> Into FilePath
 into = Into
+{-# INLINE into #-}
 
 -- | Construct destination 'FilePath'
 --
