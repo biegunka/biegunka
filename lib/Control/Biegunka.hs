@@ -20,6 +20,8 @@ module Control.Biegunka
   , Into, into
     -- * TH
   , biegunkaOptions
+    -- * Quasiquoters
+  , sh
     -- ** Colors
   , ColorScheme(..)
   , actionColor, sourceColor
@@ -38,6 +40,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
+import Control.Biegunka.QQ (sh)
 import Control.Biegunka.Script (Script, User(..), React(..), Target, Into, into)
 import Control.Biegunka.TH (biegunkaOptions)
 import Control.Biegunka.Check (check)
