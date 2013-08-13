@@ -32,36 +32,41 @@ main = do
   hSetBuffering stdout NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
   case biegunkaCommand of
-    Init destination               -> initialize destination
-    Script destination script args -> withScript destination script args
-    List datadir format profiles   -> list datadir profiles format
+    Init target                  -> defaulted target >>= initialize
+    Script target script args    -> defaulted target >>= withScript script args
+    List datadir format profiles -> list datadir profiles format
+
+-- | Append default biegunka script name if target
+-- happens to be a directory
+defaulted :: FilePath -> IO FilePath
+defaulted target = do
+  exists <- D.doesDirectoryExist target
+  case exists of
+    True  -> return (target </> defaultBiegunkaScriptName)
+    False -> return target
 
 
 initialize :: FilePath -> IO ()
-initialize destination = do
-  destinationIsDirectory <- D.doesDirectoryExist destination
-  case destinationIsDirectory of
-    True  -> initialize (destination </> defaultBiegunkaScriptName)
-    False -> do
-      template <- getDataFileName "data/biegunka-init.template"
-      destinationExists <- D.doesFileExist destination
-      case destinationExists of
-        True -> do
-          response <- prompt $ destination ++ " already exists! Overwrite?"
-          case response of
-            True  -> copy template
-            False -> do
-              putStrLn $ "Failed to initialize biegunka script: Already Exists"
-              exitWith (ExitFailure 1)
-        False -> copy template
+initialize target = do
+  template <- getDataFileName "data/biegunka-init.template"
+  destinationExists <- D.doesFileExist target
+  case destinationExists of
+    True -> do
+      response <- prompt $ target ++ " already exists! Overwrite?"
+      case response of
+        True  -> copy template
+        False -> do
+          putStrLn $ "Failed to initialize biegunka script: Already Exists"
+          exitWith (ExitFailure 1)
+    False -> copy template
  where
   copy source = do
-    D.copyFile source destination
-    putStrLn $ "Initialized biegunka script at " ++ destination
+    D.copyFile source target
+    putStrLn $ "Initialized biegunka script at " ++ target
 
 
-withScript :: FilePath -> Script -> [String] -> IO ()
-withScript destination script args = do
+withScript :: Script -> [String] -> FilePath -> IO ()
+withScript script args target = do
   let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
   packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
                      then return (Right ())
@@ -70,7 +75,7 @@ withScript destination script args = do
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
          (ghcArgs
       ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
-      ++ [destination, toScriptOption script]
+      ++ [target, toScriptOption script]
       ++ biegunkaArgs)
     Nothing
     Nothing
