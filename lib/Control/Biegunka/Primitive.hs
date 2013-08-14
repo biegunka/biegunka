@@ -22,9 +22,9 @@ import qualified Data.Set as S
 import           System.FilePath ((</>))
 import           System.FilePath.Lens
 import           System.Process (CmdSpec(..))
+import           System.Shell.QQ (Eval(..))
 
 import Control.Biegunka.Language
-import Control.Biegunka.QQ (eval)
 import Control.Biegunka.Script
 import Control.Biegunka.Templates
 

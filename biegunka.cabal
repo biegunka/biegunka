@@ -35,6 +35,7 @@ library
     reflection           >= 1.1.6 && < 2,
     semigroups           >= 0.8.4 && < 1,
     safecopy             >= 0.8   && < 0.9,
+    shell-qq             >= 0.1   && < 1,
     stm                  >= 2.4   && < 3,
     tagged               >= 0.4.4 && < 1,
     tagged-transformer   >= 0.4   && < 1,
@@ -57,7 +58,6 @@ library
     Control.Biegunka.Groups
     Control.Biegunka.Language
     Control.Biegunka.Primitive
-    Control.Biegunka.QQ
     Control.Biegunka.Script
     Control.Biegunka.Settings
     Control.Biegunka.Source
