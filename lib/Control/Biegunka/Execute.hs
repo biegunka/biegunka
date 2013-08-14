@@ -30,7 +30,12 @@ import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
-import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
+import           System.Posix.User
+  ( getEffectiveUserID, getEffectiveGroupID
+  , setEffectiveUserID, setEffectiveGroupID
+  , getUserEntryForName, userID
+  , getGroupEntryForID, getGroupEntryForName, groupID
+  )
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
@@ -207,16 +212,22 @@ command f c = do
         [s, r] <- mapM readTVar [stv, rtv]
         guard (not $ s || r)
         writeTVar stv True
+      gid  <- getEffectiveGroupID
       uid  <- getEffectiveUserID
+      gid' <- getGID user
       uid' <- getUID user
       log (termDescription (action scm c))
+      setEffectiveGroupID gid'
       setEffectiveUserID uid'
       op
       setEffectiveUserID uid
+      setEffectiveGroupID gid
       atomically $ writeTVar stv False
  where
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
+  getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
+  getGID (Username n) = groupID <$> getGroupEntryForName n
 
 termOperation
   :: Reifies t (Settings Execution)
