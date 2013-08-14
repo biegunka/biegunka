@@ -17,6 +17,7 @@ import           Options.Applicative (customExecParser, prefs, showHelpOnError)
 import qualified System.Directory as D
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((</>))
+import           System.FilePath.Lens (directory)
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
@@ -74,6 +75,7 @@ withScript script args target = do
   packageDBArg^!_Left.act (putStrLn . mappend "* Found cabal package DB at ")
   (stdin', stdout', stderr', pid) <- runInteractiveProcess "runhaskell"
          (ghcArgs
+      ++ ["-i" ++ target^.directory]
       ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
       ++ [target, toScriptOption script]
       ++ biegunkaArgs)
