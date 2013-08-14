@@ -20,7 +20,7 @@ import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.Catch
-  (SomeException, bracket, onException, throwM, try)
+  (SomeException, bracket, finally, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (Default(..))
@@ -205,8 +205,8 @@ command f c = do
     Nothing  -> do
       atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
       log (termDescription (action scm c))
-      op
-      atomically $ writeTVar rtv False
+      op `finally` do
+        atomically $ writeTVar rtv False
     Just (UserW user) -> do
       atomically $ do
         [s, r] <- mapM readTVar [stv, rtv]
@@ -219,10 +219,10 @@ command f c = do
       log (termDescription (action scm c))
       setEffectiveGroupID gid'
       setEffectiveUserID uid'
-      op
-      setEffectiveUserID uid
-      setEffectiveGroupID gid
-      atomically $ writeTVar stv False
+      op `finally` do
+        setEffectiveUserID uid
+        setEffectiveGroupID gid
+        atomically $ writeTVar stv False
  where
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
