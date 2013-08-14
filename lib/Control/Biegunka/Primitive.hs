@@ -24,6 +24,7 @@ import           System.FilePath.Lens
 import           System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
+import Control.Biegunka.QQ (eval)
 import Control.Biegunka.Script
 import Control.Biegunka.Templates
 
@@ -164,7 +165,7 @@ shell command = actioned (\_ sfp -> Command sfp (ShellCommand command))
 --
 -- Prints \"hello\" to stdout
 raw :: FilePath -> [String] -> Script Actions ()
-raw command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
+raw = eval
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands

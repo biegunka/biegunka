@@ -40,8 +40,10 @@ import Data.String (IsString(..))
 import System.FilePath ((</>))
 import System.FilePath.Lens
 import System.Posix.Types (CUid)
+import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
+import Control.Biegunka.QQ
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -67,68 +69,6 @@ data instance Annotate Actions = AA
   , aaMaxRetries :: Retry
   , aaReaction   :: React
   }
-
-
--- | Newtype used to provide better error messages
--- for type errors in DSL (for users, mostly)
-newtype Script s a = Script
-  { unScript :: ReaderT Annotations
-      (StateT MAnnotations (Free (Term Annotate s))) a
-  }
-
-instance Functor (Script s) where
-  fmap f (Script m) = Script (fmap f m)
-  {-# INLINE fmap #-}
-
-instance Applicative (Script s) where
-  pure v = Script (pure v)
-  {-# INLINE pure #-}
-  Script m <*> Script n = Script (m <*> n)
-  {-# INLINE (<*>) #-}
-
-instance Monad (Script s) where
-  return v = Script (return v)
-  {-# INLINE return #-}
-  Script m >>= f = Script (m >>= unScript . f)
-  {-# INLINE (>>=) #-}
-
-instance Default a => Default (Script s a) where
-  def = return def
-  {-# INLINE def #-}
-
--- | Get annotated DSL and resulting annotations alongside
-runScript
-  :: MAnnotations
-  -> Annotations
-  -> Script s a
-  -> (Free (Term Annotate s) a, MAnnotations)
-runScript s e (Script i) =
-  let r       = runStateT (runReaderT i e) s
-      ast     = fmap fst r
-      (_, as) = iter copoint r
-  in (ast, as)
-{-# INLINE runScript #-}
-
--- | Get annotated DSL without annotations
-evalScript
-  :: MAnnotations
-  -> Annotations
-  -> Script s a
-  -> Free (Term Annotate s) a
-evalScript = ((fst .) .) . runScript
-{-# INLINE evalScript #-}
-
--- | Lift DSL term to annotated 'Script'
-script :: Term Annotate s a -> Script s a
-script = Script . liftS
-{-# INLINE script #-}
-
--- | Half-lift DSL term to 'Script'
-liftS
-  :: Term Annotate s a
-  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
-liftS = lift . liftF
-{-# INLINE liftS #-}
 
 
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
@@ -264,6 +204,74 @@ order :: Lens' MAnnotations Int
 
 -- | Maximum action order in current source
 maxOrder :: Lens' MAnnotations Int
+
+
+-- | Newtype used to provide better error messages
+-- for type errors in DSL (for users, mostly)
+newtype Script s a = Script
+  { unScript :: ReaderT Annotations
+      (StateT MAnnotations (Free (Term Annotate s))) a
+  }
+
+instance Functor (Script s) where
+  fmap f (Script m) = Script (fmap f m)
+  {-# INLINE fmap #-}
+
+instance Applicative (Script s) where
+  pure v = Script (pure v)
+  {-# INLINE pure #-}
+  Script m <*> Script n = Script (m <*> n)
+  {-# INLINE (<*>) #-}
+
+instance Monad (Script s) where
+  return v = Script (return v)
+  {-# INLINE return #-}
+  Script m >>= f = Script (m >>= unScript . f)
+  {-# INLINE (>>=) #-}
+
+instance Default a => Default (Script s a) where
+  def = return def
+  {-# INLINE def #-}
+
+-- | Biegunka script shell commands
+instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
+  eval command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
+  {-# INLINE eval #-}
+
+
+-- | Get annotated DSL and resulting annotations alongside
+runScript
+  :: MAnnotations
+  -> Annotations
+  -> Script s a
+  -> (Free (Term Annotate s) a, MAnnotations)
+runScript s e (Script i) =
+  let r       = runStateT (runReaderT i e) s
+      ast     = fmap fst r
+      (_, as) = iter copoint r
+  in (ast, as)
+{-# INLINE runScript #-}
+
+-- | Get annotated DSL without annotations
+evalScript
+  :: MAnnotations
+  -> Annotations
+  -> Script s a
+  -> Free (Term Annotate s) a
+evalScript = ((fst .) .) . runScript
+{-# INLINE evalScript #-}
+
+-- | Lift DSL term to annotated 'Script'
+script :: Term Annotate s a -> Script s a
+script = Script . liftS
+{-# INLINE script #-}
+
+-- | Half-lift DSL term to 'Script'
+liftS
+  :: Term Annotate s a
+  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
+liftS = lift . liftF
+{-# INLINE liftS #-}
 
 
 -- | Annotate DSL

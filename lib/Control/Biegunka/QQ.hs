@@ -18,10 +18,6 @@ import           System.Exit (ExitCode)
 import           System.Posix.Env (getEnvDefault)
 import qualified System.Process as Proc
 
-import           Control.Biegunka.Language
-import qualified Control.Biegunka.Primitive as Prim
-import           Control.Biegunka.Script
-
 
 -- | QuasiQuoter for shell scripts
 sh :: QuasiQuoter
@@ -42,10 +38,6 @@ class Eval r where
 -- | Most basic instance: nothing is known about what happened in shell
 instance Eval (IO ()) where
   eval command args = () <$ Proc.rawSystem command args
-
--- | Biegunka script shell commands
-instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
-  eval = Prim.raw
 
 -- | Return only exit code of shell process
 instance Eval (IO ExitCode) where
