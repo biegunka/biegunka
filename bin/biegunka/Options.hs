@@ -12,17 +12,21 @@ data BiegunkaCommand
   | Script        -- ^ @biegunka run@ or @biegunka check@
       FilePath Script [String]
   | List FilePath Format [String] -- ^ @biegunka list@
+    deriving (Show, Read)
 
 -- | Disambiguate between @biegunka run@ and @biegunka check@
 data Script = Run Run | Check
+    deriving (Show, Read)
 
 -- | @biegunka run@ mode
 data Run = Dry | Safe | Force | Full
+    deriving (Show, Read)
 
 -- | @biegunka list@ formats
 data Format =
     JSON
   | Format String
+    deriving (Show, Read)
 
 
 -- | @biegunka@ tool command line options parser
