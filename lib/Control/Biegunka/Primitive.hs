@@ -8,7 +8,7 @@
 module Control.Biegunka.Primitive
   ( -- * Actions layer primitives
     link, register, copy, copyFile, copyDirectory, substitute, patch
-  , shell, raw
+  , raw
     -- * Modifiers
   , profile, group, role
   , sudo, retries, reacting, prerequisiteOf, (<~>)
@@ -21,7 +21,6 @@ import           Control.Monad.Reader (local)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
 import           System.FilePath.Lens
-import           System.Process (CmdSpec(..))
 import           System.Shell.QQ (Eval(..))
 
 import Control.Biegunka.Language
@@ -148,17 +147,8 @@ patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spe
 {-# INLINE patch #-}
 
 
--- | Executes shell command with default shell
---
--- > git "https://example.com/source.git" "git/source" $
--- >   shell "echo hello"
---
--- Prints \"hello\\n\" to stdout
-shell :: String -> Script Actions ()
-shell command = actioned (\_ sfp -> Command sfp (ShellCommand command))
-{-# INLINE shell #-}
-
--- | Executes raw command
+-- | Monomorphised interface to 'sh' quasiquoter for
+-- those who do not like @-XTemplateHaskell@ (or @-XQuasiQuotes@)
 --
 -- > git "https://example.com/source.git" "git/source" $
 -- >   raw "/bin/echo" ["-n", "hello"]
