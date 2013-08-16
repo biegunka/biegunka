@@ -21,7 +21,7 @@ import           Control.Monad.Reader (local)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
 import           System.FilePath.Lens
-import           System.Shell.QQ (Eval(..))
+import           System.Command.QQ (Eval(..))
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
