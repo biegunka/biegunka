@@ -9,12 +9,12 @@
 -- | Saved profiles data management
 module Control.Biegunka.DB
   ( DB(..), GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , load, loads, save, fromScript
+  , open, update, save, fromScript
   , filepaths, sources
   ) where
 
 import Control.Applicative
-import Control.Monad ((<=<), forM, mplus)
+import Control.Monad ((<=<))
 import Data.Function (on)
 import Data.Monoid (Monoid(..))
 
@@ -22,20 +22,13 @@ import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad.Free (Free(..), iterM)
 import           Control.Monad.State (State, execState)
 import           Data.Aeson
-import           Data.Aeson.Types
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import           Data.ByteString.Lazy (fromStrict)
-import           Data.Foldable (Foldable, for_, toList)
+import           Data.Foldable (for_)
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           Data.Set (Set, (\\))
+import           Data.Set (Set)
 import qualified Data.Set as S
-import           System.Directory (createDirectoryIfMissing, removeDirectory, removeFile)
-import           System.FilePath ((</>), (<.>))
-import           System.FilePath.Lens (directory)
 
-import Control.Biegunka.Settings (Settings, appData)
+import Control.Biegunka.Settings (Settings)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..))
 
@@ -64,21 +57,6 @@ type instance IxValue GroupRecord = Set FileRecord
 instance Applicative f => Ixed f GroupRecord where
   ix k f (GR x) = GR <$> ix k f x
 
-instance FromJSON GroupRecord where
-  parseJSON obj = GR . M.fromList <$> do
-    o       <- parseJSON obj
-    sources <- o .: "sources"
-    forM sources $ \s -> do
-      t  <- s .: "info"
-      fs <- (s .: "files" >>= mapM parseF) <|> (s .: "files" >>= mapM (fmap snd . parseFF))
-      return (t, S.fromList fs)
-   where
-    parseFF :: Value -> Parser (FilePath, FileRecord)
-    parseFF = parseJSON
-
-    parseF :: Value -> Parser FileRecord
-    parseF = parseJSON
-
 instance ToJSON GroupRecord where
   toJSON (GR t) = object [             "sources" .= map repo   (M.toList t)]
    where
@@ -99,13 +77,6 @@ instance Eq SourceRecord where
 -- | Only destination filepath matters
 instance Ord SourceRecord where
   (<=) = (<=) `on` sourcePath
-
-instance FromJSON SourceRecord where
-  parseJSON (Object o) = SR
-    <$> (o .: "type" <|> o .: "recordtype")
-    <*> (o .: "from" <|> o .: "base")
-    <*> (o .: "path" <|> o .: "location")
-  parseJSON _ = empty
 
 instance ToJSON SourceRecord where
   toJSON SR { sourceType, fromLocation, sourcePath } = object
@@ -130,13 +101,6 @@ instance Eq FileRecord where
 instance Ord FileRecord where
   (<=) = (<=) `on` filePath
 
-instance FromJSON FileRecord where
-  parseJSON (Object o) = FR
-    <$> (o .: "type" <|> o .: "recordtype")
-    <*> (o .: "from" <|> o .: "base")
-    <*> (o .: "path" <|> o .: "location")
-  parseJSON _ = empty
-
 instance ToJSON FileRecord where
   toJSON FR { fileType, fromSource, filePath } = object
     [ "type" .= fileType
@@ -151,59 +115,17 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''DB
 db :: Lens' DB (Map String GroupRecord)
 
 
--- | Load profiles mentioned in script
-load :: Foldable t => Settings () -> t String -> IO DB
-load c = fmap (DB . M.fromList) . loads c . toList
+-- | Open profiles' data
+open :: Settings () -> Set String -> IO DB
+open = undefined
 
--- | Load profile data from disk
-loads :: Settings () -> [String] -> IO [(String, GroupRecord)]
-loads c (p:ps) = do
-  let name = profileFilePath c p
-  Just v <- (parseMaybe parseJSON <=< decode . fromStrict) <$> B.readFile name
-  ((p,v):) <$> loads c ps
- `mplus`
-  loads c ps
-loads _ [] = return []
+-- | Open profiles' data
+update :: DB -> DB -> IO ()
+update = undefined
 
-
--- | Save profiles data to files.
---
--- Each profile is mapped to a separate file in the 'appData' directory.
-save :: Settings () -> Set String -> DB -> IO ()
-save c ps (DB b) = do
-  -- Create app data directory if it's missing
-  createDirectoryIfMissing False (c^.appData)
-  -- Save profiles new data
-  ifor_ b $ \p sourceData -> do
-    let name = profileFilePath c p
-    -- Create missing directories for nested profile files
-    createDirectoryIfMissing True (name^.directory)
-    -- Finally encode profile as JSON
-    BL.writeFile name $ encode sourceData
-  -- Remove mentioned but empty profiles data
-  for_ (ps \\ M.keysSet b) $ \p -> do
-    let name = profileFilePath c p
-        dirs = name^..directory.takingWhile (/= c^.appData) (iterated (^.directory))
-    removeFile name
-    -- Also remove empty directories if possible
-    mapM_ removeDirectory dirs
-   `mplus`
-    -- Ignore failures, they are not critical in any way here
-    return ()
-
-
--- | Compute profiles' filepaths with current settings
---
--- >>> let settings = def :: Settings ()
---
--- >>> profileFilePath settings ""
--- "~/.biegunka/profiles/.profile"
---
--- >>> profileFilePath settings "dotfiles"
--- "~/.biegunka/profiles/dotfiles.profile"
-profileFilePath :: Settings a -> String -> FilePath
-profileFilePath settings name =
-  settings^.appData.to (\app -> app </> "profiles" </> name <.> "profile")
+-- | Save profiles' data
+save :: Settings () -> DB -> IO ()
+save = undefined
 
 
 -- | All destination files paths

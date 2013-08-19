@@ -22,11 +22,9 @@ import System.Posix.Types (UserID)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
+import Control.Biegunka.Biegunka (Interpreter(..), interpret)
 import Control.Biegunka.Settings
-  ( Interpreter(..), interpret, logger
-  , ColorScheme(..), colors
-  , sourceColor, srcColor, dstColor
-  )
+  (logger, ColorScheme(..), colors, sourceColor, srcColor, dstColor)
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 

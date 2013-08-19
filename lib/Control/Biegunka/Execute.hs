@@ -20,7 +20,8 @@ import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
-import           Control.Monad.Catch (SomeException, onException, throwM, try)
+import           Control.Monad.Catch
+  (SomeException, bracket, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (Default(..))
@@ -33,31 +34,34 @@ import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import qualified System.Process as P
 
-import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Control.Biegunka.Settings
-  (Settings, Templates(..), Interpreter(..), templates, interpret, local, logger, colors)
+import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
+import           Control.Biegunka.Settings
+  (Settings, Templates(..), templates, local, logger, colors)
 import qualified Control.Biegunka.DB as DB
-import Control.Biegunka.Execute.Settings
-import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
-import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language
-import Control.Biegunka.Execute.Schedule (runTask, schedule)
-import Control.Biegunka.Script
+import           Control.Biegunka.Execute.Settings
+import           Control.Biegunka.Execute.Describe
+  (termDescription, runChanges, action, exception, retryCounter)
+import           Control.Biegunka.Execute.Exception
+import           Control.Biegunka.Language
+import           Control.Biegunka.Biegunka
+  (Interpreter(..), interpret)
+import           Control.Biegunka.Execute.Schedule (runTask, schedule)
+import           Control.Biegunka.Script
 
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \c s as -> do
-  let b = DB.fromScript s
-  a <- DB.load c (as^.profiles)
-  r <- initializeSTM
-  let c' = c & local.~r
-  runTask c' (newTask termOperation) s
-  atomically (writeTQueue (c'^.local.work) Stop)
-  schedule (c'^.local.work)
-  mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
-  mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
-  DB.save c (as^.profiles) b
+run = interpret $ \c s as ->
+  bracket (DB.open c (as^.profiles)) (DB.save c) $ \db -> do
+    let db' = DB.fromScript s
+    r <- initializeSTM
+    let c' = c & local.~r
+    runTask c' (newTask termOperation) s
+    atomically (writeTQueue (c'^.local.work) Stop)
+    schedule (c'^.local.work)
+    mapM_ (tryIOError . removeFile) (DB.filepaths db \\ DB.filepaths db')
+    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources db \\ DB.sources db')
+    DB.update db db'
  where
   removeFile path = do
     file <- D.doesFileExist path
@@ -68,14 +72,14 @@ run = interpret $ \c s as -> do
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpret $ \c s as -> do
-  let b = DB.fromScript s
-  a <- DB.load c (as^.profiles)
-  e <- initializeSTM
-  let c' = c & local.~e
-  runTask c' (newTask termEmptyOperation) s
-  atomically (writeTQueue (e^.work) Stop)
-  schedule (e^.work)
-  c'^.logger $ runChanges (c'^.colors) a b
+  bracket (DB.open c (as^.profiles)) (DB.save c) $ \db -> do
+    let db' = DB.fromScript s
+    e <- initializeSTM
+    let c' = c & local.~e
+    runTask c' (newTask termEmptyOperation) s
+    atomically (writeTQueue (e^.work) Stop)
+    schedule (e^.work)
+    c'^.logger $ runChanges (c'^.colors) db db'
 
 
 -- | Run single 'Sources' task

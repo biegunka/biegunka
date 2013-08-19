@@ -45,6 +45,7 @@ library
   exposed-modules:
     Control.Biegunka
     Control.Biegunka.Action
+    Control.Biegunka.Biegunka
     Control.Biegunka.Check
     Control.Biegunka.DB
     Control.Biegunka.Execute

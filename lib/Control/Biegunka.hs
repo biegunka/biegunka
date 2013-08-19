@@ -30,9 +30,9 @@ module Control.Biegunka
   , noColors
   ) where
 
+import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
-  ( biegunka, Settings, root, appData, colors
-  , Interpreter, pause, confirm
+  ( Settings, root, appData, colors
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates
