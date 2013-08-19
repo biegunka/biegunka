@@ -15,6 +15,7 @@ module Control.Biegunka.Settings
   ) where
 
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Exception (bracket)
 import Control.Monad (forever, unless)
 import Data.Char (toLower)
 import Prelude hiding (log)
@@ -25,14 +26,14 @@ import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
 import           Control.Lens
 import           Control.Monad.Free
 import           Data.Default
-import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
 import qualified System.Console.Terminal.Size as Term
 import           System.Wordexp (wordexp, nosubst, noundef)
-import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
+import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>), width)
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
+  (Script, Annotate, MAnnotations, app, runScript)
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
 
@@ -131,7 +132,7 @@ instance Default a => Default (Settings a) where
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
 newtype Interpreter = I
-  { runInterpreter
+  { unInterpreter
       :: Settings ()
       -> Free (Term Annotate Sources) ()
       -> MAnnotations
@@ -155,21 +156,47 @@ interpret
   -> Interpreter
 interpret f = I (\c s a k -> f c s a >> k)
 
+runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> MAnnotations -> IO ()
+runInterpreter (I f) c s a = f c s a (return ())
+
 
 -- | Common 'Interpreter's 'Controls' wrapper
 biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Interpreter                 -- ^ Combined interpreters
          -> Script Sources ()           -- ^ Script to interpret
          -> IO ()
-biegunka (($ def) -> c) (I f) s = do
-  r  <- c^.root.to expand
-  ad <- c^.appData.to expand
-  l <- newTQueueIO
-  forkIO $ log l
-  let (s', a) = runScript def (def & app .~ r) s
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l)) s' a (return ())
-  fix $ \wait ->
-    atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
+biegunka (($ def) -> c) interpreter script = do
+  appRoot <- c^.root.to expand
+  dataDir <- c^.appData.to expand
+  bracket spawnLog waitLog $ \logQueue -> do
+    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
+        settings = c & root .~ appRoot & appData .~ dataDir & logger .~ writeLog logQueue
+    runInterpreter interpreter settings annotatedScript annotations
+
+-- | Spawns a thread that reads log queue and
+-- pretty prints messages
+spawnLog :: IO (TQueue Doc)
+spawnLog = newTQueueIO >>= \queue -> forkIO (loop queue) >> return queue where
+  loop queue = forever $ do
+    width <- fmap (maybe 80 Term.width) Term.size
+    doc <- readLog queue
+    displayIO stdout (renderPretty 0.9 width doc)
+    hFlush stdout
+    loop queue
+
+-- | Read a doc from log queue
+readLog :: TQueue a -> IO a
+readLog = atomically . readTQueue
+
+-- | Write a doc to log queue
+writeLog :: TQueue a -> a -> IO ()
+writeLog queue = atomically . writeTQueue queue
+
+-- | Loop until log queue is empty
+waitLog :: TQueue a -> IO ()
+waitLog queue = go where
+  go    = atomically (isEmptyTQueue queue) >>= \e -> unless e (threadDelay delay >> go)
+  delay = 10000
 
 
 -- | Take first glob expansion result
@@ -205,12 +232,3 @@ confirm = I $ \c _ _ k -> do
       "y" -> return True
       "n" -> return False
       _   -> prompt l m
-
-
--- | Display supplied docs
-log :: TQueue Doc -> IO ()
-log q = forever $ do
-  w <- fmap (maybe 80 Term.width) Term.size
-  d <- atomically (readTQueue q)
-  displayIO stdout (renderPretty 0.9 w d)
-  hFlush stdout
