@@ -21,7 +21,7 @@ import           Data.Semigroup (Semigroup(..), Monoid(..))
 
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
-  (Script, Annotate, MAnnotations, app, runScript)
+  (Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Settings
 import qualified System.Console.Terminal.Size as Term
 import           System.IO
@@ -35,29 +35,28 @@ newtype Interpreter = I
   { unInterpreter
       :: Settings ()
       -> Free (Term Annotate Sources) ()
-      -> MAnnotations
       -> IO ()
       -> IO ()
   }
 
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Semigroup Interpreter where
-  I f <> I g = I $ \c s a k -> f c s a (g c s a k)
+  I f <> I g = I $ \c s k -> f c s (g c s k)
 
 -- | Empty 'Interpreter' does nothing.
 -- Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Monoid Interpreter where
-  mempty = I $ \_ _ _ k -> k
+  mempty = I $ \_ _ k -> k
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
 interpret
-  :: (Settings () -> Free (Term Annotate Sources) () -> MAnnotations -> IO ())
+  :: (Settings () -> Free (Term Annotate Sources) () -> IO ())
   -> Interpreter
-interpret f = I (\c s a k -> f c s a >> k)
+interpret f = I (\c s k -> f c s >> k)
 
-runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> MAnnotations -> IO ()
-runInterpreter (I f) c s a = f c s a (return ())
+runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> IO ()
+runInterpreter (I f) c s = f c s (return ())
 
 
 -- | Common 'Interpreter's 'Controls' wrapper
@@ -70,8 +69,12 @@ biegunka (($ def) -> c) interpreter script = do
   dataDir <- c^.appData.to expand
   bracket spawnLog waitLog $ \logQueue -> do
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
-        settings = c & root .~ appRoot & appData .~ dataDir & logger .~ writeLog logQueue
-    runInterpreter interpreter settings annotatedScript annotations
+        settings = c
+          & root    .~ appRoot
+          & appData .~ dataDir
+          & logger  .~ writeLog logQueue
+          & targets .~ annotations^.profiles
+    runInterpreter interpreter settings annotatedScript
 
 -- | Spawns a thread that reads log queue and
 -- pretty prints messages
@@ -110,7 +113,7 @@ expand x = do
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = interpret $ \c _ _ -> view logger c (text "Press any key to continue" <//> line) >> getch
+pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
  where
   getch = do
     hSetBuffering stdin NoBuffering
@@ -119,7 +122,7 @@ pause = interpret $ \c _ _ -> view logger c (text "Press any key to continue" </
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
-confirm = I $ \c _ _ k -> do
+confirm = I $ \c _ k -> do
   r <- prompt (view logger c) (text "Proceed? [y/n] ")
   case r of
     True  -> k

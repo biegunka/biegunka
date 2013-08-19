@@ -44,7 +44,7 @@ data CheckFailure =
 
 -- | Check interpreter
 check :: Interpreter
-check = interpret $ \settings terms _ -> do
+check = interpret $ \settings terms -> do
   let document = documentCheckFailure (settings^.colors)
   failures <- execWriterT (verification terms)
   view logger settings $

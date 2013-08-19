@@ -12,7 +12,6 @@ module Control.Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.List ((\\))
 import           Prelude hiding (log)
 import           System.IO.Error (tryIOError)
 
@@ -51,17 +50,17 @@ import           Control.Biegunka.Script
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \c s as ->
-  bracket (DB.open c (as^.profiles)) (DB.save c) $ \db -> do
+run = interpret $ \c s ->
+  bracket (DB.open c) DB.save $ \db -> do
     let db' = DB.fromScript s
     r <- initializeSTM
     let c' = c & local.~r
     runTask c' (newTask termOperation) s
     atomically (writeTQueue (c'^.local.work) Stop)
     schedule (c'^.local.work)
-    mapM_ (tryIOError . removeFile) (DB.filepaths db \\ DB.filepaths db')
-    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources db \\ DB.sources db')
-    DB.update db db'
+    mapM_ (tryIOError . removeFile) (DB.diffFiles db db')
+    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.diffSources db db')
+    db `DB.merge` db'
  where
   removeFile path = do
     file <- D.doesFileExist path
@@ -71,8 +70,8 @@ run = interpret $ \c s as ->
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \c s as -> do
-  bracket (DB.open c (as^.profiles)) (DB.save c) $ \db -> do
+dryRun = interpret $ \c s -> do
+  bracket (DB.open c) DB.save $ \db -> do
     let db' = DB.fromScript s
     e <- initializeSTM
     let c' = c & local.~e
