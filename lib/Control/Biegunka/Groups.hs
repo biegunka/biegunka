@@ -162,7 +162,7 @@ open settings = do
 
 -- | Update groups' data
 dump :: Partitioned Groups -> IO ()
-dump db = update (db^.acidic) (PutGroups (M.union (db^.those.groups) (db^.those.groups)))
+dump db = update (db^.acidic) (PutGroups (M.union (db^.those.groups) (db^.these.groups)))
 
 -- | Save groups' data
 save :: Partitioned Groups -> IO ()
