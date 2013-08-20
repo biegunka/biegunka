@@ -11,7 +11,7 @@
 module Control.Biegunka.Groups
   ( Partitioned, Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
   , these, those
-  , open, merge, save, fromScript
+  , open, dump, save, fromScript
   , diff, files, sources
   ) where
 
@@ -22,8 +22,7 @@ import Data.Monoid (Monoid(..))
 
 import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad.Free (Free(..), iterM)
-import           Control.Monad.Reader (ask)
-import           Control.Monad.State (State, put, execState)
+import           Control.Monad.State (State, execState)
 import           Data.Acid
 import           Data.Acid.Local
 import           Data.Aeson
@@ -48,7 +47,7 @@ import Control.Biegunka.Script (Annotate(..))
 -- | Group record
 newtype GroupRecord = GR
   { unGR :: Map SourceRecord (Set FileRecord)
-  } deriving (Show, Read, Eq)
+  } deriving (Show, Read, Eq, Typeable)
 
 instance Monoid GroupRecord where
   mempty = GR mempty
@@ -122,18 +121,18 @@ newtype Groups = Groups { _groups :: Map String GroupRecord }
 
 deriveSafeCopy 0 'base ''Groups
 
+makeLenses ''Groups
+
 defGroups :: Groups
 defGroups = Groups mempty
 
-getGroups :: Query Groups Groups
-getGroups = ask
+getGroups :: Query Groups (Map String GroupRecord)
+getGroups = view groups
 
-putGroups :: Groups -> Update Groups ()
-putGroups = put
+putGroups :: Map String GroupRecord -> Update Groups ()
+putGroups = assign groups
 
 makeAcidic ''Groups ['getGroups, 'putGroups]
-
-makeLenses ''Groups
 
 
 -- | Biegunka 'DB'
@@ -149,15 +148,14 @@ makeLenses ''Partitioned
 open :: Settings () -> IO (Partitioned Groups)
 open settings = do
   let path = settings^.appData </> "groups"
-  acid      <- openLocalStateFrom path defGroups
-  Groups gs <- query acid GetGroups
+  acid <- openLocalStateFrom path defGroups
+  gs   <- query acid GetGroups
   let (thises, thats) = M.partitionWithKey (\k _ -> elemOf (targets.folded) k settings) gs
   return (Partitioned acid (Groups thises) (Groups thats))
 
 -- | Update groups' data
-merge :: Partitioned Groups -> Groups -> IO ()
-merge db (Groups gs) =
-  update (db^.acidic) (PutGroups (Groups $ M.union (db^.those.groups) gs))
+dump :: Partitioned Groups -> IO ()
+dump db = update (db^.acidic) (PutGroups (M.union (db^.those.groups) (db^.those.groups)))
 
 -- | Save groups' data
 save :: Partitioned Groups -> IO ()

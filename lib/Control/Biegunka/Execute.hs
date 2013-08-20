@@ -60,7 +60,7 @@ run = interpret $ \settings s -> do
     schedule (settings'^.local.work)
     mapM_ (tryIOError . removeFile) (Groups.diff Groups.files (db^.Groups.these) db')
     mapM_ (tryIOError . D.removeDirectoryRecursive) (Groups.diff Groups.sources (db^.Groups.these) db')
-    db `Groups.merge` db'
+    Groups.dump (db & Groups.these .~ db')
  where
   removeFile path = do
     file <- D.doesFileExist path
