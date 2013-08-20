@@ -14,6 +14,7 @@ data-files: data/biegunka-init.template
 library
   default-language: Haskell2010
   build-depends:
+    acid-state,
     aeson                >= 0.6   && < 0.7,
     ansi-wl-pprint       >= 0.6   && < 0.7,
     base                 >= 4.6   && < 5,
@@ -33,6 +34,7 @@ library
     process              >= 1.1   && < 1.2,
     reflection           >= 1.1.6 && < 2,
     semigroups           >= 0.8.4 && < 1,
+    safecopy,
     stm                  >= 2.4   && < 3,
     tagged               >= 0.4.4 && < 1,
     tagged-transformer   >= 0.4   && < 1,
@@ -45,13 +47,14 @@ library
   exposed-modules:
     Control.Biegunka
     Control.Biegunka.Action
+    Control.Biegunka.Biegunka
     Control.Biegunka.Check
-    Control.Biegunka.DB
     Control.Biegunka.Execute
     Control.Biegunka.Execute.Describe
     Control.Biegunka.Execute.Exception
     Control.Biegunka.Execute.Schedule
     Control.Biegunka.Execute.Settings
+    Control.Biegunka.Groups
     Control.Biegunka.Language
     Control.Biegunka.Primitive
     Control.Biegunka.QQ
@@ -75,6 +78,7 @@ executable biegunka
     base >= 3 && < 5,
     biegunka >= 0.2,
     bytestring,
+    containers,
     data-default,
     directory,
     either,

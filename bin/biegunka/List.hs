@@ -12,6 +12,7 @@ import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
 import           Data.Monoid (Monoid(..), (<>))
+import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
@@ -22,8 +23,10 @@ import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 import           System.FilePath.Lens
 import           System.Wordexp (wordexp, nosubst, noundef)
 
-import           Control.Biegunka.Settings (appData)
-import           Control.Biegunka.DB (DB(..), GroupRecord(..), SourceRecord(..), FileRecord(..), load)
+import           Control.Biegunka.Settings
+  (appData, Targets(..), targets)
+import           Control.Biegunka.Groups
+  (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open)
 
 import Options
 
@@ -45,21 +48,25 @@ list datadirglob profiles format = do
     Left  _         -> badglob -- wordexp failed
     Right (_:_:_)   -> badglob -- multiple matches
     Right []        -> badglob -- wordexp found nothing
-    Right [datadir] -> case profiles of
-      []        -> getProfiles (datadir </> "profiles/") >>= mapM_ putStrLn
-      profiles' -> case format of
+    Right [datadir] ->
+      let settings = def & appData .~ datadir & targets .~ targeted profiles
+      in case format of
         Format pattern -> case formattingText pattern of
           Left errorMessage ->
             badformat errorMessage pattern
           Right formatted -> do
-            db <- load (def & appData .~ datadir) profiles'
-            T.putStr (execWriter (info formatted db))
+            db <- open settings
+            T.putStr (execWriter (info formatted (db^.these.groups)))
             hFlush stdout
         JSON -> do
-          DB db <- load (def & appData .~ datadir) profiles'
-          for_ db $ B.putStrLn . A.encode
+          db <- open settings
+          for_ (db^.these.groups) $ B.putStrLn . A.encode
  where
-  info formatted (DB db) =
+  targeted [] = All
+  targeted xs = Subset (S.fromList xs)
+
+
+  info formatted db =
     ifor_ db $ \profileName (GR profileData) -> do
       tell $ profileFormat formatted profileName
       ifor_ profileData $ \sourceRecord fileRecords -> do

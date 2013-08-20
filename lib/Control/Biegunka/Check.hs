@@ -22,11 +22,9 @@ import System.Posix.Types (UserID)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
+import Control.Biegunka.Biegunka (Interpreter(..), interpret)
 import Control.Biegunka.Settings
-  ( Interpreter(..), interpret, logger
-  , ColorScheme(..), colors
-  , sourceColor, srcColor, dstColor
-  )
+  (logger, ColorScheme(..), colors, sourceColor, srcColor, dstColor)
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 
@@ -46,7 +44,7 @@ data CheckFailure =
 
 -- | Check interpreter
 check :: Interpreter
-check = interpret $ \settings terms _ -> do
+check = interpret $ \settings terms -> do
   let document = documentCheckFailure (settings^.colors)
   failures <- execWriterT (verification terms)
   view logger settings $

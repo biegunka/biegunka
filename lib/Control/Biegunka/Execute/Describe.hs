@@ -6,7 +6,7 @@ module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
     termDescription, runChanges
     -- * Specific description formatting
-  , action, exception, retryCounter
+  , action, exception, retryCounter, removal
   ) where
 
 import Control.Exception (SomeException)
@@ -24,7 +24,7 @@ import Control.Biegunka.Settings
   , srcColor, dstColor
   , errorColor, retryColor
   )
-import Control.Biegunka.DB (DB, filepaths, sources)
+import Control.Biegunka.Groups (Partitioned, Groups, these, files, sources)
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 
@@ -107,13 +107,18 @@ retryCounter sc m n =
   <//> (sc^.retryColor) colon
 
 
+-- | Describe file or directory removal
+removal :: FilePath -> Doc
+removal path = "Removing" <> colon </> text path <> line
+
+
 -- | Describe changes which will happen after the run
-runChanges :: ColorScheme -> DB -> DB -> Doc
-runChanges sc a b = vcat $ empty : mapMaybe about
-  [ ("added files",     map ((sc^.srcColor) . text) $ filepaths b \\ filepaths a)
-  , ("added sources",   map ((sc^.dstColor) . text) $ sources b   \\ sources a)
-  , ("deleted files",   map ((sc^.srcColor) . text) $ filepaths a \\ filepaths b)
-  , ("deleted sources", map ((sc^.dstColor) . text) $ sources a   \\ sources b)
+runChanges :: ColorScheme -> Partitioned Groups -> Groups -> Doc
+runChanges sc db gs = vcat $ empty : mapMaybe about
+  [ ("added files",     map ((sc^.srcColor) . text) $ files gs \\ files (db^.these))
+  , ("added sources",   map ((sc^.dstColor) . text) $ sources gs   \\ sources (db^.these))
+  , ("deleted files",   map ((sc^.srcColor) . text) $ files (db^.these) \\ files gs)
+  , ("deleted sources", map ((sc^.dstColor) . text) $ sources (db^.these)   \\ sources gs)
   ] ++ [empty]
  where
   about (msg, xs) = case length xs of

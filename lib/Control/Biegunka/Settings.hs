@@ -3,36 +3,20 @@
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
-  ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter(..), interpret
-    -- * Settings common for all interpreters
-  , Settings, root, appData, logger, colors, local, templates, Templates(..)
+  ( -- * Settings common for all interpreters
+    Settings, root, appData, logger, targets, colors, local, templates, Templates(..)
+    -- * Script targets controls
+  , Targets(..)
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
-    -- * Generic interpreters
-  , pause, confirm
   ) where
 
-import Control.Concurrent (forkIO, threadDelay)
-import Control.Monad (forever, unless)
-import Data.Char (toLower)
-import Prelude hiding (log)
-import System.IO
+import Control.Lens
+import Data.Default (Default(..))
+import Data.Set (Set)
+import Text.PrettyPrint.ANSI.Leijen
 
-import           Control.Concurrent.STM (atomically)
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
-import           Control.Lens
-import           Control.Monad.Free
-import           Data.Default
-import           Data.Function (fix)
-import           Data.Semigroup (Semigroup(..), Monoid(..))
-import qualified System.Console.Terminal.Size as Term
-import           System.Wordexp (wordexp, nosubst, noundef)
-import           Text.PrettyPrint.ANSI.Leijen hiding ((<>), (<$>))
-
-import Control.Biegunka.Language
-import Control.Biegunka.Script
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
 
@@ -42,10 +26,17 @@ data Settings a = Settings
   { _root      :: FilePath    -- ^ Root path for 'Source' layer
   , _appData   :: FilePath    -- ^ Biegunka profile files path
   , _logger    :: Doc -> IO () -- ^ Logger channel
+  , _targets   :: Targets     -- ^ Groups to focus on
   , _colors    :: ColorScheme -- ^ Pretty printing
   , _local     :: a           -- ^ Interpreter specific settings
   , _templates :: Templates   -- ^ Templates mapping
   }
+
+-- | Groups to focus on
+data Targets =
+    All
+  | Subset (Set FilePath)
+    deriving (Show, Read)
 
 -- | Colors used in logger
 data ColorScheme = ColorScheme
@@ -109,6 +100,9 @@ appData :: Lens' (Settings a) FilePath
 -- | Logger channel
 logger :: Lens' (Settings a) (Doc -> IO ())
 
+-- | Groups to focus on
+targets :: Lens' (Settings a) Targets
+
 -- | Pretty printing
 colors :: Lens' (Settings a) ColorScheme
 
@@ -123,94 +117,8 @@ instance Default a => Default (Settings a) where
     { _root      = "~"
     , _appData   = "~/.biegunka"
     , _logger    = const (return ())
+    , _targets   = All
     , _colors    = def
     , _local     = def
     , _templates = hStringTemplate ()
     }
-
-
--- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
-newtype Interpreter = I
-  { runInterpreter
-      :: Settings ()
-      -> Free (Term Annotate Sources) ()
-      -> MAnnotations
-      -> IO ()
-      -> IO ()
-  }
-
--- | Two 'Interpreter's combined take the same 'Script' and do things one after another
-instance Semigroup Interpreter where
-  I f <> I g = I $ \c s a k -> f c s a (g c s a k)
-
--- | Empty 'Interpreter' does nothing.
--- Two 'Interpreter's combined take the same 'Script' and do things one after another
-instance Monoid Interpreter where
-  mempty = I $ \_ _ _ k -> k
-  mappend = (<>)
-
--- | Interpreter that calls its continuation after interpretation
-interpret
-  :: (Settings () -> Free (Term Annotate Sources) () -> MAnnotations -> IO ())
-  -> Interpreter
-interpret f = I (\c s a k -> f c s a >> k)
-
-
--- | Common 'Interpreter's 'Controls' wrapper
-biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
-         -> Interpreter                 -- ^ Combined interpreters
-         -> Script Sources ()           -- ^ Script to interpret
-         -> IO ()
-biegunka (($ def) -> c) (I f) s = do
-  r  <- c^.root.to expand
-  ad <- c^.appData.to expand
-  l <- newTQueueIO
-  forkIO $ log l
-  let (s', a) = runScript def (def & app .~ r) s
-  f (c & root .~ r & appData .~ ad & logger .~ (atomically . writeTQueue l)) s' a (return ())
-  fix $ \wait ->
-    atomically (isEmptyTQueue l) >>= \e -> unless e (threadDelay 10000 >> wait)
-
-
--- | Take first glob expansion result
-expand :: String -> IO String
-expand x = do
-  es <- wordexp (nosubst <> noundef) x
-  return $ case es of
-    Right [e] -> e
-    _         -> x
-
-
--- | Interpreter that just waits user to press any key
-pause :: Interpreter
-pause = interpret $ \c _ _ -> view logger c (text "Press any key to continue" <//> line) >> getch
- where
-  getch = do
-    hSetBuffering stdin NoBuffering
-    _ <- getChar
-    hSetBuffering stdin LineBuffering
-
--- | Interpreter that awaits user confirmation
-confirm :: Interpreter
-confirm = I $ \c _ _ k -> do
-  r <- prompt (view logger c) (text "Proceed? [y/n] ")
-  case r of
-    True  -> k
-    False -> return ()
- where
-  prompt l m = do
-    l m
-    r <- getLine
-    case map toLower r of
-      "y" -> return True
-      "n" -> return False
-      _   -> prompt l m
-
-
--- | Display supplied docs
-log :: TQueue Doc -> IO ()
-log q = forever $ do
-  w <- fmap (maybe 80 Term.width) Term.size
-  d <- atomically (readTQueue q)
-  displayIO stdout (renderPretty 0.9 w d)
-  hFlush stdout

@@ -12,7 +12,6 @@ module Control.Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Data.List ((\\))
 import           Prelude hiding (log)
 import           System.IO.Error (tryIOError)
 
@@ -20,7 +19,8 @@ import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
-import           Control.Monad.Catch (SomeException, onException, throwM, try)
+import           Control.Monad.Catch
+  (SomeException, bracket, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (Default(..))
@@ -33,49 +33,65 @@ import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
 import qualified System.Process as P
 
-import Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import Control.Biegunka.Settings
-  (Settings, Templates(..), Interpreter(..), templates, interpret, local, logger, colors)
-import qualified Control.Biegunka.DB as DB
-import Control.Biegunka.Execute.Settings
-import Control.Biegunka.Execute.Describe (termDescription, runChanges, action, exception, retryCounter)
-import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language
-import Control.Biegunka.Execute.Schedule (runTask, schedule)
-import Control.Biegunka.Script
+import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
+import           Control.Biegunka.Settings
+  (Settings, Templates(..), templates, local, logger, colors)
+import qualified Control.Biegunka.Groups as Groups
+import           Control.Biegunka.Execute.Settings
+import           Control.Biegunka.Execute.Describe
+  (termDescription, runChanges, action, exception, removal, retryCounter)
+import           Control.Biegunka.Execute.Exception
+import           Control.Biegunka.Language
+import           Control.Biegunka.Biegunka
+  (Interpreter(..), interpret)
+import           Control.Biegunka.Execute.Schedule (runTask, schedule)
+import           Control.Biegunka.Script
 
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \c s as -> do
-  let b = DB.fromScript s
-  a <- DB.load c (as^.profiles)
-  r <- initializeSTM
-  let c' = c & local.~r
-  runTask c' (newTask termOperation) s
-  atomically (writeTQueue (c'^.local.work) Stop)
-  schedule (c'^.local.work)
-  mapM_ (tryIOError . removeFile) (DB.filepaths a \\ DB.filepaths b)
-  mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.sources a \\ DB.sources b)
-  DB.save c (as^.profiles) b
- where
-  removeFile path = do
-    file <- D.doesFileExist path
-    case file of
-      True  -> D.removeFile path
-      False -> D.removeDirectoryRecursive path
+run = interpret interpreting where
+  interpreting settings s = do
+    let db' = Groups.fromScript s
+    bracket (Groups.open settings) Groups.close $ \db -> do
+      r <- initializeSTM
+      let settings' = settings & local .~ r
+      runTask settings' (newTask termOperation) s
+      atomically (writeTQueue (settings'^.local.work) Stop)
+      schedule (settings'^.local.work)
+      mapM_ (catched remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
+      mapM_ (catched removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
+      Groups.commit (db & Groups.these .~ db')
+   where
+    remove path = do
+      file <- D.doesFileExist path
+      case file of
+        True  -> do
+          (settings^.logger) (removal path)
+          D.removeFile path
+        False -> D.removeDirectoryRecursive path
+
+    removeDirectory path = do
+      directory <- D.doesDirectoryExist path
+      case directory of
+        True  -> do
+          (settings^.logger) (removal path)
+          D.removeDirectoryRecursive path
+        False -> return ()
+
+    catched io = tryIOError . io
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \c s as -> do
-  let b = DB.fromScript s
-  a <- DB.load c (as^.profiles)
-  e <- initializeSTM
-  let c' = c & local.~e
-  runTask c' (newTask termEmptyOperation) s
-  atomically (writeTQueue (e^.work) Stop)
-  schedule (e^.work)
-  c'^.logger $ runChanges (c'^.colors) a b
+dryRun = interpret $ \settings s -> do
+  let db' = Groups.fromScript s
+  bracket (Groups.open settings) Groups.close $ \db -> do
+    r <- initializeSTM
+    let settings' = settings & local .~ r
+    runTask settings' (newTask termEmptyOperation) s
+    atomically (writeTQueue (settings'^.local.work) Stop)
+    schedule (settings'^.local.work)
+    settings'^.logger $ runChanges (settings'^.colors) db db'
 
 
 -- | Run single 'Sources' task
