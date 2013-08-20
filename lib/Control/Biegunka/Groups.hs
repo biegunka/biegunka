@@ -7,10 +7,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
--- | Saved profiles data management
-module Control.Biegunka.DB
-  ( DB(..), Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , here, there
+-- | Groups data management
+module Control.Biegunka.Groups
+  ( Partitioned, Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
+  , these, those
   , open, merge, save, fromScript
   , diff, files, sources
   ) where
@@ -137,30 +137,30 @@ makeLenses ''Groups
 
 
 -- | Biegunka 'DB'
-data DB = DB
-  { _acidic :: AcidState Groups -- ^ The whole database
-  , _here   :: Groups           -- ^ Part of database targeted by current script
-  , _there  :: Groups           -- ^ The other part of database
+data Partitioned a = Partitioned
+  { _acidic :: AcidState a -- ^ The groups database handle
+  , _these  :: a           -- ^ Groups targeted by script
+  , _those  :: a           -- ^ All other groups
   }
 
-makeLenses ''DB
+makeLenses ''Partitioned
 
 -- | Open groups' data
-open :: Settings () -> IO DB
+open :: Settings () -> IO (Partitioned Groups)
 open settings = do
   let path = settings^.appData </> "groups"
   acid      <- openLocalStateFrom path defGroups
   Groups gs <- query acid GetGroups
   let (thises, thats) = M.partitionWithKey (\k _ -> elemOf (targets.folded) k settings) gs
-  return (DB acid (Groups thises) (Groups thats))
+  return (Partitioned acid (Groups thises) (Groups thats))
 
 -- | Update groups' data
-merge :: DB -> Groups -> IO ()
+merge :: Partitioned Groups -> Groups -> IO ()
 merge db (Groups gs) =
-  update (db^.acidic) (PutGroups (Groups $ M.union (db^.there.groups) gs))
+  update (db^.acidic) (PutGroups (Groups $ M.union (db^.those.groups) gs))
 
 -- | Save groups' data
-save :: DB -> IO ()
+save :: Partitioned Groups -> IO ()
 save = createCheckpointAndClose . view acidic
 
 -- | Get groups difference

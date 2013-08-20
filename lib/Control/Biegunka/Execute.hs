@@ -36,7 +36,7 @@ import qualified System.Process as P
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
 import           Control.Biegunka.Settings
   (Settings, Templates(..), templates, local, logger, colors)
-import qualified Control.Biegunka.DB as DB
+import qualified Control.Biegunka.Groups as Groups
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
   (termDescription, runChanges, action, exception, retryCounter)
@@ -50,17 +50,17 @@ import           Control.Biegunka.Script
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \c s ->
-  bracket (DB.open c) DB.save $ \db -> do
-    let db' = DB.fromScript s
+run = interpret $ \settings s -> do
+  let db' = Groups.fromScript s
+  bracket (Groups.open settings) Groups.save $ \db -> do
     r <- initializeSTM
-    let c' = c & local.~r
-    runTask c' (newTask termOperation) s
-    atomically (writeTQueue (c'^.local.work) Stop)
-    schedule (c'^.local.work)
-    mapM_ (tryIOError . removeFile) (DB.diff DB.files (db^.DB.here) db')
-    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.diff DB.sources (db^.DB.here) db')
-    db `DB.merge` db'
+    let settings' = settings & local.~r
+    runTask settings' (newTask termOperation) s
+    atomically (writeTQueue (settings'^.local.work) Stop)
+    schedule (settings'^.local.work)
+    mapM_ (tryIOError . removeFile) (Groups.diff Groups.files (db^.Groups.these) db')
+    mapM_ (tryIOError . D.removeDirectoryRecursive) (Groups.diff Groups.sources (db^.Groups.these) db')
+    db `Groups.merge` db'
  where
   removeFile path = do
     file <- D.doesFileExist path
@@ -70,15 +70,15 @@ run = interpret $ \c s ->
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \c s -> do
-  bracket (DB.open c) DB.save $ \db -> do
-    let db' = DB.fromScript s
+dryRun = interpret $ \settings s -> do
+  let db' = Groups.fromScript s
+  bracket (Groups.open settings) Groups.save $ \db -> do
     e <- initializeSTM
-    let c' = c & local.~e
-    runTask c' (newTask termEmptyOperation) s
+    let settings' = settings & local.~e
+    runTask settings' (newTask termEmptyOperation) s
     atomically (writeTQueue (e^.work) Stop)
     schedule (e^.work)
-    c'^.logger $ runChanges (c'^.colors) db db'
+    settings'^.logger $ runChanges (settings'^.colors) db db'
 
 
 -- | Run single 'Sources' task

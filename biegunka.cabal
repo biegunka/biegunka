@@ -49,12 +49,12 @@ library
     Control.Biegunka.Action
     Control.Biegunka.Biegunka
     Control.Biegunka.Check
-    Control.Biegunka.DB
     Control.Biegunka.Execute
     Control.Biegunka.Execute.Describe
     Control.Biegunka.Execute.Exception
     Control.Biegunka.Execute.Schedule
     Control.Biegunka.Execute.Settings
+    Control.Biegunka.Groups
     Control.Biegunka.Language
     Control.Biegunka.Primitive
     Control.Biegunka.QQ

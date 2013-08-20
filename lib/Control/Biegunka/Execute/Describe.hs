@@ -24,7 +24,7 @@ import Control.Biegunka.Settings
   , srcColor, dstColor
   , errorColor, retryColor
   )
-import Control.Biegunka.DB (DB, Groups, here, files, sources)
+import Control.Biegunka.Groups (Partitioned, Groups, these, files, sources)
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 
@@ -108,12 +108,12 @@ retryCounter sc m n =
 
 
 -- | Describe changes which will happen after the run
-runChanges :: ColorScheme -> DB -> Groups -> Doc
+runChanges :: ColorScheme -> Partitioned Groups -> Groups -> Doc
 runChanges sc db gs = vcat $ empty : mapMaybe about
-  [ ("added files",     map ((sc^.srcColor) . text) $ files gs \\ files (db^.here))
-  , ("added sources",   map ((sc^.dstColor) . text) $ sources gs   \\ sources (db^.here))
-  , ("deleted files",   map ((sc^.srcColor) . text) $ files (db^.here) \\ files gs)
-  , ("deleted sources", map ((sc^.dstColor) . text) $ sources (db^.here)   \\ sources gs)
+  [ ("added files",     map ((sc^.srcColor) . text) $ files gs \\ files (db^.these))
+  , ("added sources",   map ((sc^.dstColor) . text) $ sources gs   \\ sources (db^.these))
+  , ("deleted files",   map ((sc^.srcColor) . text) $ files (db^.these) \\ files gs)
+  , ("deleted sources", map ((sc^.dstColor) . text) $ sources (db^.these)   \\ sources gs)
   ] ++ [empty]
  where
   about (msg, xs) = case length xs of
