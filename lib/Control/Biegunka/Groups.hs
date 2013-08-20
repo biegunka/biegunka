@@ -11,7 +11,7 @@
 --
 -- Uses acid-state to store data before script invocations.
 --
--- Interpreters can modify (create/update/delete) data any way they want:
+-- Interpreters can modify (create\/update\/delete) data any way they want:
 --
 --   * First, interpreter must call 'open' to get data handle
 --
@@ -184,7 +184,7 @@ those :: Lens' (Partitioned a) a
 
 -- | Open groups data from disk
 --
--- Searches 'appData'\/groups path for groups data. Starts empty
+-- Searches @'appData'\/groups@ path for groups data. Starts empty
 -- if nothing is found
 open :: Settings () -> IO (Partitioned Groups)
 open settings = do
