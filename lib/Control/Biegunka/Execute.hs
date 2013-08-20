@@ -39,7 +39,7 @@ import           Control.Biegunka.Settings
 import qualified Control.Biegunka.Groups as Groups
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
-  (termDescription, runChanges, action, exception, retryCounter)
+  (termDescription, runChanges, action, exception, removal, retryCounter)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka
@@ -50,34 +50,47 @@ import           Control.Biegunka.Script
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret $ \settings s -> do
-  let db' = Groups.fromScript s
-  bracket (Groups.open settings) Groups.close $ \db -> do
-    r <- initializeSTM
-    let settings' = settings & local.~r
-    runTask settings' (newTask termOperation) s
-    atomically (writeTQueue (settings'^.local.work) Stop)
-    schedule (settings'^.local.work)
-    mapM_ (tryIOError . removeFile) (Groups.diff Groups.files (db^.Groups.these) db')
-    mapM_ (tryIOError . D.removeDirectoryRecursive) (Groups.diff Groups.sources (db^.Groups.these) db')
-    Groups.commit (db & Groups.these .~ db')
- where
-  removeFile path = do
-    file <- D.doesFileExist path
-    case file of
-      True  -> D.removeFile path
-      False -> D.removeDirectoryRecursive path
+run = interpret interpreting where
+  interpreting settings s = do
+    let db' = Groups.fromScript s
+    bracket (Groups.open settings) Groups.close $ \db -> do
+      r <- initializeSTM
+      let settings' = settings & local .~ r
+      runTask settings' (newTask termOperation) s
+      atomically (writeTQueue (settings'^.local.work) Stop)
+      schedule (settings'^.local.work)
+      mapM_ (catched remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
+      mapM_ (catched removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
+      Groups.commit (db & Groups.these .~ db')
+   where
+    remove path = do
+      file <- D.doesFileExist path
+      case file of
+        True  -> do
+          (settings^.logger) (removal path)
+          D.removeFile path
+        False -> D.removeDirectoryRecursive path
+
+    removeDirectory path = do
+      directory <- D.doesDirectoryExist path
+      case directory of
+        True  -> do
+          (settings^.logger) (removal path)
+          D.removeDirectoryRecursive path
+        False -> return ()
+
+    catched io = tryIOError . io
 
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpret $ \settings s -> do
   let db' = Groups.fromScript s
   bracket (Groups.open settings) Groups.close $ \db -> do
-    e <- initializeSTM
-    let settings' = settings & local.~e
+    r <- initializeSTM
+    let settings' = settings & local .~ r
     runTask settings' (newTask termEmptyOperation) s
-    atomically (writeTQueue (e^.work) Stop)
-    schedule (e^.work)
+    atomically (writeTQueue (settings'^.local.work) Stop)
+    schedule (settings'^.local.work)
     settings'^.logger $ runChanges (settings'^.colors) db db'
 
 

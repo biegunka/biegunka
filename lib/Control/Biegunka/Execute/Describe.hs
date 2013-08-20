@@ -6,7 +6,7 @@ module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
     termDescription, runChanges
     -- * Specific description formatting
-  , action, exception, retryCounter
+  , action, exception, retryCounter, removal
   ) where
 
 import Control.Exception (SomeException)
@@ -105,6 +105,11 @@ retryCounter sc m n =
   </> (sc^.retryColor) "out of"
   </> text (show n)
   <//> (sc^.retryColor) colon
+
+
+-- | Describe file or directory removal
+removal :: FilePath -> Doc
+removal path = "Removing" <> colon </> text path <> line
 
 
 -- | Describe changes which will happen after the run
