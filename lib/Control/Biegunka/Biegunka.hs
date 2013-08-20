@@ -73,7 +73,7 @@ biegunka (($ def) -> c) interpreter script = do
           & root    .~ appRoot
           & appData .~ dataDir
           & logger  .~ writeLog logQueue
-          & targets .~ annotations^.profiles
+          & targets .~ annotations^.profiles.to Subset
     runInterpreter interpreter settings annotatedScript
 
 -- | Spawns a thread that reads log queue and

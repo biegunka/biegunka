@@ -5,6 +5,8 @@
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
     Settings, root, appData, logger, targets, colors, local, templates, Templates(..)
+    -- * Script targets controls
+  , Targets(..)
     -- * Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
@@ -21,14 +23,19 @@ import Control.Biegunka.Templates.HStringTemplate
 
 -- | Settings common for all interpreters and also specific for this one
 data Settings a = Settings
-  { _root      :: FilePath     -- ^ Root path for 'Source' layer
-  , _appData   :: FilePath     -- ^ Biegunka profile files path
-  , _logger    :: Doc -> IO ()  -- ^ Logger channel
-  , _targets   :: Set FilePath -- ^ Groups that are mentioned in script
-  , _colors    :: ColorScheme  -- ^ Pretty printing
-  , _local     :: a            -- ^ Interpreter specific settings
-  , _templates :: Templates    -- ^ Templates mapping
+  { _root      :: FilePath    -- ^ Root path for 'Source' layer
+  , _appData   :: FilePath    -- ^ Biegunka profile files path
+  , _logger    :: Doc -> IO () -- ^ Logger channel
+  , _targets   :: Targets     -- ^ Groups that are mentioned in script
+  , _colors    :: ColorScheme -- ^ Pretty printing
+  , _local     :: a           -- ^ Interpreter specific settings
+  , _templates :: Templates   -- ^ Templates mapping
   }
+
+data Targets =
+    All
+  | Subset (Set FilePath)
+    deriving (Show, Read)
 
 -- | Colors used in logger
 data ColorScheme = ColorScheme
@@ -93,7 +100,7 @@ appData :: Lens' (Settings a) FilePath
 logger :: Lens' (Settings a) (Doc -> IO ())
 
 -- | Groups mentioned in script
-targets :: Lens' (Settings a) (Set FilePath)
+targets :: Lens' (Settings a) Targets
 
 -- | Pretty printing
 colors :: Lens' (Settings a) ColorScheme
@@ -109,7 +116,7 @@ instance Default a => Default (Settings a) where
     { _root      = "~"
     , _appData   = "~/.biegunka"
     , _logger    = const (return ())
-    , _targets   = def
+    , _targets   = All
     , _colors    = def
     , _local     = def
     , _templates = hStringTemplate ()

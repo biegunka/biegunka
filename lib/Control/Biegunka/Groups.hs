@@ -26,7 +26,7 @@ import           Control.Monad.State (State, execState)
 import           Data.Acid
 import           Data.Acid.Local
 import           Data.Aeson
-import           Data.Foldable (for_)
+import           Data.Foldable (elem, for_)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -34,9 +34,11 @@ import           Data.SafeCopy (deriveSafeCopy, base)
 import           Data.Set (Set)
 import qualified Data.Set as S
 import           Data.Typeable (Typeable)
+import           Prelude hiding (elem)
 import           System.FilePath ((</>))
 
-import Control.Biegunka.Settings (Settings, appData, targets)
+import Control.Biegunka.Settings
+  (Settings, Targets(..), appData, targets)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..))
 
@@ -150,8 +152,13 @@ open settings = do
   let path = settings^.appData </> "groups"
   acid <- openLocalStateFrom path defGroups
   gs   <- query acid GetGroups
-  let (thises, thats) = M.partitionWithKey (\k _ -> elemOf (targets.folded) k settings) gs
-  return (Partitioned acid (Groups thises) (Groups thats))
+  let (xs, ys) = mentioned (settings^.targets) gs
+  return (Partitioned { _acidic = acid, _these = xs, _those = ys })
+ where
+  mentioned All gs = (Groups gs, Groups mempty)
+  mentioned (Subset s) gs =
+    let (xs, ys) = M.partitionWithKey (\k _ -> k `elem` s) gs
+    in (Groups xs, Groups ys)
 
 -- | Update groups' data
 dump :: Partitioned Groups -> IO ()
