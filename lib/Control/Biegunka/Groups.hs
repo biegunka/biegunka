@@ -10,7 +10,7 @@
 -- | Groups data management
 module Control.Biegunka.Groups
   ( Partitioned, Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , these, those
+  , these, those, groups
   , open, dump, save, fromScript
   , diff, files, sources
   ) where

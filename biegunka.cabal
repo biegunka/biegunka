@@ -78,6 +78,7 @@ executable biegunka
     base >= 3 && < 5,
     biegunka >= 0.2,
     bytestring,
+    containers,
     data-default,
     directory,
     either,

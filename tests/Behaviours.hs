@@ -77,9 +77,6 @@ simple_layout_0 :: Layout
 simple_layout_0 = do
   directory "tmp" $
     file "dst0" (fromString "thisiscontents\n")
-  directory ".biegunka" $
-    directory "profiles" $
-      file_ "biegunka-simple0.profile"
 
 simple_repo_no_profile_0 :: Script Sources ()
 simple_repo_no_profile_0 =
@@ -92,9 +89,6 @@ simple_layout_no_profile_0 :: Layout
 simple_layout_no_profile_0 = do
   directory "tmp" $
     file "dst0" (fromString "thisiscontents\n")
-  directory ".biegunka" $
-    directory "profiles" $
-      file_ ".profile"
 
 simple_copying_layout_0 :: Layout
 simple_copying_layout_0 = do
