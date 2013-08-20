@@ -10,10 +10,9 @@
 -- | Saved profiles data management
 module Control.Biegunka.DB
   ( DB(..), Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , this, that
+  , here, there
   , open, merge, save, fromScript
-  , diffFiles, diffSources
-  , files, sources
+  , diff, files, sources
   ) where
 
 import Control.Applicative
@@ -134,14 +133,14 @@ putGroups = put
 
 makeAcidic ''Groups ['getGroups, 'putGroups]
 
-makeIso ''Groups
+makeLenses ''Groups
 
 
 -- | Biegunka 'DB'
 data DB = DB
   { _acidic :: AcidState Groups -- ^ The whole database
-  , _this   :: Groups           -- ^ Part of database targeted by current script
-  , _that   :: Groups           -- ^ The other part of database
+  , _here   :: Groups           -- ^ Part of database targeted by current script
+  , _there  :: Groups           -- ^ The other part of database
   }
 
 makeLenses ''DB
@@ -158,29 +157,26 @@ open settings = do
 -- | Update groups' data
 merge :: DB -> Groups -> IO ()
 merge db (Groups gs) =
-  update (db^.acidic) (PutGroups (Groups $ M.union (db^.that.from groups) gs))
+  update (db^.acidic) (PutGroups (Groups $ M.union (db^.there.groups) gs))
 
 -- | Save groups' data
 save :: DB -> IO ()
 save = createCheckpointAndClose . view acidic
 
-diffFiles :: DB -> Groups -> [FilePath]
-diffFiles db gs = files (db^.this) \\ files gs
-
-diffSources :: DB -> Groups -> [FilePath]
-diffSources db gs = sources (db^.this) \\ sources gs
-
+-- | Get groups difference
+diff :: Eq b => (a -> [b]) -> a -> a -> [b]
+diff f = (\\) `on` f
 
 -- | All destination files paths
 files :: Groups -> [FilePath]
-files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view (from groups)
+files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view groups
 
 -- | All sources paths
 sources :: Groups -> [FilePath]
-sources = map sourcePath . M.keys . unGR <=< M.elems . view (from groups)
+sources = map sourcePath . M.keys . unGR <=< M.elems . view groups
 
 
--- | Extract profiles' data from script
+-- | Extract groups' data from script
 fromScript :: Free (Term Annotate Sources) a -> Groups
 fromScript script = execState (iterM construct script) (Groups mempty)
  where
@@ -188,7 +184,7 @@ fromScript script = execState (iterM construct script) (Groups mempty)
   construct term = case term of
     TS (AS { asProfile }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath }
-      from groups . at asProfile . non mempty <>= GR (M.singleton record mempty)
+      groups . at asProfile . non mempty <>= GR (M.singleton record mempty)
       iterM (populate asProfile record) i
       next
     TM _ next -> next
@@ -201,7 +197,7 @@ fromScript script = execState (iterM construct script) (Groups mempty)
   populate profile source term = case term of
     TA _ action next -> do
       for_ (toRecord action) $ \record ->
-        assign (from groups.ix profile.ix source.contains record) True
+        assign (groups.ix profile.ix source.contains record) True
       next
     TM _ next -> next
    where

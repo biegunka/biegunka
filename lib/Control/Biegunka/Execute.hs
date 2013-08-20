@@ -58,8 +58,8 @@ run = interpret $ \c s ->
     runTask c' (newTask termOperation) s
     atomically (writeTQueue (c'^.local.work) Stop)
     schedule (c'^.local.work)
-    mapM_ (tryIOError . removeFile) (DB.diffFiles db db')
-    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.diffSources db db')
+    mapM_ (tryIOError . removeFile) (DB.diff DB.files (db^.DB.here) db')
+    mapM_ (tryIOError . D.removeDirectoryRecursive) (DB.diff DB.sources (db^.DB.here) db')
     db `DB.merge` db'
  where
   removeFile path = do
