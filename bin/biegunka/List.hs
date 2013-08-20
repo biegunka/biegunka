@@ -48,20 +48,22 @@ list datadirglob profiles format = do
     Left  _         -> badglob -- wordexp failed
     Right (_:_:_)   -> badglob -- multiple matches
     Right []        -> badglob -- wordexp found nothing
-    Right [datadir] -> case format of
-      Format pattern -> case formattingText pattern of
-        Left errorMessage ->
-          badformat errorMessage pattern
-        Right formatted -> do
-          db <- open (def & appData .~ datadir & targets .~ profiles' profiles)
-          T.putStr (execWriter (info formatted (db^.these.groups)))
-          hFlush stdout
-      JSON -> do
-        db <- open (def & appData .~ datadir & targets .~ profiles' profiles)
-        for_ (db^.these.groups) $ B.putStrLn . A.encode
+    Right [datadir] ->
+      let settings = def & appData .~ datadir & targets .~ targeted profiles
+      in case format of
+        Format pattern -> case formattingText pattern of
+          Left errorMessage ->
+            badformat errorMessage pattern
+          Right formatted -> do
+            db <- open settings
+            T.putStr (execWriter (info formatted (db^.these.groups)))
+            hFlush stdout
+        JSON -> do
+          db <- open settings
+          for_ (db^.these.groups) $ B.putStrLn . A.encode
  where
-  profiles' [] = All
-  profiles'  xs = Subset (S.fromList xs)
+  targeted [] = All
+  targeted xs = Subset (S.fromList xs)
 
 
   info formatted db =
