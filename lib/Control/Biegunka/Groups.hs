@@ -7,11 +7,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
--- | Groups data management
+-- | Groups data control
+--
+-- Uses acid-state to store data before script invocations.
+--
+-- Interpreters can modify (create/update/delete) data any way they want:
+--
+--   * First, interpreter must call 'open' to get data handle
+--
+--   * Next, interpreter changes 'these' and call 'commit'
+--
+--   * Last, interpreter says 'close'
 module Control.Biegunka.Groups
   ( Partitioned, Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
   , these, those, groups
-  , open, dump, save, fromScript
+  , open, commit, close, fromScript
   , diff, files, sources
   ) where
 
@@ -46,7 +56,59 @@ import Control.Biegunka.Script (Annotate(..))
 -- >>> import Data.Default
 
 
--- | Group record
+-- | Source data record
+data SourceRecord = SR
+  { sourceType   :: String   -- 'Source' type: @git@\/@darcs@\/etc.
+  , fromLocation :: FilePath -- 'Source' location (url, basically)
+  , sourcePath   :: FilePath -- Path to 'Source'
+  } deriving (Show, Read)
+
+-- | Only destination filepath matters for equality
+instance Eq SourceRecord where
+  (==) = (==) `on` sourcePath
+
+-- | Only destination filepath matters for ordering
+instance Ord SourceRecord where
+  (<=) = (<=) `on` sourcePath
+
+instance ToJSON SourceRecord where
+  toJSON SR { sourceType, fromLocation, sourcePath } = object
+    [ "type" .= sourceType
+    , "from" .= fromLocation
+    , "path" .= sourcePath
+    ]
+
+deriveSafeCopy 0 'base ''SourceRecord
+
+
+-- | File data record
+data FileRecord = FR
+  { fileType   :: String   -- File type: @link@\/@copy@\/etc.
+  , fromSource :: FilePath -- File source location (path on disk)
+  , filePath   :: FilePath -- Path to file
+  } deriving (Show, Read)
+
+-- | Only destination filepath matters for equality
+instance Eq FileRecord where
+  (==) = (==) `on` filePath
+
+-- | Only destination filepath matters for ordering
+instance Ord FileRecord where
+  (<=) = (<=) `on` filePath
+
+instance ToJSON FileRecord where
+  toJSON FR { fileType, fromSource, filePath } = object
+    [ "type" .= fileType
+    , "from" .= fromSource
+    , "path" .= filePath
+    ]
+
+deriveSafeCopy 0 'base ''FileRecord
+
+
+-- | Group data record
+--
+-- A mapping from 'Source' data to set of 'FileRecord's
 newtype GroupRecord = GR
   { unGR :: Map SourceRecord (Set FileRecord)
   } deriving (Show, Read, Eq, Typeable)
@@ -66,122 +128,104 @@ instance ToJSON GroupRecord where
    where
     repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
 
-
--- | Source record
-data SourceRecord = SR
-  { sourceType   :: String
-  , fromLocation :: FilePath
-  , sourcePath   :: FilePath
-  } deriving (Show, Read)
-
--- | Only destination filepath matters
-instance Eq SourceRecord where
-  (==) = (==) `on` sourcePath
-
--- | Only destination filepath matters
-instance Ord SourceRecord where
-  (<=) = (<=) `on` sourcePath
-
-instance ToJSON SourceRecord where
-  toJSON SR { sourceType, fromLocation, sourcePath } = object
-    [ "type" .= sourceType
-    , "from" .= fromLocation
-    , "path" .= sourcePath
-    ]
-
-
--- | File record
-data FileRecord = FR
-  { fileType   :: String
-  , fromSource :: FilePath
-  , filePath   :: FilePath
-  } deriving (Show, Read)
-
--- | Only destination filepath matters
-instance Eq FileRecord where
-  (==) = (==) `on` filePath
-
--- | Only destination filepath matters
-instance Ord FileRecord where
-  (<=) = (<=) `on` filePath
-
-instance ToJSON FileRecord where
-  toJSON FR { fileType, fromSource, filePath } = object
-    [ "type" .= fileType
-    , "from" .= fromSource
-    , "path" .= filePath
-    ]
-
-deriveSafeCopy 0 'base ''FileRecord
-deriveSafeCopy 0 'base ''SourceRecord
 deriveSafeCopy 0 'base ''GroupRecord
 
 
 -- | All groups data
+--
+-- A mapping from group names to 'GroupRecord's
 newtype Groups = Groups { _groups :: Map String GroupRecord }
     deriving (Show, Read, Typeable)
 
+instance Monoid Groups where
+  mempty = Groups mempty
+  Groups xs `mappend` Groups ys = Groups (xs `mappend` ys)
+
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Groups
+
+-- | All groups data
+groups :: Lens' Groups (Map String GroupRecord)
+
 deriveSafeCopy 0 'base ''Groups
 
-makeLenses ''Groups
+getMapping :: Query Groups (Map String GroupRecord)
+getMapping = view groups
 
-defGroups :: Groups
-defGroups = Groups mempty
+putMapping :: Map String GroupRecord -> Update Groups ()
+putMapping = assign groups
 
-getGroups :: Query Groups (Map String GroupRecord)
-getGroups = view groups
-
-putGroups :: Map String GroupRecord -> Update Groups ()
-putGroups = assign groups
-
-makeAcidic ''Groups ['getGroups, 'putGroups]
+makeAcidic ''Groups ['getMapping, 'putMapping]
 
 
--- | Biegunka 'DB'
+-- | Groups data state
+--
+-- Consists of acid-state handle and two parts: relevant groups
+-- and irrelevant groups
+--
+-- Relevant groups (or 'these') are groups mentioned in script so
+-- interpreter won't deal with others (or 'those')
 data Partitioned a = Partitioned
   { _acidic :: AcidState a -- ^ The groups database handle
   , _these  :: a           -- ^ Groups targeted by script
   , _those  :: a           -- ^ All other groups
   }
 
-makeLenses ''Partitioned
+makeLensesWith (defaultRules & generateSignatures .~ False) ''Partitioned
 
--- | Open groups' data
+-- | The groups database handle
+acidic :: Lens' (Partitioned a) (AcidState a)
+
+-- | Groups targeted by script
+these :: Lens' (Partitioned a) a
+
+-- | All other groups
+those :: Lens' (Partitioned a) a
+
+
+-- | Open groups data from disk
+--
+-- Searches 'appData'\/groups path for groups data. Starts empty
+-- if nothing is found
 open :: Settings () -> IO (Partitioned Groups)
 open settings = do
   let path = settings^.appData </> "groups"
-  acid <- openLocalStateFrom path defGroups
-  gs   <- query acid GetGroups
+  acid <- openLocalStateFrom path mempty
+  gs   <- query acid GetMapping
   let (xs, ys) = mentioned (settings^.targets) gs
   return (Partitioned { _acidic = acid, _these = xs, _those = ys })
  where
-  mentioned All gs = (Groups gs, Groups mempty)
+  mentioned All        gs = (Groups gs , Groups mempty)
   mentioned (Subset s) gs =
     let (xs, ys) = M.partitionWithKey (\k _ -> k `elem` s) gs
     in (Groups xs, Groups ys)
 
--- | Update groups' data
-dump :: Partitioned Groups -> IO ()
-dump db = update (db^.acidic) (PutGroups (M.union (db^.those.groups) (db^.these.groups)))
+-- | Update groups data
+--
+-- Combines 'these' and 'those' to get full state
+commit :: Partitioned Groups -> IO ()
+commit db = update (db^.acidic) (PutMapping (M.union (db^.those.groups) (db^.these.groups)))
 
--- | Save groups' data
-save :: Partitioned Groups -> IO ()
-save = createCheckpointAndClose . view acidic
+-- | Save groups data to disk
+close :: Partitioned Groups -> IO ()
+close = createCheckpointAndClose . view acidic
 
 -- | Get groups difference
 diff :: Eq b => (a -> [b]) -> a -> a -> [b]
 diff f = (\\) `on` f
 
--- | All destination files paths
+-- | Get all destination filepaths in 'Groups'
 files :: Groups -> [FilePath]
 files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view groups
 
--- | All sources paths
+-- | Get all sources location in 'Groups'
 sources :: Groups -> [FilePath]
 sources = map sourcePath . M.keys . unGR <=< M.elems . view groups
 
 
--- | Extract groups' data from script
+-- | Extract groups data from script
+--
+-- Won't get /all/ mentioned groups but only those for which there is
+-- some useful action to do.
 fromScript :: Free (Term Annotate Sources) a -> Groups
 fromScript script = execState (iterM construct script) (Groups mempty)
  where

@@ -26,12 +26,13 @@ data Settings a = Settings
   { _root      :: FilePath    -- ^ Root path for 'Source' layer
   , _appData   :: FilePath    -- ^ Biegunka profile files path
   , _logger    :: Doc -> IO () -- ^ Logger channel
-  , _targets   :: Targets     -- ^ Groups that are mentioned in script
+  , _targets   :: Targets     -- ^ Groups to focus on
   , _colors    :: ColorScheme -- ^ Pretty printing
   , _local     :: a           -- ^ Interpreter specific settings
   , _templates :: Templates   -- ^ Templates mapping
   }
 
+-- | Groups to focus on
 data Targets =
     All
   | Subset (Set FilePath)
@@ -99,7 +100,7 @@ appData :: Lens' (Settings a) FilePath
 -- | Logger channel
 logger :: Lens' (Settings a) (Doc -> IO ())
 
--- | Groups mentioned in script
+-- | Groups to focus on
 targets :: Lens' (Settings a) Targets
 
 -- | Pretty printing

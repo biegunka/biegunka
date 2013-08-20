@@ -52,7 +52,7 @@ import           Control.Biegunka.Script
 run :: Interpreter
 run = interpret $ \settings s -> do
   let db' = Groups.fromScript s
-  bracket (Groups.open settings) Groups.save $ \db -> do
+  bracket (Groups.open settings) Groups.close $ \db -> do
     r <- initializeSTM
     let settings' = settings & local.~r
     runTask settings' (newTask termOperation) s
@@ -60,7 +60,7 @@ run = interpret $ \settings s -> do
     schedule (settings'^.local.work)
     mapM_ (tryIOError . removeFile) (Groups.diff Groups.files (db^.Groups.these) db')
     mapM_ (tryIOError . D.removeDirectoryRecursive) (Groups.diff Groups.sources (db^.Groups.these) db')
-    Groups.dump (db & Groups.these .~ db')
+    Groups.commit (db & Groups.these .~ db')
  where
   removeFile path = do
     file <- D.doesFileExist path
@@ -72,7 +72,7 @@ run = interpret $ \settings s -> do
 dryRun :: Interpreter
 dryRun = interpret $ \settings s -> do
   let db' = Groups.fromScript s
-  bracket (Groups.open settings) Groups.save $ \db -> do
+  bracket (Groups.open settings) Groups.close $ \db -> do
     e <- initializeSTM
     let settings' = settings & local.~e
     runTask settings' (newTask termEmptyOperation) s
