@@ -10,7 +10,7 @@
 -- | Saved profiles data management
 module Control.Biegunka.DB
   ( DB(..), Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , target
+  , this, that
   , open, merge, save, fromScript
   , diffFiles, diffSources
   , files, sources
@@ -140,7 +140,8 @@ makeIso ''Groups
 -- | Biegunka 'DB'
 data DB = DB
   { _acidic :: AcidState Groups -- ^ The whole database
-  , _target :: Groups           -- ^ Part of database targeted by current script
+  , _this   :: Groups           -- ^ Part of database targeted by current script
+  , _that   :: Groups           -- ^ The other part of database
   }
 
 makeLenses ''DB
@@ -151,24 +152,23 @@ open settings = do
   let path = settings^.appData </> "groups"
   acid      <- openLocalStateFrom path defGroups
   Groups gs <- query acid GetGroups
-  return (DB acid (Groups (M.filterWithKey (\k _ -> elemOf (targets.folded) k settings) gs)))
+  let (thises, thats) = M.partitionWithKey (\k _ -> elemOf (targets.folded) k settings) gs
+  return (DB acid (Groups thises) (Groups thats))
 
 -- | Update groups' data
 merge :: DB -> Groups -> IO ()
-merge db (Groups gs) = do
-  Groups gs' <- query (db^.acidic) GetGroups
-  let gs'' = Groups $ M.unionWith (\_ new -> new) gs' gs
-  update (db^.acidic) (PutGroups gs'')
+merge db (Groups gs) =
+  update (db^.acidic) (PutGroups (Groups $ M.union (db^.that.from groups) gs))
 
 -- | Save groups' data
 save :: DB -> IO ()
 save = createCheckpointAndClose . view acidic
 
 diffFiles :: DB -> Groups -> [FilePath]
-diffFiles db gs = files (db^.target) \\ files gs
+diffFiles db gs = files (db^.this) \\ files gs
 
 diffSources :: DB -> Groups -> [FilePath]
-diffSources db gs = sources (db^.target) \\ sources gs
+diffSources db gs = sources (db^.this) \\ sources gs
 
 
 -- | All destination files paths
