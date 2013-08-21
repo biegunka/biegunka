@@ -94,6 +94,7 @@ executable biegunka
   other-modules:
     List
     Options
+    Run
   ghc-options:
     -Wall
     -fno-warn-unused-do-bind
