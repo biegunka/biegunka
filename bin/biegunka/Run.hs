@@ -10,7 +10,7 @@ import           Control.Monad (forever)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Either
 import           Data.List (intercalate, isPrefixOf, partition)
-import           Data.Monoid (Monoid(..), (<>))
+import           Data.Monoid ((<>))
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
@@ -39,12 +39,12 @@ import Paths_biegunka (version)
 --   modules (@-i@ option)
 run :: Script -> [String] -> FilePath -> IO ()
 run script args target = do
-  T.putStr logo
+  T.putStrLn logo
   let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
   packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
                      then return (Right ())
                      else findPackageDBArg
-  packageDBArg^!_Left.act (putStrLn . mappend "* Found cabal package DB at ")
+  packageDBArg^!_Left.act (\db -> putStrLn ("* Found cabal package DB at " ++ db ++ ", using it!"))
   (inh, outh, errh, pid) <- runInteractiveProcess "runhaskell"
          (ghcArgs
       ++ ["-i" ++ target^.directory]
@@ -99,7 +99,7 @@ findPackageDBArg = runEitherT $ do
       Right [sandbox]
         | sandbox /= pattern -> left sandbox
       Right (sandbox:_:_) -> do
-        liftIO . putStrLn $ "Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
+        liftIO . putStrLn $ "* Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
         left sandbox
       _ -> right ()
 
