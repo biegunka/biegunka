@@ -210,14 +210,23 @@ command f c = do
       -- while biegunka run is in progress
       gid <- getGID u
       uid <- getUID u
+      -- "Acquire" logic
       atomically $ do
+        -- So, first get current user/count
         mu <- readTVar utv
         case mu^.at uid of
+          -- If *this* user is not inside yet
           Nothing
+              -- and there is no *current* user, just let him in
+              -- and set counter to 1
             | null mu ->
               writeTVar utv (mu & at uid ?~ 1)
+              -- and there is a *current* user, retry
+              -- until he leaves
             | otherwise ->
               retry
+          -- If *this* user is inside, increment the counter and
+          -- let him in
           Just _ ->
             writeTVar utv (mu & ix uid +~ 1)
       log (termDescription (action scm c))
@@ -225,6 +234,8 @@ command f c = do
       setEffectiveUserID uid
       op `finally` do
         atomically $
+          -- On leave, decrement counter
+          -- If counter approaches zero, then current user left
           modifyTVar utv (at uid . non 0 -~ 1)
  where
   getUID (UserID i)   = return i
