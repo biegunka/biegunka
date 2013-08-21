@@ -20,7 +20,7 @@ import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.Catch
-  (SomeException, bracket, finally, onException, throwM, try)
+  (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (Default(..))
@@ -195,10 +195,10 @@ command _ (TM (Wait ts) _) = do
     unless (ts `S.isSubsetOf` ts'')
       retry
 command f c = do
-  utv <- env^!acts.local.user
-  log <- env^!acts.logger
-  scm <- env^!acts.colors
-  op  <- f c
+  users <- env^!acts.local.user
+  log   <- env^!acts.logger
+  scm   <- env^!acts.colors
+  op    <- f c
   liftIO $ case getUser c of
     Nothing  -> do
       -- these are wrappers, since they do not do
@@ -210,34 +210,36 @@ command f c = do
       -- while biegunka run is in progress
       gid <- getGID u
       uid <- getUID u
-      -- "Acquire" logic
-      atomically $ do
-        -- So, first get current user/count
-        mu <- readTVar utv
-        case mu^.at uid of
-          -- If *this* user is not inside yet
-          Nothing
-              -- and there is no *current* user, just let him in
-              -- and set counter to 1
-            | null mu ->
-              writeTVar utv (mu & at uid ?~ 1)
-              -- and there is a *current* user, retry
-              -- until he leaves
-            | otherwise ->
-              retry
-          -- If *this* user is inside, increment the counter and
-          -- let him in
-          Just _ ->
-            writeTVar utv (mu & ix uid +~ 1)
-      log (termDescription (action scm c))
-      setEffectiveGroupID gid
-      setEffectiveUserID uid
-      op `finally` do
-        atomically $
-          -- On leave, decrement counter
-          -- If counter approaches zero, then current user left
-          modifyTVar utv (at uid . non 0 -~ 1)
+      bracket_ (acquire users uid) (release users uid) $ do
+        log (termDescription (action scm c))
+        setEffectiveGroupID gid
+        setEffectiveUserID uid
+        op
  where
+  acquire users uid = atomically $ do
+    -- So, first get current user/count
+    mu <- readTVar users
+    case mu^.at uid of
+      -- If *this* user is not inside yet
+      Nothing
+          -- and there is no *current* user, just let him in
+          -- and set counter to 1
+        | null mu ->
+          writeTVar users (mu & at uid ?~ 1)
+          -- and there is a *current* user, retry
+          -- until he leaves
+        | otherwise ->
+          retry
+      -- If *this* user is inside, increment the counter and
+      -- let him in
+      Just _ ->
+        writeTVar users (mu & ix uid +~ 1)
+
+  release users uid = atomically $
+    -- On leave, decrement counter
+    -- If counter approaches zero, then current user left
+    modifyTVar users (at uid . non 0 -~ 1)
+
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
   getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
