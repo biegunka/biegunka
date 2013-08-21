@@ -31,7 +31,8 @@ import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.User
-  ( setEffectiveUserID, setEffectiveGroupID
+  ( getEffectiveUserID, getEffectiveGroupID
+  , setEffectiveUserID, setEffectiveGroupID
   , getUserEntryForName, userID
   , getGroupEntryForID, getGroupEntryForName, groupID
   )
@@ -62,7 +63,11 @@ run = interpret interpreting where
       let settings' = settings & local .~ r
       runTask settings' (newTask termOperation) s
       atomically (writeTQueue (settings'^.local.work) Stop)
+      gid <- getEffectiveGroupID
+      uid <- getEffectiveUserID
       schedule (settings'^.local.work)
+      setEffectiveGroupID gid
+      setEffectiveUserID uid
       mapM_ (catched remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
       mapM_ (catched removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       Groups.commit (db & Groups.these .~ db')
