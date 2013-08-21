@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 module Control.Biegunka.Biegunka
   ( -- * Wrap/unwrap biegunka interpreters
@@ -18,6 +19,8 @@ import           Control.Concurrent.STM.TQueue
 import           Data.Char (toLower)
 import           Data.Default
 import           Data.Semigroup (Semigroup(..), Monoid(..))
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.IO as T
 
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
@@ -67,6 +70,7 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
 biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expand
   dataDir <- c^.appData.to expand
+  T.putStrLn $ info appRoot dataDir
   bracket spawnLog waitLog $ \logQueue -> do
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
         settings = c
@@ -75,6 +79,11 @@ biegunka (($ def) -> c) interpreter script = do
           & logger  .~ writeLog logQueue
           & targets .~ annotations^.profiles.to Subset
     runInterpreter interpreter settings annotatedScript
+ where
+  info appRoot dataDir = T.unlines
+    [ "* Relative filepaths are deemed relative to " `mappend` T.pack appRoot
+    , "* Data will be saved in "                     `mappend` T.pack dataDir
+    ]
 
 -- | Spawns a thread that reads log queue and
 -- pretty prints messages
