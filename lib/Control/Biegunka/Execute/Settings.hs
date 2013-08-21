@@ -9,8 +9,7 @@ module Control.Biegunka.Execute.Settings
     -- * Executor environment
   , Execution
     -- * Mip
-  , Mip(..), singleton, fromList, null, lookup, insert, delete, keys, elems, assocs
-  , _Mip, _Empty
+  , Mip(..), lookup, insert, delete, singleton, fromList, null, keys, elems, assocs
     -- * Lenses
   , work, user, repos, tasks
     -- * Initializations
@@ -44,7 +43,7 @@ env = reflected
 -- | 0-to-1 key\/value pairs 'Map'
 --
 -- @
--- Map k a ~ [(k, a)]@
+-- Map k a ~ [(k, a)]
 -- Mip k a ~ Maybe (k, a)
 -- @
 data Mip k a = Empty | Mip k a
@@ -53,12 +52,6 @@ data Mip k a = Empty | Mip k a
 instance Functor (Mip k) where
   fmap _ Empty     = Empty
   fmap f (Mip k a) = Mip k (f a)
-
-makePrisms ''Mip
-
-null :: Mip k a -> Bool
-null Empty     = True
-null (Mip _ _) = False
 
 -- | Check if key is here
 lookup :: Eq k => k -> Mip k a -> Maybe a
@@ -97,9 +90,14 @@ instance Eq k => At (Mip k a) where
 singleton :: k -> a -> Mip k a
 singleton = Mip
 
--- | Construct 'Mip' from '[]'
+-- | Construct 'Mip' from list
 fromList :: Eq k => [(k, a)] -> Mip k a
 fromList = foldl' (\a (k, v) -> insert k v a) Empty
+
+-- | Is 'Mip' empty?
+null :: Mip k a -> Bool
+null Empty     = True
+null (Mip _ _) = False
 
 -- | All 0 or 1 'Mip' keys
 keys :: Mip k a -> Maybe k
