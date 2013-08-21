@@ -14,7 +14,7 @@ import           Data.Monoid (Monoid(..), (<>))
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
-import           Data.Version (Version(..))
+import           Data.Version (Version(..), showVersion)
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath.Lens (directory)
 import           System.Process (getProcessExitCode, runInteractiveProcess)
@@ -23,6 +23,7 @@ import           System.IO (hSetBuffering, BufferMode(..))
 import           System.Wordexp (wordexp, nosubst, noundef)
 
 import Options
+import Paths_biegunka (version)
 
 -- | Runs (or checks) biegunka script.
 --
@@ -75,7 +76,7 @@ logo = T.unlines
   [ "   ___  _                    __          "
   , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
   , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "
-  , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  0.2"
+  , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> T.pack (showVersion version)
   , "           /___/                         "
   ]
 
