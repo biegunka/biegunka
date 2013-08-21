@@ -9,9 +9,10 @@ module Control.Biegunka.Execute.Settings
     -- * Executor environment
   , Execution
     -- * Mip
-  , Mip(..), singleton, fromList, lookup, insert, delete, keys, elems, assocs
+  , Mip(..), singleton, fromList, null, lookup, insert, delete, keys, elems, assocs
+  , _Mip, _Empty
     -- * Lenses
-  , work, running, sudoing, repos, tasks
+  , work, user, repos, tasks
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
@@ -27,7 +28,8 @@ import Data.Monoid (mempty)
 import Data.Reflection (Reifies)
 import Data.List (foldl')
 import Data.Set (Set)
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, null)
+import System.Posix.Types (CUid)
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -53,6 +55,10 @@ instance Functor (Mip k) where
   fmap f (Mip k a) = Mip k (f a)
 
 makePrisms ''Mip
+
+null :: Mip k a -> Bool
+null Empty     = True
+null (Mip _ _) = False
 
 -- | Check if key is here
 lookup :: Eq k => k -> Mip k a -> Maybe a
@@ -113,11 +119,10 @@ assocs (Mip k v) = Just (k, v)
 
 -- | Multithread accessable parts
 data Execution = Execution
-  { _work    :: TQueue Work       -- ^ Task queue
-  , _sudoing :: TVar Bool         -- ^ Whether sudoed operation is in progress.
-  , _running :: TVar Bool         -- ^ Whether any operation is in progress.
-  , _repos   :: TVar (Set String) -- ^ Already updated repositories
-  , _tasks   :: TVar (Set Int)    -- ^ Done tasks
+  { _work  :: TQueue Work         -- ^ Task queue
+  , _user  :: TVar (Mip CUid Int) -- ^ Current user id and sessions counter
+  , _repos :: TVar (Set String)   -- ^ Already updated repositories
+  , _tasks :: TVar (Set Int)      -- ^ Done tasks
   }
 
 -- | Workload
@@ -133,11 +138,8 @@ makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
 -- | Task queue
 work :: Lens' Execution (TQueue Work)
 
--- | Whether sudoed operation is in progress.
-sudoing :: Lens' Execution (TVar Bool)
-
--- | Whether any operation is in progress.
-running :: Lens' Execution (TVar Bool)
+-- | Current user id and sessions counter
+user :: Lens' Execution (TVar (Mip CUid Int))
 
 -- | Already updated repositories
 repos :: Lens' Execution (TVar (Set String))
@@ -150,14 +152,12 @@ tasks :: Lens' Execution (TVar (Set Int))
 initializeSTM :: IO Execution
 initializeSTM = do
   a <- newTQueueIO
-  b <- newTVarIO False
-  c <- newTVarIO False
+  b <- newTVarIO Empty
   d <- newTVarIO mempty
   e <- newTVarIO mempty
   return $ Execution
-    { _work    = a
-    , _running = b
-    , _sudoing = c
-    , _repos   = d
-    , _tasks   = e
+    { _work  = a
+    , _user  = b
+    , _repos = d
+    , _tasks = e
     }

@@ -12,7 +12,7 @@ module Control.Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Prelude hiding (log)
+import           Prelude hiding (log, null)
 import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.STM.TQueue (writeTQueue)
@@ -31,8 +31,7 @@ import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
 import           System.Posix.User
-  ( getEffectiveUserID, getEffectiveGroupID
-  , setEffectiveUserID, setEffectiveGroupID
+  ( setEffectiveUserID, setEffectiveGroupID
   , getUserEntryForName, userID
   , getGroupEntryForID, getGroupEntryForName, groupID
   )
@@ -196,33 +195,37 @@ command _ (TM (Wait ts) _) = do
     unless (ts `S.isSubsetOf` ts'')
       retry
 command f c = do
-  stv <- env^!acts.local.sudoing
-  rtv <- env^!acts.local.running
+  utv <- env^!acts.local.user
   log <- env^!acts.logger
   scm <- env^!acts.colors
   op  <- f c
   liftIO $ case getUser c of
     Nothing  -> do
-      atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
+      -- these are wrappers, since they do not do
+      -- any IO, no locking is needed
       log (termDescription (action scm c))
-      op `finally` do
-        atomically $ writeTVar rtv False
-    Just (UserW user) -> do
+      op
+    Just (UserW u) -> do
+      -- I really hope that stuff does not change
+      -- while biegunka run is in progress
+      gid <- getGID u
+      uid <- getUID u
       atomically $ do
-        [s, r] <- mapM readTVar [stv, rtv]
-        guard (not $ s || r)
-        writeTVar stv True
-      gid  <- getEffectiveGroupID
-      uid  <- getEffectiveUserID
-      gid' <- getGID user
-      uid' <- getUID user
+        mu <- readTVar utv
+        case mu^.at uid of
+          Nothing
+            | null mu ->
+              writeTVar utv (mu & at uid ?~ 1)
+            | otherwise ->
+              retry
+          Just _ ->
+            writeTVar utv (mu & ix uid +~ 1)
       log (termDescription (action scm c))
-      setEffectiveGroupID gid'
-      setEffectiveUserID uid'
+      setEffectiveGroupID gid
+      setEffectiveUserID uid
       op `finally` do
-        setEffectiveUserID uid
-        setEffectiveGroupID gid
-        atomically $ writeTVar stv False
+        atomically $
+          modifyTVar utv (at uid . non 0 -~ 1)
  where
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
