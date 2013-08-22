@@ -60,7 +60,7 @@ list datadirglob profiles format = do
             hFlush stdout
         JSON -> do
           db <- open settings
-          for_ (db^.these.groups) $ B.putStrLn . A.encode
+          B.putStrLn . A.encode $ db^.these
  where
   targeted [] = All
   targeted xs = Children (S.fromList xs)

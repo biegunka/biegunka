@@ -137,6 +137,9 @@ deriveSafeCopy 0 'base ''GroupRecord
 newtype Groups = Groups { _groups :: Map String GroupRecord }
     deriving (Show, Read, Typeable)
 
+instance ToJSON Groups where
+  toJSON (Groups gs) = object [ "groups" .= toJSON gs ]
+
 instance Monoid Groups where
   mempty = Groups mempty
   Groups xs `mappend` Groups ys = Groups (xs `mappend` ys)
