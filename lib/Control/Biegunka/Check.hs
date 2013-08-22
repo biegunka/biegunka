@@ -16,7 +16,8 @@ import Control.Monad.Writer (MonadWriter, WriterT, execWriterT, tell)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Foldable (for_)
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.Posix.Files (fileOwner, getFileStatus, readSymbolicLink)
+import System.Posix.Files
+  (fileOwner, getSymbolicLinkStatus, readSymbolicLink)
 import System.Posix.User
 import System.Posix.Types (UserID)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
@@ -121,7 +122,7 @@ checkOwnage auser = \case
 compareUsers :: Maybe UserW -> FilePath -> IO (Maybe String)
 compareUsers mu path = do
   desiredUserID <- user mu
-  realUserID    <- fileOwner <$> getFileStatus path
+  realUserID    <- fileOwner <$> getSymbolicLinkStatus path
   case desiredUserID == realUserID of
     True  -> return Nothing
     False -> Just . userName <$> getUserEntryForID realUserID
