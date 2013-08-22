@@ -34,8 +34,9 @@ data Settings a = Settings
 
 -- | Groups to focus on
 data Targets =
-    All
-  | Subset (Set FilePath)
+    All                     -- All groups
+  | Subset   (Set FilePath) -- The subset of groups
+  | Children (Set FilePath) -- All children of the subset of groups
     deriving (Show, Read)
 
 -- | Colors used in logger

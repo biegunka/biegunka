@@ -63,7 +63,7 @@ list datadirglob profiles format = do
           for_ (db^.these.groups) $ B.putStrLn . A.encode
  where
   targeted [] = All
-  targeted xs = Subset (S.fromList xs)
+  targeted xs = Children (S.fromList xs)
 
 
   info formatted db =
@@ -103,7 +103,7 @@ formatting xs = do
  where
   formatProfile = format $ \case
     'p' -> Right id
-    c   -> Left ("%" ++ [c] ++ " is not a profile info placeholder")
+    c   -> Left ("%" ++ [c] ++ " is not a group info placeholder")
 
   formatSource = format $ \case
     't' -> Right sourceType
