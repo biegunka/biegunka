@@ -15,9 +15,9 @@ import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..), showVersion)
-import           System.Exit (ExitCode(..), exitWith)
+import           System.Exit (exitWith)
 import           System.FilePath.Lens (directory)
-import           System.Process (getProcessExitCode, runInteractiveProcess)
+import           System.Process (runInteractiveProcess, waitForProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.IO (hSetBuffering, BufferMode(..))
 import           System.Wordexp (wordexp, nosubst, noundef)
@@ -54,9 +54,9 @@ run script args target = do
     Nothing
     Nothing
   hSetBuffering inh NoBuffering
-  -- Can't use 'waitForProcess' here because 'waitForProcess' wants -threaded
-  -- but runhaskell ignores -threaded and we want to support runhaskell
-  -- because compiling scripts is not cool
+  -- These 'MVar' kludges are necessary because otherwise biegunka script process
+  -- terminates earlier, than 'T.hGetContents' can read all the data
+  -- We want lazy 'hGetContents' because it provides nice wrapping behaviour
   stdoutAnchor <- newEmptyMVar
   stderrAnchor <- newEmptyMVar
   listen stdoutAnchor outh
@@ -64,8 +64,8 @@ run script args target = do
   tell inh
   takeMVar stdoutAnchor
   takeMVar stderrAnchor
-  exitcode <- getProcessExitCode pid
-  exitWith (maybe (ExitFailure 1) id exitcode)
+  exitcode <- waitForProcess pid
+  exitWith exitcode
  where
   listen mvar handle = forkFinally (forever $ T.hGetContents handle >>= T.putStr)
     (\_ -> putMVar mvar ())

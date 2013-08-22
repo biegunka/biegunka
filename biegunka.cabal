@@ -96,6 +96,7 @@ executable biegunka
     Options
     Run
   ghc-options:
+    -threaded
     -Wall
     -fno-warn-unused-do-bind
 
