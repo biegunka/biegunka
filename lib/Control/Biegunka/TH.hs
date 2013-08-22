@@ -3,13 +3,15 @@
 {-# LANGUAGE ViewPatterns #-}
 -- | Making life easier with meta-programming
 module Control.Biegunka.TH
-  ( biegunkaOptions
+  ( module Control.Biegunka.TH
+  , module System.Command.QQ
   ) where
 
 import Data.Char
 import Data.Foldable (asum)
 import Language.Haskell.TH
 import Options.Applicative
+import System.Command.QQ (sh, shell)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, confirm)
 import Control.Biegunka.Settings (Settings)

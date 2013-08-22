@@ -12,7 +12,7 @@ module Control.Biegunka
   , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..)
-  , shell, raw
+  , raw
     -- * Modifiers
   , profile, group, role
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
@@ -21,7 +21,7 @@ module Control.Biegunka
     -- * TH
   , biegunkaOptions
     -- * Quasiquoters
-  , sh
+  , sh, shell
     -- ** Colors
   , ColorScheme(..)
   , actionColor, sourceColor
@@ -40,8 +40,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.QQ (sh)
 import Control.Biegunka.Script (Script, User(..), React(..), Target, Into, into)
-import Control.Biegunka.TH (biegunkaOptions)
+import Control.Biegunka.TH (biegunkaOptions, sh, shell)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))

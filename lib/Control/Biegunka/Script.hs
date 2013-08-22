@@ -39,11 +39,11 @@ import Data.Set (Set)
 import Data.String (IsString(..))
 import System.FilePath ((</>))
 import System.FilePath.Lens
+import System.Command.QQ (Eval(..))
 import System.Posix.Types (CUid)
 import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
-import Control.Biegunka.QQ
 
 -- $setup
 -- >>> :set -XOverloadedStrings

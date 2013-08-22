@@ -12,7 +12,7 @@ module Control.Biegunka.Execute
 
 import           Control.Applicative
 import           Control.Monad
-import           Prelude hiding (log)
+import           Prelude hiding (log, null)
 import           System.IO.Error (tryIOError)
 
 import           Control.Concurrent.STM.TQueue (writeTQueue)
@@ -20,7 +20,7 @@ import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Monad.Catch
-  (SomeException, bracket, onException, throwM, try)
+  (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default (Default(..))
@@ -30,7 +30,12 @@ import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Posix.Files (createSymbolicLink, removeLink)
-import           System.Posix.User (getEffectiveUserID, getUserEntryForName, userID, setEffectiveUserID)
+import           System.Posix.User
+  ( getEffectiveUserID, getEffectiveGroupID
+  , setEffectiveUserID, setEffectiveGroupID
+  , getUserEntryForName, userID
+  , getGroupEntryForID, getGroupEntryForName, groupID
+  )
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
@@ -58,7 +63,11 @@ run = interpret interpreting where
       let settings' = settings & local .~ r
       runTask settings' (newTask termOperation) s
       atomically (writeTQueue (settings'^.local.work) Stop)
+      gid <- getEffectiveGroupID
+      uid <- getEffectiveUserID
       schedule (settings'^.local.work)
+      setEffectiveGroupID gid
+      setEffectiveUserID uid
       mapM_ (catched remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
       mapM_ (catched removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       Groups.commit (db & Groups.these .~ db')
@@ -191,32 +200,55 @@ command _ (TM (Wait ts) _) = do
     unless (ts `S.isSubsetOf` ts'')
       retry
 command f c = do
-  stv <- env^!acts.local.sudoing
-  rtv <- env^!acts.local.running
-  log <- env^!acts.logger
-  scm <- env^!acts.colors
-  op  <- f c
+  users <- env^!acts.local.user
+  log   <- env^!acts.logger
+  scm   <- env^!acts.colors
+  op    <- f c
   liftIO $ case getUser c of
     Nothing  -> do
-      atomically $ readTVar stv >>= \s -> guard (not s) >> writeTVar rtv True
+      -- these are wrappers, since they do not do
+      -- any IO, no locking is needed
       log (termDescription (action scm c))
       op
-      atomically $ writeTVar rtv False
-    Just (UserW user) -> do
-      atomically $ do
-        [s, r] <- mapM readTVar [stv, rtv]
-        guard (not $ s || r)
-        writeTVar stv True
-      uid  <- getEffectiveUserID
-      uid' <- getUID user
-      log (termDescription (action scm c))
-      setEffectiveUserID uid'
-      op
-      setEffectiveUserID uid
-      atomically $ writeTVar stv False
+    Just (UserW u) -> do
+      -- I really hope that stuff does not change
+      -- while biegunka run is in progress
+      gid <- getGID u
+      uid <- getUID u
+      bracket_ (acquire users uid) (release users uid) $ do
+        log (termDescription (action scm c))
+        setEffectiveGroupID gid
+        setEffectiveUserID uid
+        op
  where
+  acquire users uid = atomically $ do
+    -- So, first get current user/count
+    mu <- readTVar users
+    case mu^.at uid of
+      -- If *this* user is not inside yet
+      Nothing
+          -- and there is no *current* user, just let him in
+          -- and set counter to 1
+        | null mu ->
+          writeTVar users (mu & at uid ?~ 1)
+          -- and there is a *current* user, retry
+          -- until he leaves
+        | otherwise ->
+          retry
+      -- If *this* user is inside, increment the counter and
+      -- let him in
+      Just _ ->
+        writeTVar users (mu & ix uid +~ 1)
+
+  release users uid = atomically $
+    -- On leave, decrement counter
+    -- If counter approaches zero, then current user left
+    modifyTVar users (at uid . non 0 -~ 1)
+
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
+  getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
+  getGID (Username n) = groupID <$> getGroupEntryForName n
 
 termOperation
   :: Reifies t (Settings Execution)
