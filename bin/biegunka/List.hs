@@ -60,10 +60,10 @@ list datadirglob profiles format = do
             hFlush stdout
         JSON -> do
           db <- open settings
-          for_ (db^.these.groups) $ B.putStrLn . A.encode
+          B.putStrLn . A.encode $ db^.these
  where
   targeted [] = All
-  targeted xs = Subset (S.fromList xs)
+  targeted xs = Children (S.fromList xs)
 
 
   info formatted db =
@@ -103,7 +103,7 @@ formatting xs = do
  where
   formatProfile = format $ \case
     'p' -> Right id
-    c   -> Left ("%" ++ [c] ++ " is not a profile info placeholder")
+    c   -> Left ("%" ++ [c] ++ " is not a group info placeholder")
 
   formatSource = format $ \case
     't' -> Right sourceType

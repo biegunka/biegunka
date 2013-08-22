@@ -1,5 +1,5 @@
 name: biegunka
-version: 0.2.0.0
+version: 0.2
 synopsis: DSL definitions, interpreters, templating, git support
 license: MIT
 license-file: LICENSE
@@ -94,7 +94,9 @@ executable biegunka
   other-modules:
     List
     Options
+    Run
   ghc-options:
+    -threaded
     -Wall
     -fno-warn-unused-do-bind
 

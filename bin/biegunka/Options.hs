@@ -74,7 +74,7 @@ defaultBiegunkaScriptName = "Biegunka.hs"
 
 -- | @biegunka list@ default formatting options
 defaultBiegunkaListFormat :: String
-defaultBiegunkaListFormat = "Profile %p%n%;  Source %p%n%;    %T %p%n"
+defaultBiegunkaListFormat = "Group %p%n%;  Source %p%n%;    %T %p%n"
 
 -- | @biegunka list@ default formatting options
 defaultBiegunkaDataDirectory :: String

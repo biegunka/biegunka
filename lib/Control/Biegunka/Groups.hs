@@ -36,7 +36,7 @@ import           Control.Monad.State (State, execState)
 import           Data.Acid
 import           Data.Acid.Local
 import           Data.Aeson
-import           Data.Foldable (elem, for_)
+import           Data.Foldable (any, elem, for_)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
@@ -44,8 +44,8 @@ import           Data.SafeCopy (deriveSafeCopy, base)
 import           Data.Set (Set)
 import qualified Data.Set as S
 import           Data.Typeable (Typeable)
-import           Prelude hiding (elem)
-import           System.FilePath ((</>))
+import           Prelude hiding (any, elem)
+import           System.FilePath.Lens
 
 import Control.Biegunka.Settings
   (Settings, Targets(..), appData, targets)
@@ -137,6 +137,9 @@ deriveSafeCopy 0 'base ''GroupRecord
 newtype Groups = Groups { _groups :: Map String GroupRecord }
     deriving (Show, Read, Typeable)
 
+instance ToJSON Groups where
+  toJSON (Groups gs) = object [ "groups" .= toJSON gs ]
+
 instance Monoid Groups where
   mempty = Groups mempty
   Groups xs `mappend` Groups ys = Groups (xs `mappend` ys)
@@ -188,16 +191,20 @@ those :: Lens' (Partitioned a) a
 -- if nothing is found
 open :: Settings () -> IO (Partitioned Groups)
 open settings = do
-  let path = settings^.appData </> "groups"
+  let (path, _) = settings & appData <</>~ "groups"
   acid <- openLocalStateFrom path mempty
   gs   <- query acid GetMapping
-  let (xs, ys) = mentioned (settings^.targets) gs
+  let (xs, ys) = mentioned (partition (settings^.targets)) gs
   return (Partitioned { _acidic = acid, _these = xs, _those = ys })
  where
-  mentioned All        gs = (Groups gs , Groups mempty)
-  mentioned (Subset s) gs =
-    let (xs, ys) = M.partitionWithKey (\k _ -> k `elem` s) gs
-    in (Groups xs, Groups ys)
+  partition All          = \_ _ -> True
+  partition (Subset s)   = \k _ -> k `elem` s
+  partition (Children s) = \k _ -> any (`isChildOf` k) s
+   where
+    isChildOf x y = x `elem` directories y
+    directories   = toListOf (takingWhile (/= ".") (iterated (view directory)))
+
+  mentioned p gs = let (xs, ys) = M.partitionWithKey p gs in (Groups xs, Groups ys)
 
 -- | Update groups data
 --
