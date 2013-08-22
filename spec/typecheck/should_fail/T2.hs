@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE QuasiQuotes #-}
 -- |
 -- Checks that you cannot chain Actions
 module Chaining where
@@ -9,11 +10,11 @@ import Control.Biegunka.Source.Git
 
 chained_script_0 :: Script Actions ()
 chained_script_0 =
-  shell "echo hello"
+  [sh| echo hello |]
  <~>
-  shell "echo bye"
+  [sh| echo bye |]
 
 -- STDERR
---     Couldn't match type 'Actions with 'Sources
---     Expected type: Script 'Sources ()
---       Actual type: Script 'Actions ()
+--     Couldn't match type 'Sources with 'Actions
+--     Expected type: Script 'Actions ()
+--       Actual type: Script 'Sources ()
