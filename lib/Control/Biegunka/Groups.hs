@@ -40,27 +40,30 @@ import           Data.Foldable (any, elem, for_)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           Data.SafeCopy (deriveSafeCopy, base)
+import           Data.SafeCopy (deriveSafeCopy, base, extension, Migrate(..))
 import           Data.Set (Set)
 import qualified Data.Set as S
 import           Data.Typeable (Typeable)
 import           Prelude hiding (any, elem)
-import           System.FilePath.Lens
+import           System.FilePath.Lens hiding (extension)
 
 import Control.Biegunka.Settings
   (Settings, Targets(..), appData, targets)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
-import Control.Biegunka.Script (Annotate(..))
+import Control.Biegunka.Script (Annotate(..), UserW(..), User(..))
 
 -- $setup
 -- >>> import Data.Default
 
 
+data SourceRecord_v0 = SR_v0 String FilePath FilePath
+
 -- | Source data record
 data SourceRecord = SR
-  { sourceType   :: String   -- 'Source' type: @git@\/@darcs@\/etc.
-  , fromLocation :: FilePath -- 'Source' location (url, basically)
-  , sourcePath   :: FilePath -- Path to 'Source'
+  { sourceType   :: String                    -- 'Source' type: @git@\/@darcs@\/etc.
+  , fromLocation :: FilePath                  -- 'Source' location (url, basically)
+  , sourcePath   :: FilePath                  -- Path to 'Source'
+  , sourceOwner  :: Maybe (Either String Int) -- 'Source' owner
   } deriving (Show, Read)
 
 -- | Only destination filepath matters for equality
@@ -72,21 +75,32 @@ instance Ord SourceRecord where
   (<=) = (<=) `on` sourcePath
 
 instance ToJSON SourceRecord where
-  toJSON SR { sourceType, fromLocation, sourcePath } = object
+  toJSON SR { sourceType, fromLocation, sourcePath, sourceOwner } = object
     [ "type" .= sourceType
     , "from" .= fromLocation
     , "path" .= sourcePath
+    , "user" .= either id show (maybe (Left "(unknown)") id sourceOwner)
     ]
 
-deriveSafeCopy 0 'base ''SourceRecord
+deriveSafeCopy 0 'base ''SourceRecord_v0
 
+instance Migrate SourceRecord where
+  type MigrateFrom SourceRecord = SourceRecord_v0
+  migrate (SR_v0 t s p) = SR t s p Nothing
+
+deriveSafeCopy 1 'extension ''SourceRecord
+
+
+data FileRecord_v0 = FR_v0 String FilePath FilePath
+  deriving (Show, Read)
 
 -- | File data record
 data FileRecord = FR
-  { fileType   :: String   -- File type: @link@\/@copy@\/etc.
-  , fromSource :: FilePath -- File source location (path on disk)
-  , filePath   :: FilePath -- Path to file
-  } deriving (Show, Read)
+  { fileType   :: String                    -- File type: @link@\/@copy@\/etc.
+  , fromSource :: FilePath                  -- File source location (path on disk)
+  , filePath   :: FilePath                  -- Path to file
+  , fileOwner  :: Maybe (Either String Int) -- File owner
+  } deriving (Show)
 
 -- | Only destination filepath matters for equality
 instance Eq FileRecord where
@@ -97,13 +111,20 @@ instance Ord FileRecord where
   (<=) = (<=) `on` filePath
 
 instance ToJSON FileRecord where
-  toJSON FR { fileType, fromSource, filePath } = object
+  toJSON FR { fileType, fromSource, filePath, fileOwner } = object
     [ "type" .= fileType
     , "from" .= fromSource
     , "path" .= filePath
+    , "user" .= either id show (maybe (Left "(unknown)") id fileOwner)
     ]
 
-deriveSafeCopy 0 'base ''FileRecord
+deriveSafeCopy 0 'base ''FileRecord_v0
+
+instance Migrate FileRecord where
+  type MigrateFrom FileRecord = FileRecord_v0
+  migrate (FR_v0 t s p) = FR t s p Nothing
+
+deriveSafeCopy 1 'extension ''FileRecord
 
 
 -- | Group data record
@@ -111,7 +132,7 @@ deriveSafeCopy 0 'base ''FileRecord
 -- A mapping from 'Source' data to set of 'FileRecord's
 newtype GroupRecord = GR
   { unGR :: Map SourceRecord (Set FileRecord)
-  } deriving (Show, Read, Eq, Typeable)
+  } deriving (Show, Eq, Typeable)
 
 instance Monoid GroupRecord where
   mempty = GR mempty
@@ -135,7 +156,7 @@ deriveSafeCopy 0 'base ''GroupRecord
 --
 -- A mapping from group names to 'GroupRecord's
 newtype Groups = Groups { _groups :: Map String GroupRecord }
-    deriving (Show, Read, Typeable)
+    deriving (Show, Typeable)
 
 instance ToJSON Groups where
   toJSON (Groups gs) = object [ "groups" .= toJSON gs ]
@@ -238,8 +259,8 @@ fromScript script = execState (iterM construct script) (Groups mempty)
  where
   construct :: Term Annotate Sources (State Groups a) -> State Groups a
   construct term = case term of
-    TS (AS { asProfile }) (Source sourceType fromLocation sourcePath _) i next -> do
-      let record = SR { sourceType, fromLocation, sourcePath }
+    TS (AS { asProfile, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
+      let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
       groups . at asProfile . non mempty <>= GR (M.singleton record mempty)
       iterM (populate asProfile record) i
       next
@@ -251,14 +272,21 @@ fromScript script = execState (iterM construct script) (Groups mempty)
     -> Term Annotate Actions (State Groups a) -- ^ Current script term
     -> State Groups a
   populate profile source term = case term of
-    TA _ action next -> do
-      for_ (toRecord action) $ \record ->
+    TA (AA { aaUser }) action next -> do
+      for_ (toRecord action (fmap user aaUser)) $ \record ->
         assign (groups.ix profile.ix source.contains record) True
       next
     TM _ next -> next
    where
-    toRecord (Link src dst)       = Just FR { fileType = "link",     fromSource = src, filePath = dst }
-    toRecord (Copy src dst _)     = Just FR { fileType = "copy",     fromSource = src, filePath = dst }
-    toRecord (Template src dst _) = Just FR { fileType = "template", fromSource = src, filePath = dst }
-    toRecord (Patch src dst _)    = Just FR { fileType = "patch",    fromSource = src, filePath = dst }
-    toRecord (Command {})         = Nothing
+    toRecord (Link src dst)       = toFileRecord "link" src dst
+    toRecord (Copy src dst _)     = toFileRecord "copy" src dst
+    toRecord (Template src dst _) = toFileRecord "template" src dst
+    toRecord (Patch src dst _)    = toFileRecord "patch" src dst
+    toRecord (Command {})         = const Nothing
+
+    toFileRecord fileType fromSource filePath fileOwner =
+      Just FR { fileType, fromSource, filePath, fileOwner }
+
+user :: UserW -> Either String Int
+user (UserW (Username s)) = Left s
+user (UserW (UserID n)) = Right (fromIntegral n)

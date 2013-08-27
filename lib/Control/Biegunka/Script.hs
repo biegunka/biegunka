@@ -314,7 +314,7 @@ size = iterFrom 0 go . evalScript def def
   go (TA _ _ result) = succ result
   go (TM _ result)   = result
 
--- | Inline '<$' into 'iter'
+-- | Inline '<$' into 'iter' to avoid unnecessary pass though the whole structure
 --
 -- > iterFrom x f = iter f . (x <$)
 iterFrom :: Functor f => a -> (f a -> a) -> Free f b -> a
