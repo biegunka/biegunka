@@ -26,7 +26,7 @@ import           System.Wordexp (wordexp, nosubst, noundef)
 import           Control.Biegunka.Settings
   (appData, Targets(..), targets)
 import           Control.Biegunka.Groups
-  (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open)
+  (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open, who)
 
 import Options
 
@@ -109,6 +109,7 @@ formatting xs = do
     't' -> Right sourceType
     'l' -> Right fromLocation
     'p' -> Right sourcePath
+    'u' -> Right (who . sourceOwner)
     c   -> Left ("%" ++ [c] ++ " is not a source info placeholder")
 
   formatFile = format $ \case
@@ -116,6 +117,7 @@ formatting xs = do
     'T' -> Right (capitalize . fileType)
     'l' -> Right fromSource
     'p' -> Right filePath
+    'u' -> Right (who . fileOwner)
     c   -> Left ("%" ++ [c] ++ " is not a file info placeholder")
 
   format :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)

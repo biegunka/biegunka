@@ -23,6 +23,7 @@ module Control.Biegunka.Groups
   , these, those, groups
   , open, commit, close, fromScript
   , diff, files, sources
+  , who
   ) where
 
 import Control.Applicative
@@ -56,6 +57,10 @@ import Control.Biegunka.Script (Annotate(..), UserW(..), User(..))
 -- >>> import Data.Default
 
 
+who :: Maybe (Either String Int) -> String
+who = either id show . maybe (Left "(unknown)") id
+
+
 data SourceRecord_v0 = SR_v0 String FilePath FilePath
 
 -- | Source data record
@@ -79,7 +84,7 @@ instance ToJSON SourceRecord where
     [ "type" .= sourceType
     , "from" .= fromLocation
     , "path" .= sourcePath
-    , "user" .= either id show (maybe (Left "(unknown)") id sourceOwner)
+    , "user" .= who sourceOwner
     ]
 
 deriveSafeCopy 0 'base ''SourceRecord_v0
@@ -115,7 +120,7 @@ instance ToJSON FileRecord where
     [ "type" .= fileType
     , "from" .= fromSource
     , "path" .= filePath
-    , "user" .= either id show (maybe (Left "(unknown)") id fileOwner)
+    , "user" .= who fileOwner
     ]
 
 deriveSafeCopy 0 'base ''FileRecord_v0
