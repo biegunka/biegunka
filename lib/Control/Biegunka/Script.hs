@@ -23,8 +23,7 @@ module Control.Biegunka.Script
   , app, profileName, sourcePath, sourceURL, profiles
   , token, order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, UserW(..), User(..), React(..), Retry(..), incr
-  , Target(..), Into, into
+  , URI, UserW(..), User(..), React(..), Retry(..), incr, into
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
@@ -35,6 +34,7 @@ import Control.Monad.Reader (ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
 import Data.Default (Default(..))
+import Data.List (isSuffixOf)
 import Data.Set (Set)
 import Data.String (IsString(..))
 import System.FilePath ((</>))
@@ -283,7 +283,7 @@ annotate i = ReaderT $ \e -> StateT $ \s -> return (runScript s e i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
-  :: Target p => String -> URI -> p
+  :: String -> URI -> FilePath
   -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- view app
@@ -340,38 +340,16 @@ actioned f = Script $ do
   liftS $ TA annotation (f rfp sfp) ()
 
 
--- | Possible file targeting options
-class Target p where
-  destination :: p -> FilePath -> FilePath
-
-instance Target FilePath where
-  destination = const
-  {-# INLINE destination #-}
-
-
--- | Targeting inside specified path
-newtype Into a = Into { unInto :: a }
-  deriving (Show, Read)
-
-instance a ~ FilePath => Target (Into a) where
-  destination p filepath = unInto p </> filepath
-  {-# INLINE destination #-}
-
--- | Place stuff /into/ directory instead of using filename directly
-into :: FilePath -> Into FilePath
-into = Into
-{-# INLINE into #-}
-
 -- | Construct destination 'FilePath'
 --
--- >>> constructToFilepath "" "" ""
+-- >>> constructTargetFilePath "" "" ""
 -- ""
 --
 -- >>> constructTargetFilePath "/root" "from" "to"
 -- "/root/to"
 --
 -- >>> constructTargetFilePath "/root" "from" "to/"
--- "/root/to/"
+-- "/root/to/from"
 --
 -- >>> constructTargetFilePath "/root" "from" (into "to")
 -- "/root/to/from"
@@ -380,10 +358,17 @@ into = Into
 -- "/to"
 --
 -- >>> constructTargetFilePath "/root" "from" "/to/"
--- "/to/"
+-- "/to/from"
 --
 -- >>> constructTargetFilePath "/root" "from" (into "/to")
 -- "/to/from"
-constructTargetFilePath :: Target p => FilePath -> FilePath -> p -> FilePath
-constructTargetFilePath root s path =
-  root </> destination path (s^.filename)
+constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
+constructTargetFilePath root source path =
+  root </> path </> case "/" `isSuffixOf` path of
+    True  -> source^.filename
+    False -> ""
+
+-- | A hack to support the notion of making destination 'FilePath' inside some directory
+into :: FilePath -> FilePath
+into = (++ "/")
+{-# INLINE into #-}

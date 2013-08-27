@@ -7,17 +7,16 @@ module Control.Biegunka
   , Interpreter
   , pause, confirm, dryRun, run, check
     -- * Types
-  , Script, Scope(..), Target
+  , Script, Scope(..)
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
-  , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..)
-  , raw
+  , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..), raw
     -- * Modifiers
   , profile, group, role
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * Auxiliary
-  , Into, into
+  , into
     -- * TH
   , biegunkaOptions
     -- * Quasiquoters
@@ -40,7 +39,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (Script, User(..), React(..), Target, Into, into)
+import Control.Biegunka.Script (Script, User(..), React(..), into)
 import Control.Biegunka.TH (biegunkaOptions, sh, shell)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))

@@ -15,4 +15,4 @@ class Sourceable s where
   -- | Actions to run after source update
   actions :: Lens' s (Script Actions ())
 
-  (==>) :: Target p => String -> p -> s -> Script Sources ()
+  (==>) :: String -> FilePath -> s -> Script Sources ()
