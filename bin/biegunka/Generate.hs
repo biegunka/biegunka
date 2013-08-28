@@ -1,6 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+#ifndef TEST
 module Generate (scriptFor) where
+#else
+module Generate where
+#endif
 
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (WriterT, execWriter, tell)
@@ -9,6 +14,7 @@ import           Data.Default (def)
 import           Data.Foldable (Foldable, for_, toList)
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
+import           Data.Set (Set)
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -32,7 +38,7 @@ scriptFor appdirglob datadirglob profiles = do
       let settings = def & appData .~ datadir & targets .~ targeted profiles
       db <- open settings
       let theses = db^.these.groups
-          types  = execWriter (sourceTypes theses) S.empty
+          types  = uniqueSourcesTypes theses
           script = execWriter (gen theses appdir types)
       T.putStr script
       hFlush stdout
@@ -40,11 +46,6 @@ scriptFor appdirglob datadirglob profiles = do
  where
   targeted [] = All
   targeted xs = Children (S.fromList xs)
-
-  sourceTypes db = do
-    for_ db $ \(GR groupData) ->
-      ifor_ groupData $ \sourceRecord _ ->
-        tell (<> S.singleton (sourceType sourceRecord))
 
   gen db root sources = do
     tell (boilerplate sources)
@@ -66,6 +67,10 @@ scriptFor appdirglob datadirglob profiles = do
 
 write :: Monad m => Text -> WriterT Text m ()
 write = tell . line
+
+uniqueSourcesTypes :: M.Map String GroupRecord -> Set String
+uniqueSourcesTypes =
+  execWriter . traverse (traverse (tell . S.singleton . sourceType) . M.keys . unGR)
 
 
 boilerplate :: Foldable t => t String -> Text
