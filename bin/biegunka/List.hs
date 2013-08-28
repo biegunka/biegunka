@@ -65,7 +65,6 @@ list datadirglob profiles format = do
   targeted [] = All
   targeted xs = Children (S.fromList xs)
 
-
   info formatted db =
     ifor_ db $ \profileName (GR profileData) -> do
       tell $ profileFormat formatted profileName

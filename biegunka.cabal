@@ -92,6 +92,7 @@ executable biegunka
   hs-source-dirs: bin/biegunka
   main-is: Main.hs
   other-modules:
+    Generate
     List
     Options
     Run

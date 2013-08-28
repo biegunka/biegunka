@@ -8,10 +8,12 @@ import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((</>))
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 
-import Run (run)
+import Paths_biegunka
+
+import Generate (scriptFor)
 import List (list)
 import Options
-import Paths_biegunka
+import Run (run)
 
 
 main :: IO ()
@@ -19,9 +21,14 @@ main = do
   hSetBuffering stdout NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
   case biegunkaCommand of
-    Init target                  -> defaulted target >>= initialize
-    Script target script args    -> defaulted target >>= run script args
-    List datadir format profiles -> list datadir profiles format
+    Init target
+      -> defaulted target >>= initialize
+    RunScript target script args
+      -> defaulted target >>= run script args
+    List datadir format profiles ->
+      list datadir profiles format
+    GenScript appdir datadir profiles ->
+      scriptFor appdir datadir profiles
 
 -- | Append default biegunka script name if target
 -- happens to be a directory
