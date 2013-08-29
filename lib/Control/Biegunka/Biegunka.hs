@@ -6,6 +6,8 @@ module Control.Biegunka.Biegunka
     biegunka, Interpreter(..), interpret
     -- * Generic interpreters
   , pause, confirm
+    -- * Auxiliary
+  , expandHome
   ) where
 
 import           Control.Monad (forever, unless)
@@ -21,6 +23,8 @@ import           Data.Default
 import           Data.Semigroup (Semigroup(..), Monoid(..))
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
+import qualified System.Directory as D
+import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
@@ -28,7 +32,6 @@ import           Control.Biegunka.Script
 import           Control.Biegunka.Settings
 import qualified System.Console.Terminal.Size as Term
 import           System.IO
-import           System.Wordexp (wordexp, nosubst, noundef)
 import           Text.PrettyPrint.ANSI.Leijen
   (Doc, displayIO, renderPretty, (<//>), text, line)
 
@@ -68,8 +71,8 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Script Sources ()           -- ^ Script to interpret
          -> IO ()
 biegunka (($ def) -> c) interpreter script = do
-  appRoot <- c^.root.to expand
-  dataDir <- c^.appData.to expand
+  appRoot <- c^.root.to expandHome
+  dataDir <- c^.appData.to expandHome
   T.putStrLn $ info appRoot dataDir
   bracket spawnLog waitLog $ \logQueue -> do
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
@@ -111,13 +114,15 @@ waitLog queue = go where
   delay = 10000
 
 
--- | Take first glob expansion result
-expand :: String -> IO String
-expand x = do
-  es <- wordexp (nosubst <> noundef) x
-  return $ case es of
-    Right [e] -> e
-    _         -> x
+-- | Expand \"~\" at the start of pattern
+expandHome :: String -> IO String
+expandHome pat =
+  case pat of
+    "~"        -> D.getHomeDirectory
+    '~':'/':xs -> do
+      home <- D.getHomeDirectory
+      return (home </> xs)
+    _          -> return pat
 
 
 -- | Interpreter that just waits user to press any key

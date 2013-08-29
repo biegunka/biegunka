@@ -20,9 +20,9 @@ import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           System.FilePath (makeRelative)
-import           System.IO (hFlush, hPutStrLn, stderr, stdout)
-import           System.Wordexp (wordexp, nosubst, noundef)
+import           System.IO (hFlush, stdout)
 
+import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Groups
   (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open)
 import           Control.Biegunka.Settings
@@ -30,19 +30,18 @@ import           Control.Biegunka.Settings
 
 
 scriptFor :: FilePath -> FilePath -> [String] -> IO ()
-scriptFor appdirglob datadirglob profiles = do
-  mappdir  <- wordexp (nosubst <> noundef) appdirglob
-  mdatadir <- wordexp (nosubst <> noundef) datadirglob
-  case both id (mappdir, mdatadir) of
-    Right ([appdir], [datadir]) -> do
-      let settings = def & appData .~ datadir & targets .~ targeted profiles
-      db <- open settings
-      let theses = db^.these.groups
-          types  = uniqueSourcesTypes theses
-          script = execWriter (gen theses appdir types)
-      T.putStr script
-      hFlush stdout
-    _ -> badglob -- wordexp failed
+scriptFor appdirpat datadirpat profiles = do
+  appdir  <- expandHome appdirpat
+  datadir <- expandHome datadirpat
+
+  let settings = def & appData .~ datadir & targets .~ targeted profiles
+  db <- open settings
+
+  let theses = db^.these.groups
+      types  = uniqueSourcesTypes theses
+      script = execWriter (gen theses appdir types)
+  T.putStr script
+  hFlush stdout
  where
   targeted [] = All
   targeted xs = Children (S.fromList xs)
@@ -61,9 +60,6 @@ scriptFor appdirglob datadirglob profiles = do
               False ->
                 for_ fileRecords $
                   tell . line . file root (sourcePath sourceRecord) (sourceOwner sourceRecord)
-
-  badglob = hPutStrLn stderr $
-    "Bad glob pattern: " ++ datadirglob
 
 write :: Monad m => Text -> WriterT Text m ()
 write = tell . line

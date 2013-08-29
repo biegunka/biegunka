@@ -42,8 +42,7 @@ library
     template-haskell     >= 2.7   && < 2.9,
     terminal-size        >= 0.2   && < 0.3,
     text                 >= 0.11  && < 0.12,
-    unix                 >= 2.5   && < 2.7,
-    wordexp              >= 0.2   && < 0.3
+    unix                 >= 2.5   && < 2.7
   hs-source-dirs: lib
   exposed-modules:
     Control.Biegunka
@@ -117,8 +116,7 @@ test-suite spec
     hspec,
     lens,
     text,
-    transformers,
-    wordexp
+    transformers
   hs-source-dirs:
     bin/biegunka
     tests
@@ -128,6 +126,7 @@ test-suite spec
     DSLSpec
     GenerateSpec
     MipSpec
+    UtilSpec
   type: exitcode-stdio-1.0
 
 test-suite th

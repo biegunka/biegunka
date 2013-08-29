@@ -11,7 +11,7 @@ import           Data.Default (def)
 import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
-import           Data.Monoid (Monoid(..), (<>))
+import           Data.Monoid (Monoid(..))
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -21,12 +21,12 @@ import qualified System.Directory as D
 import           System.FilePath ((</>))
 import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 import           System.FilePath.Lens
-import           System.Wordexp (wordexp, nosubst, noundef)
 
-import           Control.Biegunka.Settings
-  (appData, Targets(..), targets)
+import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Groups
   (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open, who)
+import           Control.Biegunka.Settings
+  (appData, Targets(..), targets)
 
 import Options
 
@@ -43,24 +43,20 @@ instance Functor Formatted where
 
 list :: FilePath -> [String] -> Format -> IO ()
 list datadirglob profiles format = do
-  mdatadir <- wordexp (nosubst <> noundef) datadirglob
-  case mdatadir of
-    Left  _         -> badglob -- wordexp failed
-    Right (_:_:_)   -> badglob -- multiple matches
-    Right []        -> badglob -- wordexp found nothing
-    Right [datadir] ->
-      let settings = def & appData .~ datadir & targets .~ targeted profiles
-      in case format of
-        Format pattern -> case formattingText pattern of
-          Left errorMessage ->
-            badformat errorMessage pattern
-          Right formatted -> do
-            db <- open settings
-            T.putStr (execWriter (info formatted (db^.these.groups)))
-            hFlush stdout
-        JSON -> do
-          db <- open settings
-          B.putStrLn . A.encode $ db^.these
+  datadir <- expandHome datadirglob
+
+  let settings = def & appData .~ datadir & targets .~ targeted profiles
+  case format of
+    Format pattern -> case formattingText pattern of
+      Left errorMessage ->
+        badformat errorMessage pattern
+      Right formatted -> do
+        db <- open settings
+        T.putStr (execWriter (info formatted (db^.these.groups)))
+        hFlush stdout
+    JSON -> do
+      db <- open settings
+      B.putStrLn . A.encode $ db^.these
  where
   targeted [] = All
   targeted xs = Children (S.fromList xs)
@@ -73,8 +69,6 @@ list datadirglob profiles format = do
         for_ fileRecords $ \fileRecord ->
           tell $ fileFormat formatted fileRecord
 
-  badglob = hPutStrLn stderr $
-    "Bad glob pattern: " ++ datadirglob
   badformat message pattern = hPutStrLn stderr $
     "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
 
