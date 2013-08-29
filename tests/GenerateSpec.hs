@@ -54,11 +54,11 @@ spec = do
       let sr = SR
             { sourceType   = "git"
             , sourcePath   = "/home/user/there"
-            , fromLocation = "http://example.com"
+            , fromLocation = "http://example.com/"
             , sourceOwner  = Nothing
             }
 
-      source "/home/user" sr `shouldBe` "    git \"http://example.com\" \"there\" $ do"
+      source "/home/user" sr `shouldBe` "    git \"http://example.com/\" \"there\" $ do"
 
     it "generates code for files" $ do
 
@@ -70,6 +70,58 @@ spec = do
             }
 
       file "/home/user" "/home/user/there" Nothing fr `shouldBe` "      copy \"that\" \"here\""
+
+  describe "sudo modifiers generation" $ do
+
+    it "generates modifier if there is no default user" $ do
+
+      let fr = FR
+            { fileType   = "copy"
+            , filePath   = "/home/user/here"
+            , fromSource = "/home/user/there/that"
+            , fileOwner  = Just (Left "user")
+            }
+
+      file "/home/user" "/home/user/there" Nothing fr `shouldBe`
+        "      sudo \"user\" $ copy \"that\" \"here\""
+
+    it "generates modifier if it's source record" $ do
+
+      let sr = SR
+            { sourceType   = "git"
+            , sourcePath   = "/home/user/there"
+            , fromLocation = "http://example.com/"
+            , sourceOwner  = Just (Left "user")
+            }
+
+      source "/home/user" sr `shouldBe`
+        "    sudo \"user\" $ git \"http://example.com/\" \"there\" $ do"
+
+    it "does not generate a modifier if default user is the same as the current one" $ do
+
+      let user = Just (Left "user")
+          fr   = FR
+            { fileType   = "copy"
+            , filePath   = "/home/user/here"
+            , fromSource = "/home/user/there/that"
+            , fileOwner  = Just (Left "user")
+            }
+
+      file "/home/user" "/home/user/there" user fr `shouldBe`
+        "      copy \"that\" \"here\""
+
+    it "does generate a modifier if default user if different from the current one" $ do
+
+      let user = Just (Left "user")
+          fr   = FR
+            { fileType   = "copy"
+            , filePath   = "/home/user/here"
+            , fromSource = "/home/user/there/that"
+            , fileOwner  = Just (Left "user")
+            }
+
+      file "/home/user" "/home/user/there" user fr `shouldBe`
+        "      copy \"that\" \"here\""
 
   describe "utilities" $ do
 
