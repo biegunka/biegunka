@@ -2,8 +2,7 @@
 -- | Run (or check) biegunka script
 module Run (run) where
 
-import           Control.Concurrent (forkFinally)
-import           Control.Concurrent (forkIO)
+import           Control.Concurrent (forkIO, forkFinally)
 import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import           Control.Lens hiding ((<.>))
 import           Control.Monad (forever)
@@ -15,7 +14,7 @@ import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..), showVersion)
-import           System.Exit (exitWith)
+import           System.Exit (ExitCode(..), exitSuccess, exitWith)
 import           System.FilePath.Lens (directory)
 import           System.Process (runInteractiveProcess, waitForProcess)
 import           System.Info (arch, os, compilerName, compilerVersion)
@@ -65,11 +64,17 @@ run script args target = do
   takeMVar stdoutAnchor
   takeMVar stderrAnchor
   exitcode <- waitForProcess pid
-  exitWith exitcode
+  exit exitcode
  where
   listen mvar handle = forkFinally (forever $ T.hGetContents handle >>= T.putStr)
     (\_ -> putMVar mvar ())
   tell handle = forkIO . forever $ T.getLine >>= T.hPutStrLn handle
+
+  exit ExitSuccess =
+    exitSuccess
+  exit (ExitFailure s) = do
+    T.putStrLn $ "Biegunka script exited with exit code " <> T.pack (show s)
+    exitWith (ExitFailure s)
 
 logo :: Text
 logo = T.unlines
