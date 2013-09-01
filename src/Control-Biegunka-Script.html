@@ -32,18 +32,18 @@
 <a name="line-23"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>app</span><span class='hs-layout'>,</span> <span class='hs-varid'>profileName</span><span class='hs-layout'>,</span> <span class='hs-varid'>sourcePath</span><span class='hs-layout'>,</span> <span class='hs-varid'>sourceURL</span><span class='hs-layout'>,</span> <span class='hs-varid'>profiles</span>
 <a name="line-24"></a>  <span class='hs-layout'>,</span> <span class='hs-varid'>token</span><span class='hs-layout'>,</span> <span class='hs-varid'>order</span><span class='hs-layout'>,</span> <span class='hs-varid'>sourceReaction</span><span class='hs-layout'>,</span> <span class='hs-varid'>actionReaction</span><span class='hs-layout'>,</span> <span class='hs-varid'>activeUser</span><span class='hs-layout'>,</span> <span class='hs-varid'>maxRetries</span>
 <a name="line-25"></a>    <span class='hs-comment'>-- ** Misc</span>
-<a name="line-26"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>URI</span><span class='hs-layout'>,</span> <span class='hs-conid'>UserW</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>User</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>Retry</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>incr</span>
-<a name="line-27"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>Target</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>Into</span><span class='hs-layout'>,</span> <span class='hs-varid'>into</span>
-<a name="line-28"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-29"></a>
-<a name="line-30"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Applicative</span> <span class='hs-layout'>(</span><span class='hs-conid'>Applicative</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;$&gt;</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
-<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Lens</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-conid'>Action</span><span class='hs-layout'>)</span>
-<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Free</span> <span class='hs-layout'>(</span><span class='hs-conid'>Free</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>iter</span><span class='hs-layout'>,</span> <span class='hs-varid'>liftF</span><span class='hs-layout'>)</span>
-<a name="line-33"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>State</span> <span class='hs-layout'>(</span><span class='hs-conid'>StateT</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
-<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Reader</span> <span class='hs-layout'>(</span><span class='hs-conid'>ReaderT</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>local</span><span class='hs-layout'>)</span>
-<a name="line-35"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Trans</span> <span class='hs-layout'>(</span><span class='hs-varid'>lift</span><span class='hs-layout'>)</span>
-<a name="line-36"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Copointed</span> <span class='hs-layout'>(</span><span class='hs-varid'>copoint</span><span class='hs-layout'>)</span>
-<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Default</span> <span class='hs-layout'>(</span><span class='hs-conid'>Default</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-26"></a>  <span class='hs-layout'>,</span> <span class='hs-conid'>URI</span><span class='hs-layout'>,</span> <span class='hs-conid'>UserW</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>User</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>React</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-conid'>Retry</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>incr</span><span class='hs-layout'>,</span> <span class='hs-varid'>into</span>
+<a name="line-27"></a>  <span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
+<a name="line-28"></a>
+<a name="line-29"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Applicative</span> <span class='hs-layout'>(</span><span class='hs-conid'>Applicative</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-layout'>(</span><span class='hs-varop'>&lt;$&gt;</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-30"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Lens</span> <span class='hs-varid'>hiding</span> <span class='hs-layout'>(</span><span class='hs-conid'>Action</span><span class='hs-layout'>)</span>
+<a name="line-31"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Free</span> <span class='hs-layout'>(</span><span class='hs-conid'>Free</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>iter</span><span class='hs-layout'>,</span> <span class='hs-varid'>liftF</span><span class='hs-layout'>)</span>
+<a name="line-32"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>State</span> <span class='hs-layout'>(</span><span class='hs-conid'>StateT</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-33"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Reader</span> <span class='hs-layout'>(</span><span class='hs-conid'>ReaderT</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>,</span> <span class='hs-varid'>local</span><span class='hs-layout'>)</span>
+<a name="line-34"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Control</span><span class='hs-varop'>.</span><span class='hs-conid'>Monad</span><span class='hs-varop'>.</span><span class='hs-conid'>Trans</span> <span class='hs-layout'>(</span><span class='hs-varid'>lift</span><span class='hs-layout'>)</span>
+<a name="line-35"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Copointed</span> <span class='hs-layout'>(</span><span class='hs-varid'>copoint</span><span class='hs-layout'>)</span>
+<a name="line-36"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Default</span> <span class='hs-layout'>(</span><span class='hs-conid'>Default</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
+<a name="line-37"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>List</span> <span class='hs-layout'>(</span><span class='hs-varid'>isSuffixOf</span><span class='hs-layout'>)</span>
 <a name="line-38"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Set</span> <span class='hs-layout'>(</span><span class='hs-conid'>Set</span><span class='hs-layout'>)</span>
 <a name="line-39"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>String</span> <span class='hs-layout'>(</span><span class='hs-conid'>IsString</span><span class='hs-layout'>(</span><span class='hs-keyglyph'>..</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
 <a name="line-40"></a><span class='hs-keyword'>import</span> <span class='hs-conid'>System</span><span class='hs-varop'>.</span><span class='hs-conid'>FilePath</span> <span class='hs-layout'>(</span><span class='hs-layout'>(</span><span class='hs-varop'>&lt;/&gt;</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span>
@@ -292,7 +292,7 @@
 <a name="line-283"></a>
 <a name="line-284"></a><a name="sourced"></a><span class='hs-comment'>-- | Abstract away all plumbing needed to make source</span>
 <a name="line-285"></a><span class='hs-definition'>sourced</span>
-<a name="line-286"></a>  <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Target</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>p</span>
+<a name="line-286"></a>  <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>URI</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span>
 <a name="line-287"></a>  <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Actions</span> <span class='hs-conid'>()</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-layout'>(</span><span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Script</span> <span class='hs-conid'>Sources</span> <span class='hs-conid'>()</span>
 <a name="line-288"></a><span class='hs-definition'>sourced</span> <span class='hs-varid'>ty</span> <span class='hs-varid'>url</span> <span class='hs-varid'>path</span> <span class='hs-varid'>inner</span> <span class='hs-varid'>update</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Script</span> <span class='hs-varop'>$</span> <span class='hs-keyword'>do</span>
 <a name="line-289"></a>  <span class='hs-varid'>rfp</span> <span class='hs-keyglyph'>&lt;-</span> <span class='hs-varid'>view</span> <span class='hs-varid'>app</span>
@@ -323,7 +323,7 @@
 <a name="line-314"></a>  <span class='hs-varid'>go</span> <span class='hs-layout'>(</span><span class='hs-conid'>TA</span> <span class='hs-keyword'>_</span> <span class='hs-keyword'>_</span> <span class='hs-varid'>result</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>succ</span> <span class='hs-varid'>result</span>
 <a name="line-315"></a>  <span class='hs-varid'>go</span> <span class='hs-layout'>(</span><span class='hs-conid'>TM</span> <span class='hs-keyword'>_</span> <span class='hs-varid'>result</span><span class='hs-layout'>)</span>   <span class='hs-keyglyph'>=</span> <span class='hs-varid'>result</span>
 <a name="line-316"></a>
-<a name="line-317"></a><a name="iterFrom"></a><span class='hs-comment'>-- | Inline '&lt;$' into 'iter'</span>
+<a name="line-317"></a><a name="iterFrom"></a><span class='hs-comment'>-- | Inline '&lt;$' into 'iter' to avoid unnecessary pass though the whole structure</span>
 <a name="line-318"></a><span class='hs-comment'>--</span>
 <a name="line-319"></a><span class='hs-comment'>-- &gt; iterFrom x f = iter f . (x &lt;$)</span>
 <a name="line-320"></a><span class='hs-definition'>iterFrom</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Functor</span> <span class='hs-varid'>f</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-layout'>(</span><span class='hs-varid'>f</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Free</span> <span class='hs-varid'>f</span> <span class='hs-varid'>b</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>a</span>
@@ -349,52 +349,37 @@
 <a name="line-340"></a>  <span class='hs-varid'>liftS</span> <span class='hs-varop'>$</span> <span class='hs-conid'>TA</span> <span class='hs-varid'>annotation</span> <span class='hs-layout'>(</span><span class='hs-varid'>f</span> <span class='hs-varid'>rfp</span> <span class='hs-varid'>sfp</span><span class='hs-layout'>)</span> <span class='hs-conid'>()</span>
 <a name="line-341"></a>
 <a name="line-342"></a>
-<a name="line-343"></a><a name="Target"></a><span class='hs-comment'>-- | Possible file targeting options</span>
-<a name="line-344"></a><a name="Target"></a><span class='hs-keyword'>class</span> <span class='hs-conid'>Target</span> <span class='hs-varid'>p</span> <span class='hs-keyword'>where</span>
-<a name="line-345"></a>  <span class='hs-varid'>destination</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span>
-<a name="line-346"></a>
-<a name="line-347"></a><a name="instance%20Target%20FilePath"></a><span class='hs-keyword'>instance</span> <span class='hs-conid'>Target</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyword'>where</span>
-<a name="line-348"></a>  <span class='hs-varid'>destination</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>const</span>
-<a name="line-349"></a>  <span class='hs-comment'>{-# INLINE destination #-}</span>
-<a name="line-350"></a>
-<a name="line-351"></a>
-<a name="line-352"></a><a name="Into"></a><span class='hs-comment'>-- | Targeting inside specified path</span>
-<a name="line-353"></a><a name="Into"></a><span class='hs-keyword'>newtype</span> <span class='hs-conid'>Into</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Into</span> <span class='hs-layout'>{</span> <span class='hs-varid'>unInto</span> <span class='hs-keyglyph'>::</span> <span class='hs-varid'>a</span> <span class='hs-layout'>}</span>
-<a name="line-354"></a>  <span class='hs-keyword'>deriving</span> <span class='hs-layout'>(</span><span class='hs-conid'>Show</span><span class='hs-layout'>,</span> <span class='hs-conid'>Read</span><span class='hs-layout'>)</span>
-<a name="line-355"></a>
-<a name="line-356"></a><a name="instance%20Target%20(Into%20a)"></a><span class='hs-keyword'>instance</span> <span class='hs-varid'>a</span> <span class='hs-keyglyph'>~</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>Target</span> <span class='hs-layout'>(</span><span class='hs-conid'>Into</span> <span class='hs-varid'>a</span><span class='hs-layout'>)</span> <span class='hs-keyword'>where</span>
-<a name="line-357"></a>  <span class='hs-varid'>destination</span> <span class='hs-varid'>p</span> <span class='hs-varid'>filepath</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>unInto</span> <span class='hs-varid'>p</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>filepath</span>
-<a name="line-358"></a>  <span class='hs-comment'>{-# INLINE destination #-}</span>
-<a name="line-359"></a>
-<a name="line-360"></a><a name="into"></a><span class='hs-comment'>-- | Place stuff /into/ directory instead of using filename directly</span>
-<a name="line-361"></a><span class='hs-definition'>into</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Into</span> <span class='hs-conid'>FilePath</span>
-<a name="line-362"></a><span class='hs-definition'>into</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Into</span>
-<a name="line-363"></a><span class='hs-comment'>{-# INLINE into #-}</span>
-<a name="line-364"></a>
-<a name="line-365"></a><a name="constructTargetFilePath"></a><span class='hs-comment'>-- | Construct destination 'FilePath'</span>
-<a name="line-366"></a><span class='hs-comment'>--</span>
-<a name="line-367"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructToFilepath "" "" ""</span>
-<a name="line-368"></a><span class='hs-comment'>-- ""</span>
-<a name="line-369"></a><span class='hs-comment'>--</span>
-<a name="line-370"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "to"</span>
-<a name="line-371"></a><span class='hs-comment'>-- "/root/to"</span>
-<a name="line-372"></a><span class='hs-comment'>--</span>
-<a name="line-373"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "to/"</span>
-<a name="line-374"></a><span class='hs-comment'>-- "/root/to/"</span>
-<a name="line-375"></a><span class='hs-comment'>--</span>
-<a name="line-376"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" (into "to")</span>
-<a name="line-377"></a><span class='hs-comment'>-- "/root/to/from"</span>
-<a name="line-378"></a><span class='hs-comment'>--</span>
-<a name="line-379"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "/to"</span>
-<a name="line-380"></a><span class='hs-comment'>-- "/to"</span>
-<a name="line-381"></a><span class='hs-comment'>--</span>
-<a name="line-382"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "/to/"</span>
-<a name="line-383"></a><span class='hs-comment'>-- "/to/"</span>
-<a name="line-384"></a><span class='hs-comment'>--</span>
-<a name="line-385"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" (into "/to")</span>
-<a name="line-386"></a><span class='hs-comment'>-- "/to/from"</span>
-<a name="line-387"></a><span class='hs-definition'>constructTargetFilePath</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Target</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>=&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>p</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span>
-<a name="line-388"></a><span class='hs-definition'>constructTargetFilePath</span> <span class='hs-varid'>root</span> <span class='hs-varid'>s</span> <span class='hs-varid'>path</span> <span class='hs-keyglyph'>=</span>
-<a name="line-389"></a>  <span class='hs-varid'>root</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>destination</span> <span class='hs-varid'>path</span> <span class='hs-layout'>(</span><span class='hs-varid'>s</span><span class='hs-varop'>^.</span><span class='hs-varid'>filename</span><span class='hs-layout'>)</span>
+<a name="line-343"></a><a name="constructTargetFilePath"></a><span class='hs-comment'>-- | Construct destination 'FilePath'</span>
+<a name="line-344"></a><span class='hs-comment'>--</span>
+<a name="line-345"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "" "" ""</span>
+<a name="line-346"></a><span class='hs-comment'>-- ""</span>
+<a name="line-347"></a><span class='hs-comment'>--</span>
+<a name="line-348"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "to"</span>
+<a name="line-349"></a><span class='hs-comment'>-- "/root/to"</span>
+<a name="line-350"></a><span class='hs-comment'>--</span>
+<a name="line-351"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "to/"</span>
+<a name="line-352"></a><span class='hs-comment'>-- "/root/to/from"</span>
+<a name="line-353"></a><span class='hs-comment'>--</span>
+<a name="line-354"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" (into "to")</span>
+<a name="line-355"></a><span class='hs-comment'>-- "/root/to/from"</span>
+<a name="line-356"></a><span class='hs-comment'>--</span>
+<a name="line-357"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "/to"</span>
+<a name="line-358"></a><span class='hs-comment'>-- "/to"</span>
+<a name="line-359"></a><span class='hs-comment'>--</span>
+<a name="line-360"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" "/to/"</span>
+<a name="line-361"></a><span class='hs-comment'>-- "/to/from"</span>
+<a name="line-362"></a><span class='hs-comment'>--</span>
+<a name="line-363"></a><span class='hs-comment'>-- &gt;&gt;&gt; constructTargetFilePath "/root" "from" (into "/to")</span>
+<a name="line-364"></a><span class='hs-comment'>-- "/to/from"</span>
+<a name="line-365"></a><span class='hs-definition'>constructTargetFilePath</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span>
+<a name="line-366"></a><span class='hs-definition'>constructTargetFilePath</span> <span class='hs-varid'>root</span> <span class='hs-varid'>source</span> <span class='hs-varid'>path</span> <span class='hs-keyglyph'>=</span>
+<a name="line-367"></a>  <span class='hs-varid'>root</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-varid'>path</span> <span class='hs-varop'>&lt;/&gt;</span> <span class='hs-keyword'>case</span> <span class='hs-str'>"/"</span> <span class='hs-varop'>`isSuffixOf`</span> <span class='hs-varid'>path</span> <span class='hs-keyword'>of</span>
+<a name="line-368"></a>    <span class='hs-conid'>True</span>  <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>source</span><span class='hs-varop'>^.</span><span class='hs-varid'>filename</span>
+<a name="line-369"></a>    <span class='hs-conid'>False</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-str'>""</span>
+<a name="line-370"></a>
+<a name="line-371"></a><a name="into"></a><span class='hs-comment'>-- | A hack to support the notion of making destination 'FilePath' inside some directory</span>
+<a name="line-372"></a><span class='hs-definition'>into</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>FilePath</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>FilePath</span>
+<a name="line-373"></a><span class='hs-definition'>into</span> <span class='hs-keyglyph'>=</span> <span class='hs-layout'>(</span><span class='hs-varop'>++</span> <span class='hs-str'>"/"</span><span class='hs-layout'>)</span>
+<a name="line-374"></a><span class='hs-comment'>{-# INLINE into #-}</span>
 </pre></body>
 </html>
