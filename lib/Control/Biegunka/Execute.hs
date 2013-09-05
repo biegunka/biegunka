@@ -294,10 +294,10 @@ termOperation term = case term of
     e <- P.waitForProcess ph
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
-  TA _ (Patch patch root spec) _ -> return $ do
-    verified <- verifyAppliedPatch patch root spec
+  TA _ (Patch patch file spec) _ -> return $ do
+    verified <- verifyAppliedPatch patch file spec
     unless verified $
-      applyPatch patch root spec
+      applyPatch patch file spec
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do

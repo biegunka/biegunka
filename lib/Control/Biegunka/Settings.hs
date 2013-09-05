@@ -4,7 +4,7 @@
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
-    Settings, root, appData, logger, targets, colors, local, templates, Templates(..)
+    Settings, appData, logger, targets, colors, local, templates, Templates(..)
     -- * Script targets controls
   , Targets(..)
     -- * Color scheme controls
@@ -17,13 +17,14 @@ import Data.Default (Default(..))
 import Data.Set (Set)
 import Text.PrettyPrint.ANSI.Leijen
 
+import Control.Biegunka.Script (HasRoot(..))
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
 
 
 -- | Settings common for all interpreters and also specific for this one
 data Settings a = Settings
-  { _root      :: FilePath    -- ^ Root path for 'Source' layer
+  { _appRoot   :: FilePath    -- ^ Root path for 'Source' layer
   , _appData   :: FilePath    -- ^ Biegunka profile files path
   , _logger    :: Doc -> IO () -- ^ Logger channel
   , _targets   :: Targets     -- ^ Groups to focus on
@@ -92,8 +93,11 @@ retryColor :: Lens' ColorScheme (Doc -> Doc)
 
 makeLensesWith (defaultRules & generateSignatures .~ False) ''Settings
 
+instance HasRoot (Settings a) where
+  root = appRoot
+
 -- | Root path for 'Source' layer
-root :: Lens' (Settings a) FilePath
+appRoot :: Lens' (Settings a) FilePath
 
 -- | Biegunka profile files
 appData :: Lens' (Settings a) FilePath
@@ -115,7 +119,7 @@ templates :: Lens' (Settings a) Templates
 
 instance Default a => Default (Settings a) where
   def = Settings
-    { _root      = "~"
+    { _appRoot   = "~"
     , _appData   = "~/.biegunka"
     , _logger    = const (return ())
     , _targets   = All

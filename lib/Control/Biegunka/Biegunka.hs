@@ -28,7 +28,7 @@ import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
-  (Script, Annotate, app, profiles, runScript)
+  (HasRoot(root), Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Settings
 import qualified System.Console.Terminal.Size as Term
 import           System.IO

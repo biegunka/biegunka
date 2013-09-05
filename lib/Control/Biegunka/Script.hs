@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -13,8 +14,10 @@
 module Control.Biegunka.Script
   ( -- * Script types
     Script(..), Annotate(..)
-    -- ** Implementation details
+    -- ** Annotations
   , MAnnotations, Annotations
+    -- ** Environment
+  , HasRoot(..), HasSource(..)
     -- * Get annotated script
   , runScript, evalScript
     -- * Script mangling
@@ -30,7 +33,7 @@ import Control.Applicative (Applicative(..), (<$>))
 import Control.Lens hiding (Action)
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (StateT(..))
-import Control.Monad.Reader (ReaderT(..), local)
+import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
 import Data.Default (Default(..))
@@ -167,6 +170,20 @@ instance Default MAnnotations where
 
 makeLensesWith ?? ''Annotations   $ defaultRules & generateSignatures .~ False
 
+class HasRoot s where
+  -- | Biegunka root
+  root :: Lens' s FilePath
+
+instance HasRoot Annotations where
+  root = app
+
+class HasSource s where
+  -- | Source root
+  source :: Lens' s FilePath
+
+instance HasSource Annotations where
+  source = sourcePath
+
 -- | Biegunka filepath root
 app :: Lens' Annotations FilePath
 
@@ -228,6 +245,12 @@ instance Monad (Script s) where
   {-# INLINE return #-}
   Script m >>= f = Script (m >>= unScript . f)
   {-# INLINE (>>=) #-}
+
+instance MonadReader Annotations (Script s) where
+  ask     = Script ask
+  {-# INLINE ask #-}
+  local f = Script . local f . unScript
+  {-# INLINE local #-}
 
 instance Default a => Default (Script s a) where
   def = return def
@@ -299,9 +322,9 @@ sourced ty url path inner update = Script $ do
     maxOrder .= size inner
     ast    <- annotate inner
 
-    source <- view sourcePath
+    sfp <- view sourcePath
 
-    liftS $ TS annotation (Source ty url source update) ast ()
+    liftS $ TS annotation (Source ty url sfp update) ast ()
 
     profiles . contains (asProfile annotation) .= True
     token += 1
@@ -363,9 +386,9 @@ actioned f = Script $ do
 -- >>> constructTargetFilePath "/root" "from" (into "/to")
 -- "/to/from"
 constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
-constructTargetFilePath root source path =
-  root </> path </> case "/" `isSuffixOf` path of
-    True  -> source^.filename
+constructTargetFilePath r s path =
+  r </> path </> case "/" `isSuffixOf` path of
+    True  -> s^.filename
     False -> ""
 
 -- | A hack to support the notion of making destination 'FilePath' inside some directory

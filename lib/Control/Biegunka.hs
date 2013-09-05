@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- | Biegunka - configuration development library
 module Control.Biegunka
   ( -- * Interpreters control
@@ -12,6 +13,8 @@ module Control.Biegunka
   , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..), raw
+    -- * Script environment
+  , root, source
     -- * Modifiers
   , profile, group, role
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
@@ -31,7 +34,7 @@ module Control.Biegunka
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
-  ( Settings, root, appData, colors
+  ( Settings, appData, colors
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates
@@ -39,7 +42,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (Script, User(..), React(..), into)
+import Control.Biegunka.Script (root, source, Script, User(..), React(..), into)
 import Control.Biegunka.TH (biegunkaOptions, sh, shell)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))

@@ -10,7 +10,7 @@ module Control.Biegunka.Execute.Describe
   ) where
 
 import Control.Exception (SomeException)
-import Data.List ((\\), intercalate)
+import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Data.Monoid (mempty)
 
@@ -71,15 +71,15 @@ action sc il = nest 3 $ case il of
       Command p (RawCommand c as) ->
             (sc^.actionColor) "external command"
         </> "`"
-        <//> text (intercalate " " (c:as))
+        <//> text (unwords (c:as))
         <//> "' from"
         </> (sc^.srcColor) (text p)
-      Patch patch root PatchSpec { reversely } ->
+      Patch patch file PatchSpec { reversely } ->
             (sc^.actionColor) "patch"
         </> (sc^.srcColor) (text patch)
         </> (if reversely then parens "reversely" </> "applied" else "applied")
         </> "to"
-        </> (sc^.dstColor) (text root)
+        </> (sc^.dstColor) (text file)
   _ -> mempty
  where
   -- | Annotate action description with source name

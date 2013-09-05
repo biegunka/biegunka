@@ -73,26 +73,26 @@ verification = iterM $ \case
 -- | Check that result of term execution is what's expected
 checkActionResult :: Action -> WriterT [CheckFailure] IO ()
 checkActionResult = \case
-  Link source target -> do
-    source' <- io $ readSymbolicLink target
-    dfe     <- io $ doesFileExist source'
-    dde     <- io $ doesDirectoryExist source'
-    unless (source == source' && (dfe || dde)) $
-      failure (target `NotALinkTo` source)
+  Link file target -> do
+    file' <- io $ readSymbolicLink target
+    dfe   <- io $ doesFileExist file'
+    dde   <- io $ doesDirectoryExist file'
+    unless (file == file' && (dfe || dde)) $
+      failure (target `NotALinkTo` file)
    `catchedIOError`
-    tell [target `NotALinkTo` source]
-  Copy source target spec -> do
-    copy <- io $ verifyCopy source target spec
+    tell [target `NotALinkTo` file]
+  Copy file target spec -> do
+    copy <- io $ verifyCopy file target spec
     unless copy $
-      failure (target `NotACopyOf` source)
+      failure (target `NotACopyOf` file)
    `catchedIOError`
-    failure (target `NotACopyOf` source)
-  Template source target _ -> do
+    failure (target `NotACopyOf` file)
+  Template file target _ -> do
     exists <- io $ doesFileExist target
     unless exists $
-      failure (target `NotATemplateInstanceOf` source)
+      failure (target `NotATemplateInstanceOf` file)
    `catchedIOError`
-    failure (target `NotATemplateInstanceOf` source)
+    failure (target `NotATemplateInstanceOf` file)
   Patch patch target spec -> do
     verified <- io $ verifyAppliedPatch patch target spec
     unless verified $
@@ -140,19 +140,19 @@ documentCheckFailure scheme = \case
     </> parens ((scheme^.sourceColor) (text uri))
     </> "does not exist at"
     </> (scheme^.dstColor) (text target)
-  target `NotACopyOf` source ->
+  target `NotACopyOf` file ->
         (scheme^.dstColor) (text target)
     </> "is not a copy of"
-    </> (scheme^.srcColor) (text source)
-  target `NotALinkTo` source ->
+    </> (scheme^.srcColor) (text file)
+  target `NotALinkTo` file ->
         (scheme^.dstColor) (text target)
     </> "link to"
-    </> (scheme^.srcColor) (text source)
+    </> (scheme^.srcColor) (text file)
     </> "is broken"
-  target `NotATemplateInstanceOf` source ->
+  target `NotATemplateInstanceOf` file ->
         (scheme^.dstColor) (text target)
     </> "is not a templated copy of"
-    </> (scheme^.srcColor) (text source)
+    </> (scheme^.srcColor) (text file)
   NotPatchedWith target patch PatchSpec { reversely } ->
         (scheme^.srcColor) (text patch)
     </> "is not correctly"
