@@ -45,14 +45,17 @@ newtype Interpreter = I
       -> IO ()
   }
 
+-- | Default 'Interpreter' does nothing
+instance Default Interpreter where
+  def = I $ \_ _ k -> k
+
 -- | Two 'Interpreter's combined take the same 'Script' and do things one after another
 instance Semigroup Interpreter where
   I f <> I g = I $ \c s k -> f c s (g c s k)
 
--- | Empty 'Interpreter' does nothing.
--- Two 'Interpreter's combined take the same 'Script' and do things one after another
+-- | Combination of the 'Default' and 'Semigroup' instances
 instance Monoid Interpreter where
-  mempty = I $ \_ _ k -> k
+  mempty  = def
   mappend = (<>)
 
 -- | Interpreter that calls its continuation after interpretation
