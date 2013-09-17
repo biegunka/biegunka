@@ -73,7 +73,7 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
 biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expandHome
   dataDir <- c^.appData.to expandHome
-  T.putStrLn $ info appRoot dataDir
+  T.putStrLn $ info appRoot dataDir c
   bracket spawnLog waitLog $ \logQueue -> do
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
         settings = c
@@ -83,10 +83,11 @@ biegunka (($ def) -> c) interpreter script = do
           & targets .~ annotations^.profiles.to Subset
     runInterpreter interpreter settings annotatedScript
  where
-  info appRoot dataDir = T.unlines
+  info appRoot dataDir settings = T.unlines $
     [ "* Relative filepaths are deemed relative to " `mappend` T.pack appRoot
     , "* Data will be saved in "                     `mappend` T.pack dataDir
-    ]
+    ] ++
+    maybe [] (\_ -> return "* Offline mode") (settings ^? mode._Offline)
 
 -- | Spawns a thread that reads log queue and
 -- pretty prints messages

@@ -24,12 +24,15 @@ module Control.Biegunka
   , biegunkaOptions
     -- * Quasiquoters
   , sh, shell
+    -- * Settings
     -- ** Colors
   , ColorScheme(..)
   , actionColor, sourceColor
   , srcColor, dstColor
   , errorColor, retryColor
   , noColors
+    -- ** Mode
+  , Mode(..)
   ) where
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
@@ -38,6 +41,7 @@ import Control.Biegunka.Settings
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates
+  , Mode(..)
   )
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))

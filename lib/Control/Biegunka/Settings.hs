@@ -5,11 +5,13 @@
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
     Settings, appData, logger, targets, colors, local, templates, Templates(..)
-    -- * Script targets controls
+    -- ** Script targets controls
   , Targets(..)
-    -- * Color scheme controls
+    -- ** Color scheme controls
   , ColorScheme(..), noColors, actionColor, sourceColor
   , srcColor, dstColor, errorColor, retryColor
+    -- ** Biegunka mode
+  , mode, Mode(..), _Online, _Offline
   ) where
 
 import Control.Lens
@@ -31,6 +33,7 @@ data Settings a = Settings
   , _colors    :: ColorScheme -- ^ Pretty printing
   , _local     :: a           -- ^ Interpreter specific settings
   , _templates :: Templates   -- ^ Templates mapping
+  , _mode      :: Mode
   }
 
 -- | Groups to focus on
@@ -70,6 +73,8 @@ noColors = ColorScheme
   , _errorColor  = id
   , _retryColor  = id
   }
+
+data Mode = Offline | Online deriving (Show)
 
 makeLensesWith ?? ''ColorScheme $ (defaultRules & generateSignatures .~ False)
 
@@ -117,6 +122,11 @@ local :: Lens (Settings a) (Settings b) a b
 -- | Templates mapping
 templates :: Lens' (Settings a) Templates
 
+-- | Biegunka mode
+mode :: Lens' (Settings a) Mode
+
+makePrisms ''Mode
+
 instance Default a => Default (Settings a) where
   def = Settings
     { _appRoot   = "~"
@@ -126,4 +136,5 @@ instance Default a => Default (Settings a) where
     , _colors    = def
     , _local     = def
     , _templates = hStringTemplate ()
+    , _mode      = Online
     }

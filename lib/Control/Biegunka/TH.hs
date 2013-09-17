@@ -7,6 +7,7 @@ module Control.Biegunka.TH
   , module System.Command.QQ
   ) where
 
+import Control.Lens (set)
 import Data.Char
 import Data.Foldable (asum)
 import Language.Haskell.TH
@@ -14,7 +15,7 @@ import Options.Applicative
 import System.Command.QQ (sh, shell)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, confirm)
-import Control.Biegunka.Settings (Settings)
+import Control.Biegunka.Settings (Settings, Mode(Offline), mode)
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Script (Script)
@@ -59,26 +60,33 @@ biegunkaOptions name = do
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
         options :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
-        options = flip biegunka .: customExecParser (prefs showHelpOnError) __opts__
-
-        __opts__ :: ParserInfo ($(conT tyCon), Interpreter)
-        __opts__ = info (helper <*> ((,) <$> asum $(environment) <*> interpreters)) fullDesc
+        options = do
+          (env, i, t) <- customExecParser (prefs showHelpOnError) opts
+          return (env, \s -> biegunka (s . t) i)
          where
-          interpreters = asum
-            [ flag' run (long "run" <>
-                help ("Run script"))
-            , flag' safeRun (long "safe-run" <>
-                help ("Run script after confirmation"))
-            , flag' (dryRun <> safeRun <> check) (long "full" <>
-                help ("Dry run, run after confirmation and then check results"))
-            , flag' dryRun (long "dry-run" <>
-                help ("Dry run"))
-            , flag' check (long "check" <>
-                help ("Check script"))
-            , pure safeRun
-            ]
+          opts :: ParserInfo ($(conT tyCon), Interpreter, Settings () -> Settings ())
+          opts = info (helper <*> ((,,) <$> asum $(environment) <*> interpreters <*> modes)) fullDesc
            where
-            safeRun = confirm <> run
+            interpreters = asum
+              [ flag' run (long "run" <>
+                  help ("Run script"))
+              , flag' safeRun (long "safe-run" <>
+                  help ("Run script after confirmation"))
+              , flag' (dryRun <> safeRun <> check) (long "full" <>
+                  help ("Dry run, run after confirmation and then check results"))
+              , flag' dryRun (long "dry-run" <>
+                  help ("Dry run"))
+              , flag' check (long "check" <>
+                  help ("Check script"))
+              , pure safeRun
+              ]
+             where
+              safeRun = confirm <> run
+
+            modes = asum
+              [ flag' (set mode Offline) (long "offline" <> help ("Run script offline"))
+              , pure id
+              ]
         |]
     _ -> fail "biegunkaOptions: Unsupported data type"
 
