@@ -40,7 +40,7 @@ import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
 import           Control.Biegunka.Settings
-  (Settings, Templates(..), templates, local, logger, colors)
+  (Settings, Templates(..), templates, local, logger, colors, Mode(..), mode)
 import qualified Control.Biegunka.Groups as Groups
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
@@ -61,17 +61,20 @@ run = interpret interpreting where
     bracket (Groups.open settings) Groups.close $ \db -> do
       r <- initializeSTM
       let settings' = settings & local .~ r
-      runTask settings' (newTask termOperation) s
+      runTask settings' (newTask (settings^.mode.to io)) s
       atomically (writeTQueue (settings'^.local.work) Stop)
       gid <- getEffectiveGroupID
       uid <- getEffectiveUserID
       schedule (settings'^.local.work)
       setEffectiveGroupID gid
       setEffectiveUserID uid
-      mapM_ (catched remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
-      mapM_ (catched removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
+      mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
+      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       Groups.commit (db & Groups.these .~ db')
    where
+    io Offline = runIOOffline
+    io Online  = runIOOnline
+
     remove path = do
       file <- D.doesFileExist path
       case file of
@@ -88,7 +91,7 @@ run = interpret interpreting where
           D.removeDirectoryRecursive path
         False -> return ()
 
-    catched io = tryIOError . io
+    safely doThings = tryIOError . doThings
 
 -- | Dry run interpreter
 dryRun :: Interpreter
@@ -97,7 +100,7 @@ dryRun = interpret $ \settings s -> do
   bracket (Groups.open settings) Groups.close $ \db -> do
     r <- initializeSTM
     let settings' = settings & local .~ r
-    runTask settings' (newTask termEmptyOperation) s
+    runTask settings' (newTask runPure) s
     atomically (writeTQueue (settings'^.local.work) Stop)
     schedule (settings'^.local.work)
     settings'^.logger $ runChanges (settings'^.colors) db db'
@@ -250,11 +253,11 @@ command f c = do
   getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
   getGID (Username n) = groupID <$> getGroupEntryForName n
 
-termOperation
+runIOOnline
   :: Reifies t (Settings Execution)
   => Term Annotate s a
   -> Executor t (IO ())
-termOperation term = case term of
+runIOOnline term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
     rstv <- env^!acts.local.repos
     return $ do
@@ -305,11 +308,18 @@ termOperation term = case term of
     tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-termEmptyOperation
+runIOOffline
   :: Reifies t (Settings Execution)
   => Term Annotate s a
   -> Executor t (IO ())
-termEmptyOperation _ = return (return ())
+runIOOffline t@(TS {}) = runPure t
+runIOOffline t         = runIOOnline t
+
+runPure
+  :: (Applicative m, Reifies t (Settings Execution))
+  => Term Annotate s a
+  -> Executor t (m ())
+runPure _ = pure (pure ())
 
 -- | Queue next task in scheduler
 newTask
