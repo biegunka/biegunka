@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-module OverloadedStrings where
 -- |
 -- Check that -XOverloadedStrings does not hinder compilation
+module OverloadedStrings where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Directory

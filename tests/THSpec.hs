@@ -3,11 +3,13 @@
 module THSpec where
 
 import Control.Lens
+import Data.Default (def)
 import Data.Monoid (mempty)
 import Options.Applicative
 import Test.Hspec
 
 import Control.Biegunka.TH (biegunkaOptions)
+import Control.Biegunka.Settings (mode, _Offline)
 
 
 data Environments = Default | NotSoDefault deriving (Show, Eq)
@@ -18,6 +20,10 @@ biegunkaOptions ''Environments
 spec :: Spec
 spec =
   describe "biegunka script command line options parser" $ do
+    context "settings" $
+      it "handles --offline option" $
+        preview (_Right._3.to ($ def).mode._Offline)
+          (parse optionsParser ["--default", "--offline"]) `shouldBe` Just ()
     context "environmental" $ do
       it "handles --environmental option" $
         preview (_Right._1) (parse optionsParser ["--default"]) `shouldBe` Just Default

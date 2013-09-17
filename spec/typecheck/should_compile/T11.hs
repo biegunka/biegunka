@@ -1,9 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-module CleverTarget where
 -- |
 -- Clever target path type checking.
 --
 -- Basic usecases.
+module CleverTarget where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Git
