@@ -61,32 +61,32 @@ biegunkaOptions name = do
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
         options :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
         options = do
-          (env, i, t) <- customExecParser (prefs showHelpOnError) opts
+          (env, i, t) <- customExecParser (prefs showHelpOnError) optionsParser
           return (env, \s -> biegunka (s . t) i)
-         where
-          opts :: ParserInfo ($(conT tyCon), Interpreter, Settings () -> Settings ())
-          opts = info (helper <*> ((,,) <$> asum $(environment) <*> interpreters <*> modes)) fullDesc
-           where
-            interpreters = asum
-              [ flag' run (long "run" <>
-                  help ("Run script"))
-              , flag' safeRun (long "safe-run" <>
-                  help ("Run script after confirmation"))
-              , flag' (dryRun <> safeRun <> check) (long "full" <>
-                  help ("Dry run, run after confirmation and then check results"))
-              , flag' dryRun (long "dry-run" <>
-                  help ("Dry run"))
-              , flag' check (long "check" <>
-                  help ("Check script"))
-              , pure safeRun
-              ]
-             where
-              safeRun = confirm <> run
 
-            modes = asum
-              [ flag' (set mode Offline) (long "offline" <> help ("Run script offline"))
-              , pure id
-              ]
+        optionsParser :: ParserInfo ($(conT tyCon), Interpreter, Settings () -> Settings ())
+        optionsParser = info (helper <*> ((,,) <$> asum $(environment) <*> interpreters <*> modes)) fullDesc
+         where
+          interpreters = asum
+            [ flag' run (long "run" <>
+                help ("Run script"))
+            , flag' safeRun (long "safe-run" <>
+                help ("Run script after confirmation"))
+            , flag' (dryRun <> safeRun <> check) (long "full" <>
+                help ("Dry run, run after confirmation and then check results"))
+            , flag' dryRun (long "dry-run" <>
+                help ("Dry run"))
+            , flag' check (long "check" <>
+                help ("Check script"))
+            , pure safeRun
+            ]
+           where
+            safeRun = confirm <> run
+
+          modes = asum
+            [ flag' (set mode Offline) (long "offline" <> help ("Run script offline"))
+            , pure id
+            ]
         |]
     _ -> fail "biegunkaOptions: Unsupported data type"
 

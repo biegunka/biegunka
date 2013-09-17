@@ -115,6 +115,7 @@ test-suite spec
     free,
     hspec,
     lens,
+    optparse-applicative,
     text,
     transformers
   hs-source-dirs:
@@ -125,18 +126,7 @@ test-suite spec
     BehavioursSpec
     DSLSpec
     GenerateSpec
+    THSpec
     MipSpec
     UtilSpec
-  type: exitcode-stdio-1.0
-
-test-suite th
-  default-language: Haskell2010
-  build-depends:
-    base >= 4 && < 5,
-    biegunka,
-    hspec,
-    lens,
-    optparse-applicative
-  hs-source-dirs: spec
-  main-is: OptionsTH.hs
   type: exitcode-stdio-1.0
