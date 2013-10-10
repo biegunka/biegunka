@@ -15,7 +15,7 @@ import           Control.Concurrent.MVar
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue
 import qualified System.Console.Terminal.Size as Term
-import           System.IO (Handle, hFlush, stdout)
+import           System.IO (Handle, hFlush, stderr, stdout)
 import           Text.PrettyPrint.ANSI.Leijen (Doc, displayIO, renderPretty)
 
 
@@ -62,7 +62,7 @@ start = do
 
 logStream :: Message -> Handle
 logStream (Plain _)     = stdout
-logStream (Exception _) = stdout -- that should really be 'stderr'
+logStream (Exception _) = stderr
 
 -- | Stop logger
 --

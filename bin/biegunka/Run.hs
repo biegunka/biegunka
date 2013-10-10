@@ -2,8 +2,7 @@
 -- | Run (or check) biegunka script
 module Run (run) where
 
-import           Control.Concurrent (forkIO, forkFinally)
-import           Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import           Control.Concurrent (forkIO)
 import           Control.Lens hiding ((<.>))
 import           Control.Monad (forever)
 import           Control.Monad.IO.Class (liftIO)
@@ -16,9 +15,9 @@ import qualified Data.Text.Lazy.IO as T
 import           Data.Version (Version(..), showVersion)
 import           System.Exit (ExitCode(..), exitSuccess, exitWith)
 import           System.FilePath.Lens (directory)
-import           System.Process (runInteractiveProcess, waitForProcess)
+import           System.Process
 import           System.Info (arch, os, compilerName, compilerVersion)
-import           System.IO (hSetBuffering, BufferMode(..))
+import           System.IO (Handle, hSetBuffering, BufferMode(..))
 import           System.Wordexp (wordexp, nosubst, noundef)
 
 import Options
@@ -44,30 +43,17 @@ run script args target = do
                      then return (Right ())
                      else findPackageDBArg
   packageDBArg^!_Left.act (\db -> putStrLn ("* Found cabal package DB at " ++ db ++ ", using it!"))
-  (inh, outh, errh, pid) <- runInteractiveProcess "runhaskell"
+  (inh, pid) <- runBiegunkaProcess
          (ghcArgs
       ++ ["-i" ++ target^.directory]
       ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
       ++ [target, toScriptOption script]
       ++ biegunkaArgs)
-    Nothing
-    Nothing
   hSetBuffering inh NoBuffering
-  -- These 'MVar' kludges are necessary because otherwise biegunka script process
-  -- terminates earlier, than 'T.hGetContents' can read all the data
-  -- We want lazy 'hGetContents' because it provides nice wrapping behaviour
-  stdoutAnchor <- newEmptyMVar
-  stderrAnchor <- newEmptyMVar
-  listen stdoutAnchor outh
-  listen stderrAnchor errh
   tell inh
-  takeMVar stdoutAnchor
-  takeMVar stderrAnchor
   exitcode <- waitForProcess pid
   exit exitcode
  where
-  listen mvar handle = forkFinally (forever $ T.hGetContents handle >>= T.putStr)
-    (\_ -> putMVar mvar ())
   tell handle = forkIO . forever $ T.getLine >>= T.hPutStrLn handle
 
   exit ExitSuccess =
@@ -75,6 +61,22 @@ run script args target = do
   exit (ExitFailure s) = do
     T.putStrLn $ "Biegunka script exited with exit code " <> T.pack (show s)
     exitWith (ExitFailure s)
+
+runBiegunkaProcess :: [String] -> IO (Handle, ProcessHandle)
+runBiegunkaProcess args = do
+  (Just inh, Nothing, Nothing, ph) <- createProcess process
+  return (inh, ph)
+ where
+  process = CreateProcess
+    { cmdspec      = RawCommand "runhaskell" args
+    , cwd          = Nothing
+    , env          = Nothing
+    , std_in       = CreatePipe
+    , std_out      = Inherit
+    , std_err      = Inherit
+    , close_fds    = True
+    , create_group = True
+    }
 
 logo :: Text
 logo = T.unlines
