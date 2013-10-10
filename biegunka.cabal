@@ -56,7 +56,7 @@ library
     Control.Biegunka.Execute.Settings
     Control.Biegunka.Groups
     Control.Biegunka.Language
-    Control.Biegunka.Logger
+    Control.Biegunka.Log
     Control.Biegunka.Primitive
     Control.Biegunka.Script
     Control.Biegunka.Settings

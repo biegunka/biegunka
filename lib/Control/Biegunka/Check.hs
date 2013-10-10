@@ -24,7 +24,7 @@ import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import           Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
 import           Control.Biegunka.Biegunka (Interpreter(..), interpret)
-import qualified Control.Biegunka.Logger as Log
+import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Settings
   (logger, ColorScheme(..), colors, sourceColor, srcColor, dstColor)
 import           Control.Biegunka.Language

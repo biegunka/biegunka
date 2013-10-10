@@ -21,7 +21,7 @@ import qualified System.Directory as D
 import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
-import qualified Control.Biegunka.Logger as Log
+import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Script
   (HasRoot(root), Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Settings

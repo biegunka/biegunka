@@ -39,7 +39,7 @@ import           System.Posix.User
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
-import qualified Control.Biegunka.Logger as Log
+import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Settings
   (Settings, Templates(..), templates, local, logger, colors, Mode(..), mode)
 import qualified Control.Biegunka.Groups as Groups

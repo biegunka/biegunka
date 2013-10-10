@@ -19,7 +19,7 @@ import Data.Default (Default(..))
 import Data.Set (Set)
 import Text.PrettyPrint.ANSI.Leijen
 
-import Control.Biegunka.Logger (Logger)
+import Control.Biegunka.Log (Logger)
 import Control.Biegunka.Script (HasRoot(..))
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate

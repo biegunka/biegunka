@@ -1,7 +1,7 @@
 -- | Biegunka logger
 --
 -- Provides an interface for consistent logging from multithreaded interpreters
-module Control.Biegunka.Logger
+module Control.Biegunka.Log
   ( -- * Types
     Logger, plain, exception
     -- * Acquire/release
