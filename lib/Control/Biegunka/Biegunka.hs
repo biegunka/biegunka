@@ -10,14 +10,9 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
-import           Control.Monad (forever, unless)
-import           Control.Concurrent (forkIO, threadDelay)
 import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad.Free (Free)
-import           Control.Concurrent.STM (atomically)
-import           Control.Concurrent.STM.TQueue
-  (TQueue, newTQueueIO, readTQueue, writeTQueue, isEmptyTQueue)
 import           Data.Char (toLower)
 import           Data.Default
 import           Data.Semigroup (Semigroup(..), Monoid(..))
@@ -27,13 +22,12 @@ import qualified System.Directory as D
 import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
+import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script
   (HasRoot(root), Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Settings
-import qualified System.Console.Terminal.Size as Term
 import           System.IO
-import           Text.PrettyPrint.ANSI.Leijen
-  (Doc, displayIO, renderPretty, (<//>), text, line)
+import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
 
 
 -- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
@@ -77,12 +71,12 @@ biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expandHome
   dataDir <- c^.appData.to expandHome
   T.putStrLn $ info appRoot dataDir c
-  bracket spawnLog waitLog $ \logQueue -> do
+  bracket Logger.start Logger.stop $ \logQueue -> do
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
         settings = c
           & root    .~ appRoot
           & appData .~ dataDir
-          & logger  .~ writeLog logQueue
+          & logger  .~ Logger.write logQueue
           & targets .~ annotations^.profiles.to Subset
     runInterpreter interpreter settings annotatedScript
  where
@@ -91,31 +85,6 @@ biegunka (($ def) -> c) interpreter script = do
     , "* Data will be saved in "                     `mappend` T.pack dataDir
     ] ++
     maybe [] (\_ -> return "* Offline mode") (settings ^? mode._Offline)
-
--- | Spawns a thread that reads log queue and
--- pretty prints messages
-spawnLog :: IO (TQueue Doc)
-spawnLog = newTQueueIO >>= \queue -> forkIO (loop queue) >> return queue where
-  loop queue = forever $ do
-    width <- fmap (maybe 80 Term.width) Term.size
-    doc <- readLog queue
-    displayIO stdout (renderPretty 0.9 width doc)
-    hFlush stdout
-    loop queue
-
--- | Read a doc from log queue
-readLog :: TQueue a -> IO a
-readLog = atomically . readTQueue
-
--- | Write a doc to log queue
-writeLog :: TQueue a -> a -> IO ()
-writeLog queue = atomically . writeTQueue queue
-
--- | Loop until log queue is empty
-waitLog :: TQueue a -> IO ()
-waitLog queue = go where
-  go    = atomically (isEmptyTQueue queue) >>= \e -> unless e (threadDelay delay >> go)
-  delay = 10000
 
 
 -- | Expand \"~\" at the start of pattern
