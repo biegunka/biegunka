@@ -15,14 +15,13 @@ import           Control.Lens
 import           Control.Monad.Free (Free)
 import           Data.Char (toLower)
 import           Data.Default
+import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.IO as T
 import qualified System.Directory as D
 import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
-import qualified Control.Biegunka.Logger as Logger
+import qualified Control.Biegunka.Logger as Log
 import           Control.Biegunka.Script
   (HasRoot(root), Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Settings
@@ -70,19 +69,20 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
 biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expandHome
   dataDir <- c^.appData.to expandHome
-  T.putStrLn $ info appRoot dataDir c
-  bracket Logger.start Logger.stop $ \logQueue -> do
+  bracket Log.start Log.stop $ \queue -> do
+    Log.write queue $
+      Log.plain (text (info appRoot dataDir c))
     let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
         settings = c
           & root    .~ appRoot
           & appData .~ dataDir
-          & logger  .~ Logger.write logQueue
+          & logger  .~ queue
           & targets .~ annotations^.profiles.to Subset
     runInterpreter interpreter settings annotatedScript
  where
-  info appRoot dataDir settings = T.unlines $
-    [ "* Relative filepaths are deemed relative to " `mappend` T.pack appRoot
-    , "* Data will be saved in "                     `mappend` T.pack dataDir
+  info appRoot dataDir settings = unlines $
+    [ "* Relative filepaths are deemed relative to " ++ appRoot
+    , "* Data will be saved in "                     ++ dataDir
     ] ++
     maybe [] (\_ -> return "* Offline mode") (settings ^? mode._Offline)
 
@@ -100,7 +100,10 @@ expandHome pat =
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//> line) >> getch
+pause = interpret $ \settings _ -> do
+  Log.write (settings^.logger) $
+    Log.plain (text "Press any key to continue" <//> line)
+  getch
  where
   getch = do
     hSetBuffering stdin NoBuffering
@@ -109,16 +112,17 @@ pause = interpret $ \c _ -> view logger c (text "Press any key to continue" <//>
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
-confirm = I $ \c _ k -> do
-  r <- prompt (view logger c) (text "Proceed? [y/n] ")
-  case r of
-    True  -> k
-    False -> return ()
+confirm = I $ \settings _ k ->
+  bool (return ()) k =<< prompt settings (text "Proceed? [y/n] ")
  where
-  prompt l m = do
-    l m
-    r <- getLine
-    case map toLower r of
+  prompt settings message = fix $ \loop -> do
+    Log.write (settings^.logger) $
+      Log.plain message
+    res <- getLine
+    case map toLower res of
       "y" -> return True
       "n" -> return False
-      _   -> prompt l m
+      _   -> loop
+
+bool :: a -> a -> Bool -> a
+bool f t b = if b then t else f

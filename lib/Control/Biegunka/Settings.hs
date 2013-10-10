@@ -19,6 +19,7 @@ import Data.Default (Default(..))
 import Data.Set (Set)
 import Text.PrettyPrint.ANSI.Leijen
 
+import Control.Biegunka.Logger (Logger)
 import Control.Biegunka.Script (HasRoot(..))
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
@@ -28,7 +29,7 @@ import Control.Biegunka.Templates.HStringTemplate
 data Settings a = Settings
   { _appRoot   :: FilePath    -- ^ Root path for 'Source' layer
   , _appData   :: FilePath    -- ^ Biegunka profile files path
-  , _logger    :: Doc -> IO () -- ^ Logger channel
+  , _logger    :: Logger     -- ^ Interpreters' logger handle
   , _targets   :: Targets     -- ^ Groups to focus on
   , _colors    :: ColorScheme -- ^ Pretty printing
   , _local     :: a           -- ^ Interpreter specific settings
@@ -108,7 +109,7 @@ appRoot :: Lens' (Settings a) FilePath
 appData :: Lens' (Settings a) FilePath
 
 -- | Logger channel
-logger :: Lens' (Settings a) (Doc -> IO ())
+logger :: Lens' (Settings a) Logger
 
 -- | Groups to focus on
 targets :: Lens' (Settings a) Targets
@@ -131,7 +132,7 @@ instance Default a => Default (Settings a) where
   def = Settings
     { _appRoot   = "~"
     , _appData   = "~/.biegunka"
-    , _logger    = const (return ())
+    , _logger    = undefined -- sorry
     , _targets   = All
     , _colors    = def
     , _local     = def

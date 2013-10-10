@@ -3,7 +3,7 @@
 -- Provides an interface for consistent logging from multithreaded interpreters
 module Control.Biegunka.Logger
   ( -- * Types
-    Logger
+    Logger, plain, exception
     -- * Acquire/release
   , start, stop
     -- * Operation
@@ -15,19 +15,31 @@ import           Control.Concurrent.MVar
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue
 import qualified System.Console.Terminal.Size as Term
-import           System.IO (hFlush, stdout)
+import           System.IO (Handle, hFlush, stdout)
 import           Text.PrettyPrint.ANSI.Leijen (Doc, displayIO, renderPretty)
 
 
 -- | 'Logger' abstract data type for logging
-newtype Logger = Logger (TQueue Message)
+newtype Logger = Logger (TQueue Command)
 
 -- Different logger messages
 --
 -- this ADT is supposed to be more sophisticated
+data Command =
+    Display Message -- ^ Message to display
+  | Stop (MVar ())  -- ^ Tells logger to stop
+
 data Message =
-    Message Doc    -- ^ Message to display
-  | Stop (MVar ()) -- ^ Tells logger to stop
+    Plain { doc :: Doc }     -- write to stdout
+  | Exception { doc :: Doc } -- write to stderr
+
+-- | Plain log message about anything
+plain :: Doc -> Message
+plain = Plain
+
+-- | Exception (or other error) log message
+exception :: Doc -> Message
+exception = Exception
 
 
 -- | Get a new logger ready for logging
@@ -37,16 +49,20 @@ start = do
   forkIO (loop queue)
   return (Logger queue)
  where
-  loop :: TQueue Message -> IO ()
+  loop :: TQueue Command -> IO ()
   loop queue = do
-    message <- atomically (readTQueue queue)
-    case message of
-      Message doc -> do
+    command <- atomically (readTQueue queue)
+    case command of
+      Display message -> do
         width <- fmap (maybe 80 Term.width) Term.size
-        displayIO stdout (renderPretty 0.9 width doc)
+        displayIO (logStream message) (renderPretty 0.9 width (doc message))
         hFlush stdout
         loop queue
       Stop var  -> putMVar var ()
+
+logStream :: Message -> Handle
+logStream (Plain _)     = stdout
+logStream (Exception _) = stdout -- that should really be 'stderr'
 
 -- | Stop logger
 --
@@ -59,5 +75,6 @@ stop (Logger queue) = do
 
 
 -- | Write a document
-write :: Logger -> Doc -> IO ()
-write (Logger queue) doc = atomically (writeTQueue queue (Message doc))
+write :: Logger -> Message -> IO ()
+write (Logger queue) message = atomically $
+  writeTQueue queue (Display message)

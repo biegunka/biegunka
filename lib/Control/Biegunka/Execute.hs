@@ -39,6 +39,7 @@ import           System.Posix.User
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
+import qualified Control.Biegunka.Logger as Log
 import           Control.Biegunka.Settings
   (Settings, Templates(..), templates, local, logger, colors, Mode(..), mode)
 import qualified Control.Biegunka.Groups as Groups
@@ -79,7 +80,8 @@ run = interpret interpreting where
       file <- D.doesFileExist path
       case file of
         True  -> do
-          (settings^.logger) (removal path)
+          Log.write (settings^.logger) $
+            Log.plain (removal path)
           D.removeFile path
         False -> D.removeDirectoryRecursive path
 
@@ -87,7 +89,8 @@ run = interpret interpreting where
       directory <- D.doesDirectoryExist path
       case directory of
         True  -> do
-          (settings^.logger) (removal path)
+          Log.write (settings^.logger) $
+            Log.plain (removal path)
           D.removeDirectoryRecursive path
         False -> return ()
 
@@ -103,7 +106,8 @@ dryRun = interpret $ \settings s -> do
     runTask settings' (newTask runPure) s
     atomically (writeTQueue (settings'^.local.work) Stop)
     schedule (settings'^.local.work)
-    settings'^.logger $ runChanges (settings'^.colors) db db'
+    Log.write (settings'^.logger) $
+      Log.plain (runChanges (settings'^.colors) db db')
 
 
 -- | Run single 'Sources' task
@@ -182,12 +186,16 @@ checkRetryCount
 checkRetryCount doneRetries maximumRetries exc = do
   log <- env^!acts.logger
   scm <- env^!acts.colors
-  liftIO . log . termDescription $ exception scm exc
-  if doneRetries < maximumRetries then do
-    liftIO . log . termDescription $ retryCounter scm (unRetry (incr doneRetries)) (unRetry maximumRetries)
-    return True
-  else do
-    return False
+  liftIO $ do
+    Log.write log $
+      Log.exception (termDescription (exception scm exc))
+    if doneRetries < maximumRetries then do
+      Log.write log $
+        Log.exception (termDescription $
+          retryCounter scm (unRetry (incr doneRetries)) (unRetry maximumRetries))
+      return True
+    else
+      return False
 
 
 -- | Single command execution
@@ -211,7 +219,8 @@ command f c = do
     Nothing  -> do
       -- these are wrappers, since they do not do
       -- any IO, no locking is needed
-      log (termDescription (action scm c))
+      Log.write log $
+        Log.plain (termDescription (action scm c))
       op
     Just (UserW u) -> do
       -- I really hope that stuff does not change
@@ -219,7 +228,8 @@ command f c = do
       gid <- getGID u
       uid <- getUID u
       bracket_ (acquire users uid) (release users uid) $ do
-        log (termDescription (action scm c))
+        Log.write log $
+          Log.plain (termDescription (action scm c))
         setEffectiveGroupID gid
         setEffectiveUserID uid
         op
