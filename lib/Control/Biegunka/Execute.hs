@@ -63,10 +63,10 @@ run = interpret interpreting where
       r <- initializeSTM
       let settings' = settings & local .~ r
       runTask settings' (newTask (settings^.mode.to io)) s
-      atomically (writeTQueue (settings'^.local.work) Stop)
+      atomically (writeTQueue (settings'^.work) Stop)
       gid <- getEffectiveGroupID
       uid <- getEffectiveUserID
-      schedule (settings'^.local.work)
+      schedule (settings'^.work)
       setEffectiveGroupID gid
       setEffectiveUserID uid
       mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
@@ -104,8 +104,8 @@ dryRun = interpret $ \settings s -> do
     r <- initializeSTM
     let settings' = settings & local .~ r
     runTask settings' (newTask runPure) s
-    atomically (writeTQueue (settings'^.local.work) Stop)
-    schedule (settings'^.local.work)
+    atomically (writeTQueue (settings'^.work) Stop)
+    schedule (settings'^.work)
     Log.write (settings'^.logger) $
       Log.plain (runChanges (settings'^.colors) db db')
 
@@ -205,13 +205,13 @@ command
   -> Term Annotate s a
   -> Executor t ()
 command _ (TM (Wait ts) _) = do
-  ts' <- env^!acts.local.tasks
+  ts' <- env^!acts.tasks
   liftIO . atomically $ do
     ts'' <- readTVar ts'
     unless (ts `S.isSubsetOf` ts'')
       retry
 command f c = do
-  users <- env^!acts.local.user
+  users <- env^!acts.user
   log   <- env^!acts.logger
   scm   <- env^!acts.colors
   op    <- f c
@@ -269,7 +269,7 @@ runIOOnline
   -> Executor t (IO ())
 runIOOnline term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- env^!acts.local.repos
+    rstv <- env^!acts.repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -340,15 +340,15 @@ newTask
 newTask _ (Pure _) = return ()
 newTask f t = do
   e <- env
-  liftIO . atomically . writeTQueue (e^.local.work) $
+  liftIO . atomically . writeTQueue (e^.work) $
     Do $ do
       runTask e (task f def) t
-      atomically (writeTQueue (e^.local.work) Stop)
+      atomically (writeTQueue (e^.work) Stop)
 
 -- | Tell execution process that you're done with task
 doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
 doneWith n = do
-  ts <- env^!acts.local.tasks
+  ts <- env^!acts.tasks
   liftIO . atomically $
     modifyTVar ts (S.insert n)
 

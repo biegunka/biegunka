@@ -11,14 +11,14 @@ module Control.Biegunka.Execute.Settings
     -- * Mip
   , Mip(..), lookup, insert, delete, singleton, fromList, null, keys, elems, assocs
     -- * Lenses
-  , work, user, repos, tasks
+  , execution, work, user, repos, tasks
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
   , Work(..)
   ) where
 
-import Control.Applicative (Applicative(..))
+import Control.Applicative
 import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
@@ -29,6 +29,8 @@ import Data.List (foldl')
 import Data.Set (Set)
 import Prelude hiding (lookup, null)
 import System.Posix.Types (CUid)
+
+import Control.Biegunka.Settings (Settings, local)
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -131,31 +133,15 @@ data Work =
 
 -- * Lenses
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Execution
+makeClassy ''Execution
 
--- | Task queue
-work :: Lens' Execution (TQueue Work)
-
--- | Current user id and sessions counter
-user :: Lens' Execution (TVar (Mip CUid Int))
-
--- | Already updated repositories
-repos :: Lens' Execution (TVar (Set String))
-
--- | Done tasks
-tasks :: Lens' Execution (TVar (Set Int))
-
+instance HasExecution (Settings Execution) where
+  execution = local
 
 -- | Prepare 'Executor' environment to stm transactions
 initializeSTM :: IO Execution
-initializeSTM = do
-  a <- newTQueueIO
-  b <- newTVarIO Empty
-  d <- newTVarIO mempty
-  e <- newTVarIO mempty
-  return $ Execution
-    { _work  = a
-    , _user  = b
-    , _repos = d
-    , _tasks = e
-    }
+initializeSTM = Execution
+  <$> newTQueueIO
+  <*> newTVarIO Empty
+  <*> newTVarIO mempty
+  <*> newTVarIO mempty
