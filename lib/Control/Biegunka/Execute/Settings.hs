@@ -11,7 +11,7 @@ module Control.Biegunka.Execute.Settings
     -- * Mip
   , Mip(..), lookup, insert, delete, singleton, fromList, null, keys, elems, assocs
     -- * Lenses
-  , execution, work, user, repos, tasks
+  , execution, watch, user, repos
     -- * Initializations
   , initializeSTM
     -- * Auxiliary types
@@ -19,7 +19,6 @@ module Control.Biegunka.Execute.Settings
   ) where
 
 import Control.Applicative
-import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Lens
 import Data.Functor.Trans.Tagged
@@ -30,6 +29,7 @@ import Data.Set (Set)
 import Prelude hiding (lookup, null)
 import System.Posix.Types (CUid)
 
+import Control.Biegunka.Execute.Watcher (Watcher)
 import Control.Biegunka.Settings (Settings, local)
 
 
@@ -119,10 +119,9 @@ assocs (Mip k v) = Just (k, v)
 
 -- | Multithread accessable parts
 data Execution = Execution
-  { _work  :: TQueue Work         -- ^ Task queue
+  { _watch :: Watcher
   , _user  :: TVar (Mip CUid Int) -- ^ Current user id and sessions counter
   , _repos :: TVar (Set String)   -- ^ Already updated repositories
-  , _tasks :: TVar (Set Int)      -- ^ Done tasks
   }
 
 -- | Workload
@@ -139,9 +138,7 @@ instance HasExecution (Settings Execution) where
   execution = local
 
 -- | Prepare 'Executor' environment to stm transactions
-initializeSTM :: IO Execution
-initializeSTM = Execution
-  <$> newTQueueIO
-  <*> newTVarIO Empty
-  <*> newTVarIO mempty
+initializeSTM :: Watcher -> IO Execution
+initializeSTM watcher = Execution watcher
+  <$> newTVarIO Empty
   <*> newTVarIO mempty

@@ -52,8 +52,8 @@ library
     Control.Biegunka.Execute
     Control.Biegunka.Execute.Describe
     Control.Biegunka.Execute.Exception
-    Control.Biegunka.Execute.Schedule
     Control.Biegunka.Execute.Settings
+    Control.Biegunka.Execute.Watcher
     Control.Biegunka.Groups
     Control.Biegunka.Language
     Control.Biegunka.Log

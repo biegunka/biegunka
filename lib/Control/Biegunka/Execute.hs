@@ -15,7 +15,7 @@ import           Control.Monad
 import           Prelude hiding (log, null)
 import           System.IO.Error (tryIOError)
 
-import           Control.Concurrent.STM.TQueue (writeTQueue)
+import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
@@ -23,8 +23,10 @@ import           Control.Monad.Catch
   (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
+import           Data.Functor.Trans.Tagged (untag)
 import           Data.Default (Default(..))
-import           Data.Reflection (Reifies)
+import           Data.Proxy (Proxy)
+import           Data.Reflection (Reifies, reify)
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified System.Directory as D
@@ -50,7 +52,7 @@ import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka
   (Interpreter(..), interpret)
-import           Control.Biegunka.Execute.Schedule (runTask, schedule)
+import qualified Control.Biegunka.Execute.Watcher as Watcher
 import           Control.Biegunka.Script
 
 
@@ -60,15 +62,11 @@ run = interpret interpreting where
   interpreting settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
-      r <- initializeSTM
-      let settings' = settings & local .~ r
-      runTask settings' (newTask (settings^.mode.to io)) s
-      atomically (writeTQueue (settings'^.work) Stop)
-      gid <- getEffectiveGroupID
-      uid <- getEffectiveUserID
-      schedule (settings'^.work)
-      setEffectiveGroupID gid
-      setEffectiveUserID uid
+      bracket getEffectiveUserID setEffectiveUserID $ \_ ->
+        bracket getEffectiveGroupID setEffectiveGroupID $ \_ ->
+          bracket Watcher.new Watcher.wait $ \watcher -> do
+            r <- initializeSTM watcher
+            runTask (settings & local .~ r) (task (settings^.mode.to io) def) s
       mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
       mapM_ (safely removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       Groups.commit (db & Groups.these .~ db')
@@ -101,13 +99,28 @@ dryRun :: Interpreter
 dryRun = interpret $ \settings s -> do
   let db' = Groups.fromScript s
   bracket (Groups.open settings) Groups.close $ \db -> do
-    r <- initializeSTM
-    let settings' = settings & local .~ r
-    runTask settings' (newTask runPure) s
-    atomically (writeTQueue (settings'^.work) Stop)
-    schedule (settings'^.work)
-    Log.write (settings'^.logger) $
-      Log.plain (runChanges (settings'^.colors) db db')
+    bracket Watcher.new Watcher.wait $ \watcher -> do
+      r <- initializeSTM watcher
+      runTask (settings & local .~ r) (task runPure def) s
+      Log.write (settings^.logger) $
+        Log.plain (runChanges (settings^.colors) db db')
+
+
+-- | Prepares environment to run task with given execution routine
+runTask
+  :: forall s m. MonadIO m
+  => Settings Execution
+  -> (forall t. Reifies t (Settings Execution) => Free (Term Annotate s) () -> Executor t ())
+  -> Free (Term Annotate s) () -- ^ Task contents
+  -> m ()
+runTask e f s = do
+  Watcher.register (e^.watch)
+  liftIO $ forkFinally (reify e (untag . asProxyOf (f s))) (\_ -> Watcher.unregister (e^.watch))
+  return ()
+
+-- | Thread `s' parameter to 'task' function
+asProxyOf :: Executor s () -> Proxy s -> Executor s ()
+asProxyOf a _ = a
 
 
 -- | Run single 'Sources' task
@@ -128,8 +141,11 @@ task f = go
     => Retry
     -> Free (Term Annotate Sources) ()
     -> Executor t ()
-  go retries (Free c@(TS (AS { asToken }) _ b d)) = do
-    newTask f d
+  go retries (Free c@(TS _ _ _ t@(Free _))) = do
+    e <- env
+    runTask e (task f def) t
+    go retries (Free (Pure () <$ c))
+  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) = do
     try (command f c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
         True  -> go (incr retries) (Free (Pure () <$ c))
@@ -204,12 +220,9 @@ command
   => (Term Annotate s a -> Executor t (IO ()))
   -> Term Annotate s a
   -> Executor t ()
-command _ (TM (Wait ts) _) = do
-  ts' <- env^!acts.tasks
-  liftIO . atomically $ do
-    ts'' <- readTVar ts'
-    unless (ts `S.isSubsetOf` ts'')
-      retry
+command _ (TM (Wait waits) _) = do
+  watcher <- env^!acts.watch
+  Watcher.waitDone watcher waits
 command f c = do
   users <- env^!acts.user
   log   <- env^!acts.logger
@@ -331,26 +344,11 @@ runPure
   -> Executor t (m ())
 runPure _ = pure (pure ())
 
--- | Queue next task in scheduler
-newTask
-  :: forall t. Reifies t (Settings Execution)
-  => (forall s b t'. Reifies t' (Settings Execution) => Term Annotate s b -> Executor t' (IO ()))
-  -> Free (Term Annotate Sources) ()
-  -> Executor t ()
-newTask _ (Pure _) = return ()
-newTask f t = do
-  e <- env
-  liftIO . atomically . writeTQueue (e^.work) $
-    Do $ do
-      runTask e (task f def) t
-      atomically (writeTQueue (e^.work) Stop)
-
 -- | Tell execution process that you're done with task
 doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
-doneWith n = do
-  ts <- env^!acts.tasks
-  liftIO . atomically $
-    modifyTVar ts (S.insert n)
+doneWith tok = do
+  watcher <- env^!acts.watch
+  Watcher.done watcher tok
 
 
 -- | Get retries maximum associated with term
