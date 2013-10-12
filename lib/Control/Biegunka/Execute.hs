@@ -102,8 +102,8 @@ dryRun = interpret $ \settings s -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do
       r <- initializeSTM watcher
       runTask (settings & local .~ r) (task runPure def) s
-      Log.write (settings^.logger) $
-        Log.plain (runChanges (settings^.colors) db db')
+    Log.write (settings^.logger) $
+      Log.plain (runChanges (settings^.colors) db db')
 
 
 -- | Prepares environment to run task with given execution routine
