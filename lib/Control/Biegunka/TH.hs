@@ -8,11 +8,13 @@ module Control.Biegunka.TH
   ) where
 
 import Control.Lens (set)
+import Control.Monad ((>=>))
 import Data.Char
 import Data.Foldable (asum)
 import Language.Haskell.TH
 import Options.Applicative
 import System.Command.QQ (sh, shell)
+import System.Exit (exitWith)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, confirm)
 import Control.Biegunka.Settings (Settings, Mode(Offline), mode)
@@ -59,10 +61,10 @@ biegunkaOptions name = do
   case inf of
     TyConI (DataD _ tyCon _ dataCons _) ->
       let environment = ListE <$> mapM (makeEnvironmentFlag . conToName) dataCons in [d|
-        options :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO ())
+        options :: IO ($(conT tyCon), (Settings () -> Settings ()) -> Script Sources () -> IO a)
         options = do
           (env, i, t) <- customExecParser (prefs showHelpOnError) optionsParser
-          return (env, \s -> biegunka (s . t) i)
+          return (env, \s -> biegunka (s . t) i >=> exitWith)
 
         optionsParser :: ParserInfo ($(conT tyCon), Interpreter, Settings () -> Settings ())
         optionsParser = info (helper <*> ((,,) <$> asum $(environment) <*> interpreters <*> modes)) fullDesc

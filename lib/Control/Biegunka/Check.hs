@@ -16,6 +16,7 @@ import Control.Monad.Writer (MonadWriter, WriterT, execWriterT, tell)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Foldable (for_)
 import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Exit (ExitCode(..))
 import System.Posix.Files
   (fileOwner, getSymbolicLinkStatus, readSymbolicLink)
 import System.Posix.User
@@ -23,7 +24,7 @@ import System.Posix.Types (UserID)
 import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
 
 import           Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
-import           Control.Biegunka.Biegunka (Interpreter(..), interpret)
+import           Control.Biegunka.Biegunka (Interpreter, interpret)
 import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Settings
   (logger, ColorScheme(..), colors, sourceColor, srcColor, dstColor)
@@ -46,15 +47,18 @@ data CheckFailure =
 
 -- | Check interpreter
 check :: Interpreter
-check = interpret $ \settings terms -> do
+check = interpret $ \settings terms k -> do
   let document = documentCheckFailure (settings^.colors)
   failures <- execWriterT (verification terms)
   Log.write (settings^.logger) . Log.exception $
-       text "Verification: "
-    <> case failures of
-      [] -> green "OK"
-      _  -> line <> vcat (map document failures)
-    <> line
+    message document failures
+  continue failures k
+ where
+  message g fs =
+    text "Verification: " <> case fs of [] -> green "OK"; _  -> line <> vcat (map g fs); <> line
+
+  continue [] k = k
+  continue _  _ = return (ExitFailure 1)
 
 -- | Check and document all failures, assuming script was ran
 verification :: Free (Term Annotate s) () -> WriterT [CheckFailure] IO ()

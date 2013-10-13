@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns #-}
 module Control.Biegunka.Biegunka
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter(..), interpret
+    biegunka, Interpreter, interpret, optimisticallyInterpret
     -- * Generic interpreters
   , pause, confirm
     -- * Auxiliary
@@ -18,6 +18,7 @@ import           Data.Default
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
 import qualified System.Directory as D
+import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
@@ -29,20 +30,15 @@ import           System.IO
 import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
 
 
--- | Interpreter newtype. Takes 'Controls', 'Script' and performs some 'IO'
+-- | Abstract 'Interpreter' data type
 newtype Interpreter = I
-  { unInterpreter
-      :: Settings ()
-      -> Free (Term Annotate Sources) ()
-      -> IO ()
-      -> IO ()
-  }
+  (Settings () -> Free (Term Annotate Sources) () -> IO ExitCode -> IO ExitCode)
 
 -- | Default 'Interpreter' does nothing
 instance Default Interpreter where
   def = I $ \_ _ k -> k
 
--- | Two 'Interpreter's combined take the same 'Script' and do things one after another
+-- | Two 'Interpreter's combined take the same script and do things with it one after another
 instance Semigroup Interpreter where
   I f <> I g = I $ \c s k -> f c s (g c s k)
 
@@ -51,21 +47,35 @@ instance Monoid Interpreter where
   mempty  = def
   mappend = (<>)
 
--- | Interpreter that calls its continuation after interpretation
+-- | Construct 'Interpreter'
+--
+-- Provides 'Settings', script and continuation, which is supposed to be called
+-- on success to interpreter
 interpret
+  :: (Settings () -> Free (Term Annotate Sources) () -> IO ExitCode -> IO ExitCode)
+  -> Interpreter
+interpret = I
+
+-- | Construct 'Interpreter' optimistically
+--
+-- It is optimistic in a sense what it always calls the continuation, provided that
+-- no exceptions were thrown
+optimisticallyInterpret
   :: (Settings () -> Free (Term Annotate Sources) () -> IO ())
   -> Interpreter
-interpret f = I (\c s k -> f c s >> k)
+optimisticallyInterpret f =
+  interpret $ \c s k -> f c s >> k
 
-runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> IO ()
-runInterpreter (I f) c s = f c s (return ())
+-- | Run 'Interpreter'
+runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode
+runInterpreter (I f) c s = f c s (return ExitSuccess)
 
 
--- | Common 'Interpreter's 'Controls' wrapper
+-- | Entry point into the library
 biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Interpreter                 -- ^ Combined interpreters
          -> Script Sources ()           -- ^ Script to interpret
-         -> IO ()
+         -> IO ExitCode
 biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expandHome
   dataDir <- c^.appData.to expandHome
@@ -100,29 +110,26 @@ expandHome pat =
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = interpret $ \settings _ -> do
+pause = optimisticallyInterpret $ \settings _ -> do
   Log.write (settings^.logger) $
     Log.plain (text "Press any key to continue" <//> line)
-  getch
- where
-  getch = do
-    hSetBuffering stdin NoBuffering
-    _ <- getChar
-    hSetBuffering stdin LineBuffering
+  hSetBuffering stdin NoBuffering
+  getChar
+  hSetBuffering stdin LineBuffering
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
-confirm = I $ \settings _ k ->
-  bool (return ()) k =<< prompt settings (text "Proceed? [y/n] ")
+confirm = interpret go
  where
-  prompt settings message = fix $ \loop -> do
-    Log.write (settings^.logger) $
-      Log.plain message
-    res <- getLine
-    case map toLower res of
-      "y" -> return True
-      "n" -> return False
-      _   -> loop
-
-bool :: a -> a -> Bool -> a
-bool f t b = if b then t else f
+  go settings _ ks = do
+    k <- prompt (text "Proceed? [y/n] ") -- choice of continuation is based on the user input
+    k
+   where
+    prompt message = fix $ \loop -> do
+      Log.write (settings^.logger) $
+        Log.plain message
+      res <- getLine
+      case map toLower res of
+        "y" -> return ks
+        "n" -> return (return (ExitFailure 1))
+        _   -> loop

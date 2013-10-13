@@ -50,16 +50,15 @@ import           Control.Biegunka.Execute.Describe
   (termDescription, runChanges, action, exception, removal, retryCounter)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
-import           Control.Biegunka.Biegunka
-  (Interpreter(..), interpret)
+import           Control.Biegunka.Biegunka (Interpreter, optimisticallyInterpret)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import           Control.Biegunka.Script
 
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpret interpreting where
-  interpreting settings s = do
+run = optimisticallyInterpret go where
+  go settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
       bracket getEffectiveUserID setEffectiveUserID $ \_ ->
@@ -96,7 +95,7 @@ run = interpret interpreting where
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpret $ \settings s -> do
+dryRun = optimisticallyInterpret $ \settings s -> do
   let db' = Groups.fromScript s
   bracket (Groups.open settings) Groups.close $ \db -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do
