@@ -33,6 +33,8 @@ module Control.Biegunka
   , noColors
     -- ** Mode
   , mode, Mode(..)
+    -- * Little helpers
+  , (~>)
   ) where
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
@@ -50,3 +52,9 @@ import Control.Biegunka.Script (root, source, Script, User(..), React(..), into)
 import Control.Biegunka.TH (biegunkaOptions, sh, shell)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
+
+
+infix 4 ~>
+-- | An alias for '(,)' for better looking pairing
+(~>) :: a -> b -> (a, b)
+(~>) = (,)
