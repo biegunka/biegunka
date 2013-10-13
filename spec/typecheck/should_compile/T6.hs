@@ -5,7 +5,6 @@ module Main where
 import Control.Biegunka
 
 
-main :: IO ()
 main = biegunka id run $ do
   profile "outer" $
     profile "inner" $

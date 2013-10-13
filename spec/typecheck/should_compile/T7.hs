@@ -6,7 +6,6 @@ import Control.Biegunka
 import Control.Biegunka.Source.Git
 
 
-main :: IO ()
 main = biegunka id run $ do
   profile "outer" $ do
     group "inner" $

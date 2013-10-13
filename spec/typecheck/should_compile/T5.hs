@@ -8,6 +8,5 @@ import Control.Biegunka
 import Control.Biegunka.Source.Git
 
 
-main :: IO ()
 main = biegunka id run $ do
   git_ "git@github.com:ghc/ghc" "ghc"
