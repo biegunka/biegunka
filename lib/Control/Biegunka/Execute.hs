@@ -50,14 +50,14 @@ import           Control.Biegunka.Execute.Describe
   (termDescription, runChanges, action, exception, removal, retryCounter)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
-import           Control.Biegunka.Biegunka (Interpreter, optimisticallyInterpret)
+import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import           Control.Biegunka.Script
 
 
 -- | Real run interpreter
 run :: Interpreter
-run = optimisticallyInterpret go where
+run = interpretOptimistically go where
   go settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
@@ -95,7 +95,7 @@ run = optimisticallyInterpret go where
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = optimisticallyInterpret $ \settings s -> do
+dryRun = interpretOptimistically $ \settings s -> do
   let db' = Groups.fromScript s
   bracket (Groups.open settings) Groups.close $ \db -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do

@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns #-}
 module Control.Biegunka.Biegunka
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter, interpret, optimisticallyInterpret
+    biegunka, Interpreter, interpret, interpretOptimistically
     -- * Generic interpreters
   , pause, confirm
     -- * Auxiliary
@@ -60,10 +60,10 @@ interpret = I
 --
 -- It is optimistic in a sense what it always calls the continuation, provided that
 -- no exceptions were thrown
-optimisticallyInterpret
+interpretOptimistically
   :: (Settings () -> Free (Term Annotate Sources) () -> IO ())
   -> Interpreter
-optimisticallyInterpret f =
+interpretOptimistically f =
   interpret $ \c s k -> f c s >> k
 
 -- | Run 'Interpreter'
@@ -110,7 +110,7 @@ expandHome pat =
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = optimisticallyInterpret $ \settings _ -> do
+pause = interpretOptimistically $ \settings _ -> do
   Log.write (settings^.logger) $
     Log.plain (text "Press any key to continue" <//> line)
   hSetBuffering stdin NoBuffering
