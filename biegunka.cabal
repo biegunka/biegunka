@@ -38,7 +38,7 @@ library
     safecopy             >= 0.8    && < 0.9,
     stm                  >= 2.4    && < 3,
     tagged               >= 0.4.4  && < 1,
-    tagged-transformer   >= 0.4    && < 1,
+    tagged-transformer   >= 0.5    && < 1,
     template-haskell     >= 2.7    && < 2.9,
     terminal-size        >= 0.2    && < 0.3,
     text                 >= 0.11   && < 0.12,
