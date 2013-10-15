@@ -23,7 +23,7 @@ main = do
   case biegunkaCommand of
     Init target
       -> defaulted target >>= initialize
-    RunScript target script args
+    RunScript script target args
       -> defaulted target >>= run script args
     List datadir format profiles ->
       list datadir profiles format
