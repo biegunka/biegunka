@@ -11,7 +11,9 @@ import Control.Lens (set)
 import Control.Monad ((>=>))
 import Data.Char
 import Data.Foldable (asum)
+import Data.String (fromString)
 import Language.Haskell.TH
+import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import Options.Applicative
 import System.Command.QQ (sh, shell)
 import System.Exit (exitWith)
@@ -126,5 +128,13 @@ transformString (x:xs) = toLower x : concatMap transformChar xs
     | otherwise = [y]
 transformString [] = []
 
-(.:) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-(.:) = fmap . fmap
+-- | 'QuasiQuoter' for raw multiline strings
+multiline :: QuasiQuoter
+multiline = QuasiQuoter
+  { quoteExp  = (\string -> [|fromString string|]) . filter (/= '\r')
+  , quotePat  = failure "patterns"
+  , quoteType = failure "types"
+  , quoteDec  = failure "declaration"
+  }
+ where
+  failure kind = fail $ "multiline string quasiquoter does not support splicing " ++ kind

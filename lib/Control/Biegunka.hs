@@ -23,7 +23,7 @@ module Control.Biegunka
     -- * TH
   , biegunkaOptions
     -- * Quasiquoters
-  , sh, shell
+  , multiline, sh, shell
     -- * Settings
     -- ** Colors
   , ColorScheme(..)
@@ -49,7 +49,7 @@ import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (root, source, Script, User(..), React(..), into)
-import Control.Biegunka.TH (biegunkaOptions, sh, shell)
+import Control.Biegunka.TH (biegunkaOptions, multiline, sh, shell)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
 
