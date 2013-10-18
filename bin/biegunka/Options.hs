@@ -10,7 +10,7 @@ import Options.Applicative
 data BiegunkaCommand
   = Init FilePath                 -- ^ @biegunka init@
   | RunScript                     -- ^ @biegunka run@ or @biegunka check@
-      Script FilePath [String]
+      FilePath Script [String]
   | List FilePath Format [String] -- ^ @biegunka list@
   | GenScript
       FilePath FilePath [String]  -- ^ @biegunka generate@
@@ -37,9 +37,9 @@ opts = info (helper <*> subcommands) fullDesc
  where
   subcommands = subparser $
     command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
-    command "run"  (info (RunScript <$> (Run <$> runVariant) <*> destination <*> otherArguments)
+    command "run"  (info (RunScript <$> destination <*> (Run <$> runVariant) <*> otherArguments)
       (progDesc "Run biegunka script")) <>
-    command "check"  (info (RunScript <$> pure Check <*> destination <*> otherArguments)
+    command "check"  (info (RunScript <$> destination <*> pure Check <*> otherArguments)
       (progDesc "Check biegunka script")) <>
     command "list"  (info listOptions
       (progDesc "List biegunka profiles data")) <>
