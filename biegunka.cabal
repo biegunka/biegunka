@@ -30,7 +30,7 @@ library
     HStringTemplate      >= 0.7    && < 0.8,
     lens                 >= 3.8    && < 4,
     mtl                  >= 2.1    && < 2.2,
-    optparse-applicative >= 0.5    && < 0.7,
+    optparse-applicative >= 0.7    && < 0.8,
     pointed              >= 3      && < 5,
     process              >= 1.1    && < 1.2,
     reflection           >= 1.1.6  && < 2,
