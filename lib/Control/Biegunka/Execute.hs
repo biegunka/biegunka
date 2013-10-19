@@ -222,29 +222,21 @@ command
 command _ (TM (Wait waits) _) = do
   watcher <- env^!acts.watch
   Watcher.waitDone watcher waits
-command f c = do
+command getIO term = do
   users <- env^!acts.user
-  log   <- env^!acts.logger
-  scm   <- env^!acts.colors
-  op    <- f c
-  liftIO $ case getUser c of
-    Nothing  -> do
-      -- these are wrappers, since they do not do
-      -- any IO, no locking is needed
-      Log.write log $
-        Log.plain (termDescription (action scm c))
-      op
+  io    <- getIO term
+  liftIO $ case getUser term of
+    Nothing  ->
+      io
     Just (UserW u) -> do
       -- I really hope that stuff does not change
       -- while biegunka run is in progress
       gid <- getGID u
       uid <- getUID u
       bracket_ (acquire users uid) (release users uid) $ do
-        Log.write log $
-          Log.plain (termDescription (action scm c))
         setEffectiveGroupID gid
         setEffectiveUserID uid
-        op
+        io
  where
   acquire users uid = atomically $ do
     -- So, first get current user/count
@@ -279,7 +271,18 @@ runIOOnline
   :: Reifies t (Settings Execution)
   => Term Annotate s a
   -> Executor t (IO ())
-runIOOnline term = case term of
+runIOOnline term = do
+  log <- env^!acts.logger
+  scm <- env^!acts.colors
+  io  <- ioOnline term
+  let message = Log.write log (Log.plain (termDescription (action scm term)))
+  return (message *> io)
+
+ioOnline
+  :: Reifies t (Settings Execution)
+  => Term Annotate s a
+  -> Executor t (IO ())
+ioOnline term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
     rstv <- env^!acts.repos
     return $ do
