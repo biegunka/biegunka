@@ -17,7 +17,7 @@ import qualified Data.Set as S
 --
 -- Watcher /watches/ number of jobs currently running
 -- and subtasks ids that are already done execution
-data Watcher = Watcher (TVar Int) (TVar (Set Int))
+data Watcher = Watcher (TVar Int) (TVar (Set Integer))
 
 -- | Create 'new' 'Watcher'
 --
@@ -52,12 +52,12 @@ unregister (Watcher jobsvar _) = liftIO . atomically $
 
 
 -- | notify 'Watcher' subtask is done
-done :: MonadIO m => Watcher -> Int -> m ()
+done :: MonadIO m => Watcher -> Integer -> m ()
 done (Watcher _ donevar) tok = liftIO . atomically $
   modifyTVar' donevar (S.insert tok)
 
 -- | Wait until all those subtasks are done
-waitDone :: MonadIO m => Watcher -> Set Int -> m ()
+waitDone :: MonadIO m => Watcher -> Set Integer -> m ()
 waitDone (Watcher _ donevar) waits = liftIO . atomically $ do
   dones <- readTVar donevar
   unless (waits `S.isSubsetOf` dones)

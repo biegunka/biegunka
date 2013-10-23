@@ -347,7 +347,7 @@ runPure
 runPure _ = pure (pure ())
 
 -- | Tell execution process that you're done with task
-doneWith :: Reifies t (Settings Execution) => Int -> Executor t ()
+doneWith :: Reifies t (Settings Execution) => Integer -> Executor t ()
 doneWith tok = do
   watcher <- env^!acts.watch
   Watcher.done watcher tok

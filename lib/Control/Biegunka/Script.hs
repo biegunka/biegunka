@@ -3,8 +3,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -- | Configuration script machinery
@@ -21,10 +23,10 @@ module Control.Biegunka.Script
     -- * Get annotated script
   , runScript, evalScript
     -- * Script mangling
-  , script, annotate, sourced, actioned, constructTargetFilePath
+  , script, sourced, actioned, constructTargetFilePath
     -- * Lenses
   , app, profileName, sourcePath, sourceURL, profiles
-  , token, order, sourceReaction, actionReaction, activeUser, maxRetries
+  , order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
   , URI, UserW(..), User(..), React(..), Retry(..), incr, into
   ) where
@@ -47,6 +49,7 @@ import System.Posix.Types (CUid)
 import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
+import Control.Monad.Stream
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -58,7 +61,7 @@ import Control.Biegunka.Language
 -- annotations, so it is a family of them
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
-  { asToken      :: Int
+  { asToken      :: Integer
   , asProfile    :: String
   , asUser       :: Maybe UserW
   , asMaxRetries :: Retry
@@ -150,16 +153,14 @@ instance Default Annotations where
 --
 -- Mnemonic is 'Mutable Annotations'
 data MAnnotations = MAnnotations
-  { _token    :: Int        -- ^ Unique term token
-  , _profiles :: Set String -- ^ Profile name
+  { _profiles :: Set String -- ^ Profile name
   , _order    :: Int        -- ^ Current action order
   , _maxOrder :: Int        -- ^ Maximum action order in current source
   } deriving (Show, Read)
 
 instance Default MAnnotations where
   def = MAnnotations
-    { _token    = def
-    , _profiles = def
+    { _profiles = def
     , _order    = def
     , _maxOrder = def
     }
@@ -210,9 +211,6 @@ actionReaction :: Lens' Annotations React
 
 makeLensesWith ?? ''MAnnotations $ defaultRules & generateSignatures .~ False
 
--- | Unique token for each 'TP'/'TS'
-token :: Lens' MAnnotations Int
-
 -- | All profiles encountered so far
 profiles :: Lens' MAnnotations (Set String)
 
@@ -226,31 +224,11 @@ maxOrder :: Lens' MAnnotations Int
 -- | Newtype used to provide better error messages
 -- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
-  { unScript :: ReaderT Annotations
-      (StateT MAnnotations (Free (Term Annotate s))) a
-  }
-
-instance Functor (Script s) where
-  fmap f (Script m) = Script (fmap f m)
-  {-# INLINE fmap #-}
-
-instance Applicative (Script s) where
-  pure v = Script (pure v)
-  {-# INLINE pure #-}
-  Script m <*> Script n = Script (m <*> n)
-  {-# INLINE (<*>) #-}
-
-instance Monad (Script s) where
-  return v = Script (return v)
-  {-# INLINE return #-}
-  Script m >>= f = Script (m >>= unScript . f)
-  {-# INLINE (>>=) #-}
-
-instance MonadReader Annotations (Script s) where
-  ask     = Script ask
-  {-# INLINE ask #-}
-  local f = Script . local f . unScript
-  {-# INLINE local #-}
+  { unScript ::
+      StreamT Integer
+        (ReaderT Annotations
+          (StateT MAnnotations (Free (Term Annotate s)))) a
+  } deriving (Functor, Applicative, Monad, MonadReader Annotations)
 
 instance Default a => Default (Script s a) where
   def = return def
@@ -266,10 +244,11 @@ instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
 runScript
   :: MAnnotations
   -> Annotations
+  -> [Integer]
   -> Script s a
   -> (Free (Term Annotate s) a, MAnnotations)
-runScript s e (Script i) =
-  let r       = runStateT (runReaderT i e) s
+runScript s e es (Script i) =
+  let r       = runStateT (runReaderT (runStreamT es i) e) s
       ast     = fmap fst r
       (_, as) = iter copoint r
   in (ast, as)
@@ -279,9 +258,10 @@ runScript s e (Script i) =
 evalScript
   :: MAnnotations
   -> Annotations
+  -> [Integer]
   -> Script s a
   -> Free (Term Annotate s) a
-evalScript = ((fst .) .) . runScript
+evalScript = (((fst .) .) .) . runScript
 {-# INLINE evalScript #-}
 
 -- | Lift DSL term to annotated 'Script'
@@ -292,17 +272,21 @@ script = Script . liftS
 -- | Half-lift DSL term to 'Script'
 liftS
   :: Term Annotate s a
-  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
+  -> StreamT Integer (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 
 
--- | Annotate DSL
-annotate
-  :: Script s a
-  -> ReaderT Annotations
-      (StateT MAnnotations (Free (Term Annotate t))) (Free (Term Annotate s) a)
-annotate i = ReaderT $ \e -> StateT $ \s -> return (runScript s e i)
+-- | Annotate 'Actions' DSL
+annotateActions
+  :: Script Actions a
+  -> StreamT Integer
+      (ReaderT Annotations
+        (StateT MAnnotations (Free (Term Annotate Sources)))) (Free (Term Annotate Actions) a)
+annotateActions i =
+  StreamT $ \es ->
+    fmap (es,) . ReaderT $ \e ->
+      StateT $ \s -> return (runScript s e [] i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
@@ -311,8 +295,9 @@ sourced
 sourced ty url path inner update = Script $ do
   rfp <- view app
   local (set sourcePath (constructTargetFilePath rfp url path) . set sourceURL url) $ do
+    token <- next
     annotation <- AS
-      <$> use token
+      <$> pure token
       <*> view profileName
       <*> view activeUser
       <*> view maxRetries
@@ -320,18 +305,17 @@ sourced ty url path inner update = Script $ do
 
     order    .= 0
     maxOrder .= size inner
-    ast    <- annotate inner
+    ast    <- annotateActions inner
 
     sfp <- view sourcePath
 
     liftS $ TS annotation (Source ty url sfp update) ast ()
 
     profiles . contains (asProfile annotation) .= True
-    token += 1
 
 -- | Get 'Actions' scoped script size measured in actions
 size :: Script Actions a -> Int
-size = iterFrom 0 go . evalScript def def
+size = iterFrom 0 go . evalScript def def []
  where
   go :: Term Annotate Actions Int -> Int
   go (TA _ _ result) = succ result

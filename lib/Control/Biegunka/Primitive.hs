@@ -26,6 +26,7 @@ import           System.Command.QQ (Eval(..))
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 import Control.Biegunka.Templates
+import Control.Monad.Stream (peek)
 
 
 infixr 7 `prerequisiteOf`, <~>
@@ -180,9 +181,9 @@ reacting reaction (Script inner) = Script $
 -- Connects two scripts which forces them to run sequentially one after another.
 prerequisiteOf :: Script Sources a -> Script Sources b -> Script Sources b
 prerequisiteOf a b = do
-  s <- Script $ use token
+  s <- Script peek
   a
-  t <- Script $ use token
+  t <- Script peek
   script (TM (Wait (S.fromList [s .. t - 1])) ())
   b
 {-# INLINE prerequisiteOf #-}

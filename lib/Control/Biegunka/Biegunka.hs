@@ -82,7 +82,7 @@ biegunka (($ def) -> c) interpreter script = do
   bracket Log.start Log.stop $ \queue -> do
     Log.write queue $
       Log.plain (text (info appRoot dataDir c))
-    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) script
+    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) [0..] script
         settings = c
           & root    .~ appRoot
           & appData .~ dataDir

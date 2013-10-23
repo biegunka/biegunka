@@ -36,9 +36,11 @@ library
     reflection           >= 1.1.6  && < 2,
     semigroups           >= 0.8.4  && < 1,
     safecopy             >= 0.8    && < 0.9,
+    streams              >= 3.1    && < 4,
     stm                  >= 2.4    && < 3,
     tagged               >= 0.4.4  && < 1,
     tagged-transformer   >= 0.5    && < 1,
+    transformers         >= 0.3    && < 0.4,
     template-haskell     >= 2.7    && < 2.9,
     terminal-size        >= 0.2    && < 0.3,
     text                 >= 0.11   && < 0.12,
@@ -67,6 +69,7 @@ library
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
     Control.Biegunka.TH
+    Control.Monad.Stream
   ghc-options:
     -Wall
     -fno-warn-unused-do-bind

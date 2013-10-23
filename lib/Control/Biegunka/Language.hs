@@ -105,4 +105,4 @@ instance Default PatchSpec where
     }
 
 -- | Modificators for other datatypes
-data Modifier = Wait (Set Int)
+data Modifier = Wait (Set Integer)
