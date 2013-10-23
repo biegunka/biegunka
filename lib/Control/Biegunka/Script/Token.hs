@@ -1,9 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 -- | Infinite stream of unique tokens monad transformer
 module Control.Biegunka.Script.Token
   ( -- * Types
@@ -13,8 +15,8 @@ module Control.Biegunka.Script.Token
   , MonadStream(..)
     -- ** Token stream
   , Infinite(..), Token
-    -- * Run 'StreamT'
-  , runStreamT
+    -- * Do things with 'StreamT'
+  , runStreamT, mapStreamT
     -- * Tokens
   , tokens, noTokens, fromList
   ) where
@@ -27,6 +29,7 @@ import Control.Monad.State (StateT(..), MonadState(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Writer (WriterT(..))
 import Data.Monoid (Monoid)
+import Data.Void (Void)
 import Prelude hiding (head)
 
 
@@ -96,8 +99,12 @@ newtype Token = Token Integer
 tokens :: Infinite Token
 tokens = fromList [Token 0..]
 
-noTokens :: Infinite Token
-noTokens = error "sorry, no tokens"
+noTokens :: Infinite Void
+noTokens = error "Control.Biegunka.Script.Token.noTokens: evaluated"
+
+type family IsToken a :: Bool
+type instance IsToken Token = True
+type instance IsToken Void  = False
 
 
 -- | mtl-style class, to avoid manual lifting
@@ -107,7 +114,7 @@ class Monad m => MonadStream e m | m -> e where
   -- | Peek stream element
   peek :: m e
 
-instance Monad m => MonadStream e (StreamT e m) where
+instance (IsToken e ~ True, Monad m) => MonadStream e (StreamT e m) where
   next = StreamT $ \(e :< es) -> return (es, e)
   {-# INLINE next #-}
   peek = StreamT $ \es -> return (es, head es)

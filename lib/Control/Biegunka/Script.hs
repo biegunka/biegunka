@@ -42,6 +42,7 @@ import Data.Default (Default(..))
 import Data.List (isSuffixOf)
 import Data.Set (Set)
 import Data.String (IsString(..))
+import Data.Void (Void)
 import System.FilePath ((</>))
 import System.FilePath.Lens
 import System.Command.QQ (Eval(..))
@@ -225,7 +226,7 @@ maxOrder :: Lens' MAnnotations Int
 -- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
   { unScript ::
-      StreamT Token
+      StreamT (Tokenize s)
         (ReaderT Annotations
           (StateT MAnnotations (Free (Term Annotate s)))) a
   } deriving (Functor, Applicative, Monad, MonadReader Annotations)
@@ -240,11 +241,16 @@ instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
   {-# INLINE eval #-}
 
 
+type family Tokenize (s :: Scope) :: *
+type instance Tokenize Actions = Void
+type instance Tokenize Sources = Token
+
+
 -- | Get annotated DSL and resulting annotations alongside
 runScript
   :: MAnnotations
   -> Annotations
-  -> Infinite Token
+  -> Infinite (Tokenize s)
   -> Script s a
   -> (Free (Term Annotate s) a, MAnnotations)
 runScript s e es (Script i) =
@@ -258,7 +264,7 @@ runScript s e es (Script i) =
 evalScript
   :: MAnnotations
   -> Annotations
-  -> Infinite Token
+  -> Infinite (Tokenize s)
   -> Script s a
   -> Free (Term Annotate s) a
 evalScript = (((fst .) .) .) . runScript
@@ -272,7 +278,7 @@ script = Script . liftS
 -- | Half-lift DSL term to 'Script'
 liftS
   :: Term Annotate s a
-  -> StreamT Token (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
+  -> StreamT (Tokenize s) (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 

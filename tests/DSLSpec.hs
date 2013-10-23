@@ -12,7 +12,7 @@ import           Test.Hspec
 import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script
-import Control.Biegunka.Script.Token (tokens)
+import Control.Biegunka.Script.Token (tokens, noTokens)
 import Control.Biegunka.Source.Directory (directory)
 
 
@@ -44,7 +44,7 @@ spec = describe "Biegunka DSL" $ do
         _ -> expectationFailure "DSL pattern failed"
   context "relative paths" $ do
     it "mangles relative paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (link "from" "to")
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") noTokens (link "from" "to")
       in case ast of
         Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
         _ -> False
@@ -55,7 +55,7 @@ spec = describe "Biegunka DSL" $ do
         _ -> False
   context "absolute paths" $ do
     it "does not mangle absolute paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (link "from" "/to")
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") noTokens (link "from" "/to")
       in case ast of
         Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
         _ -> False
