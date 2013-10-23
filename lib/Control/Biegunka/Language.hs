@@ -7,6 +7,7 @@ module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
   , PatchSpec(..), CopySpec(..)
+  , Token
   ) where
 
 import Control.Applicative((<$>))
@@ -21,6 +22,7 @@ import Data.Text (Text)
 import System.Process (CmdSpec)
 
 import Control.Biegunka.Templates
+import Control.Biegunka.Script.Token
 
 
 -- | Language terms scopes [kind]
@@ -105,4 +107,4 @@ instance Default PatchSpec where
     }
 
 -- | Modificators for other datatypes
-data Modifier = Wait (Set Integer)
+data Modifier = Wait (Set Token)

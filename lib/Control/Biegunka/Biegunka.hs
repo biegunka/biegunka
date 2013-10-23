@@ -25,6 +25,7 @@ import           Control.Biegunka.Language
 import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Script
   (HasRoot(root), Script, Annotate, app, profiles, runScript)
+import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO
 import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
@@ -82,7 +83,7 @@ biegunka (($ def) -> c) interpreter script = do
   bracket Log.start Log.stop $ \queue -> do
     Log.write queue $
       Log.plain (text (info appRoot dataDir c))
-    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) [0..] script
+    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) tokens script
         settings = c
           & root    .~ appRoot
           & appData .~ dataDir

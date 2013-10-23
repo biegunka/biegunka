@@ -13,11 +13,13 @@ import           Control.Monad.Trans (MonadIO(..))
 import           Data.Set (Set)
 import qualified Data.Set as S
 
+import           Control.Biegunka.Language (Token)
+
 -- | 'Watcher' abstract data type
 --
 -- Watcher /watches/ number of jobs currently running
 -- and subtasks ids that are already done execution
-data Watcher = Watcher (TVar Int) (TVar (Set Integer))
+data Watcher = Watcher (TVar Int) (TVar (Set Token))
 
 -- | Create 'new' 'Watcher'
 --
@@ -52,12 +54,12 @@ unregister (Watcher jobsvar _) = liftIO . atomically $
 
 
 -- | notify 'Watcher' subtask is done
-done :: MonadIO m => Watcher -> Integer -> m ()
+done :: MonadIO m => Watcher -> Token -> m ()
 done (Watcher _ donevar) tok = liftIO . atomically $
   modifyTVar' donevar (S.insert tok)
 
 -- | Wait until all those subtasks are done
-waitDone :: MonadIO m => Watcher -> Set Integer -> m ()
+waitDone :: MonadIO m => Watcher -> Set Token -> m ()
 waitDone (Watcher _ donevar) waits = liftIO . atomically $ do
   dones <- readTVar donevar
   unless (waits `S.isSubsetOf` dones)

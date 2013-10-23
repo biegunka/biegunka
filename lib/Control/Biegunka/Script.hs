@@ -49,7 +49,7 @@ import System.Posix.Types (CUid)
 import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
-import Control.Monad.Stream
+import Control.Biegunka.Script.Token
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -61,7 +61,7 @@ import Control.Monad.Stream
 -- annotations, so it is a family of them
 data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
-  { asToken      :: Integer
+  { asToken      :: Token
   , asProfile    :: String
   , asUser       :: Maybe UserW
   , asMaxRetries :: Retry
@@ -225,7 +225,7 @@ maxOrder :: Lens' MAnnotations Int
 -- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
   { unScript ::
-      StreamT Integer
+      StreamT Token
         (ReaderT Annotations
           (StateT MAnnotations (Free (Term Annotate s)))) a
   } deriving (Functor, Applicative, Monad, MonadReader Annotations)
@@ -244,7 +244,7 @@ instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
 runScript
   :: MAnnotations
   -> Annotations
-  -> [Integer]
+  -> Infinite Token
   -> Script s a
   -> (Free (Term Annotate s) a, MAnnotations)
 runScript s e es (Script i) =
@@ -258,7 +258,7 @@ runScript s e es (Script i) =
 evalScript
   :: MAnnotations
   -> Annotations
-  -> [Integer]
+  -> Infinite Token
   -> Script s a
   -> Free (Term Annotate s) a
 evalScript = (((fst .) .) .) . runScript
@@ -272,7 +272,7 @@ script = Script . liftS
 -- | Half-lift DSL term to 'Script'
 liftS
   :: Term Annotate s a
-  -> StreamT Integer (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
+  -> StreamT Token (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 
@@ -280,13 +280,13 @@ liftS = lift . liftF
 -- | Annotate 'Actions' DSL
 annotateActions
   :: Script Actions a
-  -> StreamT Integer
+  -> StreamT Token
       (ReaderT Annotations
         (StateT MAnnotations (Free (Term Annotate Sources)))) (Free (Term Annotate Actions) a)
 annotateActions i =
   StreamT $ \es ->
     fmap (es,) . ReaderT $ \e ->
-      StateT $ \s -> return (runScript s e [] i)
+      StateT $ \s -> return (runScript s e noTokens i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
@@ -315,7 +315,7 @@ sourced ty url path inner update = Script $ do
 
 -- | Get 'Actions' scoped script size measured in actions
 size :: Script Actions a -> Int
-size = iterFrom 0 go . evalScript def def []
+size = iterFrom 0 go . evalScript def def noTokens
  where
   go :: Term Annotate Actions Int -> Int
   go (TA _ _ result) = succ result

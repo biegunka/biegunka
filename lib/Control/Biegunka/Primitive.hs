@@ -25,8 +25,8 @@ import           System.Command.QQ (Eval(..))
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
+import Control.Biegunka.Script.Token (peek)
 import Control.Biegunka.Templates
-import Control.Monad.Stream (peek)
 
 
 infixr 7 `prerequisiteOf`, <~>
@@ -184,7 +184,7 @@ prerequisiteOf a b = do
   s <- Script peek
   a
   t <- Script peek
-  script (TM (Wait (S.fromList [s .. t - 1])) ())
+  script (TM (Wait (S.fromList [s .. pred t])) ())
   b
 {-# INLINE prerequisiteOf #-}
 

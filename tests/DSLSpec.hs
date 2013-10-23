@@ -12,6 +12,7 @@ import           Test.Hspec
 import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script
+import Control.Biegunka.Script.Token (tokens)
 import Control.Biegunka.Source.Directory (directory)
 
 
@@ -19,14 +20,14 @@ spec :: Spec
 spec = describe "Biegunka DSL" $ do
   context "chaining" $ do
     it "gives unchained tasks different ids" $
-      let ast = evalScript def def [0..] (directory "/" def >> directory "/" def)
+      let ast = evalScript def def tokens (directory "/" def >> directory "/" def)
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
           (Free (TS (AS { asToken = t }) _ (Pure ())
             (Pure ())))) -> s /= t
         _ -> False
     it "gives chained tasks different ids" $
-      let ast = evalScript def def [0..] (directory "/" def `prerequisiteOf` directory "/" def)
+      let ast = evalScript def def tokens (directory "/" def `prerequisiteOf` directory "/" def)
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
           (Free (TM _
@@ -34,43 +35,43 @@ spec = describe "Biegunka DSL" $ do
               (Pure ())))))) -> s /= t
         _ -> False
     it "gives Wait modifier correct tasks ids" $
-      let ast = evalScript def def [0..] (directory "/" def <~> directory "/" def)
+      let ast = evalScript def def tokens (directory "/" def <~> directory "/" def)
       in case ast of
         Free (TS _ _ (Pure ())
           (Free (TM (Wait ids)
             (Free (TS (AS { asToken = t }) _ (Pure ())
-              (Pure ())))))) -> toList ids `shouldBe` [0 .. t - 1]
+              (Pure ())))))) -> toList ids `shouldBe` [toEnum 0 .. pred t]
         _ -> expectationFailure "DSL pattern failed"
   context "relative paths" $ do
     it "mangles relative paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") [0..] (link "from" "to")
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (link "from" "to")
       in case ast of
         Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
         _ -> False
     it "mangles relative paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") [0..] (directory "to" def)
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "to" def)
       in case ast of
         Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "absolute paths" $ do
     it "does not mangle absolute paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") [0..] (link "from" "/to")
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (link "from" "/to")
       in case ast of
         Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
         _ -> False
     it "does not mangle absolute paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") [0..] (directory "/to" def)
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "/to" def)
       in case ast of
         Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "profiles" $ do
     it "does not matter how nested profiles are constructed" $
-      let ast = evalScript def def [0..] $
+      let ast = evalScript def def tokens $
             profile "foo" $
               group "bar" $
                 group "baz" $
                   directory "/" def
-          ast' = evalScript def def [0..] $
+          ast' = evalScript def def tokens $
             profile "foo/bar/baz" $
               directory "/" def
       in case (ast, ast') of
@@ -79,7 +80,7 @@ spec = describe "Biegunka DSL" $ do
          ) -> p == p'
         _ -> False
     it "collects all mentioned profiles no matter what" $
-      let (_, as) = runScript def def [0..] $ do
+      let (_, as) = runScript def def tokens $ do
             profile "foo" $ do
               group "bar" $
                 directory "/" def
@@ -91,7 +92,7 @@ spec = describe "Biegunka DSL" $ do
             directory "/" def
       in as^.profiles == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
     it "ignores \"\" if no ungrouped source is mentioned" $
-      let (_, as) = runScript def def [0..] $ do
+      let (_, as) = runScript def def tokens $ do
             profile "baz" $
               directory "/" def
             profile "quux" $
