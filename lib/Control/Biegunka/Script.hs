@@ -290,9 +290,7 @@ annotateActions
       (ReaderT Annotations
         (StateT MAnnotations (Free (Term Annotate Sources)))) (Free (Term Annotate Actions) a)
 annotateActions i =
-  StreamT $ \es ->
-    fmap (es,) . ReaderT $ \e ->
-      StateT $ \s -> return (runScript s e noTokens i)
+  lift . ReaderT $ \e -> StateT $ \s -> return (runScript s e noTokens i)
 
 -- | Abstract away all plumbing needed to make source
 sourced

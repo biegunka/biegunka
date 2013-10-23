@@ -10,7 +10,7 @@
 module Control.Biegunka.Script.Token
   ( -- * Types
     -- ** Monad
-    StreamT(..)
+    StreamT
     -- ** mtl-style class
   , MonadStream(..)
     -- ** Token stream
@@ -27,12 +27,11 @@ import Control.Monad.Free (Free)
 import Control.Monad.Reader (ReaderT(..), MonadReader(..))
 import Control.Monad.State (StateT(..), MonadState(..))
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Writer (WriterT(..))
-import Data.Monoid (Monoid)
 import Data.Void (Void)
 import Prelude hiding (head)
 
 
+-- | Monad transformer for the never ending stream of stuff
 newtype StreamT e m a =
   StreamT { unStreamT :: Infinite e -> m (Infinite e, a) }
 
@@ -62,17 +61,20 @@ instance MonadTrans (StreamT e) where
 
 -- | Run 'StreamT' with the supplied stream.
 --
--- >>> runStreamT (fromList [1..]) (replicateM 7 next)
--- [1,2,3,4,5,6,7]
+-- >>> runStreamT (fromList (map Token [1..])) (replicateM 3 next)
+-- [Token 1,Token 2,Token 3]
 runStreamT :: Monad m => Infinite e -> StreamT e m a -> m a
 runStreamT es sema = liftM snd (unStreamT sema es)
 {-# INLINE runStreamT #-}
 
+-- | Map both the value and underlying monad
 mapStreamT :: (m (Infinite e, a) -> n (Infinite e, b)) -> StreamT e m a -> StreamT e n b
 mapStreamT f (StreamT g) = StreamT (f . g)
+{-# INLINE mapStreamT #-}
 
 
 infixr 5 :<
+-- | Never ending stream of stuff
 data Infinite a = a :< Infinite a
   deriving (Show, Eq, Ord, Functor)
 
@@ -92,16 +94,22 @@ fromList :: [a] -> Infinite a
 fromList = foldr (:<) (error "Control.Biegunka.Script.Token.fromList: supplied list is not infinite")
 {-# INLINE fromList #-}
 
-
+-- | Token.
+--
+-- Supposedly, the only way to get tokens is using 'tokens',
+-- so they are somewhat unique
 newtype Token = Token Integer
   deriving (Show, Eq, Ord, Enum)
 
+-- | Infinite stream of tokens
 tokens :: Infinite Token
-tokens = fromList [Token 0..]
+tokens = fromList [Token 0 ..]
 
+-- | Infinite stream of /nothing/, very zen
 noTokens :: Infinite Void
 noTokens = error "Control.Biegunka.Script.Token.noTokens: evaluated"
 
+-- This really should be a closed type family, waiting for GHC 7.8
 type family IsToken a :: Bool
 type instance IsToken Token = True
 type instance IsToken Void  = False
@@ -109,9 +117,9 @@ type instance IsToken Void  = False
 
 -- | mtl-style class, to avoid manual lifting
 class Monad m => MonadStream e m | m -> e where
-  -- | Next stream element
+  -- | Get next element from the stream; advance that stream by one step
   next :: m e
-  -- | Peek stream element
+  -- | Take a look at the next stream element, without modifying the stream
   peek :: m e
 
 instance (IsToken e ~ True, Monad m) => MonadStream e (StreamT e m) where
@@ -127,12 +135,6 @@ instance (Monad m, MonadStream e m) => MonadStream e (ReaderT r m) where
   {-# INLINE peek #-}
 
 instance (Monad m, MonadStream e m) => MonadStream e (StateT s m) where
-  next = lift next
-  {-# INLINE next #-}
-  peek = lift peek
-  {-# INLINE peek #-}
-
-instance (Monad m, Monoid w, MonadStream e m) => MonadStream e (WriterT w m) where
   next = lift next
   {-# INLINE next #-}
   peek = lift peek
