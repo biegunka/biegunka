@@ -14,6 +14,7 @@ data BiegunkaCommand
   | List FilePath Format [String] -- ^ @biegunka list@
   | GenScript
       FilePath FilePath [String]  -- ^ @biegunka generate@
+  | Version                       -- ^ Print @biegunka@ version
     deriving (Show, Read)
 
 -- | Disambiguate between @biegunka run@ and @biegunka check@
@@ -32,9 +33,11 @@ data Format =
 
 
 -- | @biegunka@ tool command line options parser
-opts :: ParserInfo BiegunkaCommand
-opts = info (helper <*> subcommands) fullDesc
+options :: ParserInfo BiegunkaCommand
+options = info (helper <*> opts) fullDesc
  where
+  opts = flag' Version (long "version" <> help "Print version") <|> subcommands
+
   subcommands = subparser $
     command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
     command "run"  (info (RunScript <$> destination <*> (Run <$> runVariant) <*> otherArguments)

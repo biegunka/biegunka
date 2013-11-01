@@ -2,11 +2,13 @@
 module Main (main) where
 
 import           Data.Char (toLower)
+import           Data.Version (showVersion)
 import           Options.Applicative (customExecParser, prefs, showHelpOnError)
 import qualified System.Directory as D
 import           System.Exit (ExitCode(..), exitWith)
 import           System.FilePath ((</>))
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
+import           Text.Printf (printf)
 
 import Paths_biegunka
 
@@ -19,7 +21,7 @@ import Run (run)
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  biegunkaCommand <- customExecParser (prefs showHelpOnError) opts
+  biegunkaCommand <- customExecParser (prefs showHelpOnError) options
   case biegunkaCommand of
     Init target
       -> defaulted target >>= initialize
@@ -29,6 +31,8 @@ main = do
       list datadir profiles format
     GenScript appdir datadir profiles ->
       scriptFor appdir datadir profiles
+    Version ->
+      printf "biegunka version %s\n" (showVersion version)
 
 -- | Append default biegunka script name if target
 -- happens to be a directory
