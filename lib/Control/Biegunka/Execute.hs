@@ -24,7 +24,7 @@ import           Control.Monad.Catch
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Functor.Trans.Tagged (untag)
-import           Data.Default (Default(..))
+import           Data.Default.Class (Default(..))
 import           Data.Proxy (Proxy)
 import           Data.Reflection (Reifies, reify)
 import qualified Data.Set as S

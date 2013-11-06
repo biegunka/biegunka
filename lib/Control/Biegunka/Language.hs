@@ -16,7 +16,7 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
-import Data.Default (Default(..))
+import Data.Default.Class (Default(..))
 import Data.Set (Set)
 import Data.Text (Text)
 import System.Process (CmdSpec)

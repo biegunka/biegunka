@@ -13,13 +13,12 @@ module Control.Biegunka.Source.Git
   , Branch, Remote, URI
   ) where
 
-import Control.Exception (bracket)
-import Control.Monad (forM_)
-import Data.Foldable (for_)
-import Data.Monoid (mempty)
-
+import           Control.Exception (bracket)
 import           Control.Lens
-import           Data.Default (Default(..))
+import           Control.Monad (forM_)
+import           Data.Default.Class (Default(..))
+import           Data.Foldable (for_)
+import           Data.Monoid (mempty)
 import qualified Data.Text as T
 import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))
@@ -49,7 +48,7 @@ instance Sourceable Git where
 -- | Do nothing except pulling @origin/master@ into @master@
 defaultGit :: Git
 defaultGit = Git
-  { gitactions = def
+  { gitactions = return ()
   , _remotes   = ["origin"]
   , _branch    = "master"
   }
@@ -104,7 +103,7 @@ git u p s = git' u p def { gitactions = s }
 
 -- | Wrapper over 'git' that does not provide anything
 git_ :: URI -> FilePath -> Script Sources ()
-git_ u p = git u p def
+git_ u p = git u p (return ())
 {-# INLINE git_ #-}
 
 

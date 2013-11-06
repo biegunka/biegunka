@@ -5,7 +5,7 @@ import Data.Foldable (toList)
 
 import           Control.Lens
 import           Control.Monad.Free (Free(..))
-import           Data.Default (def)
+import           Data.Default.Class (def)
 import qualified Data.Set as S
 import           Test.Hspec
 
@@ -20,14 +20,14 @@ spec :: Spec
 spec = describe "Biegunka DSL" $ do
   context "chaining" $ do
     it "gives unchained tasks different ids" $
-      let ast = evalScript def def tokens (directory "/" def >> directory "/" def)
+      let ast = evalScript def def tokens (directory "/" (return ()) >> directory "/" (return ()))
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
           (Free (TS (AS { asToken = t }) _ (Pure ())
             (Pure ())))) -> s /= t
         _ -> False
     it "gives chained tasks different ids" $
-      let ast = evalScript def def tokens (directory "/" def `prerequisiteOf` directory "/" def)
+      let ast = evalScript def def tokens (directory "/" (return ()) `prerequisiteOf` directory "/" (return ()))
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
           (Free (TM _
@@ -35,7 +35,7 @@ spec = describe "Biegunka DSL" $ do
               (Pure ())))))) -> s /= t
         _ -> False
     it "gives Wait modifier correct tasks ids" $
-      let ast = evalScript def def tokens (directory "/" def <~> directory "/" def)
+      let ast = evalScript def def tokens (directory "/" (return ()) <~> directory "/" (return ()))
       in case ast of
         Free (TS _ _ (Pure ())
           (Free (TM (Wait ids)
@@ -49,7 +49,7 @@ spec = describe "Biegunka DSL" $ do
         Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
         _ -> False
     it "mangles relative paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "to" def)
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
@@ -60,7 +60,7 @@ spec = describe "Biegunka DSL" $ do
         Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
         _ -> False
     it "does not mangle absolute paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "/to" def)
+      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "/to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
@@ -70,10 +70,10 @@ spec = describe "Biegunka DSL" $ do
             profile "foo" $
               group "bar" $
                 group "baz" $
-                  directory "/" def
+                  directory "/" (return ())
           ast' = evalScript def def tokens $
             profile "foo/bar/baz" $
-              directory "/" def
+              directory "/" (return ())
       in case (ast, ast') of
         ( Free (TS AS { asProfile = p  } Source {} (Pure ()) (Pure ()))
          , Free (TS AS { asProfile = p' } Source {} (Pure ()) (Pure ()))
@@ -83,18 +83,18 @@ spec = describe "Biegunka DSL" $ do
       let (_, as) = runScript def def tokens $ do
             profile "foo" $ do
               group "bar" $
-                directory "/" def
-              directory "/" def
+                directory "/" (return ())
+              directory "/" (return ())
             profile "baz" $
-              directory "/" def
+              directory "/" (return ())
             profile "quux" $
               return ()
-            directory "/" def
+            directory "/" (return ())
       in as^.profiles == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
     it "ignores \"\" if no ungrouped source is mentioned" $
       let (_, as) = runScript def def tokens $ do
             profile "baz" $
-              directory "/" def
+              directory "/" (return ())
             profile "quux" $
               return ()
       in as^.profiles == S.fromList ["baz", "quux"]

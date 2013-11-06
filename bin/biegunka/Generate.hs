@@ -10,7 +10,7 @@ module Generate where
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (WriterT, execWriter, tell)
 import           Data.Char (toUpper)
-import           Data.Default (def)
+import           Data.Default.Class (def)
 import           Data.Foldable (Foldable, for_, toList)
 import qualified Data.Map as M
 import           Data.Monoid ((<>))

@@ -38,8 +38,9 @@ import Control.Monad.State (StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
-import Data.Default (Default(..))
+import Data.Default.Class (Default(..))
 import Data.List (isSuffixOf)
+import Data.Monoid (mempty)
 import Data.Set (Set)
 import Data.String (IsString(..))
 import Data.Void (Void)
@@ -116,7 +117,7 @@ newtype Retry = Retry { unRetry :: Int }
     deriving (Show, Read, Eq, Ord)
 
 instance Default Retry where
-  def = Retry def
+  def = Retry 0
 
 -- | Increment retry count
 incr :: Retry -> Retry
@@ -139,11 +140,11 @@ deriving instance Show Annotations
 
 instance Default Annotations where
   def = Annotations
-    { _app = def
-    , _profileName    = def
-    , _sourcePath     = def
-    , _sourceURL      = def
-    , _activeUser     = def
+    { _app            = mempty
+    , _profileName    = mempty
+    , _sourcePath     = mempty
+    , _sourceURL      = mempty
+    , _activeUser     = Nothing
     , _maxRetries     = Retry 1
     , _sourceReaction = Abortive
     , _actionReaction = Ignorant
@@ -161,9 +162,9 @@ data MAnnotations = MAnnotations
 
 instance Default MAnnotations where
   def = MAnnotations
-    { _profiles = def
-    , _order    = def
-    , _maxOrder = def
+    { _profiles = mempty
+    , _order    = 0
+    , _maxOrder = 0
     }
   {-# INLINE def #-}
 

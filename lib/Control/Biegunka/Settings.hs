@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
@@ -15,7 +16,7 @@ module Control.Biegunka.Settings
   ) where
 
 import Control.Lens
-import Data.Default (Default(..))
+import Data.Default.Class (Default(..))
 import Data.Set (Set)
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -128,14 +129,14 @@ mode :: Lens' (Settings a) Mode
 
 makePrisms ''Mode
 
-instance Default a => Default (Settings a) where
+instance () ~ a => Default (Settings a) where
   def = Settings
     { _appRoot   = "~"
     , _appData   = "~/.biegunka"
     , _logger    = undefined -- sorry
     , _targets   = All
     , _colors    = def
-    , _local     = def
+    , _local     = ()
     , _templates = hStringTemplate ()
     , _mode      = Online
     }

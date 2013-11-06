@@ -3,7 +3,7 @@
 module THSpec where
 
 import Control.Lens
-import Data.Default (def)
+import Data.Default.Class (def)
 import Data.Monoid (mempty)
 import Options.Applicative
 import Test.Hspec

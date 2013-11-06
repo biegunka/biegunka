@@ -14,7 +14,7 @@ import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad.Free (Free)
 import           Data.Char (toLower)
-import           Data.Default
+import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
 import qualified System.Directory as D

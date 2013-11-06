@@ -7,7 +7,7 @@ import           Control.Monad.Trans.Writer (execWriter, tell)
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy.Char8 as B
 import           Data.Char (toUpper)
-import           Data.Default (def)
+import           Data.Default.Class (def)
 import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
