@@ -44,7 +44,7 @@ library
     text                 >= 0.11   && < 0.12,
     unix                 >= 2.5    && < 2.7,
     void                 >= 0.6    && < 1
-  hs-source-dirs: lib
+  hs-source-dirs: src
   exposed-modules:
     Control.Biegunka
     Control.Biegunka.Action

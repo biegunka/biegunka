@@ -1,2 +1,2 @@
-let g:hdevtools_options = '-g -ilib -g -ibin/biegunka -g -Wall -g -O0 -g -fdefer-type-errors -g -fno-warn-unused-do-bind -g -fno-warn-type-defaults -g -package-db=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d'
+let g:hdevtools_options = '-g -isrc -g -ibin/biegunka -g -Wall -g -O0 -g -fdefer-type-errors -g -fno-warn-unused-do-bind -g -fno-warn-type-defaults -g -package-db=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d'
 
