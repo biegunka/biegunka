@@ -91,7 +91,7 @@ executable biegunka
     text,
     transformers,
     wordexp
-  hs-source-dirs: bin/biegunka
+  hs-source-dirs: bin
   main-is: Main.hs
   other-modules:
     Generate
@@ -122,7 +122,7 @@ test-suite spec
     text,
     transformers
   hs-source-dirs:
-    bin/biegunka
+    bin
     tests
   main-is: Spec.hs
   other-modules:
