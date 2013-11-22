@@ -78,7 +78,7 @@ copy source destination spec = case spec of
   copyFile file file' = do
     exists <- doesFileExist file
     case exists of
-      False -> throwIO (CopyingException file file' ("File " ++ file ++ "does not exist"))
+      False -> throwIO (CopyingException file file' ("File " ++ file ++ " does not exist"))
       True  -> D.copyFile file file'
    `catchIOError`
     \exn -> throwIO (CopyingException file file' (show exn))
@@ -88,7 +88,7 @@ copy source destination spec = case spec of
     exists <- doesDirectoryExist directory
     case exists of
       False ->
-        throwIO (CopyingException directory directory' ("Directory " ++ directory ++ "does not exist"))
+        throwIO (CopyingException directory directory' ("Directory " ++ directory ++ " does not exist"))
       True -> do
         D.createDirectory directory'
         contents <- getDirectoryContents directory
