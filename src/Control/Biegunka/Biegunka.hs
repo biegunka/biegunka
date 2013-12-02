@@ -123,7 +123,7 @@ confirm :: Interpreter
 confirm = interpret go
  where
   go settings _ ks = do
-    k <- prompt (text "Proceed? [y/n] ") -- choice of continuation is based on the user input
+    k <- prompt (text "Proceed? [Y/n] ") -- choice of continuation is based on the user input
     k
    where
     prompt message = fix $ \loop -> do
@@ -132,5 +132,6 @@ confirm = interpret go
       res <- getLine
       case map toLower res of
         "y" -> return ks
+        ""  -> return ks
         "n" -> return (return (ExitFailure 1))
         _   -> loop
