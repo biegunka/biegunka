@@ -22,6 +22,8 @@ import           System.Process (runProcess, waitForProcess)
 import Control.Biegunka.Execute.Exception
 import Control.Biegunka.Language
 
+{-# ANN module "HLint: ignore Use if" #-}
+
 
 -- | Generic patching function
 patching :: FilePath -> FilePath -> [String] -> (ExitCode -> IO a) -> IO a
@@ -46,7 +48,7 @@ applyPatch patch root PatchSpec { strip, reversely } =
   patching patch root arguments $ \e ->
     e `onFailure` \_ -> throwIO $ PatchingException patch root
  where
-  arguments   = ["-p", show strip] ++ if reversely then ["--reverse"] else []
+  arguments   = ["-p", show strip] ++ ["--reverse" | reversely]
 
 -- | Verify applied patch given the patch spec
 verifyAppliedPatch
@@ -57,7 +59,7 @@ verifyAppliedPatch
 verifyAppliedPatch patch root PatchSpec { strip, reversely } =
   patching patch root arguments post
  where
-  arguments   = ["--check", "-p", show strip] ++ if reversely then [] else ["--reverse"]
+  arguments   = ["--check", "-p", show strip] ++ ["--reverse" | not reversely]
 
   post status = return (status == ExitSuccess)
 
@@ -117,7 +119,7 @@ verifyCopy source destination spec = case spec of
     verifyCopyFile source destination
    `mplus`
     return False
-  BothDirectoriesAndFiles -> do
+  BothDirectoriesAndFiles ->
     verifyCopyDirectory source destination
   `mplus`
     verifyCopyFile source destination
