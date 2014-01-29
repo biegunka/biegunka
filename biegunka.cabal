@@ -58,7 +58,9 @@ library
     Control.Biegunka.Groups
     Control.Biegunka.Language
     Control.Biegunka.Log
+    Control.Biegunka.Options
     Control.Biegunka.Primitive
+    Control.Biegunka.QQ
     Control.Biegunka.Script
     Control.Biegunka.Script.Token
     Control.Biegunka.Settings
@@ -68,7 +70,6 @@ library
     Control.Biegunka.Source.Layout
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
-    Control.Biegunka.TH
   ghc-options:
     -Wall
     -fno-warn-unused-do-bind
@@ -129,7 +130,6 @@ test-suite spec
     BehavioursSpec
     DSLSpec
     GenerateSpec
-    THSpec
     MipSpec
     UtilSpec
   type: exitcode-stdio-1.0

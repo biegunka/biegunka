@@ -20,7 +20,6 @@ import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.IO (Handle, hSetBuffering, BufferMode(..))
 import           System.Wordexp (wordexp, nosubst, noundef)
 
-import Options
 import Paths_biegunka (version)
 
 -- | Runs (or checks) biegunka script.
@@ -35,8 +34,8 @@ import Paths_biegunka (version)
 --
 --   * Script path directory name is added to paths where ghc searches for
 --   modules (@-i@ option)
-run :: Script -> [String] -> FilePath -> IO ()
-run script args target = do
+run :: [String] -> FilePath -> IO ()
+run args target = do
   T.putStrLn logo
   let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
   packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
@@ -47,7 +46,7 @@ run script args target = do
          (ghcArgs
       ++ ["-i" ++ target^.directory]
       ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
-      ++ [target, toScriptOption script]
+      ++ [target]
       ++ biegunkaArgs)
   hSetBuffering inh NoBuffering
   tell inh

@@ -20,8 +20,8 @@ module Control.Biegunka
   , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * Auxiliary
   , into
-    -- * TH
-  , biegunkaOptions
+    -- * Options autogeneration
+  , Data, Typeable, options
     -- * Quasiquoters
   , multiline, sh, shell
     -- * Settings
@@ -37,6 +37,8 @@ module Control.Biegunka
   , (~>)
   ) where
 
+import Data.Data (Data, Typeable)
+
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
   ( Settings, appData, colors
@@ -49,7 +51,8 @@ import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (root, source, Script, User(..), React(..), into)
-import Control.Biegunka.TH (biegunkaOptions, multiline, sh, shell)
+import Control.Biegunka.QQ (multiline, sh, shell)
+import Control.Biegunka.Options (options)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
 

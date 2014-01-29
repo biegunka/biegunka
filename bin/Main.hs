@@ -17,6 +17,9 @@ import List (list)
 import Options
 import Run (run)
 
+{-# ANN module ("HLint: ignore Use hierarchical imports" :: String) #-}
+{-# ANN module ("HLint: ignore Use if" :: String) #-}
+
 
 main :: IO ()
 main = do
@@ -25,8 +28,8 @@ main = do
   case biegunkaCommand of
     Init target
       -> defaulted target >>= initialize
-    RunScript target script args
-      -> defaulted target >>= run script args
+    RunScript target args
+      -> defaulted target >>= run args
     List datadir format profiles ->
       list datadir profiles format
     GenScript appdir datadir profiles ->
@@ -54,7 +57,7 @@ initialize target = do
       case response of
         True  -> copy template
         False -> do
-          putStrLn $ "Failed to initialize biegunka script: Already Exists"
+          putStrLn "Failed to initialize biegunka script: Already Exists"
           exitWith (ExitFailure 1)
     False -> copy template
  where
