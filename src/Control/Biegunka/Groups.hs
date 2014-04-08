@@ -146,7 +146,7 @@ instance Monoid GroupRecord where
 type instance Index GroupRecord = SourceRecord
 type instance IxValue GroupRecord = Set FileRecord
 
-instance Applicative f => Ixed f GroupRecord where
+instance Ixed GroupRecord where
   ix k f (GR x) = GR <$> ix k f x
 
 instance ToJSON GroupRecord where

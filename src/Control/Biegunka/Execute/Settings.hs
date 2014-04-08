@@ -78,7 +78,7 @@ bool f t p = if p then t else f
 type instance Index (Mip k a) = k
 type instance IxValue (Mip k a) = a
 
-instance (Applicative f, Eq k) => Ixed f (Mip k a) where
+instance Eq k => Ixed (Mip k a) where
   ix = ixAt
 
 instance Eq k => At (Mip k a) where
