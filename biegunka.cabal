@@ -76,7 +76,8 @@ library
     -fno-warn-unused-do-bind
 
 executable biegunka
-  default-language: Haskell2010
+  default-language:
+    Haskell2010
   build-depends:
     aeson,
     base >= 3 && < 5,
@@ -93,8 +94,10 @@ executable biegunka
     text,
     transformers,
     wordexp
-  hs-source-dirs: bin
-  main-is: Main.hs
+  hs-source-dirs:
+    bin
+  main-is:
+    Main.hs
   other-modules:
     Generate
     List
@@ -105,11 +108,11 @@ executable biegunka
     -Wall
     -fno-warn-unused-do-bind
 
-
 test-suite spec
-  default-language: Haskell2010
-  cpp-options:
-    -DTEST
+  default-language:
+    Haskell2010
+  type:
+    exitcode-stdio-1.0
   build-depends:
     base >= 4 && < 5,
     biegunka,
@@ -119,17 +122,21 @@ test-suite spec
     filepath,
     free,
     hspec,
+    hspec-expectations-lens,
     lens,
     optparse-applicative,
     text,
     transformers
   hs-source-dirs:
     bin
-    tests
-  main-is: Spec.hs
+    test
+  main-is:
+    Spec.hs
   other-modules:
+    Control.Biegunka.OptionsSpec
     BehavioursSpec
     DSLSpec
     GenerateSpec
     UtilSpec
-  type: exitcode-stdio-1.0
+  cpp-options:
+    -DTEST
