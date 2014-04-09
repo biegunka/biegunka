@@ -19,6 +19,7 @@ import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
+import           Control.Lens.Extras (is)
 import           Control.Monad.Catch
   (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
@@ -246,12 +247,10 @@ command getIO term = do
       Nothing
           -- and there is no *current* user, just let him in
           -- and set counter to 1
-        | null mu ->
-          writeTVar users (mu & at uid ?~ 1)
+        | is _Empty mu -> writeTVar users (mu & at uid ?~ 1)
           -- and there is a *current* user, retry
           -- until he leaves
-        | otherwise ->
-          retry
+        | otherwise -> retry
       -- If *this* user is inside, increment the counter and
       -- let him in
       Just _ ->

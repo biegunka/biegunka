@@ -29,6 +29,7 @@ library
     free                 >= 4.1    && < 5,
     HStringTemplate      >= 0.7    && < 0.8,
     lens                 >= 4      && < 5,
+    meep                 >= 0.1    && < 1,
     mtl                  >= 2.1    && < 2.2,
     optparse-applicative >= 0.8    && < 0.9,
     pointed              >= 3      && < 5,
@@ -130,6 +131,5 @@ test-suite spec
     BehavioursSpec
     DSLSpec
     GenerateSpec
-    MipSpec
     UtilSpec
   type: exitcode-stdio-1.0
