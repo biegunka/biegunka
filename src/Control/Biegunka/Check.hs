@@ -37,28 +37,32 @@ withFd fd = bracket (Posix.fdToHandle fd) hClose
 
 termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
 termsLayout p = iter go . fmap return where
-  go (TS _ (Source { spath }) innards spec) = do
+  go (TS (AS { asUser }) (Source { spath }) innards spec) = do
     Layout.emptydir (rel spath)
+      & Layout.user .~ uu asUser
     termsLayout p innards
     spec
-  go (TA _ action spec) = do
+  go (TA (AA { aaUser }) action spec) = do
     case action of
       Link file target ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.symlink f file
+                & Layout.user .~ uu aaUser
       Copy file target _ ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.file f
-                & Layout.contents .~ Layout.copyOf file
+                & Layout.contents ?~ Layout.copyOf file
+                & Layout.user .~ uu aaUser
       Template _ target _ ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.file f
+                & Layout.user .~ uu aaUser
       Patch {} ->
         return ()
       Command {} ->
@@ -67,6 +71,12 @@ termsLayout p = iter go . fmap return where
   go (TM _ spec) = spec
 
   rel = makeRelative p
+
+uu :: Maybe UserW -> Maybe Layout.User
+uu = fmap go where
+  go (UserW (UserID i)) = Layout.UserID i
+  go (UserW (Username n)) = Layout.Username n
+
 -- | Split the filepath into the list of directories and the filename
 split :: FilePath -> ([FilePath], FilePath)
 split path = let ~(ds, f) = splitFileName path in (splitDirectories ds, f)
