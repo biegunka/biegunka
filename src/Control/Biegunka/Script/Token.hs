@@ -23,11 +23,11 @@ module Control.Biegunka.Script.Token
 
 import Control.Applicative
 import Control.Monad
+import Data.Void (Void)
 import Control.Monad.Free (Free)
 import Control.Monad.Reader (ReaderT(..), MonadReader(..))
 import Control.Monad.State (StateT(..), MonadState(..))
 import Control.Monad.Trans (MonadTrans(..))
-import Data.Void (Void)
 import Prelude hiding (head)
 
 
