@@ -39,7 +39,7 @@ termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
 termsLayout p = iter go . fmap return where
   go (TS (AS { asUser }) (Source { spath }) innards spec) = do
     Layout.emptydir (rel spath)
-      & Layout.user .~ uu asUser
+      & Layout.user .~ asUser
     termsLayout p innards
     spec
   go (TA (AA { aaUser }) action spec) = do
@@ -49,7 +49,7 @@ termsLayout p = iter go . fmap return where
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.symlink f file
-                & Layout.user .~ uu aaUser
+                & Layout.user .~ aaUser
                 & Layout.exists .~ True
       Copy file target _ ->
         case split (rel target) of
@@ -57,13 +57,13 @@ termsLayout p = iter go . fmap return where
             Layout.dirs ds $
               Layout.file f
                 & Layout.contents ?~ Layout.copyOf file
-                & Layout.user .~ uu aaUser
+                & Layout.user .~ aaUser
       Template _ target _ ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.file f
-                & Layout.user .~ uu aaUser
+                & Layout.user .~ aaUser
       Patch {} ->
         return ()
       Command {} ->
@@ -72,11 +72,6 @@ termsLayout p = iter go . fmap return where
   go (TM _ spec) = spec
 
   rel = makeRelative p
-
-uu :: Maybe UserW -> Maybe Layout.User
-uu = fmap go where
-  go (UserW (UserID i)) = Layout.UserID i
-  go (UserW (Username n)) = Layout.Username n
 
 -- | Split the filepath into the list of directories and the filename
 split :: FilePath -> ([FilePath], FilePath)

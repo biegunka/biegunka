@@ -55,6 +55,8 @@ import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import           Control.Biegunka.Script
 
+{-# ANN module "HLint: ignore Use if" #-}
+
 
 -- | Real run interpreter
 run :: Interpreter
@@ -145,7 +147,7 @@ task f = go
     e <- env
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
-  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) = do
+  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) =
     try (command f c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
         True  -> go (incr retries) (Free (Pure () <$ c))
@@ -229,7 +231,7 @@ command getIO term = do
   liftIO $ case getUser term of
     Nothing  ->
       io
-    Just (UserW u) -> do
+    Just u -> do
       -- I really hope that stuff does not change
       -- while biegunka run is in progress
       gid <- getGID u
@@ -307,17 +309,16 @@ ioOnline term = case term of
     return $
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
   TA _ (Command p spec) _ -> return $ do
-    (_, _, Just errors, ph) <- P.createProcess $
-      P.CreateProcess
-        { P.cmdspec      = spec
-        , P.cwd          = Just p
-        , P.env          = Nothing
-        , P.std_in       = P.Inherit
-        , P.std_out      = P.CreatePipe
-        , P.std_err      = P.CreatePipe
-        , P.close_fds    = False
-        , P.create_group = False
-        }
+    (_, _, Just errors, ph) <- P.createProcess P.CreateProcess
+      { P.cmdspec      = spec
+      , P.cwd          = Just p
+      , P.env          = Nothing
+      , P.std_in       = P.Inherit
+      , P.std_out      = P.CreatePipe
+      , P.std_err      = P.CreatePipe
+      , P.close_fds    = False
+      , P.create_group = False
+      }
     e <- P.waitForProcess ph
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
@@ -359,7 +360,7 @@ getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
 getRetries (TM _ _) = def
 
 -- | Get user associated with term
-getUser :: Term Annotate s a -> Maybe UserW
+getUser :: Term Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
 getUser (TM _ _) = Nothing
