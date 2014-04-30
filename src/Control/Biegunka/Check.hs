@@ -50,6 +50,7 @@ termsLayout p = iter go . fmap return where
             Layout.dirs ds $
               Layout.symlink f file
                 & Layout.user .~ uu aaUser
+                & Layout.exists .~ True
       Copy file target _ ->
         case split (rel target) of
           ~(ds, f) ->
