@@ -39,7 +39,7 @@ check = interpret $ \os terms k -> do
     waitCatch a
     case summaryFailures s of
       0 -> k
-      _ -> return (ExitFailure 1)
+      n -> return (ExitFailure n)
 
 withFd :: Posix.Fd -> (Handle -> IO a) -> IO a
 withFd fd = bracket (Posix.fdToHandle fd) hClose
