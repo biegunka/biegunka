@@ -3,31 +3,40 @@
 -- | Check interpreter
 module Control.Biegunka.Check (check) where
 
+import           Control.Concurrent.Async (async, waitCatch)
 import           Control.Exception (bracket)
 import           Control.Lens hiding (Action)
+import           Control.Monad
 import           Control.Monad.Free (Free, iter)
 import           System.FilePath (splitFileName, splitDirectories, makeRelative)
 import           System.Directory.Layout (Layout)
 import qualified System.Directory.Layout as Layout
-import           System.IO (Handle, hGetContents, hClose)
+import           System.IO (Handle, hGetLine, hClose, hSetBuffering, BufferMode(..))
 import           System.Exit (ExitCode(..))
 import qualified System.Posix as Posix
 import           Test.Hspec.Formatters (progress)
 import           Test.Hspec.Runner (hspecWith, defaultConfig, Config(..), ColorMode(..), summaryFailures)
+import           Text.PrettyPrint.ANSI.Leijen (text)
 
 import           Control.Biegunka.Biegunka (Interpreter, interpret)
 import           Control.Biegunka.Language
+import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Script
+import           Control.Biegunka.Settings (logger)
 
 check :: Interpreter
-check = interpret $ \settings terms k -> do
+check = interpret $ \os terms k -> do
   (infd, outfd) <- Posix.createPipe
   withFd infd $ \inh -> do
-    s <- withFd outfd $ \outh ->
+    a <- async . forever $
+      hGetLine inh >>=
+        Log.write (view logger os) .  Log.plain . text . (++ "\n")
+    s <- withFd outfd $ \outh -> do
+      hSetBuffering outh LineBuffering
       hspecWith (defaultConfig
         { configFormatter = progress, configColorMode = ColorAlways, configHandle = Left outh }) $
-        Layout.spec (view root settings) (termsLayout (view root settings) terms)
-    hGetContents inh >>= putStrLn
+        Layout.spec (view root os) (termsLayout (view root os) terms)
+    waitCatch a
     case summaryFailures s of
       0 -> k
       _ -> return (ExitFailure 1)
