@@ -59,6 +59,8 @@ import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import           Control.Biegunka.Script
 
+{-# ANN module "HLint: ignore Use if" #-}
+
 
 -- | Real run interpreter
 run :: Interpreter
@@ -149,7 +151,7 @@ task f = go
     e <- env
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
-  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) = do
+  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) =
     try (command f c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
         True  -> go (incr retries) (Free (Pure () <$ c))
@@ -313,7 +315,7 @@ ioOnline term = case term of
     return $
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
   TA _ (Command p spec) _ -> return $ do
-    (_, _, Just errors, ph) <- P.createProcess $
+    (_, _, Just errors, ph) <- P.createProcess
       P.CreateProcess
         { P.cmdspec       = spec
         , P.cwd           = Just p
