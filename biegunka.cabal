@@ -33,7 +33,7 @@ library
     mtl                  >= 2.1    && < 2.2,
     optparse-applicative >= 0.8    && < 0.9,
     pointed              >= 3      && < 5,
-    process              >= 1.1    && < 1.2,
+    process,
     reflection           >= 1.1.6  && < 2,
     semigroups           >= 0.8.4  && < 1,
     safecopy             >= 0.8    && < 0.9,
