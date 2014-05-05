@@ -23,8 +23,7 @@ import Paths_biegunka (version)
 --
 -- Does a couple of smart things:
 --
---   * If you happen to have cabal[-dev] sandbox it can automatically detect
---   them if they are located in default locations
+--   * Uses @cabal exec@ to run @runhaskell@ inside the cabal sandbox automatically
 --
 --   * If script path argument is a directory, then default script name is
 --   automatically appended, e.g. @biegunka\/@ becomes @biegunka\/Biegunka.hs@
