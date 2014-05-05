@@ -33,13 +33,7 @@ import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
-import           System.Posix.Files (createSymbolicLink, removeLink)
-import           System.Posix.User
-  ( getEffectiveUserID, getEffectiveGroupID
-  , setEffectiveUserID, setEffectiveGroupID
-  , getUserEntryForName, userID
-  , getGroupEntryForID, getGroupEntryForName, groupID
-  )
+import qualified System.Posix as Posix
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
@@ -65,8 +59,8 @@ run = interpretOptimistically go where
   go settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
-      bracket getEffectiveUserID setEffectiveUserID $ \_ ->
-        bracket getEffectiveGroupID setEffectiveGroupID $ \_ ->
+      bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
+        bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           bracket Watcher.new Watcher.wait $ \watcher -> do
             r <- initializeSTM watcher
             runTask (settings & local .~ r) (task (settings^.mode.to io) def) s
@@ -238,8 +232,8 @@ command getIO term = do
       gid <- getGID u
       uid <- getUID u
       bracket_ (acquire users uid) (release users uid) $ do
-        setEffectiveGroupID gid
-        setEffectiveUserID uid
+        Posix.setEffectiveGroupID gid
+        Posix.setEffectiveUserID uid
         io
  where
   acquire users uid = atomically $ do
@@ -265,9 +259,9 @@ command getIO term = do
     modifyTVar users (at uid . non 0 -~ 1)
 
   getUID (UserID i)   = return i
-  getUID (Username n) = userID <$> getUserEntryForName n
-  getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
-  getGID (Username n) = groupID <$> getGroupEntryForName n
+  getUID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
+  getGID (UserID i)   = Posix.groupID <$> Posix.getGroupEntryForID (fromIntegral i)
+  getGID (Username n) = Posix.groupID <$> Posix.getGroupEntryForName n
 
 runIOOnline
   :: Reifies t (Settings Execution)
@@ -300,7 +294,7 @@ ioOnline term = case term of
         update dst
      `onException`
       atomically (modifyTVar rstv (S.delete dst))
-  TA _ (Link src dst) _ -> return $ overWriteWith createSymbolicLink src dst
+  TA _ (Link src dst) _ -> return $ overWriteWith Posix.createSymbolicLink src dst
   TA _ (Copy src dst spec) _ -> return $ do
     try (D.removeDirectoryRecursive dst) :: IO (Either IOError ())
     D.createDirectoryIfMissing True $ dropFileName dst
@@ -335,7 +329,7 @@ ioOnline term = case term of
  where
   overWriteWith g src dst = do
     D.createDirectoryIfMissing True $ dropFileName dst
-    tryIOError (removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
+    tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
 runIOOffline

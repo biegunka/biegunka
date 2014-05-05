@@ -26,7 +26,7 @@ import           Data.Reflection (Reifies)
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Prelude hiding (lookup, null)
-import           System.Posix.Types (CUid)
+import qualified System.Posix as Posix
 
 import           Control.Biegunka.Execute.Watcher (Watcher)
 import           Control.Biegunka.Settings (Settings, local)
@@ -43,8 +43,8 @@ env = reflected
 -- | Multithread accessable parts
 data Execution = Execution
   { _watch :: Watcher
-  , _user  :: TVar (Meep CUid Int) -- ^ Current user id and sessions counter
-  , _repos :: TVar (Set String)   -- ^ Already updated repositories
+  , _user  :: TVar (Meep Posix.CUid Int) -- ^ Current user id and sessions counter
+  , _repos :: TVar (Set String)          -- ^ Already updated repositories
   }
 
 -- | Workload
