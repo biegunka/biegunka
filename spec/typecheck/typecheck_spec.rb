@@ -7,7 +7,7 @@ require_relative "./spec_helper"
 
 
 def compile file, opts
-  external_command       = "ghc -fno-code #{opts.join(" ")} #{file}"
+  external_command = "cabal exec ghc -- -fno-code #{opts.join(" ")} #{file}"
   stdout, stderr, status = Open3.capture3 external_command
   { stdout: stdout, stderr: stderr, exitcode: status.exitstatus }
 end
@@ -23,11 +23,6 @@ end
 
 options = []
 here = File.expand_path File.dirname __FILE__
-if File.exists? "cabal-dev"
-  options << "-package-db=#{Dir.glob("cabal-dev/packages-*.conf").first}"
-elsif File.exists? ".cabal-sandbox"
-  options << "-package-db=#{Dir.glob(".cabal-sandbox/*-packages.conf.d").first}"
-end
 
 describe "typechecking," do
   context "when successful," do
