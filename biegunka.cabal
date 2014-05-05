@@ -88,14 +88,12 @@ executable biegunka
     containers,
     data-default-class,
     directory,
-    either,
     filepath,
     lens,
     optparse-applicative,
     process,
     text,
-    transformers,
-    wordexp
+    transformers
   hs-source-dirs:
     bin
   main-is:

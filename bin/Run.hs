@@ -6,20 +6,16 @@ module Run (run) where
 import           Control.Concurrent (forkIO)
 import           Control.Lens hiding ((<.>))
 import           Control.Monad (forever)
-import           Control.Monad.IO.Class (liftIO)
-import           Control.Monad.Trans.Either
-import           Data.List (intercalate, isPrefixOf, partition)
+import           Data.List (isPrefixOf, partition)
 import           Data.Monoid ((<>))
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
-import           Data.Version (Version(..), showVersion)
+import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..), exitSuccess, exitWith)
 import           System.FilePath.Lens (directory)
 import           System.Process
-import           System.Info (arch, os, compilerName, compilerVersion)
 import           System.IO (Handle, hSetBuffering, BufferMode(..))
-import           System.Wordexp (wordexp, nosubst, noundef)
 
 import Paths_biegunka (version)
 
@@ -39,14 +35,9 @@ run :: [String] -> FilePath -> IO ()
 run args target = do
   T.putStrLn logo
   let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
-  packageDBArg <- if any ("-package-db" `isPrefixOf`) ghcArgs
-                     then return (Right ())
-                     else findPackageDBArg
-  packageDBArg^!_Left.act (\db -> putStrLn ("* Found cabal package DB at " ++ db ++ ", using it!"))
   (inh, pid) <- runBiegunkaProcess
          (ghcArgs
-      ++ ["-i" ++ target^.directory]
-      ++ either (\packageDB -> ["-package-db=" ++ packageDB]) (const []) packageDBArg
+      ++ ["-i" ++ view directory target]
       ++ [target]
       ++ biegunkaArgs)
   hSetBuffering inh NoBuffering
@@ -68,7 +59,7 @@ runBiegunkaProcess args = do
   return (inh, ph)
  where
   process = CreateProcess
-    { cmdspec      = RawCommand "runhaskell" args
+    { cmdspec      = RawCommand "cabal" (["exec", "runhaskell", "--"] ++ args)
     , cwd          = Nothing
     , env          = Nothing
     , std_in       = CreatePipe
@@ -89,28 +80,3 @@ logo = T.unlines
   , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> T.pack (showVersion version)
   , "           /___/                         "
   ]
-
-findPackageDBArg :: IO (Either String ())
-findPackageDBArg = runEitherT $ do
-  findCabalSandbox
-  findCabalDevSandbox
- where
-  findCabalSandbox    =
-    findSandbox $ "cabal-dev/packages-" ++ compilerVersionString compilerVersion ++ "*.conf"
-  findCabalDevSandbox =
-    findSandbox $
-         ".cabal-sandbox/" ++ arch ++ "-" ++ os ++ "-" ++ compilerName ++ "-"
-      ++ compilerVersionString compilerVersion ++ "*-packages.conf.d"
-
-  findSandbox :: String -> EitherT String IO ()
-  findSandbox pattern = do
-    findings <- liftIO $ wordexp (nosubst <> noundef) pattern
-    case findings of
-      Right [sandbox]
-        | sandbox /= pattern -> left sandbox
-      Right (sandbox:_:_) -> do
-        liftIO . putStrLn $ "* Found multiple sandboxes, going with " ++ sandbox ++ ", sorry!"
-        left sandbox
-      _ -> right ()
-
-  compilerVersionString = intercalate "." . map show . versionBranch
