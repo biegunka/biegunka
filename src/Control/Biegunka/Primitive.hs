@@ -160,9 +160,9 @@ raw = eval
 {-# INLINE raw #-}
 
 -- | Change effective user id for wrapped commands
-sudo :: User u -> Script s a -> Script s a
+sudo :: User -> Script s a -> Script s a
 sudo user (Script inner) = Script $
-  (activeUser ?~ UserW user) `local` inner
+  (activeUser ?~ user) `local` inner
 {-# INLINE sudo #-}
 
 -- | Change maximum retries count

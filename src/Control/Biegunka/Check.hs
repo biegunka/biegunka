@@ -1,182 +1,87 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- | Check interpreter
 module Control.Biegunka.Check (check) where
 
-import Control.Applicative
-import Control.Lens hiding (Action)
-import Control.Monad
-import Control.Monad.Catch (MonadCatch, catchIOError)
-import Control.Monad.Free (Free(..), iterM)
-import Control.Monad.Writer (MonadWriter, WriterT, execWriterT, tell)
-import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Foldable (for_)
-import System.Directory (doesDirectoryExist, doesFileExist)
-import System.Exit (ExitCode(..))
-import System.Posix.Files
-  (fileOwner, getSymbolicLinkStatus, readSymbolicLink)
-import System.Posix.User
-import System.Posix.Types (UserID)
-import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+import           Control.Concurrent.Async (async, waitCatch)
+import           Control.Exception (bracket)
+import           Control.Lens hiding (Action)
+import           Control.Monad
+import           Control.Monad.Free (Free, iter)
+import           System.FilePath (splitFileName, splitDirectories, makeRelative)
+import           System.Directory.Layout (Layout)
+import qualified System.Directory.Layout as Layout
+import           System.IO (Handle, hGetLine, hClose, hSetBuffering, BufferMode(..))
+import           System.Exit (ExitCode(..))
+import qualified System.Posix as Posix
+import           Test.Hspec.Formatters (progress)
+import           Test.Hspec.Runner (hspecWith, defaultConfig, Config(..), ColorMode(..), summaryFailures)
+import           Text.PrettyPrint.ANSI.Leijen (text)
 
-import           Control.Biegunka.Action (verifyAppliedPatch, verifyCopy)
 import           Control.Biegunka.Biegunka (Interpreter, interpret)
-import qualified Control.Biegunka.Log as Log
-import           Control.Biegunka.Settings
-  (logger, ColorScheme(..), colors, sourceColor, srcColor, dstColor)
 import           Control.Biegunka.Language
+import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Script
+import           Control.Biegunka.Settings (logger)
 
-
--- | Various failures that may happen before/after
--- biegunka script run.
-data CheckFailure =
-    NonExistingSource URI FilePath
-  | FilePath `NotACopyOf` FilePath
-  | FilePath `NotALinkTo` FilePath
-  | FilePath `NotATemplateInstanceOf` FilePath
-  | NotPatchedWith FilePath FilePath PatchSpec
-  | String `IncorrectOwnerOf` FilePath
-  | CannotDetermineOwnerOf FilePath
-    deriving (Show, Read)
-
-
--- | Check interpreter
 check :: Interpreter
-check = interpret $ \settings terms k -> do
-  let document = documentCheckFailure (settings^.colors)
-  failures <- execWriterT (verification terms)
-  Log.write (settings^.logger) . Log.exception $
-    message document failures
-  continue failures k
- where
-  message g fs =
-    text "Verification: " <> case fs of [] -> green "OK"; _  -> line <> vcat (map g fs); <> line
+check = interpret $ \os terms k -> do
+  (infd, outfd) <- Posix.createPipe
+  withFd infd $ \inh -> do
+    a <- async . forever $
+      hGetLine inh >>=
+        Log.write (view logger os) .  Log.plain . text . (++ "\n")
+    s <- withFd outfd $ \outh -> do
+      hSetBuffering outh LineBuffering
+      hspecWith (defaultConfig
+        { configFormatter = progress, configColorMode = ColorAlways, configHandle = Left outh }) $
+        Layout.spec (view root os) (termsLayout (view root os) terms)
+    waitCatch a
+    case summaryFailures s of
+      0 -> k
+      n -> return (ExitFailure n)
 
-  continue [] k = k
-  continue _  _ = return (ExitFailure 1)
+withFd :: Posix.Fd -> (Handle -> IO a) -> IO a
+withFd fd = bracket (Posix.fdToHandle fd) hClose
 
--- | Check and document all failures, assuming script was ran
-verification :: Free (Term Annotate s) () -> WriterT [CheckFailure] IO ()
-verification = iterM $ \case
-  TS _ (Source { spath, suri }) inner next -> do
-    exists <- io $ doesDirectoryExist spath
-    case exists of
-      True  -> verification inner
-      False -> tell [NonExistingSource spath suri]
-    next
-  TA (AA { aaUser }) action next -> do
-    checkActionResult action
-    checkOwnage aaUser action
-    next
-  TM _ next -> next
+termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
+termsLayout p = iter go . fmap return where
+  go (TS (AS { asUser }) (Source { spath }) innards spec) = do
+    Layout.emptydir (rel spath)
+      & Layout.user .~ asUser
+    termsLayout p innards
+    spec
+  go (TA (AA { aaUser }) action spec) = do
+    case action of
+      Link file target ->
+        case split (rel target) of
+          ~(ds, f) ->
+            Layout.dirs ds $
+              Layout.symlink f file
+                & Layout.user .~ aaUser
+                & Layout.exists .~ True
+      Copy file target _ ->
+        case split (rel target) of
+          ~(ds, f) ->
+            Layout.dirs ds $
+              Layout.file f
+                & Layout.contents ?~ Layout.copyOf file
+                & Layout.user .~ aaUser
+      Template _ target _ ->
+        case split (rel target) of
+          ~(ds, f) ->
+            Layout.dirs ds $
+              Layout.file f
+                & Layout.user .~ aaUser
+      Patch {} ->
+        return ()
+      Command {} ->
+        return ()
+    spec
+  go (TM _ spec) = spec
 
--- | Check that result of term execution is what's expected
-checkActionResult :: Action -> WriterT [CheckFailure] IO ()
-checkActionResult = \case
-  Link file target -> do
-    file' <- io $ readSymbolicLink target
-    dfe   <- io $ doesFileExist file'
-    dde   <- io $ doesDirectoryExist file'
-    unless (file == file' && (dfe || dde)) $
-      failure (target `NotALinkTo` file)
-   `catchedIOError`
-    tell [target `NotALinkTo` file]
-  Copy file target spec -> do
-    copy <- io $ verifyCopy file target spec
-    unless copy $
-      failure (target `NotACopyOf` file)
-   `catchedIOError`
-    failure (target `NotACopyOf` file)
-  Template file target _ -> do
-    exists <- io $ doesFileExist target
-    unless exists $
-      failure (target `NotATemplateInstanceOf` file)
-   `catchedIOError`
-    failure (target `NotATemplateInstanceOf` file)
-  Patch patch target spec -> do
-    verified <- io $ verifyAppliedPatch patch target spec
-    unless verified $
-      failure ((target `NotPatchedWith` patch) spec)
-   `catchedIOError`
-    failure ((target `NotPatchedWith` patch) spec)
-  Command _ _ ->
-    return ()
+  rel = makeRelative p
 
--- | Check that stuff is owned by correct user
-checkOwnage :: Maybe UserW -> Action -> WriterT [CheckFailure] IO ()
-checkOwnage auser = \case
-  Link _ target       -> ownage target
-  Copy _ target _     -> ownage target
-  Template _ target _ -> ownage target
-  Patch _ target _    -> ownage target
-  Command _ _         -> return ()
- where
-  ownage :: FilePath -> WriterT [CheckFailure] IO ()
-  ownage target = do
-    owning <- io $ compareUsers auser target
-    for_ owning $ \user ->
-      failure $ user `IncorrectOwnerOf` target
-   `catchedIOError`
-    failure (CannotDetermineOwnerOf target)
-
-compareUsers :: Maybe UserW -> FilePath -> IO (Maybe String)
-compareUsers mu path = do
-  desiredUserID <- user mu
-  realUserID    <- fileOwner <$> getSymbolicLinkStatus path
-  case desiredUserID == realUserID of
-    True  -> return Nothing
-    False -> Just . userName <$> getUserEntryForID realUserID
- where
-  user :: Maybe UserW -> IO UserID
-  user (Just (UserW (UserID i))) = return i
-  user (Just (UserW (Username s))) = userID <$> getUserEntryForName s
-  user Nothing = getEffectiveUserID
-
-
-documentCheckFailure :: ColorScheme -> CheckFailure -> Doc
-documentCheckFailure scheme = \case
-  NonExistingSource uri target ->
-        "source"
-    </> parens ((scheme^.sourceColor) (text uri))
-    </> "does not exist at"
-    </> (scheme^.dstColor) (text target)
-  target `NotACopyOf` file ->
-        (scheme^.dstColor) (text target)
-    </> "is not a copy of"
-    </> (scheme^.srcColor) (text file)
-  target `NotALinkTo` file ->
-        (scheme^.dstColor) (text target)
-    </> "link to"
-    </> (scheme^.srcColor) (text file)
-    </> "is broken"
-  target `NotATemplateInstanceOf` file ->
-        (scheme^.dstColor) (text target)
-    </> "is not a templated copy of"
-    </> (scheme^.srcColor) (text file)
-  NotPatchedWith target patch PatchSpec { reversely } ->
-        (scheme^.srcColor) (text patch)
-    </> "is not correctly"
-    </> (if reversely then parens "reversely" </> "applied" else "applied")
-    </> "to"
-    </> (scheme^.dstColor) (text target)
-  name `IncorrectOwnerOf` target ->
-        (scheme^.dstColor) (text target)
-    </> "is incorrectly owned by"
-    </> (scheme^.sourceColor) (text name)
-  CannotDetermineOwnerOf target ->
-        "cannot determine who owns"
-    </> (scheme^.dstColor) (text target)
-
-catchedIOError :: MonadCatch m => m a -> m a -> m a
-catchedIOError ma ma' = ma `catchIOError` \_ -> ma'
-
-io :: MonadIO m => IO a -> m a
-io = liftIO
-
-failure :: MonadWriter [w] m => w -> m ()
-failure m = tell [m]
+-- | Split the filepath into the list of directories and the filename
+split :: FilePath -> ([FilePath], FilePath)
+split path = let ~(ds, f) = splitFileName path in (splitDirectories ds, f)

@@ -5,7 +5,7 @@
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
-    Settings, appData, logger, targets, colors, local, templates, Templates(..)
+    Settings, HasRoot(..), appData, logger, targets, colors, local, templates, Templates(..)
     -- ** Script targets controls
   , Targets(..)
     -- ** Color scheme controls

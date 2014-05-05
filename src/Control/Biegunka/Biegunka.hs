@@ -23,8 +23,7 @@ import           System.FilePath ((</>))
 
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Log as Log
-import           Control.Biegunka.Script
-  (HasRoot(root), Script, Annotate, app, profiles, runScript)
+import           Control.Biegunka.Script (Script, Annotate, app, profiles, runScript)
 import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO

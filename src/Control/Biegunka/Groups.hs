@@ -51,7 +51,7 @@ import           System.FilePath.Lens hiding (extension)
 import Control.Biegunka.Settings
   (Settings, Targets(..), appData, targets)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
-import Control.Biegunka.Script (Annotate(..), UserW(..), User(..))
+import Control.Biegunka.Script (Annotate(..), User(..), User(..))
 
 -- $setup
 -- >>> import Data.Default
@@ -292,6 +292,6 @@ fromScript script = execState (iterM construct script) (Groups mempty)
     toFileRecord fileType fromSource filePath fileOwner =
       Just FR { fileType, fromSource, filePath, fileOwner }
 
-user :: UserW -> Either String Int
-user (UserW (Username s)) = Left s
-user (UserW (UserID n)) = Right (fromIntegral n)
+user :: User -> Either String Int
+user (Username s) = Left s
+user (UserID n) = Right (fromIntegral n)

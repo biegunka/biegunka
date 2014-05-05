@@ -40,9 +40,6 @@ import           System.Posix.User
   , getUserEntryForName, userID
   , getGroupEntryForID, getGroupEntryForName, groupID
   )
-import           System.Posix.Types
-  ( UserID, GroupID
-  )
 import qualified System.Process as P
 
 import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
@@ -235,7 +232,7 @@ command getIO term = do
   liftIO $ case getUser term of
     Nothing  ->
       io
-    Just (UserW u) -> do
+    Just u -> do
       -- I really hope that stuff does not change
       -- while biegunka run is in progress
       gid <- getGID u
@@ -267,10 +264,8 @@ command getIO term = do
     -- If counter approaches zero, then current user left
     modifyTVar users (at uid . non 0 -~ 1)
 
-  getUID :: User u -> IO UserID
   getUID (UserID i)   = return i
   getUID (Username n) = userID <$> getUserEntryForName n
-  getGID :: User u -> IO GroupID
   getGID (UserID i)   = groupID <$> getGroupEntryForID (fromIntegral i)
   getGID (Username n) = groupID <$> getGroupEntryForName n
 
@@ -370,7 +365,7 @@ getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
 getRetries (TM _ _) = def
 
 -- | Get user associated with term
-getUser :: Term Annotate s a -> Maybe UserW
+getUser :: Term Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
 getUser (TM _ _) = Nothing

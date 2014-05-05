@@ -28,7 +28,7 @@ module Control.Biegunka.Script
   , app, profileName, sourcePath, sourceURL, profiles
   , order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, UserW(..), User(..), React(..), Retry(..), incr, into
+  , URI, User(..), React(..), Retry(..), incr, into
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
@@ -42,16 +42,17 @@ import Data.Default.Class (Default(..))
 import Data.List (isSuffixOf)
 import Data.Monoid (mempty)
 import Data.Set (Set)
-import Data.String (IsString(..))
 import Data.Void (Void)
+import System.Command.QQ (Eval(..))
+import System.Directory.Layout (User(..))
 import System.FilePath ((</>))
 import System.FilePath.Lens
-import System.Command.QQ (Eval(..))
-import System.Posix.Types (CUid)
 import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script.Token
+
+{-# ANN module "HLint: ignore Use if" #-}
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -65,7 +66,7 @@ data family Annotate (sc :: Scope) :: *
 data instance Annotate Sources = AS
   { asToken      :: Token
   , asProfile    :: String
-  , asUser       :: Maybe UserW
+  , asUser       :: Maybe User
   , asMaxRetries :: Retry
   , asReaction   :: React
   }
@@ -73,7 +74,7 @@ data instance Annotate Actions = AA
   { aaURI        :: URI
   , aaOrder      :: Int
   , aaMaxOrder   :: Int
-  , aaUser       :: Maybe UserW
+  , aaUser       :: Maybe User
   , aaMaxRetries :: Retry
   , aaReaction   :: React
   }
@@ -81,30 +82,6 @@ data instance Annotate Actions = AA
 
 -- | Repository URI (like @git\@github.com:whoever/whatever.git@)
 type URI = String
-
--- | User setting modifier
-data User u where
-  UserID   :: CUid -> User CUid
-  Username :: String -> User String
-
-instance Show (User u)
-
-instance u ~ String => IsString (User u) where
-  fromString = Username
-
--- | Because I can
-instance u ~ CUid => Num (User u) where
-  UserID a + UserID b = UserID (a + b)
-  UserID a * UserID b = UserID (a * b)
-  abs (UserID a)      = UserID (abs a)
-  signum (UserID a)   = signum (UserID a)
-  fromInteger         = UserID . fromInteger
-
--- | Wrapper around 'User' hiding particular
--- implementation from the type sistem
-data UserW = forall u. UserW (User u)
-
-deriving instance Show UserW
 
 -- | Failure reaction
 --
@@ -130,7 +107,7 @@ data Annotations = Annotations
   , _profileName    :: String      -- ^ Profile name
   , _sourcePath     :: FilePath    -- ^ Source root filepath
   , _sourceURL      :: URI         -- ^ Current source url
-  , _activeUser     :: Maybe UserW -- ^ Maximum action order in current source
+  , _activeUser     :: Maybe User  -- ^ Maximum action order in current source
   , _maxRetries     :: Retry       -- ^ Maximum retries count
   , _sourceReaction :: React       -- ^ How to react on source failure
   , _actionReaction :: React       -- ^ How to react on action failure
@@ -200,7 +177,7 @@ sourcePath :: Lens' Annotations FilePath
 sourceURL :: Lens' Annotations String
 
 -- | Current user
-activeUser :: Lens' Annotations (Maybe UserW)
+activeUser :: Lens' Annotations (Maybe User)
 
 -- | Maximum retries count
 maxRetries :: Lens' Annotations Retry
