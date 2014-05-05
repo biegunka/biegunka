@@ -1,97 +1,120 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 module BehavioursSpec (spec) where
 
-import           Control.Biegunka hiding (check)
+import           Control.Biegunka
 import           Control.Biegunka.Source.Layout (layout)
 import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
-import           Data.String (fromString)
-import           System.Directory.Layout
+import           Data.List.NonEmpty (NonEmpty, fromList)
+import           System.Directory.Layout hiding (spec)
+import           System.FilePath ((</>))
+import           System.IO.Temp (withSystemTempDirectory)
 import           Test.Hspec
+
+{-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
 
 
 spec :: Spec
 spec = do
-  describe "Trivial biegunka script" $ do
-    it "should be trivial layout too" $ do
-      xs <- trivial_script `resultsIn` trivial_layout
-      null xs `shouldBe` True
-  describe "Trivial biegunka profile script" $ do
-    it "should be trivial layout too" $ do
-      xs <- trivial_repo "biegunka-test" `resultsIn` trivial_layout
-      null xs `shouldBe` True
+  describe "Trivial biegunka script" $
+    it "should be trivial layout too" $
+      (trivial_script `fitsWith` trivial_layout) `shouldReturn` success
+
+  describe "Trivial biegunka profile script" $
+    it "should be trivial layout too" $
+      (trivial_repo "biegunka-test" `fitsWith` trivial_layout) `shouldReturn` success
+
   describe "Simple biegunka profile script" $ do
-    it "should be simple layout too" $ do
-      xs <- simple_repo_0 `resultsIn` simple_layout_0
-      null xs `shouldBe` True
-    it "should disappear after deletion" $ do
-      xs <- trivial_repo "biegunka-simple0" `resultsIn` trivial_layout
-      null xs `shouldBe` True
+    it "should be simple layout too" $
+      (simple_repo_0 `fitsWith` simple_layout_0) `shouldReturn` success
+
+    it "should disappear after deletion" $
+      (trivial_repo "biegunka-simple0" `fitsWith` trivial_layout) `shouldReturn` success
+
   describe "Simple biegunka no profile script" $ do
-    it "should be simple layout too" $ do
-      xs <- simple_repo_no_profile_0 `resultsIn` simple_layout_no_profile_0
-      null xs `shouldBe` True
-    it "should disappear after deletion" $ do
-      xs <- trivial_repo "" `resultsIn` trivial_layout
-      null xs `shouldBe` True
+    it "should be simple layout too" $
+      (simple_repo_no_profile_0 `fitsWith` simple_layout_no_profile_0) `shouldReturn` success
+
+    it "should disappear after deletion" $
+      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` success
+
   describe "Simple copying" $ do
-    it "should copy the directory correctly" $ do
-      make (directory "a" simple_copying_layout_0) "/tmp"
-      biegunka (set root "/tmp" . set appData "/tmp/.biegunka") run $
-        D.directory "/tmp" $
-          copy "a" "/tmp/b"
-      check (directory "b" simple_copying_layout_0) "/tmp" `shouldReturn` []
-    it "should disappear after deletion" $ do
-      xs <- trivial_repo "" `resultsIn` trivial_layout
-      null xs `shouldBe` True
+    it "should copy the directory correctly" $
+      withBiegunkaDirectory $ \tmp -> do
+        make tmp (dir "a" simple_copying_layout_0)
+        biegunka (set root tmp . set appData (tmp </> ".biegunka")) run $
+          D.directory tmp $
+            copy "a" (tmp </> "b")
+        fit tmp (dir "b" simple_copying_layout_0)
+     `shouldReturn`
+      success
 
+    it "should disappear after deletion" $
+      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` success
 
-resultsIn :: Script Sources () -> Layout -> IO [LayoutException]
-resultsIn s l = do
-  biegunka (set root "/tmp" . set appData "/tmp/.biegunka") run s
-  check l "/tmp"
+fitsWith
+  :: (FilePath -> Script Sources ())
+  -> (FilePath -> Layout a)
+  -> IO (Validation (NonEmpty FitError) ())
+fitsWith s l =
+  withBiegunkaDirectory $ \tmp -> do
+    biegunka (set root tmp . set appData (tmp </> ".biegunka")) run (s tmp)
+    fit tmp (l tmp)
 
+trivial_script :: FilePath -> Script Sources ()
+trivial_script _ = return ()
 
-trivial_script :: Script Sources ()
-trivial_script = return ()
+trivial_layout :: FilePath -> Layout ()
+trivial_layout _ = return ()
 
+trivial_repo :: String -> FilePath -> Script Sources ()
+trivial_repo tmp _ = profile tmp $ return ()
 
-trivial_layout :: Layout
-trivial_layout = return ()
-
-
-trivial_repo :: String -> Script Sources ()
-trivial_repo p = profile p $ return ()
-
-
-simple_repo_0 :: Script Sources ()
-simple_repo_0 =
+simple_repo_0 :: FilePath -> Script Sources ()
+simple_repo_0 tmp =
   profile "biegunka-simple0" $
-    layout l "tmp/biegunka-simple0" $
-      copy "src0" "tmp/dst0"
+    layout l (tmp </> "biegunka-simple0") $
+      copy "src0" (tmp </> "dst0")
  where
-  l = file "src0" (fromString "thisiscontents\n")
+  l = file "src0" & contents ?~ "thisiscontents\n"
 
-simple_layout_0 :: Layout
-simple_layout_0 = do
-  directory "tmp" $
-    file "dst0" (fromString "thisiscontents\n")
+simple_layout_0 :: FilePath -> Layout ()
+simple_layout_0 tmp =
+  dir tmp $
+    file "dst0"
+      & contents ?~ "thisiscontents\n"
 
-simple_repo_no_profile_0 :: Script Sources ()
-simple_repo_no_profile_0 =
-  layout l "tmp/biegunka-simple0" $
-    copy "src0" "tmp/dst0"
+simple_repo_no_profile_0 :: FilePath -> Script Sources ()
+simple_repo_no_profile_0 tmp =
+  layout l (tmp </> "biegunka-simple0") $
+    copy "src0" (tmp </> "dst0")
  where
-  l = file "src0" (fromString "thisiscontents\n")
+  l = file "src0" & contents ?~ "thisiscontents\n"
 
-simple_layout_no_profile_0 :: Layout
-simple_layout_no_profile_0 = do
-  directory "tmp" $
-    file "dst0" (fromString "thisiscontents\n")
+simple_layout_no_profile_0 :: FilePath -> Layout ()
+simple_layout_no_profile_0 tmp =
+  dir tmp $
+    file "dst0"
+      & contents ?~ "thisiscontents\n"
 
-simple_copying_layout_0 :: Layout
+simple_copying_layout_0 :: Layout ()
 simple_copying_layout_0 = do
-  file "foo" (fromString "foocontents\n")
-  file "bar" (fromString "barcontents\n")
-  directory "baz" $
-    file "quux" (fromString "quuxcontents\n")
+  file "foo"
+    & contents ?~ "foocontents\n"
+  file "bar"
+    & contents ?~ "barcontents\n"
+  dir "baz" $
+    file "quux"
+      & contents ?~ "quuxcontents\n"
+
+
+success :: Validation (NonEmpty a) ()
+success = errors []
+
+errors :: [a] -> Validation (NonEmpty a) ()
+errors [] = Result ()
+errors xs = Error (fromList xs)
+
+withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
+withBiegunkaDirectory = withSystemTempDirectory "biegunka-XXXXXX"

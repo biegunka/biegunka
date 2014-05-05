@@ -5,6 +5,7 @@ ghc:
     - 7.6
 
 before_install:
+    - echo 'constraint: exceptions < 0.6' >> ~/.cabal/config
     - cabal install alex
     - cabal install happy
     - cabal install c2hs

@@ -125,6 +125,8 @@ test-suite spec
     hspec-expectations-lens,
     lens,
     optparse-applicative,
+    semigroups,
+    temporary,
     text,
     transformers
   hs-source-dirs:
