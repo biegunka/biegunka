@@ -5,8 +5,10 @@ ghc:
     - 7.6
 
 before_install:
-    - git clone https://github.com/supki/temporary
-    - cabal install temporary/temporary.cabal
     - cabal install alex
     - cabal install happy
     - cabal install c2hs
+    - git clone https://github.com/supki/temporary
+    - cabal install temporary/temporary.cabal
+    - git clone https://github.com/acid-state/acid-state
+    - cabal install acid-state/acid-state.cabal
