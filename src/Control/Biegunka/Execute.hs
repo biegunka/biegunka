@@ -229,8 +229,8 @@ command getIO term = do
     Just u -> do
       -- I really hope that stuff does not change
       -- while biegunka run is in progress
-      gid <- getGID u
-      uid <- getUID u
+      gid <- userGroupID u
+      uid <- userID u
       bracket_ (acquire users uid) (release users uid) $ do
         Posix.setEffectiveGroupID gid
         Posix.setEffectiveUserID uid
@@ -258,10 +258,13 @@ command getIO term = do
     -- If counter approaches zero, then current user left
     modifyTVar users (at uid . non 0 -~ 1)
 
-  getUID (UserID i)   = return i
-  getUID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
-  getGID (UserID i)   = Posix.groupID <$> Posix.getGroupEntryForID (fromIntegral i)
-  getGID (Username n) = Posix.groupID <$> Posix.getGroupEntryForName n
+userID :: User -> IO Posix.UserID
+userID (UserID i)   = return i
+userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
+
+userGroupID :: User -> IO Posix.GroupID
+userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
+userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
 
 runIOOnline
   :: Reifies t (Settings Execution)
