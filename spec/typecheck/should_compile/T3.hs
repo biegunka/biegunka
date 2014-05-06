@@ -5,7 +5,6 @@ module Main where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Git
-import System.Directory.Layout
 
 
 main :: IO ()

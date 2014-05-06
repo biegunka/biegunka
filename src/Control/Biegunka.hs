@@ -17,7 +17,7 @@ module Control.Biegunka
   , root, source
     -- * Modifiers
   , profile, group, role
-  , sudo, User(..), retries, reacting, React(..), prerequisiteOf, (<~>)
+  , sudo, User(..), username, uid, retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * Auxiliary
   , into
     -- * Options autogeneration
@@ -38,6 +38,7 @@ module Control.Biegunka
   ) where
 
 import Data.Data (Data, Typeable)
+import System.Directory.Layout (username, uid)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
