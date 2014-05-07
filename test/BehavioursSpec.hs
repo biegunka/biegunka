@@ -53,6 +53,10 @@ spec = do
     it "should disappear after deletion" $
       (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
+  describe "Simple registering" $
+    it "should link the repository correctly" $
+      (simple_repo_registering `fitsWith` simple_layout_registering) `shouldReturn` fromErrors []
+
 fitsWith
   :: (FilePath -> Script Sources ())
   -> (FilePath -> Layout a)
@@ -107,6 +111,17 @@ simple_copying_layout_0 = do
   dir "baz" $
     file "quux"
       & contents ?~ "quuxcontents\n"
+
+simple_repo_registering :: FilePath -> Script Sources ()
+simple_repo_registering tmp =
+  layout (return ()) (tmp </> "foo") $
+    register "bar"
+
+simple_layout_registering :: FilePath -> Layout ()
+simple_layout_registering tmp = do
+  emptydir "foo"
+  symlink "bar" (tmp </> "foo")
+    & exists .~ True
 
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
