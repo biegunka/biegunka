@@ -2,26 +2,46 @@ module UtilSpec
   ( spec
   ) where
 
-import Test.Hspec
+import           System.FilePath ((</>))
+import qualified System.Posix as Posix
+import           Test.Hspec
 
-import Control.Biegunka.Biegunka (expandHome)
+import           Control.Biegunka.Biegunka (expandHome)
 
 
 spec :: Spec
 spec =
   describe "expandHome" $ do
+    it "expands bare ~ to the user home directory" $ do
+      dir <- expandHome "~"
+      home <- getHome
+      dir `shouldBe` home
 
-    it "expands ~ to user home directory in \"~\" pattern" $ do
+    it "expands ~/$path to $path in the user home directory" $ do
+      dir <- expandHome "~/foo"
+      home <- getHome
+      dir `shouldBe` home </> "foo"
 
-      home <- expandHome "~"
-      home `shouldSatisfy` (\h -> h /= "~")
+    it "expands ~$user to the $user user home directory" $ do
+      name <- getName
+      dir <- expandHome ("~" ++ name)
+      home <- getHome
+      dir `shouldBe` home
 
-    it "expands ~ to user home directory in \"~/foo\" pattern" $ do
+    it "expands ~$user/$path to $path in the $user user home directory" $ do
+      name <- getName
+      dir <- expandHome ("~" ++ name ++ "/foo")
+      home <- getHome
+      dir `shouldBe` home </> "foo"
 
-      home <- expandHome "~/foo"
-      home `shouldSatisfy` (\h -> h /= "~/foo")
+    it "is 'id' for other absolute patterns" $
+      expandHome "/foo/bar~" `shouldReturn` "/foo/bar~"
 
-    it "does is 'id' for other patterns" $ do
+    it "is 'id' for other relative patterns" $
+      expandHome "baz/qu~ux" `shouldReturn` "baz/qu~ux"
 
-      expandHome "/foo/bar" `shouldReturn` "/foo/bar"
-      expandHome "baz/quux" `shouldReturn` "baz/quux"
+getHome :: IO FilePath
+getHome = fmap Posix.homeDirectory . Posix.getUserEntryForID =<< Posix.getEffectiveUserID
+
+getName :: IO String
+getName = fmap Posix.userName . Posix.getUserEntryForID =<< Posix.getEffectiveUserID

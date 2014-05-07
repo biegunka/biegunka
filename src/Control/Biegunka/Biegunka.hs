@@ -10,16 +10,18 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
+import           Control.Applicative
 import           Control.Exception (bracket)
 import           Control.Lens
+import           Control.Monad
 import           Control.Monad.Free (Free)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..), Monoid(..))
-import qualified System.Directory as D
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
+import qualified System.Posix as Posix
 
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Log as Log
@@ -28,6 +30,8 @@ import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO
 import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
+
+{-# ANN module ("HLint: ignore Use join" :: String) #-}
 
 
 -- | Abstract 'Interpreter' data type
@@ -99,14 +103,18 @@ biegunka (($ def) -> c) interpreter script = do
 
 -- | Expand \"~\" at the start of pattern
 expandHome :: String -> IO String
-expandHome pat =
-  case pat of
-    "~"        -> D.getHomeDirectory
-    '~':'/':xs -> do
-      home <- D.getHomeDirectory
-      return (home </> xs)
-    _          -> return pat
+expandHome ('~' : (splitUser -> (user, '/' : xs))) = getHome user <&> (</> xs)
+expandHome ('~' : (splitUser -> (user, "")))       = getHome user
+expandHome x = return x
 
+splitUser :: String -> (String, String)
+splitUser = break (== '/')
+
+getHome :: String -> IO FilePath
+getHome =
+    fmap Posix.homeDirectory
+  . maybe (Posix.getUserEntryForID =<< Posix.getEffectiveUserID) Posix.getUserEntryForName
+  . ap (<$) (guard . not . null)
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter

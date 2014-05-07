@@ -128,7 +128,8 @@ test-suite spec
     semigroups,
     temporary,
     text,
-    transformers
+    transformers,
+    unix
   hs-source-dirs:
     bin
     test
