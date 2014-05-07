@@ -14,8 +14,6 @@ module Control.Biegunka.Primitive
   , sudo, retries, reacting, prerequisiteOf, (<~>)
   ) where
 
-import Data.Monoid (mempty)
-
 import           Control.Lens
 import           Control.Monad.Reader (local)
 import qualified Data.Set as S
@@ -74,7 +72,7 @@ role = profile
 --
 -- Links @~\/git\/source@ to @~\/somewhere@.
 register :: FilePath -> Script Actions ()
-register dst = actioned (\rfp _ -> Link mempty (rfp </> dst))
+register dst = actioned (\rfp sfp -> Link sfp (rfp </> dst))
 {-# INLINE register #-}
 
 -- | Links given file to specified filepath
