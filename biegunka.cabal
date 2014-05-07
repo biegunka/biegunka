@@ -118,7 +118,7 @@ test-suite spec
     biegunka,
     containers,
     data-default-class,
-    directory-layout,
+    directory-layout >= 0.6.1,
     filepath,
     free,
     hspec,

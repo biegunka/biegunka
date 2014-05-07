@@ -6,7 +6,7 @@ import           Control.Biegunka
 import           Control.Biegunka.Source.Layout (layout)
 import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
-import           Data.List.NonEmpty (NonEmpty, fromList)
+import           Data.List.NonEmpty (NonEmpty)
 import           System.Directory.Layout hiding (spec)
 import           System.FilePath ((</>))
 import           System.IO.Temp (withSystemTempDirectory)
@@ -19,25 +19,25 @@ spec :: Spec
 spec = do
   describe "Trivial biegunka script" $
     it "should be trivial layout too" $
-      (trivial_script `fitsWith` trivial_layout) `shouldReturn` success
+      (trivial_script `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
   describe "Trivial biegunka profile script" $
     it "should be trivial layout too" $
-      (trivial_repo "biegunka-test" `fitsWith` trivial_layout) `shouldReturn` success
+      (trivial_repo "biegunka-test" `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
   describe "Simple biegunka profile script" $ do
     it "should be simple layout too" $
-      (simple_repo_0 `fitsWith` simple_layout_0) `shouldReturn` success
+      (simple_repo_0 `fitsWith` simple_layout_0) `shouldReturn` fromErrors []
 
     it "should disappear after deletion" $
-      (trivial_repo "biegunka-simple0" `fitsWith` trivial_layout) `shouldReturn` success
+      (trivial_repo "biegunka-simple0" `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
   describe "Simple biegunka no profile script" $ do
     it "should be simple layout too" $
-      (simple_repo_no_profile_0 `fitsWith` simple_layout_no_profile_0) `shouldReturn` success
+      (simple_repo_no_profile_0 `fitsWith` simple_layout_no_profile_0) `shouldReturn` fromErrors []
 
     it "should disappear after deletion" $
-      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` success
+      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
   describe "Simple copying" $ do
     it "should copy the directory correctly" $
@@ -48,10 +48,10 @@ spec = do
             copy "a" (tmp </> "b")
         fit tmp (dir "b" simple_copying_layout_0)
      `shouldReturn`
-      success
+      fromErrors []
 
     it "should disappear after deletion" $
-      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` success
+      (trivial_repo "" `fitsWith` trivial_layout) `shouldReturn` fromErrors []
 
 fitsWith
   :: (FilePath -> Script Sources ())
@@ -108,13 +108,6 @@ simple_copying_layout_0 = do
     file "quux"
       & contents ?~ "quuxcontents\n"
 
-
-success :: Validation (NonEmpty a) ()
-success = errors []
-
-errors :: [a] -> Validation (NonEmpty a) ()
-errors [] = Result ()
-errors xs = Error (fromList xs)
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
 withBiegunkaDirectory = withSystemTempDirectory "biegunka-XXXXXX"
