@@ -13,7 +13,6 @@ module Control.Biegunka.Biegunka
 import           Control.Applicative
 import           Control.Exception (bracket)
 import           Control.Lens
-import           Control.Monad
 import           Control.Monad.Free (Free)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
@@ -101,20 +100,21 @@ biegunka (($ def) -> c) interpreter script = do
     maybe [] (\_ -> return "* Offline mode") (settings ^? mode._Offline)
 
 
--- | Expand \"~\" at the start of pattern
+-- | Expand \"~\" at the start of the path
 expandHome :: String -> IO String
 expandHome ('~' : (splitUser -> (user, '/' : xs))) = getHome user <&> (</> xs)
 expandHome ('~' : (splitUser -> (user, "")))       = getHome user
 expandHome x = return x
 
+-- | Break the path on the first '/'
 splitUser :: String -> (String, String)
 splitUser = break (== '/')
 
+-- | Get home directory for user by name. If the name is empty return the value
+-- of HOME environment variable
 getHome :: String -> IO FilePath
-getHome =
-    fmap Posix.homeDirectory
-  . maybe (Posix.getUserEntryForID =<< Posix.getEffectiveUserID) Posix.getUserEntryForName
-  . ap (<$) (guard . not . null)
+getHome "" = Posix.getEnvDefault "HOME" ""
+getHome user = Posix.homeDirectory <$> Posix.getUserEntryForName user
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter

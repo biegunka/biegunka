@@ -118,6 +118,7 @@ test-suite spec
     , biegunka
     , containers
     , data-default-class
+    , directory
     , directory-layout        >= 0.6.1
     , filepath
     , free
@@ -136,10 +137,10 @@ test-suite spec
   main-is:
     Spec.hs
   other-modules:
+    Control.Biegunka.BiegunkaSpec
     Control.Biegunka.OptionsSpec
     BehavioursSpec
     DSLSpec
     GenerateSpec
-    UtilSpec
   cpp-options:
     -DTEST
