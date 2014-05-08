@@ -81,19 +81,19 @@ executable biegunka
   default-language:
     Haskell2010
   build-depends:
-    aeson,
-    base >= 3 && < 5,
-    biegunka >= 0.2,
-    bytestring,
-    containers,
-    data-default-class,
-    directory,
-    filepath,
-    lens,
-    optparse-applicative,
-    process,
-    text,
-    transformers
+      aeson
+    , base                 >= 3 && < 5
+    , biegunka             >= 0.2
+    , bytestring
+    , containers
+    , data-default-class
+    , directory
+    , filepath
+    , lens
+    , optparse-applicative
+    , process
+    , text
+    , transformers
   hs-source-dirs:
     bin
   main-is:
@@ -114,22 +114,22 @@ test-suite spec
   type:
     exitcode-stdio-1.0
   build-depends:
-    base >= 4 && < 5,
-    biegunka,
-    containers,
-    data-default-class,
-    directory-layout >= 0.6.1,
-    filepath,
-    free,
-    hspec,
-    hspec-expectations-lens,
-    lens,
-    optparse-applicative,
-    semigroups,
-    temporary,
-    text,
-    transformers,
-    unix
+      base                    >= 4 && < 5
+    , biegunka
+    , containers
+    , data-default-class
+    , directory-layout        >= 0.6.1
+    , filepath
+    , free
+    , hspec
+    , hspec-expectations-lens
+    , lens
+    , optparse-applicative
+    , semigroups
+    , temporary
+    , text
+    , transformers
+    , unix
   hs-source-dirs:
     bin
     test
