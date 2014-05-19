@@ -59,13 +59,13 @@ run = interpretOptimistically go where
   go settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
+      mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
+      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           bracket Watcher.new Watcher.wait $ \watcher -> do
             r <- initializeSTM watcher
             runTask (settings & local .~ r) (task (settings^.mode.to io) def) s
-      mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
-      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
       Groups.commit (db & Groups.these .~ db')
    where
     io Offline = runIOOffline
