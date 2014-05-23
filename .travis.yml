@@ -8,8 +8,3 @@ before_install:
     - cabal install alex
     - cabal install happy
     - cabal install c2hs
-    - git clone https://github.com/supki/temporary
-    - git clone https://github.com/acid-state/acid-state
-    - cabal install --only-dependencies biegunka.cabal temporary/temporary.cabal acid-state/acid-state.cabal
-    - cabal install temporary/temporary.cabal
-    - cabal install acid-state/acid-state.cabal
