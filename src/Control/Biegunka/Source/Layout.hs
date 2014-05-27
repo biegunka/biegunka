@@ -2,9 +2,9 @@
 -- | Example 'Source' based on 'directory-layout'
 module Control.Biegunka.Source.Layout (Layout, layout, layout_) where
 
-import Data.Foldable (traverse_)
+import Control.Lens
 import System.FilePath (takeDirectory, takeFileName)
-import System.Directory.Layout (Layout, Validation(..), dir, make)
+import System.Directory.Layout (Layout, dir, make)
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
@@ -18,11 +18,8 @@ layout
   -> Script Sources ()
 layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner update
  where
-  update abspath = do
-    res <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
-    case res of
-      Error es -> traverse_ print es
-      Result _ -> return ()
+  update abspath =
+    traverseOf_ _Left print =<< make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
 
 
 -- | Make specified layout and do nothing

@@ -7,7 +7,7 @@ import           Control.Biegunka.Source.Layout (layout)
 import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
 import           Data.List.NonEmpty (NonEmpty)
-import           System.Directory.Layout hiding (spec)
+import           System.Directory.Layout
 import           System.FilePath ((</>))
 import           System.IO.Temp (withSystemTempDirectory)
 import           Test.Hspec
@@ -60,7 +60,7 @@ spec = do
 fitsWith
   :: (FilePath -> Script Sources ())
   -> (FilePath -> Layout a)
-  -> IO (Validation (NonEmpty FitError) ())
+  -> IO (Either (NonEmpty FitError) ())
 fitsWith s l =
   withBiegunkaDirectory $ \tmp -> do
     biegunka (set root tmp . set appData (tmp </> ".biegunka")) run (s tmp)

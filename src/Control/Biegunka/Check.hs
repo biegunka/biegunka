@@ -35,7 +35,7 @@ check = interpret $ \os terms k -> do
       hSetBuffering outh LineBuffering
       hspecWith (defaultConfig
         { configFormatter = progress, configColorMode = ColorAlways, configHandle = Left outh }) $
-        Layout.spec (view root os) (termsLayout (view root os) terms)
+        Layout.examples (view root os) (termsLayout (view root os) terms)
     waitCatch a
     case summaryFailures s of
       0 -> k
