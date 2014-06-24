@@ -32,8 +32,8 @@ library
     , hspec                >= 1.8    && < 2
     , lens                 >= 4      && < 5
     , meep                 >= 0.1    && < 1
-    , mtl                  >= 2.1    && < 2.2
-    , optparse-applicative >= 0.8
+    , mtl                  >= 2.1    && < 2.3
+    , optparse-applicative >= 0.8    && < 0.10
     , pointed              >= 3      && < 5
     , process
     , reflection           >= 1.1.6  && < 2
@@ -41,7 +41,7 @@ library
     , safecopy             >= 0.8    && < 0.9
     , stm                  >= 2.4    && < 3
     , tagged               >= 0.4.4  && < 1
-    , tagged-transformer   >= 0.5    && < 1
+    , tagged-transformer   >= 0.7    && < 1
     , template-haskell
     , terminal-size        >= 0.2    && < 0.3
     , text                 >= 0.11   && < 1.2

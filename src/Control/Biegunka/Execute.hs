@@ -25,7 +25,7 @@ import           Control.Monad.Catch
   (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Functor.Trans.Tagged (untag)
+import           Data.Functor.Trans.Tagged (untagT)
 import           Data.Default.Class (Default(..))
 import           Data.Proxy (Proxy)
 import           Data.Reflection (Reifies, reify)
@@ -112,7 +112,7 @@ runTask
   -> m ()
 runTask e f s = do
   Watcher.register (e^.watch)
-  liftIO $ forkFinally (reify e (untag . asProxyOf (f s))) (\_ -> Watcher.unregister (e^.watch))
+  liftIO $ forkFinally (reify e (untagT . asProxyOf (f s))) (\_ -> Watcher.unregister (e^.watch))
   return ()
 
 -- | Thread `s' parameter to 'task' function
