@@ -16,7 +16,7 @@ library
   build-depends:
       async                >= 2      && < 3
     , acid-state           >= 0.12.1 && < 0.13
-    , aeson                >= 0.7    && < 0.8
+    , aeson                >= 0.7    && < 0.9
     , ansi-wl-pprint       >= 0.6    && < 0.7
     , base                 >= 4.6    && < 5
     , bytestring
