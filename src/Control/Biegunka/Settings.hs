@@ -78,7 +78,7 @@ noColors = ColorScheme
 
 data Mode = Offline | Online deriving (Show)
 
-makeLensesWith ?? ''ColorScheme $ (defaultRules & generateSignatures .~ False)
+makeLensesWith ?? ''ColorScheme $ (lensRules & generateSignatures .~ False)
 
 -- | Action color
 actionColor :: Lens' ColorScheme (Doc -> Doc)
@@ -98,7 +98,7 @@ errorColor :: Lens' ColorScheme (Doc -> Doc)
 -- | Retry color
 retryColor :: Lens' ColorScheme (Doc -> Doc)
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Settings
+makeLensesWith (lensRules & generateSignatures .~ False) ''Settings
 
 instance HasRoot (Settings a) where
   root = appRoot

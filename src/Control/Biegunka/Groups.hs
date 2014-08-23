@@ -170,7 +170,7 @@ instance Monoid Groups where
   mempty = Groups mempty
   Groups xs `mappend` Groups ys = Groups (xs `mappend` ys)
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Groups
+makeLensesWith (lensRules & generateSignatures .~ False) ''Groups
 
 -- | All groups data
 groups :: Lens' Groups (Map String GroupRecord)
@@ -199,7 +199,7 @@ data Partitioned a = Partitioned
   , _those  :: a           -- ^ All other groups
   }
 
-makeLensesWith (defaultRules & generateSignatures .~ False) ''Partitioned
+makeLensesWith (lensRules & generateSignatures .~ False) ''Partitioned
 
 -- | The groups database handle
 acidic :: Lens' (Partitioned a) (AcidState a)
@@ -221,7 +221,7 @@ open settings = do
   acid <- openLocalStateFrom path mempty
   gs   <- query acid GetMapping
   let (xs, ys) = mentioned (partition (settings^.targets)) gs
-  return (Partitioned { _acidic = acid, _these = xs, _those = ys })
+  return Partitioned { _acidic = acid, _these = xs, _those = ys }
  where
   partition All          = \_ _ -> True
   partition (Subset s)   = \k _ -> k `elem` s

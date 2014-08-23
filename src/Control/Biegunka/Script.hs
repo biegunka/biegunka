@@ -148,7 +148,7 @@ instance Default MAnnotations where
 
 -- * Lenses
 
-makeLensesWith ?? ''Annotations   $ defaultRules & generateSignatures .~ False
+makeLensesWith ?? ''Annotations $ lensRules & generateSignatures .~ False
 
 class HasRoot s where
   -- | Biegunka root
@@ -188,7 +188,7 @@ sourceReaction :: Lens' Annotations React
 -- | How to react on action failure
 actionReaction :: Lens' Annotations React
 
-makeLensesWith ?? ''MAnnotations $ defaultRules & generateSignatures .~ False
+makeLensesWith ?? ''MAnnotations $ lensRules & generateSignatures .~ False
 
 -- | All profiles encountered so far
 profiles :: Lens' MAnnotations (Set String)
