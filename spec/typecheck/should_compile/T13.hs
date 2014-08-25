@@ -6,8 +6,11 @@ module OverloadedStrings where
 
 import Control.Lens
 import Control.Biegunka
-import Data.Default (def)
+import Data.Default.Class (def)
+import System.Exit (ExitCode)
 
+
+main :: IO ExitCode
 main = biegunka (set mode Offline . set mode Online) def script
  where
   script = return ()

@@ -29,8 +29,8 @@ describe "typechecking," do
     successes(here).each do |success|
       it "succeeds to compile #{success}" do
         process = compile(success, options)
-        process[:exitcode].should == 0
-        process[:stderr].should   == ""
+        expect(process[:exitcode]).to eq(0)
+        expect(process[:stderr]).to be_empty
       end
     end
   end
@@ -39,12 +39,12 @@ describe "typechecking," do
     failures(here).each do |failure|
       it "fails to compile #{failure}" do
         process = compile(failure, options)
-        process[:exitcode].should_not == 0
+        expect(process[:exitcode]).not_to eq(0)
 
         contents = IO.read(failure)
 
         marked_stderr = Marked.parse contents, :STDERR, Marked::CommentStyle[:haskell]
-        process[:stderr].should =~ /#{marked_stderr.split("\n").join(".+")}/m
+        expect(process[:stderr]).to match(/#{marked_stderr.split("\n").join(".+")}/m)
       end
     end
   end

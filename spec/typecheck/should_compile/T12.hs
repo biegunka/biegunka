@@ -13,7 +13,6 @@ some_profile = do
   profile "main" $
     directory "/home/user/playground" $
       link "vimrc" ".vimrc"
-
   profile "sudoed" $
     sudo "root" $ directory "/home/user/playground" $
       link "xmonad.hs" ".xmonad/xmonad.hs"

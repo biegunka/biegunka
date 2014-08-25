@@ -7,40 +7,42 @@ module Chaining where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Directory
-import Data.Default (def)
 
 
 chained_script_0 :: Script Sources ()
 chained_script_0 =
-  directory "/" def
+  directory "/" pass
  `prerequisiteOf`
-  directory "/" def
+  directory "/" pass
 
 chained_script_1 :: Script Sources ()
 chained_script_1 =
-  directory "/" def
+  directory "/" pass
  <~>
-  directory "/" def
+  directory "/" pass
 
 chained_script_2 :: Script Sources ()
 chained_script_2 =
-  directory "/" def
+  directory "/" pass
  <~>
-  directory "/" def
+  directory "/" pass
  <~>
-  directory "/" def
+  directory "/" pass
 
 chained_script_3 :: Script Sources ()
 chained_script_3 = do
-  directory "/" def
-  directory "/" def
+  directory "/" pass
+  directory "/" pass
  <~>
-  directory "/" def
+  directory "/" pass
 
 chained_script_4 :: Script Sources ()
 chained_script_4 = do
-  directory "/" def
-  directory "/" def
+  directory "/" pass
+  directory "/" pass
  <~> do
-  directory "/" def
-  directory "/" def
+  directory "/" pass
+  directory "/" pass
+
+pass :: Monad m => m ()
+pass = return ()

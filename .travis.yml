@@ -2,9 +2,16 @@ language: haskell
 
 ghc:
     - 7.8
-    - 7.6
 
 before_install:
+    - curl -L https://get.rvm.io | bash -s stable --ruby --gems='rspec'
+    - source /home/travis/.rvm/scripts/rvm
     - cabal install alex
     - cabal install happy
     - cabal install c2hs
+    - cabal install cabal-install
+    - hash -r
+
+script:
+    - cabal install --enable-tests --run-tests
+    - rspec

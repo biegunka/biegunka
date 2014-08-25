@@ -6,7 +6,9 @@ module Main where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Git
+import System.Exit (ExitCode)
 
 
+main :: IO ExitCode
 main = biegunka id run $ do
   git_ "git@github.com:ghc/ghc" "ghc"
