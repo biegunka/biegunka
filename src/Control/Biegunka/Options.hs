@@ -17,7 +17,7 @@ import Data.Monoid (Monoid, mempty)
 import Data.Traversable (mapAccumL)
 import Data.Tuple (swap)
 import Data.Data (Data, toConstr)
-import Options.Applicative hiding ((&))
+import Options.Applicative
 import System.Exit (exitWith)
 
 import Control.Biegunka.Biegunka (biegunka, confirm)

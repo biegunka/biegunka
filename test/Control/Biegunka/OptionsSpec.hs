@@ -78,7 +78,7 @@ spec = do
           parse f [o, "--foo"] `shouldHave` _Just
 
 parse :: Parser a -> [String] -> Maybe a
-parse p = customExecParserMaybe (prefs mempty) (info p fullDesc)
+parse p = getParseResult . execParserPure (prefs mempty) (info p fullDesc)
 
 instance Show (a -> b) where
   show _ = "<Function>"

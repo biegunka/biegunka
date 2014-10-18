@@ -63,9 +63,9 @@ options = info (helper <*> opts) fullDesc
       <> value defaultBiegunkaDataDirectory
       <> help "Biegunka data directory")
 
-    destination = argument Just (value defaultBiegunkaScriptName)
+    destination = argument str (value defaultBiegunkaScriptName)
 
-    otherArguments = many (argument Just mempty)
+    otherArguments = many (argument str mempty)
 
 -- | Filename which @biegunka init@ creates by default
 defaultBiegunkaScriptName :: FilePath
