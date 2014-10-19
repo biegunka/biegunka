@@ -12,10 +12,11 @@ import           System.FilePath (splitFileName, splitDirectories, makeRelative)
 import           System.Directory.Layout (Layout)
 import qualified System.Directory.Layout as Layout
 import           System.IO (Handle, hGetLine, hClose, hSetBuffering, BufferMode(..))
+import           System.Environment (withArgs, withProgName)
 import           System.Exit (ExitCode(..))
 import qualified System.Posix as Posix
 import           Test.Hspec.Formatters (progress)
-import           Test.Hspec.Runner (hspecWith, defaultConfig, Config(..), ColorMode(..), summaryFailures)
+import           Test.Hspec.Runner (hspecWithResult, defaultConfig, Config(..), ColorMode(..), summaryFailures)
 import           Text.PrettyPrint.ANSI.Leijen (text)
 
 import           Control.Biegunka.Biegunka (Interpreter, interpret)
@@ -33,9 +34,13 @@ check = interpret $ \os terms k -> do
         Log.write (view logger os) .  Log.plain . text . (++ "\n")
     s <- withFd outfd $ \outh -> do
       hSetBuffering outh LineBuffering
-      hspecWith (defaultConfig
-        { configFormatter = progress, configColorMode = ColorAlways, configHandle = Left outh }) $
-        Layout.examples (view root os) (termsLayout (view root os) terms)
+      withProgName "biegunka" .  withArgs [] $
+        hspecWithResult defaultConfig
+          { configFormatter  = Just progress
+          , configColorMode  = ColorAlways
+          , configOutputFile = Left outh
+          }
+          (Layout.examples (view root os) (termsLayout (view root os) terms))
     waitCatch a
     case summaryFailures s of
       0 -> k
