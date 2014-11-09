@@ -1,24 +1,18 @@
-{ cabal, acidState, aeson, ansiWlPprint, async, commandQq
-, dataDefaultClass, directoryLayout, exceptions, filepath, free
-, hspec, hspecExpectationsLens, HStringTemplate, lens, meep, mtl
-, optparseApplicative, pointed, reflection, safecopy, semigroups
-, stm, tagged, taggedTransformer, temporary, terminalSize, text
-, transformers, void
-}:
+{ haskellPackages ? (import <nixpkgs> {}).haskellPackages }:
 
-cabal.mkDerivation (self: {
+haskellPackages.cabal.mkDerivation (self: {
   pname = "biegunka";
   version = "0.2";
   src = ./.;
   isLibrary = true;
   isExecutable = true;
-  buildDepends = [
+  buildDepends = with haskellPackages; [
     acidState aeson ansiWlPprint async commandQq dataDefaultClass
     directoryLayout exceptions filepath free hspec HStringTemplate lens
     meep mtl optparseApplicative pointed reflection safecopy semigroups
     stm tagged taggedTransformer terminalSize text transformers void
   ];
-  testDepends = [
+  testDepends = with haskellPackages; [
     dataDefaultClass directoryLayout filepath free hspec
     hspecExpectationsLens lens optparseApplicative semigroups temporary
     text transformers
