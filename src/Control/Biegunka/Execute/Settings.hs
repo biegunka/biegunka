@@ -1,11 +1,8 @@
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | Controlling execution
 module Control.Biegunka.Execute.Settings
-  ( Executor, env
+  ( Executor
     -- * Executor environment
   , Execution
     -- * Lenses
@@ -19,10 +16,9 @@ module Control.Biegunka.Execute.Settings
 import           Control.Applicative
 import           Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import           Control.Lens
-import           Data.Functor.Trans.Tagged (TaggedT, reflected)
+import           Control.Monad.Reader (ReaderT)
 import           Data.Meep (Meep)
 import qualified Data.Meep as Meep
-import           Data.Reflection (Reifies)
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Prelude hiding (lookup, null)
@@ -34,11 +30,7 @@ import           Control.Biegunka.Settings (Settings, local)
 
 -- | Convenient type alias for task-local-state-ful IO
 -- tagged with crosstask execution environment @s@
-type Executor s a = TaggedT s IO a
-
--- | Get execution environment
-env :: (Applicative m, Reifies s a) => TaggedT s m a
-env = reflected
+type Executor a = ReaderT (Settings Execution) IO a
 
 -- | Multithread accessable parts
 data Execution = Execution

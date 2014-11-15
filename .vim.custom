@@ -11,7 +11,7 @@ function s:discover_cabal_sandbox(glob)
 	endif
 endfunction
 
-let g:hdevtools_options = s:hdevtools_options
+let g:syntastic_haskell_hdevtools_args = s:hdevtools_options
 	\ (
 	\ [ '-isrc'
 	\ , '-ibin'

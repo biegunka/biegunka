@@ -1,11 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 -- | Real run interpreter
 module Control.Biegunka.Execute
   ( run, dryRun
@@ -24,11 +22,9 @@ import           Control.Lens.Extras (is)
 import           Control.Monad.Catch
   (SomeException, bracket, bracket_, onException, throwM, try)
 import           Control.Monad.Free (Free(..))
+import           Control.Monad.Reader (runReaderT, ask)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Data.Functor.Trans.Tagged (untagT)
 import           Data.Default.Class (Default(..))
-import           Data.Proxy (Proxy)
-import           Data.Reflection (Reifies, reify)
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified System.Directory as D
@@ -107,17 +103,13 @@ dryRun = interpretOptimistically $ \settings s -> do
 runTask
   :: forall s m. MonadIO m
   => Settings Execution
-  -> (forall t. Reifies t (Settings Execution) => Free (Term Annotate s) () -> Executor t ())
+  -> (Free (Term Annotate s) () -> Executor ())
   -> Free (Term Annotate s) () -- ^ Task contents
   -> m ()
 runTask e f s = do
   Watcher.register (e^.watch)
-  liftIO $ forkFinally (reify e (untagT . asProxyOf (f s))) (\_ -> Watcher.unregister (e^.watch))
+  liftIO $ forkFinally (runReaderT (f s) e) (\_ -> Watcher.unregister (e^.watch))
   return ()
-
--- | Thread `s' parameter to 'task' function
-asProxyOf :: Executor s () -> Proxy s -> Executor s ()
-asProxyOf a _ = a
 
 
 -- | Run single 'Sources' task
@@ -126,20 +118,14 @@ asProxyOf a _ = a
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: forall t. Reifies t (Settings Execution)
-  => (forall s b t'. Reifies t' (Settings Execution) => Term Annotate s b -> Executor t' (IO ()))
+  :: (forall a s. Term Annotate s a -> Executor (IO ()))
   -> Retry
   -> Free (Term Annotate Sources) ()
-  -> Executor t ()
+  -> Executor ()
 task f = go
  where
-  go
-    :: Reifies t (Settings Execution)
-    => Retry
-    -> Free (Term Annotate Sources) ()
-    -> Executor t ()
   go retries (Free c@(TS _ _ _ t@(Free _))) = do
-    e <- env
+    e <- ask
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
   go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) =
@@ -161,18 +147,12 @@ task f = go
 
 -- | Run single 'Actions' task
 taskAction
-  :: forall t. Reifies t (Settings Execution)
-  => (forall a s. Term Annotate s a -> Executor t (IO ()))
+  :: (forall a s. Term Annotate s a -> Executor (IO ()))
   -> Retry
   -> Free (Term Annotate Actions) ()
-  -> Executor t ()
+  -> Executor ()
 taskAction f = go
  where
-  go
-    :: Reifies t (Settings Execution)
-    => Retry
-    -> Free (Term Annotate Actions) a
-    -> Executor t ()
   go retries a@(Free c@(TA _ _ x)) =
     try (command f c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
@@ -190,15 +170,10 @@ taskAction f = go
 -- | Get response from task failure processing
 --
 -- Possible responses: retry command execution or ignore failure or abort task
-checkRetryCount
-  :: forall s. Reifies s (Settings Execution)
-  => Retry
-  -> Retry
-  -> SomeException
-  -> Executor s Bool
+checkRetryCount :: Retry -> Retry -> SomeException -> Executor Bool
 checkRetryCount doneRetries maximumRetries exc = do
-  log <- env^!acts.logger
-  scm <- env^!acts.colors
+  log <- view logger
+  scm <- view colors
   liftIO $ do
     Log.write log $
       Log.exception (termDescription (exception scm exc))
@@ -212,16 +187,12 @@ checkRetryCount doneRetries maximumRetries exc = do
 
 
 -- | Single command execution
-command
-  :: Reifies t (Settings Execution)
-  => (Term Annotate s a -> Executor t (IO ()))
-  -> Term Annotate s a
-  -> Executor t ()
+command :: (Term Annotate s a -> Executor (IO ())) -> Term Annotate s a -> Executor ()
 command _ (TM (Wait waits) _) = do
-  watcher <- env^!acts.watch
+  watcher <- view watch
   Watcher.waitDone watcher waits
 command getIO term = do
-  users <- env^!acts.user
+  users <- view user
   io    <- getIO term
   liftIO $ case getUser term of
     Nothing  ->
@@ -266,24 +237,18 @@ userGroupID :: User -> IO Posix.GroupID
 userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
 userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
 
-runIOOnline
-  :: Reifies t (Settings Execution)
-  => Term Annotate s a
-  -> Executor t (IO ())
+runIOOnline :: Term Annotate s a -> Executor (IO ())
 runIOOnline term = do
-  log <- env^!acts.logger
-  scm <- env^!acts.colors
+  log <- view logger
+  scm <- view colors
   io  <- ioOnline term
   let message = Log.write log (Log.plain (termDescription (action scm term)))
   return (message *> io)
 
-ioOnline
-  :: Reifies t (Settings Execution)
-  => Term Annotate s a
-  -> Executor t (IO ())
+ioOnline :: Term Annotate s a -> Executor (IO ())
 ioOnline term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- env^!acts.repos
+    rstv <- view repos
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
@@ -303,7 +268,7 @@ ioOnline term = case term of
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
   TA _ (Template src dst substitute) _ -> do
-    Templates ts <- env^!acts.templates
+    Templates ts <- view templates
     return $
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
   TA _ (Command p spec) _ -> return $ do
@@ -335,23 +300,17 @@ ioOnline term = case term of
     tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-runIOOffline
-  :: Reifies t (Settings Execution)
-  => Term Annotate s a
-  -> Executor t (IO ())
+runIOOffline :: Term Annotate s a -> Executor (IO ())
 runIOOffline t@(TS {}) = runPure t
 runIOOffline t         = runIOOnline t
 
-runPure
-  :: (Applicative m, Reifies t (Settings Execution))
-  => Term Annotate s a
-  -> Executor t (m ())
+runPure :: Applicative m => Term Annotate s a -> Executor (m ())
 runPure _ = pure (pure ())
 
 -- | Tell execution process that you're done with task
-doneWith :: Reifies t (Settings Execution) => Token -> Executor t ()
+doneWith :: Token -> Executor ()
 doneWith tok = do
-  watcher <- env^!acts.watch
+  watcher <- view watch
   Watcher.done watcher tok
 
 

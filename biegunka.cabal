@@ -45,12 +45,9 @@ library
     , optparse-applicative >= 0.11   && < 0.12
     , pointed              >= 3      && < 5
     , process
-    , reflection           >= 1.1.6  && < 2
     , semigroups           >= 0.8.4  && < 1
     , safecopy             >= 0.8    && < 0.9
     , stm                  >= 2.4    && < 3
-    , tagged               >= 0.4.4  && < 1
-    , tagged-transformer   >= 0.7    && < 1
     , template-haskell
     , terminal-size        >= 0.2    && < 0.4
     , text                 >= 0.11   && < 1.3
