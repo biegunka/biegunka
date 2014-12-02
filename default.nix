@@ -3,7 +3,7 @@
 haskellPackages.cabal.mkDerivation (self: {
   pname = "biegunka";
   version = "0.2";
-  src = ./.;
+  src = builtins.filterSource (_: type: type != "unknown") ./.;
   isLibrary = true;
   isExecutable = true;
   buildDepends = with haskellPackages; [
