@@ -60,7 +60,7 @@ parser xs = (\os i f -> (os, \g -> biegunka (g . f) i >=> exitWith))
 
 -- | Create a parser for a list of data constructors
 constructorOptions :: Data a => [a] -> Parser a
-constructorOptions = asum . mapAccumL_ constructorOption where
+constructorOptions = asum . mapAccumL_ constructorOption
 
 -- | 'mapAccumL' with a 'Monoid'
 mapAccumL_ :: (Traversable t, Monoid m) => (m -> a -> (m, b)) -> t a -> t b
