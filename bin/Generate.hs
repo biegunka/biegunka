@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 #ifndef TEST
@@ -11,7 +12,11 @@ import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (WriterT, execWriter, tell)
 import           Data.Char (toUpper)
 import           Data.Default.Class (def)
+#if __GLASGOW_HASKELL__ >= 710
+import           Data.Foldable (for_, toList)
+#else
 import           Data.Foldable (Foldable, for_, toList)
+#endif
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
 import           Data.Set (Set)

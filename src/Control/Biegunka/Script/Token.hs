@@ -111,8 +111,8 @@ noTokens = error "Control.Biegunka.Script.Token.noTokens: evaluated"
 
 -- This really should be a closed type family, waiting for GHC 7.8
 type family IsToken a :: Bool
-type instance IsToken Token = True
-type instance IsToken Void  = False
+type instance IsToken Token = 'True
+type instance IsToken Void  = 'False
 
 
 -- | mtl-style class, to avoid manual lifting
@@ -122,7 +122,7 @@ class Monad m => MonadStream e m | m -> e where
   -- | Take a look at the next stream element, without modifying the stream
   peek :: m e
 
-instance (IsToken e ~ True, Monad m) => MonadStream e (StreamT e m) where
+instance (IsToken e ~ 'True, Monad m) => MonadStream e (StreamT e m) where
   next = StreamT $ \(e :< es) -> return (es, e)
   {-# INLINE next #-}
   peek = StreamT $ \es -> return (es, head es)

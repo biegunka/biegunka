@@ -81,6 +81,7 @@ library
     Control.Biegunka.Templates.HStringTemplate
   ghc-options:
     -Wall
+    -Werror
     -fno-warn-unused-do-bind
 
 executable biegunka
@@ -112,6 +113,7 @@ executable biegunka
   ghc-options:
     -threaded
     -Wall
+    -Werror
     -fno-warn-unused-do-bind
 
 test-suite spec
@@ -148,5 +150,9 @@ test-suite spec
     BehavioursSpec
     DSLSpec
     GenerateSpec
+  ghc-options:
+    -Wall
+    -Werror
+    -fno-warn-unused-do-bind
   cpp-options:
     -DTEST

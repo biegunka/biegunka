@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -10,9 +11,13 @@ module Control.Biegunka.Language
   , Token
   ) where
 
+#if __GLASGOW_HASKELL__ >= 710
+import Data.Traversable (fmapDefault, foldMapDefault)
+#else
 import Control.Applicative((<$>))
 import Data.Foldable (Foldable(..))
 import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
+#endif
 
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
@@ -38,8 +43,8 @@ data Scope = Actions | Sources
 --
 -- Consists of 2 scopes ('Actions' and 'Sources') and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
-  TS :: f Sources -> Source -> Free (Term f Actions) () -> x -> Term f Sources x
-  TA :: f Actions -> Action -> x -> Term f Actions x
+  TS :: f 'Sources -> Source -> Free (Term f 'Actions) () -> x -> Term f 'Sources x
+  TA :: f 'Actions -> Action -> x -> Term f 'Actions x
   TM :: Modifier -> x -> Term f s x
 
 instance Functor (Term f s) where

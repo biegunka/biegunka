@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -120,7 +121,7 @@ runTask e f s = do
 task
   :: (forall a s. Term Annotate s a -> Executor (IO ()))
   -> Retry
-  -> Free (Term Annotate Sources) ()
+  -> Free (Term Annotate 'Sources) ()
   -> Executor ()
 task f = go
  where
@@ -149,7 +150,7 @@ task f = go
 taskAction
   :: (forall a s. Term Annotate s a -> Executor (IO ()))
   -> Retry
-  -> Free (Term Annotate Actions) ()
+  -> Free (Term Annotate 'Actions) ()
   -> Executor ()
 taskAction f = go
  where

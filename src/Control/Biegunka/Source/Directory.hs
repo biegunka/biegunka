@@ -15,8 +15,8 @@ import Control.Biegunka.Script
 -- | Use the directory located as specified by first argument as 'Source'
 directory
   :: FilePath
-  -> Script Actions ()
-  -> Script Sources ()
+  -> Script 'Actions ()
+  -> Script 'Sources ()
 directory relpath inner =
   sourced "directory" relpath relpath inner update
  where

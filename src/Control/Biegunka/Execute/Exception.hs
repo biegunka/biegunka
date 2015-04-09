@@ -12,7 +12,6 @@ module Control.Biegunka.Execute.Exception
   , onFailure
   ) where
 
-import Control.Applicative ((<$), pure)
 import Control.Exception (Exception, throwIO)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
@@ -88,5 +87,5 @@ nicely f = T.unpack . T.unlines . filter (not . T.null) $ T.lines f
 
 -- | Check process exit code and perform 'IO' action on failure
 onFailure :: ExitCode -> (Int -> IO a) -> IO ()
-onFailure (ExitFailure s) f = () <$ f s
-onFailure ExitSuccess _     = pure ()
+onFailure (ExitFailure s) f = fmap (const ()) (f s)
+onFailure ExitSuccess _     = return ()

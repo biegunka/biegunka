@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -26,21 +27,22 @@ module Control.Biegunka.Groups
   , who
   ) where
 
-import Control.Applicative
-import Control.Monad ((<=<))
-import Data.Function (on)
-import Data.Monoid (Monoid(..))
-
+import           Control.Applicative
 import           Control.Lens hiding ((.=), (<.>))
+import           Control.Monad ((<=<))
 import           Control.Monad.Free (Free(..), iterM)
 import           Control.Monad.State (State, execState)
 import           Data.Acid
 import           Data.Acid.Local
 import           Data.Aeson
 import           Data.Foldable (any, elem, for_)
+import           Data.Function (on)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
+#if __GLASGOW_HASKELL__ < 710
+import           Data.Monoid (Monoid(..))
+#endif
 import           Data.SafeCopy (deriveSafeCopy, base, extension, Migrate(..))
 import           Data.Set (Set)
 import qualified Data.Set as S
@@ -259,10 +261,10 @@ sources = map sourcePath . M.keys . unGR <=< M.elems . view groups
 --
 -- Won't get /all/ mentioned groups but only those for which there is
 -- some useful action to do.
-fromScript :: Free (Term Annotate Sources) a -> Groups
+fromScript :: Free (Term Annotate 'Sources) a -> Groups
 fromScript script = execState (iterM construct script) (Groups mempty)
  where
-  construct :: Term Annotate Sources (State Groups a) -> State Groups a
+  construct :: Term Annotate 'Sources (State Groups a) -> State Groups a
   construct term = case term of
     TS (AS { asProfile, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
@@ -274,7 +276,7 @@ fromScript script = execState (iterM construct script) (Groups mempty)
   populate
     :: String                                 -- ^ Profile name
     -> SourceRecord                           -- ^ Source info record
-    -> Term Annotate Actions (State Groups a) -- ^ Current script term
+    -> Term Annotate 'Actions (State Groups a) -- ^ Current script term
     -> State Groups a
   populate profile source term = case term of
     TA (AA { aaUser }) action next -> do

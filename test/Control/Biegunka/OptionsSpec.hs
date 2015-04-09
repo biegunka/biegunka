@@ -5,7 +5,6 @@ module Control.Biegunka.OptionsSpec (spec) where
 import Control.Lens
 import Data.Data (Typeable, Data)
 import Data.Foldable (for_)
-import Data.Monoid (mempty)
 import Options.Applicative
 import Test.Hspec.Lens
 import Text.Printf (printf)
@@ -35,7 +34,7 @@ spec = do
       constructorName FooBarBaz `shouldBe` "foo-bar-baz"
 
   describe "constructorOption" $ do
-    let constructorOption' = snd . constructorOption mempty
+    let constructorOption' = snd . constructorOption idm
 
     it "returns a parser that parses simple constructor option" $
       parse (constructorOption' (Foo 4)) ["--foo"] `shouldHave` _Just.only (Foo 4)
@@ -78,7 +77,7 @@ spec = do
           parse f [o, "--foo"] `shouldHave` _Just
 
 parse :: Parser a -> [String] -> Maybe a
-parse p = getParseResult . execParserPure (prefs mempty) (info p fullDesc)
+parse p = getParseResult . execParserPure (prefs idm) (info p fullDesc)
 
 instance Show (a -> b) where
   show _ = "<Function>"

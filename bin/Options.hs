@@ -1,7 +1,6 @@
 -- | @biegunka@ tool options
 module Options where
 
-import Data.Monoid (mempty)
 import Options.Applicative
 
 
@@ -65,7 +64,7 @@ options = info (helper <*> opts) fullDesc
 
     destination = argument str (value defaultBiegunkaScriptName)
 
-    otherArguments = many (argument str mempty)
+    otherArguments = many (argument str idm)
 
 -- | Filename which @biegunka init@ creates by default
 defaultBiegunkaScriptName :: FilePath

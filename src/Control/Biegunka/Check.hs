@@ -5,7 +5,7 @@ module Control.Biegunka.Check (check) where
 
 import           Control.Concurrent.Async (async, waitCatch)
 import           Control.Exception (bracket)
-import           Control.Lens hiding (Action)
+import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Free (Free, iter)
 import           System.FilePath (splitFileName, splitDirectories, makeRelative)

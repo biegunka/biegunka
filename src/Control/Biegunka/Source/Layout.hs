@@ -14,8 +14,8 @@ import Control.Biegunka.Script
 layout
   :: Layout a          -- ^ Layout to make
   -> FilePath          -- ^ Layout root
-  -> Script Actions () -- ^ What to do with layout files
-  -> Script Sources ()
+  -> Script 'Actions () -- ^ What to do with layout files
+  -> Script 'Sources ()
 layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner update
  where
   update abspath =
@@ -26,5 +26,5 @@ layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner updat
 layout_
   :: Layout a -- ^ Layout to make
   -> FilePath -- ^ Layout root
-  -> Script Sources ()
+  -> Script 'Sources ()
 layout_ l p = layout l p (return ())

@@ -18,7 +18,6 @@ import           Control.Lens
 import           Control.Monad (forM_)
 import           Data.Default.Class (Default(..))
 import           Data.Foldable (for_)
-import           Data.Monoid (mempty)
 import qualified Data.Text as T
 import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))
@@ -32,7 +31,7 @@ import Control.Biegunka.Source (Sourceable(..))
 
 -- | Git repository's settings
 data Git = Git
-  { gitactions :: Script Actions () -- ^ Actions to run after repository update
+  { gitactions :: Script 'Actions () -- ^ Actions to run after repository update
   , _remotes   :: [Remote]          -- ^ Remotes to merge on update
   , _branch    :: Branch            -- ^ Branch to track
   }
@@ -91,18 +90,18 @@ type Remote = String
 --  4. Checkout to @develop@
 --
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
-git' :: URI -> FilePath -> Git -> Script Sources ()
+git' :: URI -> FilePath -> Git -> Script 'Sources ()
 git' url path (Git { gitactions, _remotes, _branch }) =
   sourced "git" url path gitactions (updateGit url _remotes _branch)
 {-# INLINE git' #-}
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field
-git :: URI -> FilePath -> Script Actions () -> Script Sources ()
+git :: URI -> FilePath -> Script 'Actions () -> Script 'Sources ()
 git u p s = git' u p def { gitactions = s }
 {-# INLINE git #-}
 
 -- | Wrapper over 'git' that does not provide anything
-git_ :: URI -> FilePath -> Script Sources ()
+git_ :: URI -> FilePath -> Script 'Sources ()
 git_ u p = git u p (return ())
 {-# INLINE git_ #-}
 
@@ -123,6 +122,6 @@ updateGit u rs br p = do
     getCurrentDirectory
     setCurrentDirectory $ \_ -> do
       for_ workingDirectory setCurrentDirectory
-      (exitcode, _, errors) <- readProcessWithExitCode "git" args mempty
+      (exitcode, _, errors) <- readProcessWithExitCode "git" args []
       exitcode `onFailure`
         \_ -> sourceFailure u p (T.pack errors)

@@ -58,7 +58,7 @@ spec = do
       (simple_repo_registering `fitsWith` simple_layout_registering) `shouldReturn` fromErrors []
 
 fitsWith
-  :: (FilePath -> Script Sources ())
+  :: (FilePath -> Script 'Sources ())
   -> (FilePath -> Layout a)
   -> IO (Either (NonEmpty FitError) ())
 fitsWith s l =
@@ -66,16 +66,16 @@ fitsWith s l =
     biegunka (set root tmp . set appData (tmp </> ".biegunka")) run (s tmp)
     fit tmp (l tmp)
 
-trivial_script :: FilePath -> Script Sources ()
+trivial_script :: FilePath -> Script 'Sources ()
 trivial_script _ = return ()
 
 trivial_layout :: FilePath -> Layout ()
 trivial_layout _ = return ()
 
-trivial_repo :: String -> FilePath -> Script Sources ()
+trivial_repo :: String -> FilePath -> Script 'Sources ()
 trivial_repo tmp _ = profile tmp $ return ()
 
-simple_repo_0 :: FilePath -> Script Sources ()
+simple_repo_0 :: FilePath -> Script 'Sources ()
 simple_repo_0 tmp =
   profile "biegunka-simple0" $
     layout l (tmp </> "biegunka-simple0") $
@@ -89,7 +89,7 @@ simple_layout_0 tmp =
     file "dst0"
       & contents ?~ "thisiscontents\n"
 
-simple_repo_no_profile_0 :: FilePath -> Script Sources ()
+simple_repo_no_profile_0 :: FilePath -> Script 'Sources ()
 simple_repo_no_profile_0 tmp =
   layout l (tmp </> "biegunka-simple0") $
     copy "src0" (tmp </> "dst0")
@@ -112,7 +112,7 @@ simple_copying_layout_0 = do
     file "quux"
       & contents ?~ "quuxcontents\n"
 
-simple_repo_registering :: FilePath -> Script Sources ()
+simple_repo_registering :: FilePath -> Script 'Sources ()
 simple_repo_registering tmp =
   layout (return ()) (tmp </> "foo") $
     register "bar"

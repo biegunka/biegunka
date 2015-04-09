@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -10,14 +11,20 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import           Control.Applicative
+#endif
 import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad.Free (Free)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
+#if __GLASGOW_HASKELL__ >= 710
+import           Data.Semigroup (Semigroup(..))
+#else
 import           Data.Semigroup (Semigroup(..), Monoid(..))
+#endif
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
 import qualified System.Posix as Posix
@@ -35,7 +42,7 @@ import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
 
 -- | Abstract 'Interpreter' data type
 newtype Interpreter = I
-  (Settings () -> Free (Term Annotate Sources) () -> IO ExitCode -> IO ExitCode)
+  (Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode -> IO ExitCode)
 
 -- | Default 'Interpreter' does nothing
 instance Default Interpreter where
@@ -55,7 +62,7 @@ instance Monoid Interpreter where
 -- Provides 'Settings', script and continuation, which is supposed to be called
 -- on success to interpreter
 interpret
-  :: (Settings () -> Free (Term Annotate Sources) () -> IO ExitCode -> IO ExitCode)
+  :: (Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode -> IO ExitCode)
   -> Interpreter
 interpret = I
 
@@ -64,7 +71,7 @@ interpret = I
 -- It is optimistic in a sense what it always calls the continuation, provided that
 -- no exceptions were thrown
 interpretOptimistically
-  :: (Settings () -> Free (Term Annotate Sources) () -> IO ())
+  :: (Settings () -> Free (Term Annotate 'Sources) () -> IO ())
   -> Interpreter
 interpretOptimistically f =
   interpret $ \c s k -> f c s >> k
@@ -76,8 +83,8 @@ runInterpreter (I f) c s = f c s (return ExitSuccess)
 
 -- | Entry point into the library
 biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
-         -> Interpreter                 -- ^ Combined interpreters
-         -> Script Sources ()           -- ^ Script to interpret
+         -> Interpreter                  -- ^ Combined interpreters
+         -> Script 'Sources ()           -- ^ Script to interpret
          -> IO ExitCode
 biegunka (($ def) -> c) interpreter script = do
   appRoot <- c^.root.to expandHome

@@ -1,7 +1,11 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 module List where
 
+#if __GLASGOW_HASKELL__ < 710
 import           Control.Applicative ((<$>), (<*>))
+#endif
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (execWriter, tell)
 import qualified Data.Aeson as A
@@ -11,7 +15,9 @@ import           Data.Default.Class (def)
 import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
+#if __GLASGOW_HASKELL__ < 710
 import           Data.Monoid (Monoid(..))
+#endif
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -79,7 +85,7 @@ getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & so
     isDirectory <- D.doesDirectoryExist subroot
     case isDirectory of
       False -> return $ case subroot^.extension of
-        ".profile" -> [subroot&extension.~mempty]
+        ".profile" -> [subroot & extension .~ mempty]
         _          -> []
       True  -> do
         contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])

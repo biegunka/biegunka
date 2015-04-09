@@ -7,9 +7,9 @@ import qualified Data.Set as S
 import qualified Data.Text.Lazy as T
 import           Test.Hspec
 
-import Control.Biegunka.Groups
+import           Control.Biegunka.Groups
 
-import Generate
+import           Generate
 
 
 spec :: Spec
@@ -138,8 +138,8 @@ spec = do
 
     it "correctly makes 'Int's and 'String's \"shown\"" $ do
 
-      shown 7     `shouldBe` "7"
-      shown "foo" `shouldBe` "\"foo\""
+      shown (7 :: Int)        `shouldBe` "7"
+      shown ("foo" :: String) `shouldBe` "\"foo\""
 
     it "correctly capitalizes words" $ do
 

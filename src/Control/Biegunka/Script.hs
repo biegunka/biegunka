@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -31,8 +32,10 @@ module Control.Biegunka.Script
   , URI, User(..), React(..), Retry(..), incr, into
   ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))
-import Control.Lens hiding (Action)
+#endif
+import Control.Lens
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
@@ -40,7 +43,9 @@ import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
 import Data.Default.Class (Default(..))
 import Data.List (isSuffixOf)
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (mempty)
+#endif
 import Data.Set (Set)
 import Data.Void (Void)
 import System.Command.QQ (Eval(..))
@@ -63,14 +68,14 @@ import Control.Biegunka.Script.Token
 -- Different scopes require different kinds of
 -- annotations, so it is a family of them
 data family Annotate (sc :: Scope) :: *
-data instance Annotate Sources = AS
+data instance Annotate 'Sources = AS
   { asToken      :: Token
   , asProfile    :: String
   , asUser       :: Maybe User
   , asMaxRetries :: Retry
   , asReaction   :: React
   }
-data instance Annotate Actions = AA
+data instance Annotate 'Actions = AA
   { aaURI        :: URI
   , aaOrder      :: Int
   , aaMaxOrder   :: Int
@@ -214,14 +219,14 @@ instance Default a => Default (Script s a) where
   {-# INLINE def #-}
 
 -- | Biegunka script shell commands
-instance (scope ~ Actions, a ~ ()) => Eval (Script scope a) where
+instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
   eval command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
   {-# INLINE eval #-}
 
 
 type family Tokenize (s :: Scope) :: *
-type instance Tokenize Actions = Void
-type instance Tokenize Sources = Token
+type instance Tokenize 'Actions = Void
+type instance Tokenize 'Sources = Token
 
 
 -- | Get annotated DSL and resulting annotations alongside
@@ -263,17 +268,17 @@ liftS = lift . liftF
 
 -- | Annotate 'Actions' DSL
 annotateActions
-  :: Script Actions a
+  :: Script 'Actions a
   -> StreamT Token
       (ReaderT Annotations
-        (StateT MAnnotations (Free (Term Annotate Sources)))) (Free (Term Annotate Actions) a)
+        (StateT MAnnotations (Free (Term Annotate 'Sources)))) (Free (Term Annotate 'Actions) a)
 annotateActions i =
   lift . ReaderT $ \e -> StateT $ \s -> return (runScript s e noTokens i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
   :: String -> URI -> FilePath
-  -> Script Actions () -> (FilePath -> IO ()) -> Script Sources ()
+  -> Script 'Actions () -> (FilePath -> IO ()) -> Script 'Sources ()
 sourced ty url path inner update = Script $ do
   rfp <- view app
   local (set sourcePath (constructTargetFilePath rfp url path) . set sourceURL url) $ do
@@ -296,10 +301,10 @@ sourced ty url path inner update = Script $ do
     profiles . contains (asProfile annotation) .= True
 
 -- | Get 'Actions' scoped script size measured in actions
-size :: Script Actions a -> Int
+size :: Script 'Actions a -> Int
 size = iterFrom 0 go . evalScript def def noTokens
  where
-  go :: Term Annotate Actions Int -> Int
+  go :: Term Annotate 'Actions Int -> Int
   go (TA _ _ result) = succ result
   go (TM _ result)   = result
 
@@ -314,7 +319,7 @@ iterFrom zero phi = go where
 {-# INLINE iterFrom #-}
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
-actioned :: (FilePath -> FilePath -> Action) -> Script Actions ()
+actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
 actioned f = Script $ do
   annotation <- AA
     <$> view sourceURL

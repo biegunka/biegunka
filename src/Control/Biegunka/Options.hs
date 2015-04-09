@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 module Control.Biegunka.Options
   ( options
@@ -13,7 +14,9 @@ import Control.Monad ((>=>))
 import Data.Char (isUpper, toLower)
 import Data.Foldable (asum)
 import Data.Map (Map)
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (Monoid, mempty)
+#endif
 import Data.Traversable (mapAccumL)
 import Data.Tuple (swap)
 import Data.Data (Data, toConstr)
@@ -27,7 +30,7 @@ import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Script (Script)
 
-type Runner a = (Settings () -> Settings ()) -> Script Sources () -> IO a
+type Runner a = (Settings () -> Settings ()) -> Script 'Sources () -> IO a
 
 -- | Run constructed parser
 options :: Data a => [a] -> IO (a, Runner b)

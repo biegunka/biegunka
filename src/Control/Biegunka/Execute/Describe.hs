@@ -12,7 +12,6 @@ module Control.Biegunka.Execute.Describe
 import Control.Exception (SomeException)
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
-import Data.Monoid (mempty)
 
 import Control.Lens
 import System.Process (CmdSpec(..))
@@ -45,7 +44,7 @@ action sc il = nest 3 $ case il of
     </> "source at"
     </> (sc^.dstColor) (text d)
   TA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
-    annotation (text aaURI) $ progress aaOrder aaMaxOrder <$> case a of
+    annotation (text aaURI) $ progress aaOrder aaMaxOrder <> line <> case a of
       Link s d       ->
             (sc^.actionColor) "link"
         </> (sc^.srcColor) (text d)
@@ -80,7 +79,7 @@ action sc il = nest 3 $ case il of
         </> (if reversely then parens "reversely" </> "applied" else "applied")
         </> "to"
         </> (sc^.dstColor) (text file)
-  _ -> mempty
+  _ -> empty
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
@@ -94,7 +93,7 @@ action sc il = nest 3 $ case il of
 -- | Describe handled exception
 exception :: ColorScheme -> SomeException -> Doc
 exception sc e = nest 3 $
-  ((sc^.errorColor) "ERROR" <//> colon) <$> vcat (map text . lines $ show e)
+  ((sc^.errorColor) "ERROR" <//> colon) <> line <>  vcat (map text . lines $ show e)
 
 
 -- | Describe retry counter
@@ -123,4 +122,4 @@ runChanges sc db gs = vcat $ empty : mapMaybe about
  where
   about (msg, xs) = case length xs of
     0 -> Nothing
-    n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <$> vcat (xs ++ [empty]))
+    n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <> line <> vcat (xs ++ [empty]))

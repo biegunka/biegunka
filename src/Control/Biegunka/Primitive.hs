@@ -47,7 +47,7 @@ infixr 7 `prerequisiteOf`, <~>
 -- > profile "experimental" $ do
 -- >   git "https://github.com/ekmett/lens"
 -- >     ...
-profile :: String -> Script Sources a -> Script Sources a
+profile :: String -> Script 'Sources a -> Script 'Sources a
 profile name (Script inner) = Script $
   local (profileName </>~ name) $ do
     p' <- view profileName
@@ -56,12 +56,12 @@ profile name (Script inner) = Script $
 {-# INLINE profile #-}
 
 -- | Alias for 'profile'. May be useful for nested grouping
-group :: String -> Script Sources a -> Script Sources a
+group :: String -> Script 'Sources a -> Script 'Sources a
 group = profile
 {-# INLINE group #-}
 
 -- | Alias for 'profile'. Everyone uses roles for something
-role :: String -> Script Sources a -> Script Sources a
+role :: String -> Script 'Sources a -> Script 'Sources a
 role = profile
 {-# INLINE role #-}
 
@@ -71,7 +71,7 @@ role = profile
 -- >   register "somewhere"
 --
 -- Links @~\/git\/source@ to @~\/somewhere@.
-register :: FilePath -> Script Actions ()
+register :: FilePath -> Script 'Actions ()
 register dst = actioned (\rfp sfp -> Link sfp (rfp </> dst))
 {-# INLINE register #-}
 
@@ -81,7 +81,7 @@ register dst = actioned (\rfp sfp -> Link sfp (rfp </> dst))
 -- >   link "some-file" "anywhere"
 --
 -- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
-link :: FilePath -> FilePath -> Script Actions ()
+link :: FilePath -> FilePath -> Script 'Actions ()
 link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructTargetFilePath rfp src dst))
 {-# INLINE link #-}
 
@@ -91,7 +91,7 @@ link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructTargetFilePath
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copy :: FilePath -> FilePath -> Script Actions ()
+copy :: FilePath -> FilePath -> Script 'Actions ()
 copy = copy' BothDirectoriesAndFiles
 {-# INLINE copy #-}
 
@@ -101,7 +101,7 @@ copy = copy' BothDirectoriesAndFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyFile :: FilePath -> FilePath -> Script Actions ()
+copyFile :: FilePath -> FilePath -> Script 'Actions ()
 copyFile = copy' OnlyFiles
 {-# INLINE copyFile #-}
 
@@ -111,11 +111,11 @@ copyFile = copy' OnlyFiles
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyDirectory :: FilePath -> FilePath -> Script Actions ()
+copyDirectory :: FilePath -> FilePath -> Script 'Actions ()
 copyDirectory = copy' OnlyDirectories
 {-# INLINE copyDirectory #-}
 
-copy' :: CopySpec -> FilePath -> FilePath -> Script Actions ()
+copy' :: CopySpec -> FilePath -> FilePath -> Script 'Actions ()
 copy' spec src dst = actioned (\rfp sfp ->
   Copy (sfp </> src) (constructTargetFilePath rfp src dst) spec)
 {-# INLINE copy' #-}
@@ -130,7 +130,7 @@ copy' spec src dst = actioned (\rfp sfp ->
 --
 -- Substitutes templates in @~\/anywhere@ with values from
 -- 'templates' part of 'Controls'
-substitute :: FilePath -> FilePath -> Script Actions ()
+substitute :: FilePath -> FilePath -> Script 'Actions ()
 substitute src dst = actioned (\rfp sfp ->
   Template (sfp </> src) (constructTargetFilePath rfp src dst) templating)
 {-# INLINE substitute #-}
@@ -141,7 +141,7 @@ substitute src dst = actioned (\rfp sfp ->
 -- >   patch "some-patch.patch" "anywhere" (def { reversely = True })
 --
 -- Applies @~\/git\/source\/some-patch.patch@ to @~\/anywhere@ reversely.
-patch :: FilePath -> FilePath -> PatchSpec -> Script Actions ()
+patch :: FilePath -> FilePath -> PatchSpec -> Script 'Actions ()
 patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spec)
 {-# INLINE patch #-}
 
@@ -153,7 +153,7 @@ patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spe
 -- >   raw "/bin/echo" ["-n", "hello"]
 --
 -- Prints \"hello\" to stdout
-raw :: FilePath -> [String] -> Script Actions ()
+raw :: FilePath -> [String] -> Script 'Actions ()
 raw = eval
 {-# INLINE raw #-}
 
@@ -177,7 +177,7 @@ reacting reaction (Script inner) = Script $
 
 -- | Execute scripts sequentially
 -- Connects two scripts which forces them to run sequentially one after another.
-prerequisiteOf :: Script Sources a -> Script Sources b -> Script Sources b
+prerequisiteOf :: Script 'Sources a -> Script 'Sources b -> Script 'Sources b
 prerequisiteOf a b = do
   s <- Script peek
   a
@@ -187,6 +187,6 @@ prerequisiteOf a b = do
 {-# INLINE prerequisiteOf #-}
 
 -- | Infix alias for 'prerequisiteOf'
-(<~>) :: Script Sources a -> Script Sources b -> Script Sources b
+(<~>) :: Script 'Sources a -> Script 'Sources b -> Script 'Sources b
 (<~>) = prerequisiteOf
 {-# INLINE (<~>) #-}
