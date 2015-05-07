@@ -2,7 +2,7 @@
 -- | Biegunka - configuration development library
 module Control.Biegunka
   ( -- * Interpreters control
-    biegunka, Settings, root, appData, colors
+    biegunka, Settings, defaultSettings, root, appData, colors
   , Templates(..), templates
     -- * Interpreters
   , Interpreter
@@ -42,7 +42,7 @@ import System.Directory.Layout (username, uid)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
-  ( Settings, appData, colors
+  ( Settings, defaultSettings, appData, colors
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates

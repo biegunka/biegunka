@@ -5,7 +5,9 @@
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
-    Settings, HasRoot(..), appData, logger, targets, colors, local, templates, Templates(..)
+    Settings
+  , defaultSettings
+  , HasRoot(..), appData, logger, targets, colors, local, templates, Templates(..)
     -- ** Script targets controls
   , Targets(..)
     -- ** Color scheme controls
@@ -130,13 +132,16 @@ mode :: Lens' (Settings a) Mode
 makePrisms ''Mode
 
 instance () ~ a => Default (Settings a) where
-  def = Settings
-    { _appRoot   = "~"
-    , _appData   = "~/.biegunka"
-    , _logger    = undefined -- sorry
-    , _targets   = All
-    , _colors    = def
-    , _local     = ()
-    , _templates = hStringTemplate ()
-    , _mode      = Online
-    }
+  def = defaultSettings
+
+defaultSettings :: Settings ()
+defaultSettings = Settings
+  { _appRoot   = "~"
+  , _appData   = "~/.biegunka"
+  , _logger    = undefined -- sorry
+  , _targets   = All
+  , _colors    = def
+  , _local     = ()
+  , _templates = hStringTemplate ()
+  , _mode      = Online
+  }
