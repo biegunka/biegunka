@@ -47,9 +47,9 @@ action sc il = nest 3 $ case il of
     annotation (text aaURI) $ progress aaOrder aaMaxOrder <> line <> case a of
       Link s d       ->
             view actionColor sc "link"
-        </> view srcColor sc (text d)
+        </> view srcColor sc (text s)
         </> "to"
-        </> view dstColor sc (text s)
+        </> view dstColor sc (text d)
       Copy s d _     ->
             view actionColor sc "copy"
         </> view srcColor sc (text s)
