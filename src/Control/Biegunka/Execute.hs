@@ -56,13 +56,13 @@ run = interpretOptimistically go where
   go settings s = do
     let db' = Groups.fromScript s
     bracket (Groups.open settings) Groups.close $ \db -> do
-      mapM_ (safely remove)          (Groups.diff Groups.files   (db^.Groups.these) db')
-      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (db^.Groups.these) db')
+      mapM_ (safely remove)          (Groups.diff Groups.files   (view Groups.these db) db')
+      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (view Groups.these db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           bracket Watcher.new Watcher.wait $ \watcher -> do
             r <- initializeSTM watcher
-            runTask (settings & local .~ r) (task (settings^.mode.to io) def) s
+            runTask (set local r settings) (task (views mode io settings) def) s
       Groups.commit (db & Groups.these .~ db')
    where
     io Offline = runIOOffline
@@ -72,7 +72,7 @@ run = interpretOptimistically go where
       file <- D.doesFileExist path
       case file of
         True  -> do
-          Log.write (settings^.logger) $
+          Log.write (view logger settings) $
             Log.plain (removal path)
           D.removeFile path
         False -> D.removeDirectoryRecursive path
@@ -81,7 +81,7 @@ run = interpretOptimistically go where
       directory <- D.doesDirectoryExist path
       case directory of
         True  -> do
-          Log.write (settings^.logger) $
+          Log.write (view logger settings) $
             Log.plain (removal path)
           D.removeDirectoryRecursive path
         False -> return ()
@@ -95,9 +95,9 @@ dryRun = interpretOptimistically $ \settings s -> do
   bracket (Groups.open settings) Groups.close $ \db -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do
       r <- initializeSTM watcher
-      runTask (settings & local .~ r) (task runPure def) s
-    Log.write (settings^.logger) $
-      Log.plain (runChanges (settings^.colors) db db')
+      runTask (set local r settings) (task runPure def) s
+    Log.write (view logger settings) $
+      Log.plain (runChanges (view colors settings) db db')
 
 
 -- | Prepares environment to run task with given execution routine
@@ -108,8 +108,8 @@ runTask
   -> Free (Term Annotate s) () -- ^ Task contents
   -> m ()
 runTask e f s = do
-  Watcher.register (e^.watch)
-  liftIO $ forkFinally (runReaderT (f s) e) (\_ -> Watcher.unregister (e^.watch))
+  Watcher.register (view watch e)
+  liftIO $ forkFinally (runReaderT (f s) e) (\_ -> Watcher.unregister (view watch e))
   return ()
 
 
@@ -211,7 +211,7 @@ command getIO term = do
   acquire users uid = atomically $ do
     -- So, first get current user/count
     mu <- readTVar users
-    case mu^.at uid of
+    case view (at uid) mu of
       -- If *this* user is not inside yet
       Nothing
           -- and there is no *current* user, just let him in

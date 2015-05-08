@@ -42,7 +42,7 @@ scriptFor appdirpat datadirpat profiles = do
   let settings = def & appData .~ datadir & targets .~ targeted profiles
   db <- open settings
 
-  let theses = db^.these.groups
+  let theses = view (these.groups) db
       types  = uniqueSourcesTypes theses
       script = execWriter (gen theses appdir types)
   T.putStr script

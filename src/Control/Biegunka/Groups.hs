@@ -222,7 +222,7 @@ open settings = do
   let (path, _) = settings & appData <</>~ "groups"
   acid <- openLocalStateFrom path mempty
   gs   <- query acid GetMapping
-  let (xs, ys) = mentioned (partition (settings^.targets)) gs
+  let (xs, ys) = mentioned (partition (view targets settings)) gs
   return Partitioned { _acidic = acid, _these = xs, _those = ys }
  where
   partition All          = \_ _ -> True
@@ -238,7 +238,7 @@ open settings = do
 --
 -- Combines 'these' and 'those' to get full state
 commit :: Partitioned Groups -> IO ()
-commit db = update (db^.acidic) (PutMapping (M.union (db^.those.groups) (db^.these.groups)))
+commit db = update (view acidic db) (PutMapping (M.union (view (those.groups) db) (view (these.groups) db)))
 
 -- | Save groups data to disk
 close :: Partitioned Groups -> IO ()

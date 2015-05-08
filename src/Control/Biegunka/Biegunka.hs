@@ -87,17 +87,17 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Script 'Sources ()           -- ^ Script to interpret
          -> IO ExitCode
 biegunka (($ def) -> c) interpreter script = do
-  appRoot <- c^.root.to expandHome
-  dataDir <- c^.appData.to expandHome
+  appRoot <- views root expandHome c
+  dataDir <- views appData expandHome c
   bracket Log.start Log.stop $ \queue -> do
     Log.write queue $
       Log.plain (text (info appRoot dataDir c))
-    let (annotatedScript, annotations) = runScript def (def & app .~ appRoot) tokens script
+    let (annotatedScript, annotations) = runScript def (set app appRoot def) tokens script
         settings = c
           & root    .~ appRoot
           & appData .~ dataDir
           & logger  .~ queue
-          & targets .~ annotations^.profiles.to Subset
+          & targets .~ views profiles Subset annotations
     runInterpreter interpreter settings annotatedScript
  where
   info appRoot dataDir settings = unlines $
@@ -126,7 +126,7 @@ getHome user = Posix.homeDirectory <$> Posix.getUserEntryForName user
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
 pause = interpretOptimistically $ \settings _ -> do
-  Log.write (settings^.logger) $
+  Log.write (view logger settings) $
     Log.plain (text "Press any key to continue" <//> line)
   hSetBuffering stdin NoBuffering
   getChar
@@ -141,7 +141,7 @@ confirm = interpret go
     k
    where
     prompt message = fix $ \loop -> do
-      Log.write (settings^.logger) $
+      Log.write (view logger settings) $
         Log.plain message
       res <- getLine
       case map toLower res of

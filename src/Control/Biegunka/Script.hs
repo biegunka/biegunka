@@ -359,7 +359,7 @@ actioned f = Script $ do
 constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
 constructTargetFilePath r s path =
   r </> path </> case "/" `isSuffixOf` path of
-    True  -> s^.filename
+    True  -> view filename s
     False -> ""
 
 -- | A hack to support the notion of making destination 'FilePath' inside some directory

@@ -90,13 +90,13 @@ spec = describe "Biegunka DSL" $ do
             profile "quux" $
               return ()
             directory "/" (return ())
-      in as^.profiles == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
+      in view profiles as == S.fromList ["foo", "foo/bar", "baz", "quux", ""]
     it "ignores \"\" if no ungrouped source is mentioned" $
       let (_, as) = runScript def def tokens $ do
             profile "baz" $
               directory "/" (return ())
             profile "quux" $
               return ()
-      in as^.profiles == S.fromList ["baz", "quux"]
+      in view profiles as == S.fromList ["baz", "quux"]
 
   it "does something useful" pending

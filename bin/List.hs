@@ -15,9 +15,6 @@ import           Data.Default.Class (def)
 import           Data.Foldable (for_)
 import           Data.List (sort)
 import           Data.List.Lens
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid (Monoid(..))
-#endif
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -58,11 +55,11 @@ list datadirglob profiles format = do
         badformat errorMessage pattern
       Right formatted -> do
         db <- open settings
-        T.putStr (execWriter (info formatted (db^.these.groups)))
+        T.putStr (execWriter (info formatted (view (these.groups) db)))
         hFlush stdout
     JSON -> do
       db <- open settings
-      B.putStrLn . A.encode $ db^.these
+      B.putStrLn . A.encode $ view these db
  where
   targeted [] = All
   targeted xs = Children (S.fromList xs)
@@ -79,13 +76,13 @@ list datadirglob profiles format = do
     "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
 
 getProfiles :: FilePath -> IO [String]
-getProfiles root = go root <&> \profiles -> profiles^..folded.prefixed root & sort
+getProfiles root = go root <&> sort . toListOf (folded.prefixed root)
  where
   go subroot = do
     isDirectory <- D.doesDirectoryExist subroot
     case isDirectory of
-      False -> return $ case subroot^.extension of
-        ".profile" -> [subroot & extension .~ mempty]
+      False -> return $ case view extension subroot of
+        ".profile" -> [set extension subroot ""]
         _          -> []
       True  -> do
         contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])

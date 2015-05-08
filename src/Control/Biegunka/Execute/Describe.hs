@@ -39,51 +39,51 @@ termDescription d =
 action :: ColorScheme -> Term Annotate s a -> Doc
 action sc il = nest 3 $ case il of
   TS _ (Source t u d _) _ _  -> annotation (text u) $
-        (sc^.actionColor) "update"
+        view actionColor sc "update"
     </> text t
     </> "source at"
-    </> (sc^.dstColor) (text d)
+    </> view dstColor sc (text d)
   TA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
     annotation (text aaURI) $ progress aaOrder aaMaxOrder <> line <> case a of
       Link s d       ->
-            (sc^.actionColor) "link"
-        </> (sc^.srcColor) (text d)
+            view actionColor sc "link"
+        </> view srcColor sc (text d)
         </> "to"
-        </> (sc^.dstColor) (text s)
+        </> view dstColor sc (text s)
       Copy s d _     ->
-            (sc^.actionColor) "copy"
-        </> (sc^.srcColor) (text s)
+            view actionColor sc "copy"
+        </> view srcColor sc (text s)
         </> "to"
-        </> (sc^.dstColor) (text d)
+        </> view dstColor sc (text d)
       Template s d _ ->
-            (sc^.actionColor) "substitute"
+            view actionColor sc "substitute"
         </> "in"
-        </> (sc^.srcColor) (text s)
+        </> view srcColor sc (text s)
         </> "to"
-        </> (sc^.dstColor) (text d)
+        </> view dstColor sc (text d)
       Command p (ShellCommand c) ->
-            (sc^.actionColor) "shell command"
+            view actionColor sc "shell command"
         </> "`"
         <//> text c
         <//> "' from"
-        </> (sc^.srcColor) (text p)
+        </> view srcColor sc (text p)
       Command p (RawCommand c as) ->
-            (sc^.actionColor) "external command"
+            view actionColor sc "external command"
         </> "`"
         <//> text (unwords (c:as))
         <//> "' from"
-        </> (sc^.srcColor) (text p)
+        </> view srcColor sc (text p)
       Patch patch file PatchSpec { reversely } ->
-            (sc^.actionColor) "patch"
-        </> (sc^.srcColor) (text patch)
+            view actionColor sc "patch"
+        </> view srcColor sc (text patch)
         </> (if reversely then parens "reversely" </> "applied" else "applied")
         </> "to"
-        </> (sc^.dstColor) (text file)
+        </> view dstColor sc (text file)
   _ -> empty
  where
   -- | Annotate action description with source name
   annotation :: Doc -> Doc -> Doc
-  annotation t doc = parens ((sc^.sourceColor) t) </> doc
+  annotation t doc = parens (view sourceColor sc t) </> doc
 
   -- | Add progress to action description
   progress :: Int -> Int -> Doc
@@ -93,17 +93,17 @@ action sc il = nest 3 $ case il of
 -- | Describe handled exception
 exception :: ColorScheme -> SomeException -> Doc
 exception sc e = nest 3 $
-  ((sc^.errorColor) "ERROR" <//> colon) <> line <>  vcat (map text . lines $ show e)
+  (view errorColor sc "ERROR" <//> colon) <> line <>  vcat (map text . lines $ show e)
 
 
 -- | Describe retry counter
 retryCounter :: ColorScheme -> Int -> Int -> Doc
 retryCounter sc m n =
-      (sc^.retryColor) "Retry"
+      view retryColor sc "Retry"
   </> text (show m)
-  </> (sc^.retryColor) "out of"
+  </> view retryColor sc "out of"
   </> text (show n)
-  <//> (sc^.retryColor) colon
+  <//> view retryColor sc colon
 
 
 -- | Describe file or directory removal
@@ -114,10 +114,10 @@ removal path = "Removing" <> colon </> text path <> line
 -- | Describe changes which will happen after the run
 runChanges :: ColorScheme -> Partitioned Groups -> Groups -> Doc
 runChanges sc db gs = vcat $ empty : mapMaybe about
-  [ ("added files",     map ((sc^.srcColor) . text) $ files gs \\ files (db^.these))
-  , ("added sources",   map ((sc^.dstColor) . text) $ sources gs   \\ sources (db^.these))
-  , ("deleted files",   map ((sc^.srcColor) . text) $ files (db^.these) \\ files gs)
-  , ("deleted sources", map ((sc^.dstColor) . text) $ sources (db^.these)   \\ sources gs)
+  [ ("added files",     map (view srcColor sc . text) (files gs \\ files (view these db)))
+  , ("added sources",   map (view dstColor sc . text) (sources gs \\ sources (view these db)))
+  , ("deleted files",   map (view srcColor sc . text) (files (view these db) \\ files gs))
+  , ("deleted sources", map (view dstColor sc . text) (sources (view these db) \\ sources gs))
   ] ++ [empty]
  where
   about (msg, xs) = case length xs of
