@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
@@ -292,9 +291,7 @@ ioOnline term = case term of
         , P.std_err       = P.CreatePipe
         , P.close_fds     = False
         , P.create_group  = False
-#if __GLASGOW_HASKELL__ >= 708
         , P.delegate_ctlc = False
-#endif
         }
     e <- P.waitForProcess ph
     e `onFailure` \status ->

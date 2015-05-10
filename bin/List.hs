@@ -3,9 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 module List where
 
-#if __GLASGOW_HASKELL__ < 710
-import           Control.Applicative ((<$>), (<*>))
-#endif
+import           Control.Applicative (liftA3)
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (execWriter, tell)
 import qualified Data.Aeson as A
@@ -87,7 +85,7 @@ getProfiles root = go root <&> sort . toListOf (folded.prefixed root)
         _          -> []
       True  -> do
         contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])
-        concat <$> for contents (\path -> go (subroot </> path))
+        fmap concat (for contents (\path -> go (subroot </> path)))
 
 formattingText :: String -> Either String (Formatted Text)
 formattingText = (fmap . fmap) T.pack . formatting
@@ -96,7 +94,7 @@ formatting :: String -> Either String (Formatted String)
 formatting xs = do
   (x, ys) <- breaking xs
   (y, z)  <- breaking ys
-  Formatted <$> formatProfile x <*> formatSource y <*> formatFile z
+  liftA3 Formatted (formatProfile x) (formatSource y) (formatFile z)
  where
   formatProfile = format $ \case
     'p' -> Right id
@@ -119,15 +117,15 @@ formatting xs = do
 
   format :: (Char -> Either String (a -> String)) -> String -> Either String (a -> String)
   format rules = \case
-    '%':'%':vs -> (\g r -> '%' : g r) <$> format rules vs
-    '%':'n':vs -> (\g r -> '\n' : g r) <$> format rules vs
+    '%':'%':vs -> fmap (\g r -> '%' : g r) (format rules vs)
+    '%':'n':vs -> fmap (\g r -> '\n' : g r) (format rules vs)
     '%':vs -> case vs of
       c:cs -> do
         s <- rules c
         t <- format rules cs
         return (\a -> s a ++ t a)
       _ -> Left ("incomplete %-placeholder at the end")
-    v:vs -> (\g r -> v : g r) <$> format rules vs
+    v:vs -> fmap (\g r -> v : g r) (format rules vs)
     []   -> Right (const "")
 
 -- | Break string on "%;"
@@ -155,7 +153,7 @@ formatting xs = do
 breaking :: String -> Either String (String, String)
 breaking xs = case break (== '%') xs of
   (ys, _:';':zs) -> Right (ys, zs)
-  (ys, _:c:zs)   -> (\(a, b) -> (ys ++ ['%',c] ++ a, b)) <$> breaking zs
+  (ys, _:c:zs)   -> fmap (\(a, b) -> (ys ++ ['%',c] ++ a, b)) (breaking zs)
   (_, _)         -> Left "Formatting section is missing"
 
 -- | Make word's first letter uppercase

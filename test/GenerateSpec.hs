@@ -37,11 +37,12 @@ spec = do
 
     it "generates all imports" $
 
-      T.lines (sourceImports ["git", "darcs", "hg"]) `shouldBe`
-        [ "import Control.Biegunka.Source.Git"
-        , "import Control.Biegunka.Source.Darcs"
-        , "import Control.Biegunka.Source.Hg"
-        ]
+      T.lines (sourceImports (S.fromList ["git", "darcs", "hg"]))
+     `shouldMatchList`
+      [ "import Control.Biegunka.Source.Git"
+      , "import Control.Biegunka.Source.Darcs"
+      , "import Control.Biegunka.Source.Hg"
+      ]
 
   describe "script generation" $ do
 

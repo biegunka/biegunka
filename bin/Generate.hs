@@ -12,11 +12,7 @@ import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (WriterT, execWriter, tell)
 import           Data.Char (toUpper)
 import           Data.Default.Class (def)
-#if __GLASGOW_HASKELL__ >= 710
 import           Data.Foldable (for_, toList)
-#else
-import           Data.Foldable (Foldable, for_, toList)
-#endif
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
 import           Data.Set (Set)
@@ -73,7 +69,7 @@ uniqueSourcesTypes =
   execWriter . traverse (traverse (tell . S.singleton . sourceType) . M.keys . unGR)
 
 
-boilerplate :: Foldable t => t String -> Text
+boilerplate :: Set String -> Text
 boilerplate sourceTypes = header <> sourceImports sourceTypes <> main
 
 header :: Text
@@ -87,7 +83,7 @@ header = T.unlines
   , "import Data.Default (def)"
   ]
 
-sourceImports :: Foldable t => t String -> Text
+sourceImports :: Set String -> Text
 sourceImports =
   T.unlines . map (\ty -> "import Control.Biegunka.Source." <> string (capitalize ty)) . toList
 

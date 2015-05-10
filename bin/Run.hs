@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Run (or check) biegunka script
 module Run (run) where
@@ -66,9 +65,7 @@ runBiegunkaProcess args = do
     , std_err      = Inherit
     , close_fds    = True
     , create_group = True
-#if __GLASGOW_HASKELL__ >= 708
     , delegate_ctlc = False
-#endif
     }
 
 logo :: Text

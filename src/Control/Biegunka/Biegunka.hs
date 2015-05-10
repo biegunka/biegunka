@@ -11,9 +11,6 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
-#if __GLASGOW_HASKELL__ < 710
-import           Control.Applicative
-#endif
 import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad.Free (Free)
@@ -21,11 +18,10 @@ import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
-#if __GLASGOW_HASKELL__ >= 710
-import           Data.Semigroup (Semigroup(..))
-#else
-import           Data.Semigroup (Semigroup(..), Monoid(..))
+#if __GLASGOW_HASKELL__ < 710
+import           Data.Monoid (Monoid(..))
 #endif
+import           Data.Semigroup (Semigroup(..))
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
 import qualified System.Posix as Posix
@@ -122,7 +118,7 @@ splitUser = break (== '/')
 -- of HOME environment variable
 getHome :: String -> IO FilePath
 getHome "" = Posix.getEnvDefault "HOME" ""
-getHome user = Posix.homeDirectory <$> Posix.getUserEntryForName user
+getHome user = fmap Posix.homeDirectory (Posix.getUserEntryForName user)
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
