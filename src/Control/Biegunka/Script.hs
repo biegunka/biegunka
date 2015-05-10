@@ -20,13 +20,13 @@ module Control.Biegunka.Script
     -- ** Annotations
   , MAnnotations, Annotations
     -- ** Environment
-  , HasRoot(..), HasSource(..)
+  , HasRunRoot(..), HasSourceRoot(..)
     -- * Get annotated script
   , runScript, evalScript
     -- * Script mangling
   , script, sourced, actioned, constructTargetFilePath
     -- * Lenses
-  , app, profileName, sourcePath, sourceURL, profiles
+  , profileName, sourceURL, profiles
   , order, sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
   , URI, User(..), React(..), Retry(..), incr, into
@@ -76,7 +76,7 @@ data instance Annotate 'Sources = AS
   , asReaction   :: React
   }
 data instance Annotate 'Actions = AA
-  { aaAppRoot    :: FilePath
+  { aaRunRoot    :: FilePath
   , aaSourceRoot :: FilePath
   , aaURI        :: URI
   , aaOrder      :: Int
@@ -110,23 +110,23 @@ incr (Retry n) = Retry (succ n)
 
 -- | Script annotations environment
 data Annotations = Annotations
-  { _app            :: FilePath    -- ^ Biegunka root filepath
-  , _profileName    :: String      -- ^ Profile name
-  , _sourcePath     :: FilePath    -- ^ Source root filepath
-  , _sourceURL      :: URI         -- ^ Current source url
-  , _activeUser     :: Maybe User  -- ^ Maximum action order in current source
-  , _maxRetries     :: Retry       -- ^ Maximum retries count
-  , _sourceReaction :: React       -- ^ How to react on source failure
-  , _actionReaction :: React       -- ^ How to react on action failure
+  { __runRoot       :: FilePath   -- ^ Absolute path of the Source layer root
+  , _profileName    :: String     -- ^ Profile name
+  , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
+  , _sourceURL      :: URI        -- ^ Current source url
+  , _activeUser     :: Maybe User -- ^ Maximum action order in current source
+  , _maxRetries     :: Retry      -- ^ Maximum retries count
+  , _sourceReaction :: React      -- ^ How to react on source failure
+  , _actionReaction :: React      -- ^ How to react on action failure
   }
 
 deriving instance Show Annotations
 
 instance Default Annotations where
   def = Annotations
-    { _app            = mempty
+    { __runRoot       = mempty
     , _profileName    = mempty
-    , _sourcePath     = mempty
+    , __sourceRoot    = mempty
     , _sourceURL      = mempty
     , _activeUser     = Nothing
     , _maxRetries     = Retry 1
@@ -157,34 +157,32 @@ instance Default MAnnotations where
 
 makeLensesWith ?? ''Annotations $ lensRules & generateSignatures .~ False
 
-class HasRoot s where
-  -- | Biegunka root
-  root :: Lens' s FilePath
+class HasRunRoot s where
+  -- | Absolute path of the Source layer root
+  runRoot :: Lens' s FilePath
 
-instance HasRoot Annotations where
-  root = app
+instance HasRunRoot Annotations where
+  runRoot = _runRoot
 
-instance HasRoot (Annotate 'Actions) where
-  root f aa = f (aaAppRoot aa) <&> \x -> aa { aaAppRoot = x }
+instance HasRunRoot (Annotate 'Actions) where
+  runRoot f aa = f (aaRunRoot aa) <&> \x -> aa { aaRunRoot = x }
 
-class HasSource s where
-  -- | Source root
-  source :: Lens' s FilePath
+class HasSourceRoot s where
+  -- | Absolute path of the Action layer root
+  sourceRoot :: Lens' s FilePath
 
-instance HasSource Annotations where
-  source = sourcePath
+instance HasSourceRoot Annotations where
+  sourceRoot = _sourceRoot
 
-instance HasSource (Annotate 'Actions) where
-  source f aa = f (aaSourceRoot aa) <&> \x -> aa { aaSourceRoot = x }
+instance HasSourceRoot (Annotate 'Actions) where
+  sourceRoot f aa = f (aaSourceRoot aa) <&> \x -> aa { aaSourceRoot = x }
 
--- | Biegunka filepath root
-app :: Lens' Annotations FilePath
+_runRoot :: Lens' Annotations FilePath
 
 -- | Current profile name
 profileName :: Lens' Annotations String
 
--- | Current source filepath
-sourcePath :: Lens' Annotations FilePath
+_sourceRoot :: Lens' Annotations FilePath
 
 -- | Current source url
 sourceURL :: Lens' Annotations String
@@ -228,7 +226,7 @@ instance Default a => Default (Script s a) where
 
 -- | Biegunka script shell commands
 instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
-  eval command args = actioned (\_ sfp -> Command sfp (RawCommand command args))
+  eval command args = actioned (\_ sr -> Command sr (RawCommand command args))
   {-# INLINE eval #-}
 
 
@@ -288,8 +286,8 @@ sourced
   :: String -> URI -> FilePath
   -> Script 'Actions () -> (FilePath -> IO ()) -> Script 'Sources ()
 sourced ty url path inner update = Script $ do
-  rfp <- view app
-  local (set sourcePath (constructTargetFilePath rfp url path) . set sourceURL url) $ do
+  rr <- view runRoot
+  local (set sourceRoot (constructTargetFilePath rr url path) . set sourceURL url) $ do
     token <- next
     annotation <- AS
       <$> pure token
@@ -302,9 +300,9 @@ sourced ty url path inner update = Script $ do
     maxOrder .= size inner
     ast    <- annotateActions inner
 
-    sfp <- view sourcePath
+    sr <- view sourceRoot
 
-    liftS $ TS annotation (Source ty url sfp update) ast ()
+    liftS $ TS annotation (Source ty url sr update) ast ()
 
     profiles . contains (asProfile annotation) .= True
 
@@ -316,7 +314,7 @@ size = iterFrom 0 go . evalScript def def noTokens
   go (TA _ _ result) = succ result
   go (TM _ result)   = result
 
--- | Inline '<$' into 'iter' to avoid unnecessary pass though the whole structure
+-- | Inline '<$' into 'iter' to avoid unnecessary pass over the whole structure
 --
 -- > iterFrom x f = iter f . (x <$)
 iterFrom :: Functor f => a -> (f a -> a) -> Free f b -> a
@@ -329,12 +327,12 @@ iterFrom zero phi = go where
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
 actioned f = Script $ do
-  rfp <- view app
-  sfp <- view sourcePath
+  rr <- view runRoot
+  sr <- view sourceRoot
 
   annotation <- AA
-    <$> pure rfp
-    <*> pure sfp
+    <$> pure rr
+    <*> pure sr
     <*> view sourceURL
     <*> (order <+= 1)
     <*> use maxOrder
@@ -342,7 +340,7 @@ actioned f = Script $ do
     <*> view maxRetries
     <*> view actionReaction
 
-  liftS $ TA annotation (f rfp sfp) ()
+  liftS $ TA annotation (f rr sr) ()
 
 
 -- | Construct destination 'FilePath'

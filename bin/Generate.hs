@@ -31,20 +31,19 @@ import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Groups
   (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open)
 import           Control.Biegunka.Settings
-  (appData, Targets(..), targets)
+  (biegunkaRoot, Targets(..), targets)
 
 
 scriptFor :: FilePath -> FilePath -> [String] -> IO ()
-scriptFor appdirpat datadirpat profiles = do
-  appdir  <- expandHome appdirpat
-  datadir <- expandHome datadirpat
+scriptFor rrpat brpat profiles = do
+  rr <- expandHome rrpat
+  br <- expandHome brpat
 
-  let settings = def & appData .~ datadir & targets .~ targeted profiles
-  db <- open settings
+  db <- open (def & set biegunkaRoot br & set targets (targeted profiles))
 
   let theses = view (these.groups) db
       types  = uniqueSourcesTypes theses
-      script = execWriter (gen theses appdir types)
+      script = execWriter (gen theses rr types)
   T.putStr script
   hFlush stdout
  where

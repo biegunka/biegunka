@@ -7,7 +7,7 @@ module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
     Settings
   , defaultSettings
-  , HasRoot(..), appData, logger, targets, colors, local, templates, Templates(..)
+  , HasRunRoot(..), biegunkaRoot, logger, targets, colors, local, templates, Templates(..)
     -- ** Script targets controls
   , Targets(..)
     -- ** Color scheme controls
@@ -23,21 +23,21 @@ import Data.Set (Set)
 import Text.PrettyPrint.ANSI.Leijen
 
 import Control.Biegunka.Log (Logger)
-import Control.Biegunka.Script (HasRoot(..))
+import Control.Biegunka.Script (HasRunRoot(..))
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
 
 
 -- | Settings common for all interpreters and also specific for this one
 data Settings a = Settings
-  { _appRoot   :: FilePath    -- ^ Root path for 'Source' layer
-  , _appData   :: FilePath    -- ^ Biegunka profile files path
-  , _logger    :: Logger     -- ^ Interpreters' logger handle
-  , _targets   :: Targets     -- ^ Groups to focus on
-  , _colors    :: ColorScheme -- ^ Pretty printing
-  , _local     :: a           -- ^ Interpreter specific settings
-  , _templates :: Templates   -- ^ Templates mapping
-  , _mode      :: Mode
+  { __runRoot     :: FilePath    -- ^ Root path for 'Source' layer
+  , _biegunkaRoot :: FilePath    -- ^ Absolute of the Biegunka data files root
+  , _logger       :: Logger      -- ^ Interpreters' logger handle
+  , _targets      :: Targets     -- ^ Groups to focus on
+  , _colors       :: ColorScheme -- ^ Pretty printing
+  , _local        :: a           -- ^ Interpreter specific settings
+  , _templates    :: Templates   -- ^ Templates mapping
+  , _mode         :: Mode
   }
 
 -- | Groups to focus on
@@ -102,14 +102,14 @@ retryColor :: Lens' ColorScheme (Doc -> Doc)
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Settings
 
-instance HasRoot (Settings a) where
-  root = appRoot
+instance HasRunRoot (Settings a) where
+  runRoot = _runRoot
 
--- | Root path for 'Source' layer
-appRoot :: Lens' (Settings a) FilePath
+-- |
+_runRoot :: Lens' (Settings a) FilePath
 
--- | Biegunka profile files
-appData :: Lens' (Settings a) FilePath
+-- | Absolute path of the Biegunka data files root
+biegunkaRoot :: Lens' (Settings a) FilePath
 
 -- | Logger channel
 logger :: Lens' (Settings a) Logger
@@ -136,12 +136,12 @@ instance () ~ a => Default (Settings a) where
 
 defaultSettings :: Settings ()
 defaultSettings = Settings
-  { _appRoot   = "~"
-  , _appData   = "~/.biegunka"
-  , _logger    = undefined -- sorry
-  , _targets   = All
-  , _colors    = def
-  , _local     = ()
-  , _templates = hStringTemplate ()
-  , _mode      = Online
+  { __runRoot     = "~"
+  , _biegunkaRoot = "~/.biegunka"
+  , _logger       = undefined -- sorry
+  , _targets      = All
+  , _colors       = def
+  , _local        = ()
+  , _templates    = hStringTemplate ()
+  , _mode         = Online
   }

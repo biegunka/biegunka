@@ -278,14 +278,15 @@ ioOnline term = case term of
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
 
   TA ann (Command p spec) _ -> return $ do
-    let ar = view root ann
-        sr = view source ann
     env <- getEnvironment
     (_, _, Just errors, ph) <- P.createProcess
       P.CreateProcess
         { P.cmdspec       = spec
         , P.cwd           = Just p
-        , P.env           = Just (("APP_ROOT", ar) : ("SOURCE_ROOT", sr) : env)
+        , P.env =
+            Just ( ("RUN_ROOT",    view runRoot    ann)
+                 : ("SOURCE_ROOT", view sourceRoot ann)
+                 : env)
         , P.std_in        = P.Inherit
         , P.std_out       = P.CreatePipe
         , P.std_err       = P.CreatePipe

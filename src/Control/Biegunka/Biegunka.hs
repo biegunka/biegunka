@@ -17,6 +17,7 @@ import           Control.Applicative
 import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad.Free (Free)
+import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
@@ -31,7 +32,7 @@ import qualified System.Posix as Posix
 
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Log as Log
-import           Control.Biegunka.Script (Script, Annotate, app, profiles, runScript)
+import           Control.Biegunka.Script (Script, Annotate, profiles, runScript)
 import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO
@@ -87,24 +88,24 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
          -> Script 'Sources ()           -- ^ Script to interpret
          -> IO ExitCode
 biegunka (($ def) -> c) interpreter script = do
-  appRoot <- views root expandHome c
-  dataDir <- views appData expandHome c
+  rr <- views runRoot expandHome c
+  br <- views biegunkaRoot expandHome c
   bracket Log.start Log.stop $ \queue -> do
     Log.write queue $
-      Log.plain (text (info appRoot dataDir c))
-    let (annotatedScript, annotations) = runScript def (set app appRoot def) tokens script
+      Log.plain (text (info rr br c))
+    let (annotatedScript, annotations) = runScript def (set runRoot rr def) tokens script
         settings = c
-          & root    .~ appRoot
-          & appData .~ dataDir
-          & logger  .~ queue
-          & targets .~ views profiles Subset annotations
+          & runRoot      .~ rr
+          & biegunkaRoot .~ br
+          & logger       .~ queue
+          & targets      .~ views profiles Subset annotations
     runInterpreter interpreter settings annotatedScript
  where
-  info appRoot dataDir settings = unlines $
-    [ "* Relative filepaths are deemed relative to " ++ appRoot
-    , "* Data will be saved in "                     ++ dataDir
+  info rr br settings = unlines $
+    [ "* Relative filepaths are deemed relative to " ++ rr
+    , "* Data will be saved in "                     ++ br
     ] ++
-    maybe [] (\_ -> return "* Offline mode") (settings ^? mode._Offline)
+    bool [] ["* Offline mode"] (has (mode._Offline) settings)
 
 
 -- | Expand \"~\" at the start of the path

@@ -43,7 +43,7 @@ spec = do
     it "should copy the directory correctly" $
       withBiegunkaDirectory $ \tmp -> do
         make tmp (dir "a" simple_copying_layout_0)
-        biegunka (set root tmp . set appData (tmp </> ".biegunka")) run $
+        biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
           D.directory tmp $
             copy "a" (tmp </> "b")
         fit tmp (dir "b" simple_copying_layout_0)
@@ -63,7 +63,7 @@ fitsWith
   -> IO (Either (NonEmpty FitError) ())
 fitsWith s l =
   withBiegunkaDirectory $ \tmp -> do
-    biegunka (set root tmp . set appData (tmp </> ".biegunka")) run (s tmp)
+    biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run (s tmp)
     fit tmp (l tmp)
 
 trivial_script :: FilePath -> Script 'Sources ()

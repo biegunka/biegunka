@@ -33,6 +33,7 @@ check = interpret $ \os terms k -> do
       hGetLine inh >>=
         Log.write (view logger os) .  Log.plain . text . (++ "\n")
     s <- withFd outfd $ \outh -> do
+      let rr = view runRoot os
       hSetBuffering outh LineBuffering
       withProgName "biegunka" .  withArgs [] $
         hspecWithResult defaultConfig
@@ -40,7 +41,7 @@ check = interpret $ \os terms k -> do
           , configColorMode  = ColorAlways
           , configOutputFile = Left outh
           }
-          (Layout.examples (view root os) (termsLayout (view root os) terms))
+          (Layout.examples rr (termsLayout rr terms))
     waitCatch a
     case summaryFailures s of
       0 -> k
@@ -51,12 +52,12 @@ withFd fd = bracket (Posix.fdToHandle fd) hClose
 
 termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
 termsLayout p = iter go . fmap return where
-  go (TS (AS { asUser }) (Source { spath }) innards spec) = do
+  go (TS AS { asUser } Source { spath } innards spec) = do
     Layout.emptydir (rel spath)
       & Layout.user .~ asUser
     termsLayout p innards
     spec
-  go (TA (AA { aaUser }) action spec) = do
+  go (TA AA { aaUser } action spec) = do
     case action of
       Link file target ->
         case split (rel target) of

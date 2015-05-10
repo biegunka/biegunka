@@ -51,7 +51,7 @@ import           Prelude hiding (any, elem)
 import           System.FilePath.Lens hiding (extension)
 
 import Control.Biegunka.Settings
-  (Settings, Targets(..), appData, targets)
+  (Settings, Targets(..), biegunkaRoot, targets)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..), User(..), User(..))
 
@@ -219,7 +219,7 @@ those :: Lens' (Partitioned a) a
 -- if nothing is found
 open :: Settings () -> IO (Partitioned Groups)
 open settings = do
-  let (path, _) = settings & appData <</>~ "groups"
+  let (path, _) = settings & biegunkaRoot <</>~ "groups"
   acid <- openLocalStateFrom path mempty
   gs   <- query acid GetMapping
   let (xs, ys) = mentioned (partition (view targets settings)) gs

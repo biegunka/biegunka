@@ -1,8 +1,7 @@
-{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- | Biegunka - configuration development library
 module Control.Biegunka
   ( -- * Interpreters control
-    biegunka, Settings, defaultSettings, root, appData, colors
+    biegunka, Settings, defaultSettings, runRoot, biegunkaRoot, colors
   , Templates(..), templates
     -- * Interpreters
   , Interpreter
@@ -14,7 +13,7 @@ module Control.Biegunka
     -- * Actions layer primitives
   , link, register, copy, copyFile, copyDirectory, substitute, patch, PatchSpec(..), raw
     -- * Script environment
-  , root, source
+  , sourceRoot
     -- * Modifiers
   , profile, group, role
   , sudo, User(..), username, uid, retries, reacting, React(..), prerequisiteOf, (<~>)
@@ -42,7 +41,7 @@ import System.Directory.Layout (username, uid)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
 import Control.Biegunka.Settings
-  ( Settings, defaultSettings, appData, colors
+  ( Settings, defaultSettings, biegunkaRoot, colors
   , ColorScheme(..)
   , actionColor, sourceColor, srcColor, dstColor, errorColor, retryColor, noColors
   , Templates(..), templates
@@ -51,7 +50,7 @@ import Control.Biegunka.Settings
 import Control.Biegunka.Execute (run, dryRun)
 import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
-import Control.Biegunka.Script (root, source, Script, User(..), React(..), into)
+import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)
 import Control.Biegunka.QQ (multiline, sh, shell)
 import Control.Biegunka.Options (options)
 import Control.Biegunka.Check (check)

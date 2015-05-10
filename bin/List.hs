@@ -29,7 +29,7 @@ import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Groups
   (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open, who)
 import           Control.Biegunka.Settings
-  (appData, Targets(..), targets)
+  (biegunkaRoot, Targets(..), targets)
 
 import Options
 
@@ -45,10 +45,11 @@ instance Functor Formatted where
 
 
 list :: FilePath -> [String] -> Format -> IO ()
-list datadirglob profiles format = do
-  datadir <- expandHome datadirglob
+list brpat profiles format = do
+  br <- expandHome brpat
 
-  let settings = def & appData .~ datadir & targets .~ targeted profiles
+  let settings = def & set biegunkaRoot br & set targets (targeted profiles)
+
   case format of
     Format pattern -> case formattingText pattern of
       Left errorMessage ->

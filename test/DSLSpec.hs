@@ -44,23 +44,23 @@ spec = describe "Biegunka DSL" $ do
         _ -> expectationFailure "DSL pattern failed"
   context "relative paths" $ do
     it "mangles relative paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") noTokens (link "from" "to")
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") noTokens (link "from" "to")
       in case ast of
         Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
         _ -> False
     it "mangles relative paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "to" (return ()))
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") tokens (directory "to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "absolute paths" $ do
     it "does not mangle absolute paths for Actions" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") noTokens (link "from" "/to")
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") noTokens (link "from" "/to")
       in case ast of
         Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
         _ -> False
     it "does not mangle absolute paths for Sources" $
-      let ast = evalScript def (def & app .~ "app" & sourcePath .~ "source") tokens (directory "/to" (return ()))
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") tokens (directory "/to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
