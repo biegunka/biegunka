@@ -30,6 +30,7 @@ import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
+import           System.Environment (getEnvironment)
 import qualified System.Posix as Posix
 import qualified System.Process as P
 
@@ -263,21 +264,28 @@ ioOnline term = case term of
         update dst
      `onException`
       atomically (modifyTVar rstv (S.delete dst))
+
   TA _ (Link src dst) _ -> return $ overWriteWith Posix.createSymbolicLink src dst
+
   TA _ (Copy src dst spec) _ -> return $ do
     try (D.removeDirectoryRecursive dst) :: IO (Either IOError ())
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
+
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- view templates
     return $
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
-  TA _ (Command p spec) _ -> return $ do
+
+  TA ann (Command p spec) _ -> return $ do
+    let ar = view root ann
+        sr = view source ann
+    env <- getEnvironment
     (_, _, Just errors, ph) <- P.createProcess
       P.CreateProcess
         { P.cmdspec       = spec
         , P.cwd           = Just p
-        , P.env           = Nothing
+        , P.env           = Just (("APP_ROOT", ar) : ("SOURCE_ROOT", sr) : env)
         , P.std_in        = P.Inherit
         , P.std_out       = P.CreatePipe
         , P.std_err       = P.CreatePipe
@@ -290,10 +298,12 @@ ioOnline term = case term of
     e <- P.waitForProcess ph
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
+
   TA _ (Patch patch file spec) _ -> return $ do
     verified <- verifyAppliedPatch patch file spec
     unless verified $
       applyPatch patch file spec
+
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do

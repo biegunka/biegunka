@@ -76,7 +76,9 @@ data instance Annotate 'Sources = AS
   , asReaction   :: React
   }
 data instance Annotate 'Actions = AA
-  { aaURI        :: URI
+  { aaAppRoot    :: FilePath
+  , aaSourceRoot :: FilePath
+  , aaURI        :: URI
   , aaOrder      :: Int
   , aaMaxOrder   :: Int
   , aaUser       :: Maybe User
@@ -162,12 +164,18 @@ class HasRoot s where
 instance HasRoot Annotations where
   root = app
 
+instance HasRoot (Annotate 'Actions) where
+  root f aa = f (aaAppRoot aa) <&> \x -> aa { aaAppRoot = x }
+
 class HasSource s where
   -- | Source root
   source :: Lens' s FilePath
 
 instance HasSource Annotations where
   source = sourcePath
+
+instance HasSource (Annotate 'Actions) where
+  source f aa = f (aaSourceRoot aa) <&> \x -> aa { aaSourceRoot = x }
 
 -- | Biegunka filepath root
 app :: Lens' Annotations FilePath
@@ -321,15 +329,18 @@ iterFrom zero phi = go where
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
 actioned f = Script $ do
+  rfp <- view app
+  sfp <- view sourcePath
+
   annotation <- AA
-    <$> view sourceURL
+    <$> pure rfp
+    <*> pure sfp
+    <*> view sourceURL
     <*> (order <+= 1)
     <*> use maxOrder
     <*> view activeUser
     <*> view maxRetries
     <*> view actionReaction
-  rfp <- view app
-  sfp <- view sourcePath
 
   liftS $ TA annotation (f rfp sfp) ()
 
