@@ -10,7 +10,7 @@ author:              Matvey Aksenov
 maintainer:          Matvey Aksenov <matvey.aksenov@gmail.com>
 category:            System
 cabal-version:       >= 1.10
-build-type:          Simple
+build-type:          Custom
 data-files:
   data/biegunka-init.template
 extra-source-files:

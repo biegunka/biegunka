@@ -16,7 +16,8 @@ import           System.FilePath.Lens (directory)
 import           System.Process
 import           System.IO (Handle, hSetBuffering, BufferMode(..))
 
-import Paths_biegunka (version)
+import           Paths_biegunka (version)
+import qualified Git_biegunka as Git
 
 -- | Runs (or checks) biegunka script.
 --
@@ -73,6 +74,6 @@ logo = T.unlines
   [ "   ___  _                    __          "
   , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
   , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "
-  , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> T.pack (showVersion version)
+  , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> T.pack (showVersion version ++ "-" ++ Git.hash)
   , "           /___/                         "
   ]
