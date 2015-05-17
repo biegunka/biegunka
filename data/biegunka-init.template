@@ -1,5 +1,4 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DataKinds #-}
 -- -*- mode: haskell -*-
 -- vi: set ft=haskell :
 
@@ -11,21 +10,15 @@ import Control.Biegunka.Source.Git
 import Control.Lens
 
 
--- Supported environments. Extend this if needed
-data Environments = Default deriving (Data, Typeable)
-
 main :: IO ()
 main = do
-  -- Set ~ directory as root for all paths (except those which are rooted at source location)
-  let biegunkaSettings = set root "~"
   -- Generate and use options parser to get environment to run scripts in
-  (environment, runBiegunka) <- options [Default]
-  -- Detect environment and act accordingly
-  case environment of
-    Default -> runBiegunka biegunkaSettings script
+  runBiegunka <- runner_
+  -- Make location of all sources relative to `~`
+  runBiegunka (set runRoot "~") script
 
 -- Biegunka script stub
-script :: Script Sources ()
+script :: Script 'Sources ()
 script = do
   -- Custom profile (named "my-dotfiles")
   -- After successful run data will be found at ~/.biegunka/profiles/my-dotfiles.profile

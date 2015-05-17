@@ -19,8 +19,8 @@ module Control.Biegunka
   , sudo, User(..), username, uid, retries, reacting, React(..), prerequisiteOf, (<~>)
     -- * Auxiliary
   , into
-    -- * Options autogeneration
-  , Data, Typeable, options
+    -- * Commandline options parser autogeneration
+  , runner_, runnerOf, Environments, Generic, Proxy(Proxy)
     -- * Quasiquoters
   , multiline, sh, shell
     -- * Settings
@@ -36,7 +36,8 @@ module Control.Biegunka
   , (~>)
   ) where
 
-import Data.Data (Data, Typeable)
+import Data.Proxy (Proxy(Proxy))
+import GHC.Generics (Generic)
 import System.Directory.Layout (username, uid)
 
 import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
@@ -52,7 +53,7 @@ import Control.Biegunka.Language (Scope(..), PatchSpec(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)
 import Control.Biegunka.QQ (multiline, sh, shell)
-import Control.Biegunka.Options (options)
+import Control.Biegunka.Options (Environments, runnerOf, runner_)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
 
