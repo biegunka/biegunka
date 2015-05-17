@@ -79,6 +79,8 @@ library
     Control.Biegunka.Source.Layout
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
+    Git_biegunka
+    Paths_biegunka
   ghc-options:
     -Wall
     -Werror
@@ -150,6 +152,8 @@ test-suite spec
     BehavioursSpec
     DSLSpec
     GenerateSpec
+    Git_biegunka
+    Paths_biegunka
   ghc-options:
     -Wall
     -Werror

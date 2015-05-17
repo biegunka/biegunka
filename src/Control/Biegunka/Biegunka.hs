@@ -22,6 +22,7 @@ import           Data.Function (fix)
 import           Data.Monoid (Monoid(..))
 #endif
 import           Data.Semigroup (Semigroup(..))
+import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
 import qualified System.Posix as Posix
@@ -33,6 +34,9 @@ import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO
 import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
+
+import qualified Git_biegunka as Git
+import           Paths_biegunka (version)
 
 {-# ANN module ("HLint: ignore Use join" :: String) #-}
 
@@ -98,7 +102,8 @@ biegunka (($ def) -> c) interpreter script = do
     runInterpreter interpreter settings annotatedScript
  where
   info rr br settings = unlines $
-    [ "* Relative filepaths are deemed relative to " ++ rr
+    [ "* Library version: " ++ showVersion version ++ "-" ++ Git.hash
+    , "* Relative filepaths are deemed relative to " ++ rr
     , "* Data will be saved in "                     ++ br
     ] ++
     bool [] ["* Offline mode"] (has (mode._Offline) settings)
