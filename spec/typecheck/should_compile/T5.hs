@@ -1,7 +1,7 @@
 -- |
 -- Basic sanity check
 --
--- Checks you /can/ have script with Source under Profile
+-- Checks you /can/ have script with Source outside any namespaces
 module Main where
 
 import Control.Biegunka

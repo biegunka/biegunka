@@ -1,15 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -- | Configuration script machinery
 --
 -- Gets interesting static information from script
@@ -26,10 +19,16 @@ module Control.Biegunka.Script
     -- * Script mangling
   , script, sourced, actioned, constructTargetFilePath
     -- * Lenses
-  , profileName, sourceURL, profiles
-  , order, sourceReaction, actionReaction, activeUser, maxRetries
+  , segments
+  , sourceURL
+  , namespaces
+  , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
   , URI, User(..), React(..), Retry(..), incr, into
+    -- * Namespace
+  , Namespace
+  , Segment
+  , segmented
   ) where
 
 #if __GLASGOW_HASKELL__ < 710
@@ -42,7 +41,7 @@ import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
 import Data.Default.Class (Default(..))
-import Data.List (isSuffixOf)
+import Data.List (isSuffixOf, intercalate)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (mempty)
 #endif
@@ -70,17 +69,16 @@ import Control.Biegunka.Script.Token
 data family Annotate (sc :: Scope) :: *
 data instance Annotate 'Sources = AS
   { asToken      :: Token
-  , asProfile    :: String
+  , asSegments   :: [Segment]
   , asUser       :: Maybe User
   , asMaxRetries :: Retry
   , asReaction   :: React
   }
 data instance Annotate 'Actions = AA
   { aaRunRoot    :: FilePath
+  , aaSegments   :: [Segment]
   , aaSourceRoot :: FilePath
   , aaURI        :: URI
-  , aaOrder      :: Int
-  , aaMaxOrder   :: Int
   , aaUser       :: Maybe User
   , aaMaxRetries :: Retry
   , aaReaction   :: React
@@ -111,21 +109,19 @@ incr (Retry n) = Retry (succ n)
 -- | Script annotations environment
 data Annotations = Annotations
   { __runRoot       :: FilePath   -- ^ Absolute path of the Source layer root
-  , _profileName    :: String     -- ^ Profile name
+  , _segments       :: [Segment]  -- ^ Namespace segments
   , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
   , _sourceURL      :: URI        -- ^ Current source url
   , _activeUser     :: Maybe User -- ^ Maximum action order in current source
   , _maxRetries     :: Retry      -- ^ Maximum retries count
   , _sourceReaction :: React      -- ^ How to react on source failure
   , _actionReaction :: React      -- ^ How to react on action failure
-  }
-
-deriving instance Show Annotations
+  } deriving (Show)
 
 instance Default Annotations where
   def = Annotations
     { __runRoot       = mempty
-    , _profileName    = mempty
+    , _segments       = []
     , __sourceRoot    = mempty
     , _sourceURL      = mempty
     , _activeUser     = Nothing
@@ -139,23 +135,17 @@ instance Default Annotations where
 --
 -- Mnemonic is 'Mutable Annotations'
 data MAnnotations = MAnnotations
-  { _profiles :: Set String -- ^ Profile name
-  , _order    :: Int        -- ^ Current action order
-  , _maxOrder :: Int        -- ^ Maximum action order in current source
+  { _namespaces :: Set [Segment] -- ^ All encountered namespaces
   } deriving (Show, Read)
 
 instance Default MAnnotations where
   def = MAnnotations
-    { _profiles = mempty
-    , _order    = 0
-    , _maxOrder = 0
+    { _namespaces = mempty
     }
   {-# INLINE def #-}
 
 
 -- * Lenses
-
-makeLensesWith ?? ''Annotations $ lensRules & generateSignatures .~ False
 
 class HasRunRoot s where
   -- | Absolute path of the Source layer root
@@ -178,37 +168,38 @@ instance HasSourceRoot (Annotate 'Actions) where
   sourceRoot f aa = f (aaSourceRoot aa) <&> \x -> aa { aaSourceRoot = x }
 
 _runRoot :: Lens' Annotations FilePath
+_runRoot f x = f (__runRoot x) <&> \y -> x { __runRoot = y }
 
--- | Current profile name
-profileName :: Lens' Annotations String
+-- | Namespace segments in use
+segments :: Lens' Annotations [String]
+segments f x = f (_segments x) <&> \y -> x { _segments = y }
 
 _sourceRoot :: Lens' Annotations FilePath
+_sourceRoot f x = f (__sourceRoot x) <&> \y -> x { __sourceRoot = y }
 
 -- | Current source url
 sourceURL :: Lens' Annotations String
+sourceURL f x = f (_sourceURL x) <&> \y -> x { _sourceURL = y }
 
 -- | Current user
 activeUser :: Lens' Annotations (Maybe User)
+activeUser f x = f (_activeUser x) <&> \y -> x { _activeUser = y }
 
 -- | Maximum retries count
 maxRetries :: Lens' Annotations Retry
+maxRetries f x = f (_maxRetries x) <&> \y -> x { _maxRetries = y }
 
 -- | How to react on source failure
 sourceReaction :: Lens' Annotations React
+sourceReaction f x = f (_sourceReaction x) <&> \y -> x { _sourceReaction = y }
 
 -- | How to react on action failure
 actionReaction :: Lens' Annotations React
+actionReaction f x = f (_actionReaction x) <&> \y -> x { _actionReaction = y }
 
-makeLensesWith ?? ''MAnnotations $ lensRules & generateSignatures .~ False
-
--- | All profiles encountered so far
-profiles :: Lens' MAnnotations (Set String)
-
--- | Current action order
-order :: Lens' MAnnotations Int
-
--- | Maximum action order in current source
-maxOrder :: Lens' MAnnotations Int
+-- | All namespaces encountered so far
+namespaces :: Lens' MAnnotations (Set [Segment])
+namespaces f x = f (_namespaces x) <&> \y -> x { _namespaces = y }
 
 
 -- | Newtype used to provide better error messages
@@ -291,38 +282,17 @@ sourced ty url path inner update = Script $ do
     token <- next
     annotation <- AS
       <$> pure token
-      <*> view profileName
+      <*> view segments
       <*> view activeUser
       <*> view maxRetries
       <*> view sourceReaction
 
-    order    .= 0
-    maxOrder .= size inner
-    ast    <- annotateActions inner
-
-    sr <- view sourceRoot
+    ast <- annotateActions inner
+    sr  <- view sourceRoot
 
     liftS $ TS annotation (Source ty url sr update) ast ()
 
-    profiles . contains (asProfile annotation) .= True
-
--- | Get 'Actions' scoped script size measured in actions
-size :: Script 'Actions a -> Int
-size = iterFrom 0 go . evalScript def def noTokens
- where
-  go :: Term Annotate 'Actions Int -> Int
-  go (TA _ _ result) = succ result
-  go (TM _ result)   = result
-
--- | Inline '<$' into 'iter' to avoid unnecessary pass over the whole structure
---
--- > iterFrom x f = iter f . (x <$)
-iterFrom :: Functor f => a -> (f a -> a) -> Free f b -> a
-iterFrom zero phi = go where
-  go (Pure _) = zero
-  go (Free m) = phi (go <$> m)
-  {-# INLINE go #-}
-{-# INLINE iterFrom #-}
+    namespaces . contains (asSegments annotation) .= True
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
@@ -332,10 +302,9 @@ actioned f = Script $ do
 
   annotation <- AA
     <$> pure rr
+    <*> view segments
     <*> pure sr
     <*> view sourceURL
-    <*> (order <+= 1)
-    <*> use maxOrder
     <*> view activeUser
     <*> view maxRetries
     <*> view actionReaction
@@ -375,3 +344,17 @@ constructTargetFilePath r s path =
 into :: FilePath -> FilePath
 into = (++ "/")
 {-# INLINE into #-}
+
+
+type Namespace = String
+
+type Segment = String
+
+segmented :: Iso' Namespace [Segment]
+segmented = iso (reverse . splitOn '/') (intercalate "/" . reverse)
+ where
+  splitOn e = go
+    where
+      go xs = case break (== e) xs of
+        (y, []) -> y : []
+        (y, ys) -> y : go ys

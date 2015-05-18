@@ -7,7 +7,7 @@
 module Control.Biegunka.Language
   ( Scope(..)
   , Term(..), Action(..), Source(..), Modifier(..)
-  , PatchSpec(..), CopySpec(..)
+  , CopySpec(..)
   , Token
   ) where
 
@@ -21,7 +21,6 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
-import Data.Default.Class (Default(..))
 import Data.Set (Set)
 import Data.Text (Text)
 import System.Process (CmdSpec)
@@ -89,8 +88,6 @@ data Action =
   | Template FilePath FilePath (forall t. TemplateSystem t => t -> Text -> Text)
     -- | External command
   | Command FilePath CmdSpec
-    -- | Patch
-  | Patch FilePath FilePath PatchSpec
 
 -- | Copying settings
 data CopySpec =
@@ -98,18 +95,6 @@ data CopySpec =
   | OnlyFiles
   | BothDirectoriesAndFiles
     deriving (Show, Read)
-
--- | Patch settings
-data PatchSpec = PatchSpec
-  { strip     :: Int  -- ^ How many leading slashes to strip
-  , reversely :: Bool -- ^ Apply in reverse?
-  } deriving (Show, Read)
-
-instance Default PatchSpec where
-  def = PatchSpec
-    { strip     = 1
-    , reversely = False
-    }
 
 -- | Modificators for other datatypes
 data Modifier = Wait (Set Token)

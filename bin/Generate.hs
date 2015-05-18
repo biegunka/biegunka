@@ -24,20 +24,20 @@ import           System.FilePath (makeRelative)
 import           System.IO (hFlush, stdout)
 
 import           Control.Biegunka.Biegunka (expandHome)
-import           Control.Biegunka.Groups
-  (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open)
+import           Control.Biegunka.Namespace
+  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open)
 import           Control.Biegunka.Settings
   (biegunkaRoot, Targets(..), targets)
 
 
 scriptFor :: FilePath -> FilePath -> [String] -> IO ()
-scriptFor rrpat brpat profiles = do
+scriptFor rrpat brpat ns = do
   rr <- expandHome rrpat
   br <- expandHome brpat
 
-  db <- open (def & set biegunkaRoot br & set targets (targeted profiles))
+  db <- open (def & set biegunkaRoot br & set targets (targeted ns))
 
-  let theses = view (these.groups) db
+  let theses = view (these.namespaces) db
       types  = uniqueSourcesTypes theses
       script = execWriter (gen theses rr types)
   T.putStr script
@@ -48,12 +48,12 @@ scriptFor rrpat brpat profiles = do
 
   gen db root sources = do
     tell (boilerplate sources)
-    ifor_ db $ \groupName (GR groupData) -> do
-      write $ group groupName
-      case M.null groupData of
+    ifor_ db $ \nsName (NR nsData) -> do
+      write $ namespace nsName
+      case M.null nsData of
         True  -> write $ indent sourceIndent emptyScript
         False ->
-          ifor_ groupData $ \sourceRecord fileRecords -> do
+          ifor_ nsData $ \sourceRecord fileRecords -> do
             write $ source root sourceRecord
             case S.null fileRecords of
               True  -> write $ indent fileIndent emptyScript
@@ -64,7 +64,7 @@ scriptFor rrpat brpat profiles = do
 write :: Monad m => Text -> WriterT Text m ()
 write = tell . line
 
-uniqueSourcesTypes :: M.Map String GroupRecord -> Set String
+uniqueSourcesTypes :: M.Map String NamespaceRecord -> Set String
 uniqueSourcesTypes =
   execWriter . traverse (traverse (tell . S.singleton . sourceType) . M.keys . unGR)
 
@@ -113,9 +113,9 @@ main = T.unlines
 
 type User = Maybe (Either String Int)
 
-group :: String -> Text
-group = indent groupIndent . go where
-  go name = T.unwords ["group", string (show name), "$ do"]
+namespace :: String -> Text
+namespace = indent namespaceIndent . go where
+  go name = T.unwords ["namespace", string (show name), "$ do"]
 
 source :: FilePath -> SourceRecord -> Text
 source appRoot = indent sourceIndent . go where
@@ -139,10 +139,10 @@ file appRoot sourceRoot sourceOwner = indent fileIndent . go where
   action "template" = "substitute"
   action fileType   = fileType
 
-groupIndent, sourceIndent, fileIndent :: Int
-groupIndent  = 2
-sourceIndent = 4
-fileIndent   = 6
+namespaceIndent, sourceIndent, fileIndent :: Int
+namespaceIndent = 2
+sourceIndent    = 4
+fileIndent      = 6
 
 indent :: Integral n => n -> Text -> Text
 indent n message = T.replicate (fromIntegral n) " " <> message

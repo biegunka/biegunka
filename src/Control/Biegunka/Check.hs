@@ -17,7 +17,6 @@ import           System.Exit (ExitCode(..))
 import qualified System.Posix as Posix
 import           Test.Hspec.Formatters (progress)
 import           Test.Hspec.Runner (hspecWithResult, defaultConfig, Config(..), ColorMode(..), summaryFailures)
-import           Text.PrettyPrint.ANSI.Leijen (text)
 
 import           Control.Biegunka.Biegunka (Interpreter, interpret)
 import           Control.Biegunka.Language
@@ -31,7 +30,7 @@ check = interpret $ \os terms k -> do
   withFd infd $ \inh -> do
     a <- async . forever $
       hGetLine inh >>=
-        Log.write (view logger os) .  Log.plain . text . (++ "\n")
+        Log.write (view logger os) .  Log.plain . (++ "\n")
     s <- withFd outfd $ \outh -> do
       let rr = view runRoot os
       hSetBuffering outh LineBuffering
@@ -79,8 +78,6 @@ termsLayout p = iter go . fmap return where
             Layout.dirs ds $
               Layout.file f
                 & Layout.user .~ aaUser
-      Patch {} ->
-        return ()
       Command {} ->
         return ()
     spec

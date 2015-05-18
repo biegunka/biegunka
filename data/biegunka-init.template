@@ -20,13 +20,11 @@ main = do
 -- Biegunka script stub
 script :: Script 'Sources ()
 script = do
-  -- Custom profile (named "my-dotfiles")
-  -- After successful run data will be found at ~/.biegunka/profiles/my-dotfiles.profile
-  profile "my-dotfiles" $ do
+  namespace "my-dotfiles" $ do
     -- Your dotfiles repositories go here
     git "git@github.com:user/dotfiles" "somewhere/under/~" $
       -- What exactly to do with the cloned repository?
       return ()
     return ()
-  -- Other profiles go there
+  -- Other namespaces go there
   return ()

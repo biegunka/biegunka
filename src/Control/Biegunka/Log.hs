@@ -14,9 +14,7 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM (atomically)
 import           Control.Concurrent.STM.TQueue
-import qualified System.Console.Terminal.Size as Term
-import           System.IO (Handle, hFlush, stderr, stdout)
-import           Text.PrettyPrint.ANSI.Leijen (Doc, displayIO, renderPretty)
+import qualified System.IO as IO
 
 
 -- | 'Logger' abstract data type for logging
@@ -30,15 +28,15 @@ data Command =
   | Stop (MVar ())  -- ^ Tells logger to stop
 
 data Message =
-    Plain { doc :: Doc }     -- write to stdout
-  | Exception { doc :: Doc } -- write to stderr
+    Plain { str :: String }     -- write to stdout
+  | Exception { str :: String } -- write to stderr
 
 -- | Plain log message about anything
-plain :: Doc -> Message
+plain :: String -> Message
 plain = Plain
 
 -- | Exception (or other error) log message
-exception :: Doc -> Message
+exception :: String -> Message
 exception = Exception
 
 
@@ -54,15 +52,14 @@ start = do
     command <- atomically (readTQueue queue)
     case command of
       Display message -> do
-        width <- fmap (maybe 80 Term.width) Term.size
-        displayIO (logStream message) (renderPretty 0.9 width (doc message))
-        hFlush stdout
+        IO.hPutStr (logStream message) (str message)
+        IO.hFlush IO.stdout
         loop queue
       Stop var  -> putMVar var ()
 
-logStream :: Message -> Handle
-logStream (Plain _)     = stdout
-logStream (Exception _) = stderr
+logStream :: Message -> IO.Handle
+logStream (Plain _)     = IO.stdout
+logStream (Exception _) = IO.stderr
 
 -- | Stop logger
 --

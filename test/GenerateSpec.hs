@@ -7,7 +7,7 @@ import qualified Data.Set as S
 import qualified Data.Text.Lazy as T
 import           Test.Hspec
 
-import           Control.Biegunka.Groups
+import           Control.Biegunka.Namespace
 
 import           Generate
 
@@ -21,12 +21,12 @@ spec = do
 
       let defSR = SR { sourceType = "", sourcePath = "", fromLocation = "", sourceOwner = Nothing }
           db = M.fromList
-            [ ("foo", GR $ M.fromList
+            [ ("foo", NR $ M.fromList
               [ (defSR { sourceType = "git",   sourcePath = "a" }, S.empty)
               , (defSR { sourceType = "git",   sourcePath = "b" }, S.empty)
               , (defSR { sourceType = "darcs", sourcePath = "c" }, S.empty)
               ])
-            , ("bar", GR $ M.fromList
+            , ("bar", NR $ M.fromList
               [ (defSR { sourceType = "git",   sourcePath = "d" }, S.empty)
               , (defSR { sourceType = "darcs", sourcePath = "e" }, S.empty)
               , (defSR { sourceType = "hg",    sourcePath = "f" }, S.empty)
@@ -46,9 +46,9 @@ spec = do
 
   describe "script generation" $ do
 
-    it "generates code for groups" $
+    it "generates code for namespaces" $
 
-      group "foo" `shouldBe` "  group \"foo\" $ do"
+      namespace "foo" `shouldBe` "  namespace \"foo\" $ do"
 
     it "generates code for sources" $ do
 
@@ -128,9 +128,9 @@ spec = do
 
     it "correctly does hierarchical indentation" $ do
 
-      let foo = indent groupIndent "text"
-          bar = indent sourceIndent "text"
-          baz = indent fileIndent "text"
+      let foo = indent namespaceIndent "text"
+          bar = indent sourceIndent    "text"
+          baz = indent fileIndent      "text"
 
           spaces = T.takeWhile isSpace
 

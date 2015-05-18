@@ -1,125 +1,87 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- | Describe execution I/O actions
 module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
-    termDescription, runChanges
+    runChanges
     -- * Specific description formatting
-  , action, exception, retryCounter, removal
+  , action, exception, removal
   ) where
 
 import Control.Exception (SomeException)
-import Data.List ((\\))
-import Data.Maybe (mapMaybe)
+import Data.List ((\\), intercalate)
+import Text.Printf (printf)
 
 import Control.Lens
 import System.Process (CmdSpec(..))
-import Text.PrettyPrint.ANSI.Leijen
 
-import Control.Biegunka.Settings
-  ( ColorScheme(..)
-  , actionColor, sourceColor
-  , srcColor, dstColor
-  , errorColor, retryColor
-  )
-import Control.Biegunka.Groups (Partitioned, Groups, these, files, sources)
+import Control.Biegunka.Namespace (Partitioned, Namespaces, these, files, sources)
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 
-
--- | Describe current action and host where it happens
-termDescription :: Doc -> Doc
-termDescription d =
-  let host = "[localhost]" :: String
-  in nest (length host) (text host </> d) <> linebreak
-
-
--- | Describe current action
-action :: ColorScheme -> Term Annotate s a -> Doc
-action sc il = nest 3 $ case il of
-  TS _ (Source t u d _) _ _  -> annotation (text u) $
-        view actionColor sc "update"
-    </> text t
-    </> "source at"
-    </> view dstColor sc (text d)
-  TA (AA { aaURI, aaOrder, aaMaxOrder } ) a _ ->
-    annotation (text aaURI) $ progress aaOrder aaMaxOrder <> line <> case a of
-      Link s d       ->
-            view actionColor sc "link"
-        </> view srcColor sc (text s)
-        </> "to"
-        </> view dstColor sc (text d)
-      Copy s d _     ->
-            view actionColor sc "copy"
-        </> view srcColor sc (text s)
-        </> "to"
-        </> view dstColor sc (text d)
-      Template s d _ ->
-            view actionColor sc "substitute"
-        </> "in"
-        </> view srcColor sc (text s)
-        </> "to"
-        </> view dstColor sc (text d)
-      Command p (ShellCommand c) ->
-            view actionColor sc "shell command"
-        </> "`"
-        <//> text c
-        <//> "' from"
-        </> view srcColor sc (text p)
-      Command p (RawCommand c as) ->
-            view actionColor sc "external command"
-        </> "`"
-        <//> text (unwords (c:as))
-        <//> "' from"
-        </> view srcColor sc (text p)
-      Patch patch file PatchSpec { reversely } ->
-            view actionColor sc "patch"
-        </> view srcColor sc (text patch)
-        </> (if reversely then parens "reversely" </> "applied" else "applied")
-        </> "to"
-        </> view dstColor sc (text file)
-  _ -> empty
+-- | Describe an action
+action :: Retry -> Term Annotate s a -> String
+action (Retry n) ta =
+  unlines [ prefixf ta
+          , "  * " ++ doc
+                   ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
+          ]
  where
-  -- | Annotate action description with source name
-  annotation :: Doc -> Doc -> Doc
-  annotation t doc = parens (view sourceColor sc t) </> doc
+  prefixf :: Term Annotate s a -> String
+  prefixf (TS (AS { asSegments }) (Source _ url _ _) _ _) =
+    intercalate "::" (reverse (printf "[%s]" url : asSegments))
+  prefixf (TA (AA { aaSegments, aaURI }) _ _) =
+    intercalate "::" (reverse (printf "[%s]" aaURI : aaSegments))
+  prefixf (TM _ _) = ""
 
-  -- | Add progress to action description
-  progress :: Int -> Int -> Doc
-  progress n mn = brackets (pretty n <> "/" <> pretty mn)
-
+  doc = case ta of
+    TS _ (Source t _ d _) _ _  ->
+      printf "%s source[%s] update" t d
+    TA _ a _ ->
+      case a of
+        Link s d       ->
+          printf "symlink[%s] update (point to [%s])" d s
+        Copy s d _     ->
+          printf "file[%s] update (copy [%s])" d s
+        Template s d _ ->
+          printf "file[%s] update (interpolate [%s])" d s
+        Command p (ShellCommand c) ->
+          printf "execute[%s] (from [%s])" c p
+        Command p (RawCommand c as) ->
+          printf "execute[%s] (from [%s])" (unwords (c : as)) p
+    _ -> ""
 
 -- | Describe handled exception
-exception :: ColorScheme -> SomeException -> Doc
-exception sc e = nest 3 $
-  (view errorColor sc "ERROR" <//> colon) <> line <>  vcat (map text . lines $ show e)
-
-
--- | Describe retry counter
-retryCounter :: ColorScheme -> Int -> Int -> Doc
-retryCounter sc m n =
-      view retryColor sc "Retry"
-  </> text (show m)
-  </> view retryColor sc "out of"
-  </> text (show n)
-  <//> view retryColor sc colon
-
+exception :: SomeException -> String
+exception e =
+  unlines ( printf "[%sexception%s]:" red reset
+          : map ("  " ++) (lines (show e)))
 
 -- | Describe file or directory removal
-removal :: FilePath -> Doc
-removal path = "Removing" <> colon </> text path <> line
-
+removal :: FilePath -> String
+removal = printf "Removing: %s\n"
 
 -- | Describe changes which will happen after the run
-runChanges :: ColorScheme -> Partitioned Groups -> Groups -> Doc
-runChanges sc db gs = vcat $ empty : mapMaybe about
-  [ ("added files",     map (view srcColor sc . text) (files gs \\ files (view these db)))
-  , ("added sources",   map (view dstColor sc . text) (sources gs \\ sources (view these db)))
-  , ("deleted files",   map (view srcColor sc . text) (files (view these db) \\ files gs))
-  , ("deleted sources", map (view dstColor sc . text) (sources (view these db) \\ sources gs))
-  ] ++ [empty]
+runChanges :: Partitioned Namespaces -> Namespaces -> String
+runChanges db gs = unlines $ "" : concatMap about
+  [ ("added files",     green, (files gs \\ files (view these db)))
+  , ("added sources",   green, (sources gs \\ sources (view these db)))
+  , ("deleted files",   red,   (files (view these db) \\ files gs))
+  , ("deleted sources", red,   (sources (view these db) \\ sources gs))
+  ] ++ [""]
  where
-  about (msg, xs) = case length xs of
-    0 -> Nothing
-    n -> Just $ nest 2 ((msg </> parens (pretty n) <//> colon) <> line <> vcat (xs ++ [empty]))
+  about (msg, color, xs) = case length xs of
+    0 -> []
+    n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
+
+red :: String
+red = "\ESC[31;2m"
+
+yellow :: String
+yellow = "\ESC[33;2m"
+
+green :: String
+green = "\ESC[32;2m"
+
+reset :: String
+reset = "\ESC[0m"

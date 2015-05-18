@@ -7,10 +7,10 @@
 -- All concrete primitives docs assume you have default settings
 module Control.Biegunka.Primitive
   ( -- * Actions layer primitives
-    link, register, copy, copyFile, copyDirectory, substitute, patch
+    link, register, copy, copyFile, copyDirectory, substitute
   , raw
     -- * Modifiers
-  , profile, group, role
+  , namespace
   , sudo, retries, reacting, prerequisiteOf, (<~>)
   ) where
 
@@ -18,7 +18,6 @@ import           Control.Lens
 import           Control.Monad.Reader (local)
 import qualified Data.Set as S
 import           System.FilePath ((</>))
-import           System.FilePath.Lens
 import           System.Command.QQ (Eval(..))
 
 import Control.Biegunka.Language
@@ -30,40 +29,27 @@ import Control.Biegunka.Templates
 infixr 7 `prerequisiteOf`, <~>
 
 
--- | Provides convenient 'Sources' grouping. May be nested
---
--- Information about sources and files related to a particular
--- profile @profile@ could be found in @~\/.biegunka\/profiles\/@.
+-- | Namespaces group 'Sources' together; they can be nested.
 --
 -- Example usage:
 --
--- > profile "dotfiles" $ do
--- >   group "mine" $
--- >     git "https://github.com/supki/.dotfiles"
+-- > namespace "dotfiles" $ do
+-- >   namespace "mine" $
+-- >     git "https://github.com/supki/.dotfiles" ...
 -- >       ...
--- >   group "not-mine" $
--- >     git "https://github.com/dmalikov/dotfiles"
+-- >   namespace "not-mine" $
+-- >     git "https://github.com/dmalikov/dotfiles" ...
 -- >       ...
--- > profile "experimental" $ do
+-- > namespace "experimental" $ do
 -- >   git "https://github.com/ekmett/lens"
 -- >     ...
-profile :: String -> Script 'Sources a -> Script 'Sources a
-profile name (Script inner) = Script $
-  local (profileName </>~ name) $ do
-    p' <- view profileName
-    profiles . contains p' .= True
+namespace :: String -> Script 'Sources a -> Script 'Sources a
+namespace segment (Script inner) = Script $
+  local (over segments (segment :)) $ do
+    xs <- view segments
+    namespaces . contains xs .= True
     inner
-{-# INLINE profile #-}
-
--- | Alias for 'profile'. May be useful for nested grouping
-group :: String -> Script 'Sources a -> Script 'Sources a
-group = profile
-{-# INLINE group #-}
-
--- | Alias for 'profile'. Everyone uses roles for something
-role :: String -> Script 'Sources a -> Script 'Sources a
-role = profile
-{-# INLINE role #-}
+{-# INLINE namespace #-}
 
 -- | Links source to specified filepath
 --
@@ -134,16 +120,6 @@ substitute :: FilePath -> FilePath -> Script 'Actions ()
 substitute src dst = actioned (\rfp sfp ->
   Template (sfp </> src) (constructTargetFilePath rfp src dst) templating)
 {-# INLINE substitute #-}
-
--- | Applies the patch given the 'PatchSpec'
---
--- > git "https://example.com/source.git" "git/source" $
--- >   patch "some-patch.patch" "anywhere" (def { reversely = True })
---
--- Applies @~\/git\/source\/some-patch.patch@ to @~\/anywhere@ reversely.
-patch :: FilePath -> FilePath -> PatchSpec -> Script 'Actions ()
-patch src dst spec = actioned (\rfp sfp -> Patch (sfp </> src) (rfp </> dst) spec)
-{-# INLINE patch #-}
 
 
 -- | Monomorphised interface to 'sh' quasiquoter for

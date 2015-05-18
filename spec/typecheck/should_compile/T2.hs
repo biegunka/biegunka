@@ -1,7 +1,7 @@
 -- |
 -- Basic sanity check
 --
--- Checks you /can/ have script with Sources under several profiles
+-- Checks you /can/ have script with Sources inside many namespaces
 module Main where
 
 import Control.Biegunka
@@ -9,7 +9,7 @@ import Control.Biegunka.Source.Git
 
 
 main = biegunka id run $ do
-  profile "main" $
+  namespace "main" $
     git_ "git@github.com:ghc/ghc" "ghc"
-  profile "other" $
+  namespace "other" $
     git_ "git@github.com:ghc/testsuite" "ghc-testsuite"

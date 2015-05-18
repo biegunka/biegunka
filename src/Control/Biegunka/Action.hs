@@ -1,8 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 -- | Abstracted 'Actions' layer routines.
 module Control.Biegunka.Action
-  ( applyPatch, verifyAppliedPatch
-  , copy, verifyCopy
+  ( copy, verifyCopy
   ) where
 
 import           Control.Applicative (liftA2)
@@ -13,55 +12,13 @@ import           Data.Traversable (for)
 import qualified Data.ByteString.Lazy as B
 import           System.Directory (doesDirectoryExist, doesFileExist, getDirectoryContents)
 import qualified System.Directory as D
-import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
-import           System.IO (IOMode(..), openFile)
 import           System.IO.Error (catchIOError)
-import           System.Process (runProcess, waitForProcess)
 
-import Control.Biegunka.Execute.Exception
-import Control.Biegunka.Language
+import           Control.Biegunka.Execute.Exception
+import           Control.Biegunka.Language
 
 {-# ANN module "HLint: ignore Use if" #-}
-
-
--- | Generic patching function
-patching :: FilePath -> FilePath -> [String] -> (ExitCode -> IO a) -> IO a
-patching patch root arguments post = do
-  stdin   <- openFile patch ReadMode
-  stdout  <- openFile "/dev/null" WriteMode
-  process <- runProcess "git"
-    ("apply" : arguments)
-    (Just root)
-    Nothing
-    (Just stdin) (Just stdout) (Just stdout)
-  status  <- waitForProcess process
-  post status
-
--- | Apply patch given the patch spec
-applyPatch
-  :: FilePath  -- ^ Patch location
-  -> FilePath  -- ^ Patching root
-  -> PatchSpec
-  -> IO ()
-applyPatch patch root PatchSpec { strip, reversely } =
-  patching patch root arguments $ \e ->
-    e `onFailure` \_ -> throwIO $ PatchingException patch root
- where
-  arguments   = ["-p", show strip] ++ ["--reverse" | reversely]
-
--- | Verify applied patch given the patch spec
-verifyAppliedPatch
-  :: FilePath  -- ^ Patch location
-  -> FilePath  -- ^ Patching root
-  -> PatchSpec
-  -> IO Bool
-verifyAppliedPatch patch root PatchSpec { strip, reversely } =
-  patching patch root arguments post
- where
-  arguments   = ["--check", "-p", show strip] ++ ["--reverse" | not reversely]
-
-  post status = return (status == ExitSuccess)
 
 
 copy :: FilePath -> FilePath -> CopySpec -> IO ()

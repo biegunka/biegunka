@@ -8,7 +8,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
--- | Groups data control
+-- | Namespace data.
 --
 -- Uses acid-state to store data before script invocations.
 --
@@ -19,12 +19,13 @@
 --   * Next, interpreter changes 'these' and call 'commit'
 --
 --   * Last, interpreter says 'close'
-module Control.Biegunka.Groups
-  ( Partitioned, Groups, GroupRecord(..), SourceRecord(..), FileRecord(..)
-  , these, those, groups
+module Control.Biegunka.Namespace
+  ( Partitioned, Namespaces, NamespaceRecord(..), SourceRecord(..), FileRecord(..)
+  , these, those, namespaces
   , open, commit, close, fromScript
   , diff, files, sources
   , who
+  , segmented
   ) where
 
 import           Control.Applicative
@@ -53,7 +54,7 @@ import           System.FilePath.Lens hiding (extension)
 import Control.Biegunka.Settings
   (Settings, Targets(..), biegunkaRoot, targets)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
-import Control.Biegunka.Script (Annotate(..), User(..), User(..))
+import Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
 
 -- $setup
 -- >>> import Data.Default
@@ -134,90 +135,90 @@ instance Migrate FileRecord where
 deriveSafeCopy 1 'extension ''FileRecord
 
 
--- | Group data record
+-- | Namespace data record
 --
--- A mapping from 'Source' data to set of 'FileRecord's
-newtype GroupRecord = GR
+-- A mapping from 'Source' data to a set of 'FileRecord's
+newtype NamespaceRecord = NR
   { unGR :: Map SourceRecord (Set FileRecord)
   } deriving (Show, Eq, Typeable)
 
-instance Monoid GroupRecord where
-  mempty = GR mempty
-  GR a `mappend` GR b = GR (a `mappend` b)
+instance Monoid NamespaceRecord where
+  mempty = NR mempty
+  NR a `mappend` NR b = NR (a `mappend` b)
 
-type instance Index GroupRecord = SourceRecord
-type instance IxValue GroupRecord = Set FileRecord
+type instance Index NamespaceRecord = SourceRecord
+type instance IxValue NamespaceRecord = Set FileRecord
 
-instance Ixed GroupRecord where
-  ix k f (GR x) = GR <$> ix k f x
+instance Ixed NamespaceRecord where
+  ix k f (NR x) = NR <$> ix k f x
 
-instance ToJSON GroupRecord where
-  toJSON (GR t) = object [             "sources" .= map repo   (M.toList t)]
+instance ToJSON NamespaceRecord where
+  toJSON (NR t) = object [             "sources" .= map repo   (M.toList t)]
    where
     repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
 
-deriveSafeCopy 0 'base ''GroupRecord
+deriveSafeCopy 0 'base ''NamespaceRecord
 
 
--- | All groups data
+-- | All namespaces data
 --
--- A mapping from group names to 'GroupRecord's
-newtype Groups = Groups { _groups :: Map String GroupRecord }
+-- A mapping from namespace names to 'NamespaceRecord's
+newtype Namespaces = Namespaces { _namespaces :: Map String NamespaceRecord }
     deriving (Show, Typeable)
 
-instance ToJSON Groups where
-  toJSON (Groups gs) = object [ "groups" .= toJSON gs ]
+instance ToJSON Namespaces where
+  toJSON (Namespaces gs) = object [ "groups" .= toJSON gs ]
 
-instance Monoid Groups where
-  mempty = Groups mempty
-  Groups xs `mappend` Groups ys = Groups (xs `mappend` ys)
+instance Monoid Namespaces where
+  mempty = Namespaces mempty
+  Namespaces xs `mappend` Namespaces ys = Namespaces (xs `mappend` ys)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Groups
+makeLensesWith (lensRules & generateSignatures .~ False) ''Namespaces
 
--- | All groups data
-groups :: Lens' Groups (Map String GroupRecord)
+-- | All namespace data
+namespaces :: Lens' Namespaces (Map String NamespaceRecord)
 
-deriveSafeCopy 0 'base ''Groups
+deriveSafeCopy 0 'base ''Namespaces
 
-getMapping :: Query Groups (Map String GroupRecord)
-getMapping = view groups
+getMapping :: Query Namespaces (Map String NamespaceRecord)
+getMapping = view namespaces
 
-putMapping :: Map String GroupRecord -> Update Groups ()
-putMapping = assign groups
+putMapping :: Map String NamespaceRecord -> Update Namespaces ()
+putMapping = assign namespaces
 
-makeAcidic ''Groups ['getMapping, 'putMapping]
+makeAcidic ''Namespaces ['getMapping, 'putMapping]
 
 
--- | Groups data state
+-- | Namespace data state
 --
--- Consists of acid-state handle and two parts: relevant groups
--- and irrelevant groups
+-- Consists of acid-state handle and two parts: relevant namespaces
+-- and irrelevant namespaces
 --
--- Relevant groups (or 'these') are groups mentioned in script so
+-- Relevant namespaces (or 'these') are namespaces mentioned in script so
 -- interpreter won't deal with others (or 'those')
 data Partitioned a = Partitioned
-  { _acidic :: AcidState a -- ^ The groups database handle
-  , _these  :: a           -- ^ Groups targeted by script
-  , _those  :: a           -- ^ All other groups
+  { _acidic :: AcidState a -- ^ The namespace database handle
+  , _these  :: a           -- ^ Namespaces targeted by the script
+  , _those  :: a           -- ^ All other namespaces
   }
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Partitioned
 
--- | The groups database handle
+-- | Namespace database handle
 acidic :: Lens' (Partitioned a) (AcidState a)
 
--- | Groups targeted by script
+-- | Namespaces targeted by the script
 these :: Lens' (Partitioned a) a
 
--- | All other groups
+-- | All other namespaces
 those :: Lens' (Partitioned a) a
 
 
--- | Open groups data from disk
+-- | Open namespace data from disk
 --
--- Searches @'appData'\/groups@ path for groups data. Starts empty
+-- Searches @'appData'\/groups@ path for namespace data. Starts empty
 -- if nothing is found
-open :: Settings () -> IO (Partitioned Groups)
+open :: Settings () -> IO (Partitioned Namespaces)
 open settings = do
   let (path, _) = settings & biegunkaRoot <</>~ "groups"
   acid <- openLocalStateFrom path mempty
@@ -232,63 +233,63 @@ open settings = do
     isChildOf x y = x `elem` directories y
     directories   = toListOf (takingWhile (/= ".") (iterated (view directory)))
 
-  mentioned p gs = let (xs, ys) = M.partitionWithKey p gs in (Groups xs, Groups ys)
+  mentioned p gs = let (xs, ys) = M.partitionWithKey p gs in (Namespaces xs, Namespaces ys)
 
--- | Update groups data
+-- | Update namespace data
 --
 -- Combines 'these' and 'those' to get full state
-commit :: Partitioned Groups -> IO ()
-commit db = update (view acidic db) (PutMapping (M.union (view (those.groups) db) (view (these.groups) db)))
+commit :: Partitioned Namespaces -> IO ()
+commit db = update (view acidic db) (PutMapping (M.union (view (those.namespaces) db) (view (these.namespaces) db)))
 
--- | Save groups data to disk
-close :: Partitioned Groups -> IO ()
+-- | Save namespace data to disk
+close :: Partitioned Namespaces -> IO ()
 close = createCheckpointAndClose . view acidic
 
--- | Get groups difference
+-- | Get namespace difference
 diff :: Eq b => (a -> [b]) -> a -> a -> [b]
 diff f = (\\) `on` f
 
--- | Get all destination filepaths in 'Groups'
-files :: Groups -> [FilePath]
-files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view groups
+-- | Get all destination filepaths in 'Namespaces'
+files :: Namespaces -> [FilePath]
+files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view namespaces
 
--- | Get all sources location in 'Groups'
-sources :: Groups -> [FilePath]
-sources = map sourcePath . M.keys . unGR <=< M.elems . view groups
+-- | Get all sources location in 'Namespaces'
+sources :: Namespaces -> [FilePath]
+sources = map sourcePath . M.keys . unGR <=< M.elems . view namespaces
 
 
--- | Extract groups data from script
+-- | Extract namespace data from script
 --
--- Won't get /all/ mentioned groups but only those for which there is
+-- Won't get /all/ mentioned namespaces but only those for which there is
 -- some useful action to do.
-fromScript :: Free (Term Annotate 'Sources) a -> Groups
-fromScript script = execState (iterM construct script) (Groups mempty)
+fromScript :: Free (Term Annotate 'Sources) a -> Namespaces
+fromScript script = execState (iterM construct script) (Namespaces mempty)
  where
-  construct :: Term Annotate 'Sources (State Groups a) -> State Groups a
+  construct :: Term Annotate 'Sources (State Namespaces a) -> State Namespaces a
   construct term = case term of
-    TS (AS { asProfile, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
+    TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
-      groups . at asProfile . non mempty <>= GR (M.singleton record mempty)
-      iterM (populate asProfile record) i
+          namespace = view (from segmented) asSegments
+      namespaces . at namespace . non mempty <>= NR (M.singleton record mempty)
+      iterM (populate namespace record) i
       next
     TM _ next -> next
 
   populate
-    :: String                                 -- ^ Profile name
-    -> SourceRecord                           -- ^ Source info record
-    -> Term Annotate 'Actions (State Groups a) -- ^ Current script term
-    -> State Groups a
-  populate profile source term = case term of
+    :: String                                      -- ^ Namespace
+    -> SourceRecord                                -- ^ Source info record
+    -> Term Annotate 'Actions (State Namespaces a) -- ^ Current script term
+    -> State Namespaces a
+  populate ns source term = case term of
     TA (AA { aaUser }) action next -> do
       for_ (toRecord action (fmap user aaUser)) $ \record ->
-        assign (groups.ix profile.ix source.contains record) True
+        assign (namespaces.ix ns.ix source.contains record) True
       next
     TM _ next -> next
    where
     toRecord (Link src dst)       = toFileRecord "link" src dst
     toRecord (Copy src dst _)     = toFileRecord "copy" src dst
     toRecord (Template src dst _) = toFileRecord "template" src dst
-    toRecord (Patch src dst _)    = toFileRecord "patch" src dst
     toRecord (Command {})         = const Nothing
 
     toFileRecord fileType fromSource filePath fileOwner =

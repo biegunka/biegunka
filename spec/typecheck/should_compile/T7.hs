@@ -1,5 +1,6 @@
 -- |
--- Checks that grouping and sourcing can be on the same 'level' of hierachy
+--
+-- Checks that namespaces and sources can be on the "same" level of the hierarchy
 module Main where
 
 import Control.Biegunka
@@ -9,8 +10,8 @@ import System.Exit (ExitCode)
 
 main :: IO ExitCode
 main = biegunka id run $ do
-  profile "outer" $ do
-    group "inner" $
+  namespace "outer" $ do
+    namespace "inner" $
       git_ "git@github.com:ghc/ghc" "ghc"
     git_ "git@github.com:ghc/ghc" "ghc"
 

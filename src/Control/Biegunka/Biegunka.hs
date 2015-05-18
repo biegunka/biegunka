@@ -22,6 +22,7 @@ import           Data.Function (fix)
 import           Data.Monoid (Monoid(..))
 #endif
 import           Data.Semigroup (Semigroup(..))
+import           Data.Set.Lens (setOf)
 import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
@@ -29,11 +30,10 @@ import qualified System.Posix as Posix
 
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Log as Log
-import           Control.Biegunka.Script (Script, Annotate, profiles, runScript)
+import           Control.Biegunka.Script (Script, Annotate, namespaces, segmented, runScript)
 import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import           System.IO
-import           Text.PrettyPrint.ANSI.Leijen ((<//>), text, line)
 
 import qualified Git_biegunka as Git
 import           Paths_biegunka (version)
@@ -92,13 +92,13 @@ biegunka (($ def) -> c) interpreter script = do
   br <- views biegunkaRoot expandHome c
   bracket Log.start Log.stop $ \queue -> do
     Log.write queue $
-      Log.plain (text (info rr br c))
+      Log.plain (info rr br c)
     let (annotatedScript, annotations) = runScript def (set runRoot rr def) tokens script
         settings = c
           & runRoot      .~ rr
           & biegunkaRoot .~ br
           & logger       .~ queue
-          & targets      .~ views profiles Subset annotations
+          & targets      .~ Subset (setOf (namespaces.folded.from segmented) annotations)
     runInterpreter interpreter settings annotatedScript
  where
   info rr br settings = unlines $
@@ -129,7 +129,7 @@ getHome user = fmap Posix.homeDirectory (Posix.getUserEntryForName user)
 pause :: Interpreter
 pause = interpretOptimistically $ \settings _ -> do
   Log.write (view logger settings) $
-    Log.plain (text "Press any key to continue" <//> line)
+    Log.plain ("Press any key to continue\n")
   hSetBuffering stdin NoBuffering
   getChar
   hSetBuffering stdin LineBuffering
@@ -139,7 +139,7 @@ confirm :: Interpreter
 confirm = interpret go
  where
   go settings _ ks = do
-    k <- prompt (text "Proceed? [Y/n] ") -- choice of continuation is based on the user input
+    k <- prompt ("Proceed? [Y/n] ") -- choice of continuation is based on the user input
     k
    where
     prompt message = fix $ \loop -> do

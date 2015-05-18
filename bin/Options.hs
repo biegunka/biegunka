@@ -33,9 +33,9 @@ options = info (helper <*> opts) fullDesc
     command "run"  (info (RunScript <$> destination <*> otherArguments)
       (progDesc "Run biegunka script")) <>
     command "list"  (info listOptions
-      (progDesc "List biegunka profiles data")) <>
+      (progDesc "List biegunka namespace data")) <>
     command "generate"  (info genScriptOptions
-      (progDesc "Generate script for saved groups"))
+      (progDesc "Generate script for saved namespaces"))
    where
     listOptions = List
       <$> dataDir

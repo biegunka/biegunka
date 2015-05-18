@@ -33,14 +33,14 @@ import           System.Environment (getEnvironment)
 import qualified System.Posix as Posix
 import qualified System.Process as P
 
-import           Control.Biegunka.Action (copy, applyPatch, verifyAppliedPatch)
+import           Control.Biegunka.Action (copy)
 import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Settings
-  (Settings, Templates(..), templates, local, logger, colors, Mode(..), mode)
-import qualified Control.Biegunka.Groups as Groups
+  (Settings, Templates(..), templates, local, logger, Mode(..), mode)
+import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
-  (termDescription, runChanges, action, exception, removal, retryCounter)
+  (runChanges, action, exception, removal)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
@@ -54,16 +54,16 @@ import           Control.Biegunka.Script
 run :: Interpreter
 run = interpretOptimistically go where
   go settings s = do
-    let db' = Groups.fromScript s
-    bracket (Groups.open settings) Groups.close $ \db -> do
-      mapM_ (safely remove)          (Groups.diff Groups.files   (view Groups.these db) db')
-      mapM_ (safely removeDirectory) (Groups.diff Groups.sources (view Groups.these db) db')
+    let db' = Ns.fromScript s
+    bracket (Ns.open settings) Ns.close $ \db -> do
+      mapM_ (safely remove)          (Ns.diff Ns.files   (view Ns.these db) db')
+      mapM_ (safely removeDirectory) (Ns.diff Ns.sources (view Ns.these db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           bracket Watcher.new Watcher.wait $ \watcher -> do
             r <- initializeSTM watcher
             runTask (set local r settings) (task (views mode io settings) def) s
-      Groups.commit (db & Groups.these .~ db')
+      Ns.commit (db & Ns.these .~ db')
    where
     io Offline = runIOOffline
     io Online  = runIOOnline
@@ -91,13 +91,13 @@ run = interpretOptimistically go where
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = interpretOptimistically $ \settings s -> do
-  let db' = Groups.fromScript s
-  bracket (Groups.open settings) Groups.close $ \db -> do
+  let db' = Ns.fromScript s
+  bracket (Ns.open settings) Ns.close $ \db -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do
       r <- initializeSTM watcher
       runTask (set local r settings) (task runPure def) s
     Log.write (view logger settings) $
-      Log.plain (runChanges (view colors settings) db db')
+      Log.plain (runChanges db db')
 
 
 -- | Prepares environment to run task with given execution routine
@@ -119,7 +119,7 @@ runTask e f s = do
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: (forall a s. Term Annotate s a -> Executor (IO ()))
+  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO ()))
   -> Retry
   -> Free (Term Annotate 'Sources) ()
   -> Executor ()
@@ -130,7 +130,7 @@ task f = go
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
   go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) =
-    try (command f c) >>= \case
+    try (command (f retries) c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
         True  -> go (incr retries) (Free (Pure () <$ c))
         False -> case getReaction c of
@@ -141,29 +141,29 @@ task f = go
       Right _ -> do
         taskAction f def b
         doneWith asToken
-  go _ (Free c@(TM _ x)) = do
-    command f c
+  go retries (Free c@(TM _ x)) = do
+    command (f retries) c
     go def x
   go _ (Pure _) = return ()
 
 -- | Run single 'Actions' task
 taskAction
-  :: (forall a s. Term Annotate s a -> Executor (IO ()))
+  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO ()))
   -> Retry
   -> Free (Term Annotate 'Actions) ()
   -> Executor ()
 taskAction f = go
  where
   go retries a@(Free c@(TA _ _ x)) =
-    try (command f c) >>= \case
+    try (command (f retries) c) >>= \case
       Left e -> checkRetryCount retries (getRetries c) e >>= \case
         True  -> go (incr retries) a
         False -> case getReaction c of
           Abortive -> return ()
           Ignorant -> go def x
       Right _ -> go def x
-  go _ (Free c@(TM _ x)) = do
-    command f c
+  go retries (Free c@(TM _ x)) = do
+    command (f retries) c
     go def x
   go _ (Pure _) = return ()
 
@@ -174,17 +174,10 @@ taskAction f = go
 checkRetryCount :: Retry -> Retry -> SomeException -> Executor Bool
 checkRetryCount doneRetries maximumRetries exc = do
   log <- view logger
-  scm <- view colors
-  liftIO $ do
+  liftIO $
     Log.write log $
-      Log.exception (termDescription (exception scm exc))
-    if doneRetries < maximumRetries then do
-      Log.write log $
-        Log.exception (termDescription $
-          retryCounter scm (unRetry (incr doneRetries)) (unRetry maximumRetries))
-      return True
-    else
-      return False
+      Log.exception (exception exc)
+  return (doneRetries < maximumRetries)
 
 
 -- | Single command execution
@@ -238,12 +231,11 @@ userGroupID :: User -> IO Posix.GroupID
 userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
 userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
 
-runIOOnline :: Term Annotate s a -> Executor (IO ())
-runIOOnline term = do
+runIOOnline :: Retry -> Term Annotate s a -> Executor (IO ())
+runIOOnline retries term = do
   log <- view logger
-  scm <- view colors
   io  <- ioOnline term
-  let message = Log.write log (Log.plain (termDescription (action scm term)))
+  let message = Log.write log (Log.plain (action retries term))
   return (message *> io)
 
 ioOnline :: Term Annotate s a -> Executor (IO ())
@@ -297,11 +289,6 @@ ioOnline term = case term of
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
 
-  TA _ (Patch patch file spec) _ -> return $ do
-    verified <- verifyAppliedPatch patch file spec
-    unless verified $
-      applyPatch patch file spec
-
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do
@@ -309,12 +296,12 @@ ioOnline term = case term of
     tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-runIOOffline :: Term Annotate s a -> Executor (IO ())
-runIOOffline t@(TS {}) = runPure t
-runIOOffline t         = runIOOnline t
+runIOOffline :: Retry -> Term Annotate s a -> Executor (IO ())
+runIOOffline r t@(TS {}) = runPure r t
+runIOOffline r t         = runIOOnline r t
 
-runPure :: Applicative m => Term Annotate s a -> Executor (m ())
-runPure _ = pure (pure ())
+runPure :: Applicative m => Retry -> Term Annotate s a -> Executor (m ())
+runPure _ _ = pure (pure ())
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()

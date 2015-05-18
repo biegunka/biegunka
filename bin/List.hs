@@ -24,8 +24,8 @@ import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 import           System.FilePath.Lens
 
 import           Control.Biegunka.Biegunka (expandHome)
-import           Control.Biegunka.Groups
-  (GroupRecord(..), SourceRecord(..), FileRecord(..), these, groups, open, who)
+import           Control.Biegunka.Namespace
+  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open, who)
 import           Control.Biegunka.Settings
   (biegunkaRoot, Targets(..), targets)
 
@@ -33,9 +33,9 @@ import Options
 
 
 data Formatted a = Formatted
-  { profileFormat :: String       -> a
-  , sourceFormat  :: SourceRecord -> a
-  , fileFormat    :: FileRecord   -> a
+  { nsFormat     :: String       -> a
+  , sourceFormat :: SourceRecord -> a
+  , fileFormat   :: FileRecord   -> a
   }
 
 instance Functor Formatted where
@@ -43,10 +43,10 @@ instance Functor Formatted where
 
 
 list :: FilePath -> [String] -> Format -> IO ()
-list brpat profiles format = do
+list brpat ns format = do
   br <- expandHome brpat
 
-  let settings = def & set biegunkaRoot br & set targets (targeted profiles)
+  let settings = def & set biegunkaRoot br & set targets (targeted ns)
 
   case format of
     Format pattern -> case formattingText pattern of
@@ -54,7 +54,7 @@ list brpat profiles format = do
         badformat errorMessage pattern
       Right formatted -> do
         db <- open settings
-        T.putStr (execWriter (info formatted (view (these.groups) db)))
+        T.putStr (execWriter (info formatted (view (these.namespaces) db)))
         hFlush stdout
     JSON -> do
       db <- open settings
@@ -64,9 +64,9 @@ list brpat profiles format = do
   targeted xs = Children (S.fromList xs)
 
   info formatted db =
-    ifor_ db $ \profileName (GR profileData) -> do
-      tell $ profileFormat formatted profileName
-      ifor_ profileData $ \sourceRecord fileRecords -> do
+    ifor_ db $ \nsName (NR nsData) -> do
+      tell $ nsFormat formatted nsName
+      ifor_ nsData $ \sourceRecord fileRecords -> do
         tell $ sourceFormat formatted sourceRecord
         for_ fileRecords $ \fileRecord ->
           tell $ fileFormat formatted fileRecord
@@ -74,8 +74,8 @@ list brpat profiles format = do
   badformat message pattern = hPutStrLn stderr $
     "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
 
-getProfiles :: FilePath -> IO [String]
-getProfiles root = go root <&> sort . toListOf (folded.prefixed root)
+getNamespaces :: FilePath -> IO [String]
+getNamespaces root = go root <&> sort . toListOf (folded.prefixed root)
  where
   go subroot = do
     isDirectory <- D.doesDirectoryExist subroot
@@ -94,11 +94,11 @@ formatting :: String -> Either String (Formatted String)
 formatting xs = do
   (x, ys) <- breaking xs
   (y, z)  <- breaking ys
-  liftA3 Formatted (formatProfile x) (formatSource y) (formatFile z)
+  liftA3 Formatted (formatNamespace x) (formatSource y) (formatFile z)
  where
-  formatProfile = format $ \case
+  formatNamespace = format $ \case
     'p' -> Right id
-    c   -> Left ("%" ++ [c] ++ " is not a group info placeholder")
+    c   -> Left ("%" ++ [c] ++ " is not a namespace info placeholder")
 
   formatSource = format $ \case
     't' -> Right sourceType
