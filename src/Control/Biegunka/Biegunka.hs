@@ -11,8 +11,9 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
-import           Control.Exception (bracket)
+import           Control.Exception (bracket, catchJust)
 import           Control.Lens
+import           Control.Monad (guard)
 import           Control.Monad.Free (Free)
 import           Data.Bool (bool)
 import           Data.Char (toLower)
@@ -33,7 +34,8 @@ import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Script (Script, Annotate, namespaces, segmented, runScript)
 import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
-import           System.IO
+import qualified System.IO as IO
+import qualified System.IO.Error as IO
 
 import qualified Git_biegunka as Git
 import           Paths_biegunka (version)
@@ -130,17 +132,23 @@ pause :: Interpreter
 pause = interpretOptimistically $ \settings _ -> do
   Log.write (view logger settings) $
     Log.plain ("Press any key to continue\n")
-  hSetBuffering stdin NoBuffering
+  IO.hSetBuffering IO.stdin IO.NoBuffering
   getChar
-  hSetBuffering stdin LineBuffering
+  IO.hSetBuffering IO.stdin IO.LineBuffering
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
 confirm = interpret go
  where
-  go settings _ ks = do
-    k <- prompt ("Proceed? [Y/n] ") -- choice of continuation is based on the user input
-    k
+  go settings _ ks =
+    catchJust
+      (guard . IO.isEOFError)
+      (do k <- prompt ("Proceed? [Y/n] ")
+          k)
+      (\_ ->
+         do Log.write (view logger settings)
+                      (Log.plain "\n")
+            return ExitSuccess)
    where
     prompt message = fix $ \loop -> do
       Log.write (view logger settings) $
