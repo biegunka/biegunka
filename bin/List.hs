@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-module List where
+module List
+  ( list
+  ) where
 
 import           Control.Applicative (liftA3)
 import           Control.Lens hiding ((<.>))
@@ -11,17 +13,11 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import           Data.Char (toUpper)
 import           Data.Default.Class (def)
 import           Data.Foldable (for_)
-import           Data.List (sort)
-import           Data.List.Lens
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
-import           Data.Traversable (for)
-import qualified System.Directory as D
-import           System.FilePath ((</>))
 import           System.IO (hFlush, hPutStrLn, stderr, stdout)
-import           System.FilePath.Lens
 
 import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Namespace
@@ -29,7 +25,7 @@ import           Control.Biegunka.Namespace
 import           Control.Biegunka.Settings
   (biegunkaRoot, Targets(..), targets)
 
-import Options
+import           Options
 
 
 data Formatted a = Formatted
@@ -73,19 +69,6 @@ list brpat ns format = do
 
   badformat message pattern = hPutStrLn stderr $
     "Bad format pattern: \"" ++ pattern ++ "\" - " ++ message
-
-getNamespaces :: FilePath -> IO [String]
-getNamespaces root = go root <&> sort . toListOf (folded.prefixed root)
- where
-  go subroot = do
-    isDirectory <- D.doesDirectoryExist subroot
-    case isDirectory of
-      False -> return $ case view extension subroot of
-        ".profile" -> [set extension subroot ""]
-        _          -> []
-      True  -> do
-        contents <- D.getDirectoryContents subroot <&> filter (`notElem` [".", ".."])
-        fmap concat (for contents (\path -> go (subroot </> path)))
 
 formattingText :: String -> Either String (Formatted Text)
 formattingText = (fmap . fmap) T.pack . formatting
