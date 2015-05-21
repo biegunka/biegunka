@@ -75,8 +75,8 @@ runBiegunkaProcess args = do
     , std_out       = Inherit
     , std_err       = Inherit
     , close_fds     = True
-    , create_group  = True
-    , delegate_ctlc = False
+    , create_group  = False
+    , delegate_ctlc = True
     }
 
 logo :: Text
