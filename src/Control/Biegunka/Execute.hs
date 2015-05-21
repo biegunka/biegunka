@@ -123,8 +123,8 @@ runTask e f s = do
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO Bool))
-  -> Retry
+  :: (forall a s. Retries -> Term Annotate s a -> Executor (IO Bool))
+  -> Retries
   -> Free (Term Annotate 'Sources) ()
   -> Executor ()
 task f = go
@@ -153,8 +153,8 @@ task f = go
 
 -- | Run single 'Actions' task
 taskAction
-  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO Bool))
-  -> Retry
+  :: (forall a s. Retries -> Term Annotate s a -> Executor (IO Bool))
+  -> Retries
   -> Free (Term Annotate 'Actions) ()
   -> Executor ()
 taskAction f = go
@@ -226,7 +226,7 @@ userGroupID :: User -> IO Posix.GroupID
 userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
 userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
 
-runIOOnline :: Retry -> Term Annotate s a -> Executor (IO Bool)
+runIOOnline :: Retries -> Term Annotate s a -> Executor (IO Bool)
 runIOOnline retries term = do
   log <- view logger
   io  <- ioOnline term
@@ -238,7 +238,7 @@ runIOOnline retries term = do
       Left  e -> do logException log e; return False
 
 -- | Log an action.
-logAction :: Log.Logger -> Retry -> Term Annotate s a -> IO ()
+logAction :: Log.Logger -> Retries -> Term Annotate s a -> IO ()
 logAction log retries = Log.write log . Log.plain . action retries
 
 -- | Catch all synchronous exceptions.
@@ -311,11 +311,11 @@ ioOnline term = case term of
     tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-runIOOffline :: Retry -> Term Annotate s a -> Executor (IO Bool)
+runIOOffline :: Retries -> Term Annotate s a -> Executor (IO Bool)
 runIOOffline r t@(TS {}) = runPure r t
 runIOOffline r t         = runIOOnline r t
 
-runPure :: Applicative m => Retry -> Term Annotate s a -> Executor (m Bool)
+runPure :: Applicative m => a -> Term Annotate s b -> Executor (m Bool)
 runPure _ _ = pure (pure True)
 
 -- | Tell execution process that you're done with task

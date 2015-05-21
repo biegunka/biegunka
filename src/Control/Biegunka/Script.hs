@@ -24,7 +24,7 @@ module Control.Biegunka.Script
   , namespaces
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..), Retry(..), incr, into
+  , URI, User(..), React(..), Retries(..), incr, into
     -- * Namespace
   , Namespace
   , Segment
@@ -71,7 +71,7 @@ data instance Annotate 'Sources = AS
   { asToken      :: Token
   , asSegments   :: [Segment]
   , asUser       :: Maybe User
-  , asMaxRetries :: Retry
+  , asMaxRetries :: Retries
   , asReaction   :: React
   }
 data instance Annotate 'Actions = AA
@@ -80,7 +80,7 @@ data instance Annotate 'Actions = AA
   , aaSourceRoot :: FilePath
   , aaURI        :: URI
   , aaUser       :: Maybe User
-  , aaMaxRetries :: Retry
+  , aaMaxRetries :: Retries
   , aaReaction   :: React
   }
 
@@ -95,15 +95,15 @@ data React = Ignorant | Abortive
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 -- | Retries count
-newtype Retry = Retry { unRetry :: Int }
+newtype Retries = Retries { unRetries :: Int }
     deriving (Show, Read, Eq, Ord)
 
-instance Default Retry where
-  def = Retry 0
+instance Default Retries where
+  def = Retries 0
 
 -- | Increment retry count
-incr :: Retry -> Retry
-incr (Retry n) = Retry (succ n)
+incr :: Retries -> Retries
+incr (Retries n) = Retries (succ n)
 {-# INLINE incr #-}
 
 -- | Script annotations environment
@@ -113,7 +113,7 @@ data Annotations = Annotations
   , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
   , _sourceURL      :: URI        -- ^ Current source url
   , _activeUser     :: Maybe User -- ^ Maximum action order in current source
-  , _maxRetries     :: Retry      -- ^ Maximum retries count
+  , _maxRetries     :: Retries    -- ^ Maximum retries count
   , _sourceReaction :: React      -- ^ How to react on source failure
   , _actionReaction :: React      -- ^ How to react on action failure
   } deriving (Show)
@@ -125,7 +125,7 @@ instance Default Annotations where
     , __sourceRoot    = mempty
     , _sourceURL      = mempty
     , _activeUser     = Nothing
-    , _maxRetries     = Retry 1
+    , _maxRetries     = Retries 1
     , _sourceReaction = Abortive
     , _actionReaction = Ignorant
     }
@@ -186,7 +186,7 @@ activeUser :: Lens' Annotations (Maybe User)
 activeUser f x = f (_activeUser x) <&> \y -> x { _activeUser = y }
 
 -- | Maximum retries count
-maxRetries :: Lens' Annotations Retry
+maxRetries :: Lens' Annotations Retries
 maxRetries f x = f (_maxRetries x) <&> \y -> x { _maxRetries = y }
 
 -- | How to react on source failure

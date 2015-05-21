@@ -20,8 +20,8 @@ import Control.Biegunka.Language
 import Control.Biegunka.Script
 
 -- | Describe an action
-action :: Retry -> Term Annotate s a -> String
-action (Retry n) ta =
+action :: Retries -> Term Annotate s a -> String
+action (Retries n) ta =
   unlines [ prefixf ta
           , "  * " ++ doc
                    ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
