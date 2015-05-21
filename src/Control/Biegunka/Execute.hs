@@ -109,7 +109,8 @@ runTask
   -> m ()
 runTask e f s = do
   Watcher.register (view watch e)
-  liftIO $ forkFinally (runReaderT (f s) e) (\_ -> Watcher.unregister (view watch e))
+  liftIO (forkFinally (runReaderT (f s) e)
+                      (\_ -> Watcher.unregister (view watch e)))
   return ()
 
 
@@ -129,20 +130,22 @@ task f = go
     e <- ask
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
-  go retries (Free c@(TS (AS { asToken }) _ b (Pure _))) =
-    try (command (f retries) c) >>= \case
-      Left e -> checkRetryCount retries (getRetries c) e >>= \case
-        True  -> go (incr retries) (Free (Pure () <$ c))
-        False -> case getReaction c of
-          Abortive -> doneWith asToken
-          Ignorant -> do
-            taskAction f def b
-            doneWith asToken
+  go retries (Free c@(TS (AS { asToken, asMaxRetries }) _ b (Pure _))) =
+    try (executeIO (f retries) c) >>= \case
+      Left e -> do
+        logException e
+        if retries < asMaxRetries
+          then go (incr retries) (Free (Pure () <$ c))
+          else case getReaction c of
+            Abortive -> doneWith asToken
+            Ignorant -> do
+              taskAction f def b
+              doneWith asToken
       Right _ -> do
         taskAction f def b
         doneWith asToken
   go retries (Free c@(TM _ x)) = do
-    command (f retries) c
+    executeIO (f retries) c
     go def x
   go _ (Pure _) = return ()
 
@@ -154,42 +157,37 @@ taskAction
   -> Executor ()
 taskAction f = go
  where
-  go retries a@(Free c@(TA _ _ x)) =
-    try (command (f retries) c) >>= \case
-      Left e -> checkRetryCount retries (getRetries c) e >>= \case
-        True  -> go (incr retries) a
-        False -> case getReaction c of
-          Abortive -> return ()
-          Ignorant -> go def x
+  go retries a@(Free c@(TA (AA { aaMaxRetries }) _ x)) =
+    try (executeIO (f retries) c) >>= \case
+      Left e -> do
+        logException e
+        if retries < aaMaxRetries
+          then go (incr retries) a
+          else case getReaction c of
+            Abortive -> return ()
+            Ignorant -> go def x
       Right _ -> go def x
   go retries (Free c@(TM _ x)) = do
-    command (f retries) c
+    executeIO (f retries) c
     go def x
   go _ (Pure _) = return ()
 
-
--- | Get response from task failure processing
---
--- Possible responses: retry command execution or ignore failure or abort task
-checkRetryCount :: Retry -> Retry -> SomeException -> Executor Bool
-checkRetryCount doneRetries maximumRetries exc = do
+-- | Log an exception, thrown by an 'IO' action.
+logException :: SomeException -> Executor ()
+logException e = do
   log <- view logger
-  liftIO $
-    Log.write log $
-      Log.exception (exception exc)
-  return (doneRetries < maximumRetries)
+  liftIO (Log.write log (Log.exception (exception e)))
 
-
--- | Single command execution
-command :: (Term Annotate s a -> Executor (IO ())) -> Term Annotate s a -> Executor ()
-command _ (TM (Wait waits) _) = do
+-- | Execute a single command.
+executeIO :: (Term Annotate s a -> Executor (IO b)) -> Term Annotate s a -> Executor ()
+executeIO _ (TM (Wait waits) _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
-command getIO term = do
+executeIO getIO term = do
   users <- view user
   io    <- getIO term
   liftIO $ case getUser term of
-    Nothing  ->
+    Nothing ->
       io
     Just u -> do
       -- I really hope that stuff does not change
@@ -200,6 +198,7 @@ command getIO term = do
         Posix.setEffectiveGroupID gid
         Posix.setEffectiveUserID uid
         io
+  return ()
  where
   acquire users uid = atomically $ do
     -- So, first get current user/count
@@ -309,12 +308,6 @@ doneWith tok = do
   watcher <- view watch
   Watcher.done watcher tok
 
-
--- | Get retries maximum associated with term
-getRetries :: Term Annotate s a -> Retry
-getRetries (TS (AS { asMaxRetries }) _ _ _) = asMaxRetries
-getRetries (TA (AA { aaMaxRetries }) _ _) = aaMaxRetries
-getRetries (TM _ _) = def
 
 -- | Get user associated with term
 getUser :: Term Annotate s a -> Maybe User
