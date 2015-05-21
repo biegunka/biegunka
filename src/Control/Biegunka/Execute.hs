@@ -10,6 +10,7 @@ module Control.Biegunka.Execute
   ) where
 
 import           Control.Applicative
+import           Control.Exception (SomeAsyncException(SomeAsyncException))
 import           Control.Monad
 import           Prelude hiding (log, null)
 import           System.IO.Error (tryIOError)
@@ -20,7 +21,9 @@ import           Control.Concurrent.STM (atomically, retry)
 import           Control.Lens hiding (op)
 import           Control.Lens.Extras (is)
 import           Control.Monad.Catch
-  (SomeException, bracket, bracket_, onException, throwM, try)
+  ( SomeException
+  , fromException, bracket, bracket_, onException, throwM, try, tryJust
+  )
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (runReaderT, ask)
 import           Control.Monad.Trans (MonadIO, liftIO)
@@ -120,7 +123,7 @@ runTask e f s = do
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO ()))
+  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO Bool))
   -> Retry
   -> Free (Term Annotate 'Sources) ()
   -> Executor ()
@@ -131,9 +134,8 @@ task f = go
     runTask e (task f def) t
     go retries (Free (Pure () <$ c))
   go retries (Free c@(TS (AS { asToken, asMaxRetries }) _ b (Pure _))) =
-    try (executeIO (f retries) c) >>= \case
-      Left e -> do
-        logException e
+    executeIO (f retries) c >>= \case
+      False -> do
         if retries < asMaxRetries
           then go (incr retries) (Free (Pure () <$ c))
           else case getReaction c of
@@ -141,7 +143,7 @@ task f = go
             Ignorant -> do
               taskAction f def b
               doneWith asToken
-      Right _ -> do
+      True -> do
         taskAction f def b
         doneWith asToken
   go retries (Free c@(TM _ x)) = do
@@ -151,38 +153,33 @@ task f = go
 
 -- | Run single 'Actions' task
 taskAction
-  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO ()))
+  :: (forall a s. Retry -> Term Annotate s a -> Executor (IO Bool))
   -> Retry
   -> Free (Term Annotate 'Actions) ()
   -> Executor ()
 taskAction f = go
  where
   go retries a@(Free c@(TA (AA { aaMaxRetries }) _ x)) =
-    try (executeIO (f retries) c) >>= \case
-      Left e -> do
-        logException e
+    executeIO (f retries) c >>= \case
+      False ->
         if retries < aaMaxRetries
           then go (incr retries) a
           else case getReaction c of
             Abortive -> return ()
             Ignorant -> go def x
-      Right _ -> go def x
+      True -> go def x
   go retries (Free c@(TM _ x)) = do
     executeIO (f retries) c
     go def x
   go _ (Pure _) = return ()
 
--- | Log an exception, thrown by an 'IO' action.
-logException :: SomeException -> Executor ()
-logException e = do
-  log <- view logger
-  liftIO (Log.write log (Log.exception (exception e)))
-
 -- | Execute a single command.
-executeIO :: (Term Annotate s a -> Executor (IO b)) -> Term Annotate s a -> Executor ()
+executeIO
+  :: (Term Annotate s a -> Executor (IO Bool)) -> Term Annotate s a -> Executor Bool
 executeIO _ (TM (Wait waits) _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
+  return True
 executeIO getIO term = do
   users <- view user
   io    <- getIO term
@@ -198,7 +195,6 @@ executeIO getIO term = do
         Posix.setEffectiveGroupID gid
         Posix.setEffectiveUserID uid
         io
-  return ()
  where
   acquire users uid = atomically $ do
     -- So, first get current user/count
@@ -230,12 +226,32 @@ userGroupID :: User -> IO Posix.GroupID
 userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
 userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
 
-runIOOnline :: Retry -> Term Annotate s a -> Executor (IO ())
+runIOOnline :: Retry -> Term Annotate s a -> Executor (IO Bool)
 runIOOnline retries term = do
   log <- view logger
   io  <- ioOnline term
-  let message = Log.write log (Log.plain (action retries term))
-  return (message *> io)
+  return $ do
+    logAction log retries term
+    res <- trySynchronous io
+    case res of
+      Right _ -> return True
+      Left  e -> do logException log e; return False
+
+-- | Log an action.
+logAction :: Log.Logger -> Retry -> Term Annotate s a -> IO ()
+logAction log retries = Log.write log . Log.plain . action retries
+
+-- | Catch all synchronous exceptions.
+trySynchronous :: IO a -> IO (Either SomeException a)
+trySynchronous =
+  tryJust (\e ->
+    case fromException e of
+      Just (SomeAsyncException _) -> Nothing
+      _ -> Just e)
+
+-- | Log an exception, thrown by an 'IO' action.
+logException :: Log.Logger -> SomeException -> IO ()
+logException log = Log.write log . Log.exception . exception
 
 ioOnline :: Term Annotate s a -> Executor (IO ())
 ioOnline term = case term of
@@ -295,12 +311,12 @@ ioOnline term = case term of
     tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
     g src dst
 
-runIOOffline :: Retry -> Term Annotate s a -> Executor (IO ())
+runIOOffline :: Retry -> Term Annotate s a -> Executor (IO Bool)
 runIOOffline r t@(TS {}) = runPure r t
 runIOOffline r t         = runIOOnline r t
 
-runPure :: Applicative m => Retry -> Term Annotate s a -> Executor (m ())
-runPure _ _ = pure (pure ())
+runPure :: Applicative m => Retry -> Term Annotate s a -> Executor (m Bool)
+runPure _ _ = pure (pure True)
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()
