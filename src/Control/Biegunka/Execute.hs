@@ -10,19 +10,16 @@ module Control.Biegunka.Execute
   ) where
 
 import           Control.Applicative
-import           Control.Exception (SomeAsyncException(SomeAsyncException))
-import           Control.Monad
-import           Prelude hiding (log, null)
-import           System.IO.Error (tryIOError)
-
 import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
+import           Control.Exception (SomeAsyncException(SomeAsyncException))
 import           Control.Lens hiding (op)
 import           Control.Lens.Extras (is)
+import           Control.Monad
 import           Control.Monad.Catch
   ( SomeException
-  , fromException, bracket, bracket_, onException, throwM, try, tryJust
+  , fromException, bracket, bracket_, onException, throwM, tryJust
   )
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (runReaderT, ask)
@@ -30,9 +27,11 @@ import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Default.Class (Default(..))
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
+import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Environment (getEnvironment)
+import qualified System.IO.Error as IO
 import qualified System.Posix as Posix
 import qualified System.Process as P
 
@@ -89,7 +88,7 @@ run = interpretOptimistically go where
           D.removeDirectoryRecursive path
         False -> return ()
 
-    safely doThings = tryIOError . doThings
+    safely doThings = IO.tryIOError . doThings
 
 -- | Dry run interpreter
 dryRun :: Interpreter
@@ -274,7 +273,7 @@ ioOnline term = case term of
   TA _ (Link src dst) _ -> return $ overWriteWith Posix.createSymbolicLink src dst
 
   TA _ (Copy src dst spec) _ -> return $ do
-    try (D.removeDirectoryRecursive dst) :: IO (Either IOError ())
+    IO.tryIOError (D.removeDirectoryRecursive dst)
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
 
@@ -307,8 +306,8 @@ ioOnline term = case term of
   TM _ _ -> return $ return ()
  where
   overWriteWith g src dst = do
-    D.createDirectoryIfMissing True $ dropFileName dst
-    tryIOError (Posix.removeLink dst) -- needed because removeLink throws an unintended exception if file is absent
+    D.createDirectoryIfMissing True (dropFileName dst)
+    IO.tryIOError (Posix.removeLink dst) -- removeLink throws an exception if the file is missing
     g src dst
 
 runIOOffline :: Retries -> Term Annotate s a -> Executor (IO Bool)
