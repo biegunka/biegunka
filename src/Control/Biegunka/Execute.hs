@@ -31,6 +31,7 @@ import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Environment (getEnvironment)
+import qualified System.IO as IO
 import qualified System.IO.Error as IO
 import qualified System.Posix as Posix
 import qualified System.Process as P
@@ -289,7 +290,7 @@ ioOnline term = case term of
 
   TA ann (Command p spec) _ -> return $ do
     env <- getEnvironment
-    (_, _, Just errors, ph) <- P.createProcess
+    (_, Just out, Just err, ph) <- P.createProcess
       P.CreateProcess
         { P.cmdspec       = spec
         , P.cwd           = Just p
@@ -305,8 +306,9 @@ ioOnline term = case term of
         , P.delegate_ctlc = False
         }
     e <- P.waitForProcess ph
+    IO.hClose out
     e `onFailure` \status ->
-      T.hGetContents errors >>= throwM . ShellException spec status
+      T.hGetContents err >>= throwM . ShellException spec status
     return Nothing
 
   TM _ _ -> return $ return Nothing
