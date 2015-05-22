@@ -1,27 +1,28 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
 -- | Support for git repositories as 'Sources'
+{-# LANGUAGE TypeFamilies #-}
 module Control.Biegunka.Source.Git
   ( -- * Source layer
     git', git, git_
     -- * Types
-  , Git(..), defaultGit
-    -- ** Lenses
-  , actions, remotes, branch
-    -- ** Type synonyms
-    -- $synonyms
-  , Branch, Remote, URI
+  , Git
+    -- * Modifiers
+  , actions, remote, branch
+    -- * Type synonyms
+  , URI
   ) where
 
 import           Control.Exception (bracket)
-import           Control.Lens
-import           Control.Monad (forM_)
-import           Data.Default.Class (Default(..))
-import           Data.Foldable (for_)
-import qualified Data.Text as T
+import           Data.Bool (bool)
+import           Data.Monoid (Monoid(mempty, mappend))
+import qualified Data.Text as Text
 import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))
 import           System.Process (readProcessWithExitCode)
+import           Text.Printf (printf)
 
 import Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
 import Control.Biegunka.Language (Scope(..))
@@ -31,44 +32,36 @@ import Control.Biegunka.Source (Sourceable(..))
 
 -- | Git repository's settings
 data Git = Git
-  { gitactions :: Script 'Actions () -- ^ Actions to run after repository update
-  , _remotes   :: [Remote]          -- ^ Remotes to merge on update
-  , _branch    :: Branch            -- ^ Branch to track
+  { _actions :: Script 'Actions () -- ^ Actions to run after repository update
+  , _remote  :: String             -- ^ Remote to track.
+  , _branch  :: String             -- ^ Branch to track.
   }
 
-instance Default Git where
-  def = defaultGit
-
 instance Sourceable Git where
-  actions f x = f (gitactions x) <&> \as -> x { gitactions = as }
+  newtype Mod Git = Mod (Git -> Git)
+  actions y = Mod (\x -> x { _actions = y })
 
   (==>) = git'
+
+instance Monoid (Mod Git) where
+  mempty = Mod id
+  Mod f `mappend` Mod g = Mod (g . f)
 
 -- | Do nothing except pulling @origin/master@ into @master@
 defaultGit :: Git
 defaultGit = Git
-  { gitactions = return ()
-  , _remotes   = ["origin"]
-  , _branch    = "master"
+  { _actions = return ()
+  , _remote  = "origin"
+  , _branch  = "master"
   }
 
--- | Remotes to merge on update
-remotes :: Lens' Git [Remote]
-remotes f x = f (_remotes x) <&> \rs -> x { _remotes = rs }
+-- | Set git remote to track.
+remote :: String -> Mod Git
+remote y = Mod (\x -> x { _remote = y })
 
--- | Branch to track
-branch :: Lens' Git Branch
-branch f x = f (_branch x) <&> \b -> x { _branch = b }
-
-
--- $synonyms
--- Convenient self-described types to remind yourself where is which argument
-
--- | Branch name (like @master@ or @develop@)
-type Branch = String
-
--- | Remote name (like @origin@ or @upstream@)
-type Remote = String
+-- | Set git branch to track.
+branch :: String -> Mod Git
+branch y = Mod (\x -> x { _branch = y })
 
 
 -- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
@@ -90,38 +83,44 @@ type Remote = String
 --  4. Checkout to @develop@
 --
 --  5. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
-git' :: URI -> FilePath -> Git -> Script 'Sources ()
-git' url path (Git { gitactions, _remotes, _branch }) =
-  sourced "git" url path gitactions (updateGit url _remotes _branch)
-{-# INLINE git' #-}
+git' :: URI -> FilePath -> Mod Git -> Script 'Sources ()
+git' url path (Mod f) =
+  sourced "git" url path _actions (\p -> updateGit url p g)
+ where
+  g@Git { _actions } = f defaultGit
 
 -- | Wrapper over 'git'' that provides easy specification of 'actions' field
 git :: URI -> FilePath -> Script 'Actions () -> Script 'Sources ()
-git u p s = git' u p def { gitactions = s }
-{-# INLINE git #-}
+git u p s = git' u p (actions s)
 
 -- | Wrapper over 'git' that does not provide anything
 git_ :: URI -> FilePath -> Script 'Sources ()
-git_ u p = git u p (return ())
-{-# INLINE git_ #-}
+git_ u p = git' u p mempty
 
-
-updateGit :: URI -> [Remote] -> Branch -> FilePath -> IO ()
-updateGit u rs br p = do
-  exists <- doesDirectoryExist p
-  if exists
-    then do
-      readGitProcess ["remote", "update"] (Just p)
-      forM_ rs $ \r ->
-        readGitProcess ["merge", r </> br, br] (Just p)
-    else
-      readGitProcess ["clone", u, p] Nothing
-  readGitProcess ["checkout", br] (Just p)
+updateGit :: URI -> FilePath -> Git -> IO (Maybe String)
+updateGit u p Git { _remote, _branch } =
+  doesDirectoryExist p >>= \case
+    True -> do
+      let rbr = _remote </> _branch
+      before <- gitHash
+      -- Typical git: <https://stackoverflow.com/questions/11347712/git-fetch-only-for-current-branch>
+      _ <- askGit p ["fetch", _remote, _branch] -- TODO: track upstream
+      _ <- askGit p ["checkout", "-B", _branch, "--track", rbr] -- TODO: track upstream
+      _ <- askGit p ["merge", rbr, _branch] -- TODO: rebase
+      after <- gitHash
+      return (bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after))
+    False -> do
+      _ <- askGit "/" ["clone", u, p, "-b", _branch]
+      after <- gitHash
+      return (Just (printf "checked ‘%s’ out" after))
  where
-  readGitProcess args workingDirectory = bracket
+  gitHash = fmap (Text.unpack . Text.stripEnd) (askGit p ["rev-parse", "--short", "HEAD"])
+
+  askGit workingDirectory args = bracket
     getCurrentDirectory
     setCurrentDirectory $ \_ -> do
-      for_ workingDirectory setCurrentDirectory
-      (exitcode, _, errors) <- readProcessWithExitCode "git" args []
+      setCurrentDirectory workingDirectory
+      (exitcode, out, err) <- readProcessWithExitCode "git" args []
       exitcode `onFailure`
-        \_ -> sourceFailure u p (T.pack errors)
+        \_ -> sourceFailure u p (Text.pack err)
+      return (Text.pack out)

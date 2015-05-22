@@ -1,11 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Very simple 'Source' using some existing directory
 module Control.Biegunka.Source.Directory (directory) where
 
 import Control.Monad (unless)
-
-import qualified Data.Text as T
-import           System.Directory (doesDirectoryExist)
+import System.Directory (doesDirectoryExist)
 
 import Control.Biegunka.Execute.Exception (sourceFailure)
 import Control.Biegunka.Language
@@ -23,4 +22,5 @@ directory relpath inner =
   update abspath = do
     exists <- doesDirectoryExist abspath
     unless exists $
-      sourceFailure abspath abspath (T.pack "No directory found!")
+      sourceFailure abspath abspath "No directory found!"
+    return Nothing

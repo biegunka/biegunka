@@ -230,15 +230,14 @@ runIOOnline retries term = do
   log <- view logger
   io  <- ioOnline term
   return $ do
-    logAction log retries term
     res <- trySynchronous io
     case res of
-      Right _ -> return True
-      Left  e -> do logException log e; return False
+      Right out -> do logAction log retries out term; return True
+      Left  e   -> do logException log e; return False
 
 -- | Log an action.
-logAction :: Log.Logger -> Retries -> Term Annotate s a -> IO ()
-logAction log retries = Log.write log . Log.plain . action retries
+logAction :: Log.Logger -> Retries -> Maybe String -> Term Annotate s a -> IO ()
+logAction log retries out = Log.write log . Log.plain . action retries out
 
 -- | Catch all synchronous exceptions.
 trySynchronous :: IO a -> IO (Either SomeException a)
@@ -252,7 +251,7 @@ trySynchronous =
 logException :: Log.Logger -> SomeException -> IO ()
 logException log = Log.write log . Log.exception . exception
 
-ioOnline :: Term Annotate s a -> Executor (IO ())
+ioOnline :: Term Annotate s a -> Executor (IO (Maybe String))
 ioOnline term = case term of
   TS _ (Source _ _ dst update) _ _ -> do
     rstv <- view repos
@@ -264,23 +263,29 @@ ioOnline term = case term of
           else do
             writeTVar rstv $ S.insert dst rs
             return False
-      unless updated $ do
-        D.createDirectoryIfMissing True $ dropFileName dst
-        update dst
+      if updated
+        then return Nothing
+        else do
+          D.createDirectoryIfMissing True $ dropFileName dst
+          update dst
      `onException`
       atomically (modifyTVar rstv (S.delete dst))
 
-  TA _ (Link src dst) _ -> return $ overWriteWith Posix.createSymbolicLink src dst
+  TA _ (Link src dst) _ -> return $ do
+    overWriteWith Posix.createSymbolicLink src dst
+    return Nothing
 
   TA _ (Copy src dst spec) _ -> return $ do
     IO.tryIOError (D.removeDirectoryRecursive dst)
     D.createDirectoryIfMissing True $ dropFileName dst
     copy src dst spec
+    return Nothing
 
   TA _ (Template src dst substitute) _ -> do
     Templates ts <- view templates
-    return $
+    return $ do
       overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
+      return Nothing
 
   TA ann (Command p spec) _ -> return $ do
     env <- getEnvironment
@@ -302,8 +307,9 @@ ioOnline term = case term of
     e <- P.waitForProcess ph
     e `onFailure` \status ->
       T.hGetContents errors >>= throwM . ShellException spec status
+    return Nothing
 
-  TM _ _ -> return $ return ()
+  TM _ _ -> return $ return Nothing
  where
   overWriteWith g src dst = do
     D.createDirectoryIfMissing True (dropFileName dst)

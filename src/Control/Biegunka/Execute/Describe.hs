@@ -20,12 +20,21 @@ import Control.Biegunka.Language
 import Control.Biegunka.Script
 
 -- | Describe an action
-action :: Retries -> Term Annotate s a -> String
-action (Retries n) ta =
-  unlines [ prefixf ta
-          , "  * " ++ doc
-                   ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
-          ]
+action :: Retries -> Maybe String -> Term Annotate s a -> String
+action (Retries n) mout ta =
+  case mout of
+    Nothing -> unlines
+      [ prefixf ta
+      , "  * " ++ doc
+               ++ " (up-to-date)"
+               ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
+      ]
+    Just out -> unlines
+      [ prefixf ta
+      , "  * " ++ doc
+               ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
+               ++ printf "\n    %s- %s%s" green out reset
+      ]
  where
   prefixf :: Term Annotate s a -> String
   prefixf (TS (AS { asSegments }) (Source _ url _ _) _ _) =

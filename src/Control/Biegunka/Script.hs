@@ -275,7 +275,7 @@ annotateActions i =
 -- | Abstract away all plumbing needed to make source
 sourced
   :: String -> URI -> FilePath
-  -> Script 'Actions () -> (FilePath -> IO ()) -> Script 'Sources ()
+  -> Script 'Actions () -> (FilePath -> IO (Maybe String)) -> Script 'Sources ()
 sourced ty url path inner update = Script $ do
   rr <- view runRoot
   local (set sourceRoot (constructTargetFilePath rr url path) . set sourceURL url) $ do
