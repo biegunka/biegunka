@@ -289,7 +289,7 @@ ioOnline term = case term of
       return Nothing
 
   TA ann (Command p spec) _ -> return $ do
-    env <- getEnvironment
+    defenv <- getEnvironment
     (_, Just out, Just err, ph) <- P.createProcess
       P.CreateProcess
         { P.cmdspec       = spec
@@ -297,7 +297,12 @@ ioOnline term = case term of
         , P.env =
             Just ( ("RUN_ROOT",    view runRoot    ann)
                  : ("SOURCE_ROOT", view sourceRoot ann)
-                 : env)
+                 : defenv `except`
+                     [ "CABAL_SANDBOX_CONFIG"
+                     , "CABAL_SANDBOX_PACKAGE_PATH"
+                     , "GHC_PACKAGE_PATH"
+                     , "RUN_ROOT"
+                     , "SOURCE_ROOT"])
         , P.std_in        = P.Inherit
         , P.std_out       = P.CreatePipe
         , P.std_err       = P.CreatePipe
@@ -310,6 +315,8 @@ ioOnline term = case term of
     e `onFailure` \status ->
       T.hGetContents err >>= throwM . ShellException spec status
     return Nothing
+   where
+    xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
   TM _ _ -> return $ return Nothing
  where
