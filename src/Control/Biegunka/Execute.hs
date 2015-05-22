@@ -35,6 +35,7 @@ import qualified System.IO as IO
 import qualified System.IO.Error as IO
 import qualified System.Posix as Posix
 import qualified System.Process as P
+import           Text.Printf (printf)
 
 import           Control.Biegunka.Action (copy)
 import qualified Control.Biegunka.Log as Log
@@ -273,8 +274,13 @@ ioOnline term = case term of
       atomically (modifyTVar rstv (S.delete dst))
 
   TA _ (Link src dst) _ -> return $ do
+    esrc <- IO.tryIOError (Posix.readSymbolicLink dst)
     overWriteWith Posix.createSymbolicLink src dst
-    return Nothing
+    return $ case esrc of
+      Left _ -> Just (printf "linked to ‘%s’" src)
+      Right src'
+        | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
+        | otherwise   -> Nothing
 
   TA _ (Copy src dst spec) _ -> return $ do
     IO.tryIOError (D.removeDirectoryRecursive dst)
