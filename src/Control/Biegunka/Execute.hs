@@ -69,8 +69,8 @@ run = interpretOptimistically go where
             runTask (set local r settings) (task (views mode io settings) def) s
       Ns.commit (db & Ns.these .~ db')
    where
-    io Offline = runIOOffline
-    io Online  = runIOOnline
+    io Offline = runAction
+    io Online  = runAll
 
     remove path = do
       file <- D.doesFileExist path
@@ -118,15 +118,15 @@ runTask e f s = do
   return ()
 
 
--- | Run single 'Sources' task
+-- | Run a single task
 --
 -- "Forks" on 'TS'.
 -- Note: current thread continues to execute what's inside the
 -- task, but all the other stuff is queued for execution in scheduler
 task
-  :: (forall a s. Retries -> Term Annotate s a -> Executor (IO Bool))
+  :: (forall a t. Retries -> Term Annotate t a -> Executor (IO Bool))
   -> Retries
-  -> Free (Term Annotate 'Sources) ()
+  -> Free (Term Annotate s) ()
   -> Executor ()
 task f = go
  where
@@ -142,24 +142,11 @@ task f = go
           else case getReaction c of
             Abortive -> doneWith asToken
             Ignorant -> do
-              taskAction f def b
+              task f def b
               doneWith asToken
       True -> do
-        taskAction f def b
+        task f def b
         doneWith asToken
-  go retries (Free c@(TM _ x)) = do
-    executeIO (f retries) c
-    go def x
-  go _ (Pure _) = return ()
-
--- | Run single 'Actions' task
-taskAction
-  :: (forall a s. Retries -> Term Annotate s a -> Executor (IO Bool))
-  -> Retries
-  -> Free (Term Annotate 'Actions) ()
-  -> Executor ()
-taskAction f = go
- where
   go retries a@(Free c@(TA (AA { aaMaxRetries }) _ x)) =
     executeIO (f retries) c >>= \case
       False ->
@@ -219,16 +206,8 @@ executeIO getIO term = do
     -- If counter approaches zero, then current user left
     modifyTVar users (at uid . non 0 -~ 1)
 
-userID :: User -> IO Posix.UserID
-userID (UserID i)   = return i
-userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
-
-userGroupID :: User -> IO Posix.GroupID
-userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
-userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
-
-runIOOnline :: Retries -> Term Annotate s a -> Executor (IO Bool)
-runIOOnline retries term = do
+runAll :: Retries -> Term Annotate s a -> Executor (IO Bool)
+runAll retries term = do
   log <- view logger
   io  <- ioOnline term
   return $ do
@@ -277,13 +256,13 @@ ioOnline term = case term of
       atomically (modifyTVar rstv (S.delete dst))
 
   TA _ (Link src dst) _ -> return $ do
-    esrc <- IO.tryIOError (Posix.readSymbolicLink dst)
-    overWriteWith Posix.createSymbolicLink src dst
-    return $ case esrc of
+    msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
       Left _ -> Just (printf "linked to ‘%s’" src)
       Right src'
         | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
         | otherwise   -> Nothing
+    overWriteWith Posix.createSymbolicLink src dst
+    return msg
 
   TA _ (Copy src dst spec) _ -> return $ do
     IO.tryIOError (D.removeDirectoryRecursive dst)
@@ -334,9 +313,9 @@ ioOnline term = case term of
     IO.tryIOError (Posix.removeLink dst) -- removeLink throws an exception if the file is missing
     g src dst
 
-runIOOffline :: Retries -> Term Annotate s a -> Executor (IO Bool)
-runIOOffline r t@(TS {}) = runPure r t
-runIOOffline r t         = runIOOnline r t
+runAction :: Retries -> Term Annotate s a -> Executor (IO Bool)
+runAction r t@(TS {}) = runPure r t
+runAction r t         = runAll r t
 
 runPure :: Applicative m => a -> Term Annotate s b -> Executor (m Bool)
 runPure _ _ = pure (pure True)
@@ -359,3 +338,11 @@ getReaction :: Term Annotate s a -> React
 getReaction (TS (AS { asReaction }) _ _ _) = asReaction
 getReaction (TA (AA { aaReaction }) _ _) = aaReaction
 getReaction (TM _ _) = Ignorant
+
+userID :: User -> IO Posix.UserID
+userID (UserID i)   = return i
+userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
+
+userGroupID :: User -> IO Posix.GroupID
+userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
+userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
