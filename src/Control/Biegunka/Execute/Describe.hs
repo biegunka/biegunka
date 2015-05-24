@@ -5,7 +5,7 @@ module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
     runChanges
     -- * Specific description formatting
-  , action, exception, removal
+  , describeTerm, removal
   ) where
 
 import Control.Exception (SomeException)
@@ -19,17 +19,27 @@ import Control.Biegunka.Namespace (Partitioned, Namespaces, these, files, source
 import Control.Biegunka.Language
 import Control.Biegunka.Script
 
--- | Describe an action
-action :: Retries -> Maybe String -> Term Annotate s a -> String
-action (Retries n) mout ta =
+-- | Describe an action and its outcome.
+describeTerm
+  :: Retries
+  -> Either SomeException (Maybe String)
+  -> Term Annotate s a
+  -> String
+describeTerm (Retries n) mout ta =
   case mout of
-    Nothing -> unlines
+    Left e -> unlines
+      ( prefixf ta
+      : ("  * " ++ doc
+                ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
+                ++ printf " [%sexception%s]" red reset)
+      : map ("  " ++) (lines (show e)))
+    Right Nothing -> unlines
       [ prefixf ta
       , "  * " ++ doc
                ++ " (up-to-date)"
                ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
       ]
-    Just out -> unlines
+    Right (Just out) -> unlines
       [ prefixf ta
       , "  * " ++ doc
                ++ if n > 0 then printf " [%sretry %d%s]" yellow n reset else ""
@@ -59,12 +69,6 @@ action (Retries n) mout ta =
         Command p (RawCommand c as) ->
           printf "execute[%s] (from [%s])" (unwords (c : as)) p
     _ -> ""
-
--- | Describe handled exception
-exception :: SomeException -> String
-exception e =
-  unlines ( printf "[%sexception%s]:" red reset
-          : map ("  " ++) (lines (show e)))
 
 -- | Describe file or directory removal
 removal :: FilePath -> String

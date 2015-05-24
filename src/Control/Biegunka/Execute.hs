@@ -44,7 +44,7 @@ import           Control.Biegunka.Settings
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
-  (runChanges, action, exception, removal)
+  (runChanges, describeTerm, removal)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
@@ -233,13 +233,20 @@ runIOOnline retries term = do
   io  <- ioOnline term
   return $ do
     res <- trySynchronous io
-    case res of
-      Right out -> do logAction log retries out term; return True
-      Left  e   -> do logException log e; return False
+    logTerm log retries res term
+    return (either (\_ -> False) (\_ -> True) res)
 
--- | Log an action.
-logAction :: Log.Logger -> Retries -> Maybe String -> Term Annotate s a -> IO ()
-logAction log retries out = Log.write log . Log.plain . action retries out
+-- | Log an action and its outcome.
+logTerm
+  :: Log.Logger
+  -> Retries
+  -> Either SomeException (Maybe String)
+  -> Term Annotate s a
+  -> IO ()
+logTerm log retries out =
+  Log.write log . stream . describeTerm retries out
+ where
+  stream = either (\_ -> Log.exception) (\_ -> Log.plain) out
 
 -- | Catch all synchronous exceptions.
 trySynchronous :: IO a -> IO (Either SomeException a)
@@ -248,10 +255,6 @@ trySynchronous =
     case fromException e of
       Just (SomeAsyncException _) -> Nothing
       _ -> Just e)
-
--- | Log an exception, thrown by an 'IO' action.
-logException :: Log.Logger -> SomeException -> IO ()
-logException log = Log.write log . Log.exception . exception
 
 ioOnline :: Term Annotate s a -> Executor (IO (Maybe String))
 ioOnline term = case term of
