@@ -10,7 +10,6 @@ module Control.Biegunka.Execute
   ) where
 
 import           Control.Applicative
-import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
 import           Control.Exception (SomeAsyncException(SomeAsyncException))
@@ -22,9 +21,9 @@ import           Control.Monad.Catch
   , fromException, bracket, bracket_, onException, throwM, tryJust
   )
 import           Control.Monad.Free (Free(..))
-import           Control.Monad.Reader (runReaderT, ask)
-import           Control.Monad.Trans (MonadIO, liftIO)
+import           Control.Monad.Trans (liftIO)
 import           Data.Default.Class (Default(..))
+import           Data.Function (fix)
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import           Prelude hiding (log, null)
@@ -40,7 +39,7 @@ import           Text.Printf (printf)
 import           Control.Biegunka.Action (copy)
 import qualified Control.Biegunka.Log as Log
 import           Control.Biegunka.Settings
-  (Settings, Templates(..), templates, local, logger, Mode(..), mode)
+  (Templates(..), templates, local, Mode(..), logger, mode)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
@@ -66,7 +65,7 @@ run = interpretOptimistically go where
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           bracket Watcher.new Watcher.wait $ \watcher -> do
             r <- initializeSTM watcher
-            runTask (set local r settings) (task (views mode io settings) def) s
+            runExecutor (set local r settings) (forkExecutor (task (views mode io settings) s))
       Ns.commit (db & Ns.these .~ db')
    where
     io Offline = runAction
@@ -99,67 +98,51 @@ dryRun = interpretOptimistically $ \settings s -> do
   bracket (Ns.open settings) Ns.close $ \db -> do
     bracket Watcher.new Watcher.wait $ \watcher -> do
       r <- initializeSTM watcher
-      runTask (set local r settings) (task runPure def) s
+      runExecutor (set local r settings) (forkExecutor (task runPure s))
     Log.write (view logger settings) $
       Log.plain (runChanges db db')
 
 
--- | Prepares environment to run task with given execution routine
-runTask
-  :: forall s m. MonadIO m
-  => Settings Execution
-  -> (Free (Term Annotate s) () -> Executor ())
-  -> Free (Term Annotate s) () -- ^ Task contents
-  -> m ()
-runTask e f s = do
-  Watcher.register (view watch e)
-  liftIO (forkFinally (runReaderT (f s) e)
-                      (\_ -> Watcher.unregister (view watch e)))
-  return ()
-
-
 -- | Run a single task
 --
--- "Forks" on 'TS'.
--- Note: current thread continues to execute what's inside the
--- task, but all the other stuff is queued for execution in scheduler
+-- Sources are executed concurrently, while Actions are executed sequentially.
+-- Every action may retry the specified amount of times, and retries do not accumulate
+-- across actions.
 task
   :: (forall a t. Retries -> Term Annotate t a -> Executor (IO Bool))
-  -> Retries
   -> Free (Term Annotate s) ()
   -> Executor ()
 task f = go
  where
-  go retries (Free c@(TS _ _ _ t@(Free _))) = do
-    e <- ask
-    runTask e (task f def) t
-    go retries (Free (Pure () <$ c))
-  go retries (Free c@(TS (AS { asToken, asMaxRetries }) _ b (Pure _))) =
-    executeIO (f retries) c >>= \case
-      False -> do
-        if retries < asMaxRetries
-          then go (incr retries) (Free (Pure () <$ c))
-          else case getReaction c of
-            Abortive -> doneWith asToken
-            Ignorant -> do
-              task f def b
-              doneWith asToken
-      True -> do
-        task f def b
-        doneWith asToken
-  go retries a@(Free c@(TA (AA { aaMaxRetries }) _ x)) =
-    executeIO (f retries) c >>= \case
-      False ->
-        if retries < aaMaxRetries
-          then go (incr retries) a
-          else case getReaction c of
-            Abortive -> return ()
-            Ignorant -> go def x
-      True -> go def x
-  go retries (Free c@(TM _ x)) = do
-    executeIO (f retries) c
-    go def x
-  go _ (Pure _) = return ()
+  go (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
+    forkExecutor (task f t)
+    flip fix def $ \loop rs ->
+      executeIO (f rs) c >>= \case
+        False ->
+          if rs < asMaxRetries
+            then loop (incr rs)
+            else case asReaction of
+              Abortive -> doneWith asToken
+              Ignorant -> do
+                task f b
+                doneWith asToken
+        True -> do
+          task f b
+          doneWith asToken
+  go (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
+    flip fix def $ \loop rs ->
+      executeIO (f rs) c >>= \case
+        False ->
+          if rs < aaMaxRetries
+            then loop (incr rs)
+            else case aaReaction of
+              Abortive -> return ()
+              Ignorant -> go x
+        True -> go x
+  go (Free c@(TM _ x)) = do
+    executeIO (f def) c
+    go x
+  go (Pure _) = return ()
 
 -- | Execute a single command.
 executeIO
@@ -332,12 +315,6 @@ getUser :: Term Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
 getUser (TM _ _) = Nothing
-
--- | Get reaction associated with term
-getReaction :: Term Annotate s a -> React
-getReaction (TS (AS { asReaction }) _ _ _) = asReaction
-getReaction (TA (AA { aaReaction }) _ _) = aaReaction
-getReaction (TM _ _) = Ignorant
 
 userID :: User -> IO Posix.UserID
 userID (UserID i)   = return i
