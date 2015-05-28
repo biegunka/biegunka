@@ -10,8 +10,8 @@ module Control.Biegunka.Execute
   ) where
 
 import           Control.Applicative
-import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Concurrent.STM (atomically, retry)
+import           Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
 import           Control.Exception (SomeAsyncException(SomeAsyncException))
 import           Control.Lens hiding (op)
 import           Control.Lens.Extras (is)
@@ -21,6 +21,7 @@ import           Control.Monad.Catch
   , fromException, bracket, bracket_, onException, throwM, tryJust
   )
 import           Control.Monad.Free (Free(..))
+import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
@@ -37,13 +38,13 @@ import qualified System.Process as P
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Action (copy)
-import qualified Control.Biegunka.Log as Log
+import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Settings
-  (Templates(..), templates, local, Mode(..), logger, mode)
+  (Templates(..), templates, local, Mode(..), mode)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
-  (runChanges, describeTerm, removal)
+  (runChanges, describeTerm, sourceIdentifier, removal)
 import           Control.Biegunka.Execute.Exception
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
@@ -63,9 +64,8 @@ run = interpretOptimistically go where
       mapM_ (safely removeDirectory) (Ns.diff Ns.sources (view Ns.these db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
-          bracket Watcher.new Watcher.wait $ \watcher -> do
-            r <- initializeSTM watcher
-            runExecutor (set local r settings) (forkExecutor (task (views mode io settings) s))
+          withExecution $ \e ->
+            runExecutor (set local e settings) (forkExecutor (task (views mode io settings) s))
       Ns.commit (db & Ns.these .~ db')
    where
     io Offline = runAction
@@ -75,8 +75,7 @@ run = interpretOptimistically go where
       file <- D.doesFileExist path
       case file of
         True  -> do
-          Log.write (view logger settings) $
-            Log.plain (removal path)
+          Logger.write IO.stdout settings (removal path)
           D.removeFile path
         False -> D.removeDirectoryRecursive path
 
@@ -84,8 +83,7 @@ run = interpretOptimistically go where
       directory <- D.doesDirectoryExist path
       case directory of
         True  -> do
-          Log.write (view logger settings) $
-            Log.plain (removal path)
+          Logger.write IO.stdout settings (removal path)
           D.removeDirectoryRecursive path
         False -> return ()
 
@@ -93,14 +91,11 @@ run = interpretOptimistically go where
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpretOptimistically $ \settings s -> do
-  let db' = Ns.fromScript s
+dryRun = interpretOptimistically $ \settings s ->
   bracket (Ns.open settings) Ns.close $ \db -> do
-    bracket Watcher.new Watcher.wait $ \watcher -> do
-      r <- initializeSTM watcher
-      runExecutor (set local r settings) (forkExecutor (task runPure s))
-    Log.write (view logger settings) $
-      Log.plain (runChanges db db')
+    withExecution $ \e ->
+      runExecutor (set local e settings) (forkExecutor (task runPure s))
+    Logger.write IO.stdout settings (runChanges db (Ns.fromScript s))
 
 
 -- | Run a single task
@@ -190,25 +185,20 @@ executeIO getIO term = do
     modifyTVar users (at uid . non 0 -~ 1)
 
 runAll :: Retries -> Term Annotate s a -> Executor (IO Bool)
-runAll retries term = do
-  log <- view logger
-  io  <- ioOnline term
+runAll retries t = do
+  e  <- ask
+  io <- ioOnline t
   return $ do
     res <- trySynchronous io
-    logTerm log retries res term
-    return (either (\_ -> False) (\_ -> True) res)
-
--- | Log an action and its outcome.
-logTerm
-  :: Log.Logger
-  -> Retries
-  -> Either SomeException (Maybe String)
-  -> Term Annotate s a
-  -> IO ()
-logTerm log retries out =
-  Log.write log . stream . describeTerm retries out
- where
-  stream = either (\_ -> Log.exception) (\_ -> Log.plain) out
+    case sourceIdentifier t of
+      Nothing -> return True
+      Just i  -> atomically $ do
+        ms <- readTVar (view source e)
+        Logger.writeSTM (either (\_ -> IO.stderr) (\_ -> IO.stdout) res)
+                        e
+                        (describeTerm retries res (maybe True (/= i) ms) t)
+        writeTVar (view source e) (Just i)
+        return (either (\_ -> False) (\_ -> True) res)
 
 -- | Catch all synchronous exceptions.
 trySynchronous :: IO a -> IO (Either SomeException a)
@@ -284,7 +274,7 @@ ioOnline term = case term of
     e <- P.waitForProcess ph
     IO.hClose out
     e `onFailure` \status ->
-      T.hGetContents err >>= throwM . ShellException spec status
+      T.hGetContents err >>= throwM . ShellException status
     return Nothing
    where
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs

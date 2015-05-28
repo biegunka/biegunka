@@ -122,5 +122,5 @@ updateGit u p Git { _remote, _branch } =
       setCurrentDirectory workingDirectory
       (exitcode, out, err) <- readProcessWithExitCode "git" args []
       exitcode `onFailure`
-        \_ -> sourceFailure u p (Text.pack err)
+        \_ -> sourceFailure (Text.pack err)
       return (Text.pack out)

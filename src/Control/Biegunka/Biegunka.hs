@@ -11,7 +11,7 @@ module Control.Biegunka.Biegunka
   , expandHome
   ) where
 
-import           Control.Exception (bracket, catchJust)
+import           Control.Exception (catchJust)
 import           Control.Lens
 import           Control.Monad (guard)
 import           Control.Monad.Free (Free)
@@ -19,6 +19,7 @@ import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
+import qualified Data.List as List
 #if __GLASGOW_HASKELL__ < 710
 import           Data.Monoid (Monoid(..))
 #endif
@@ -30,7 +31,7 @@ import           System.FilePath ((</>))
 import qualified System.Posix as Posix
 
 import           Control.Biegunka.Language
-import qualified Control.Biegunka.Log as Log
+import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script (Script, Annotate, namespaces, segmented, runScript)
 import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
@@ -92,18 +93,17 @@ biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
 biegunka (($ def) -> c) interpreter script = do
   rr <- views runRoot expandHome c
   br <- views biegunkaRoot expandHome c
-  bracket Log.start Log.stop $ \queue -> do
-    Log.write queue $
-      Log.plain (info rr br c)
+  Logger.with $ \l -> do
+    Logger.write IO.stdout l (info rr br c)
     let (annotatedScript, annotations) = runScript def (set runRoot rr def) tokens script
         settings = c
           & runRoot      .~ rr
           & biegunkaRoot .~ br
-          & logger       .~ queue
+          & _logger      ?~ l
           & targets      .~ Subset (setOf (namespaces.folded.from segmented) annotations)
     runInterpreter interpreter settings annotatedScript
  where
-  info rr br settings = unlines $
+  info rr br settings = List.intercalate "\n" $
     [ "* Library version: " ++ showVersion version ++ "-" ++ Git.hash
     , "* Relative filepaths are deemed relative to " ++ rr
     , "* Data will be saved in "                     ++ br
@@ -130,8 +130,7 @@ getHome user = fmap Posix.homeDirectory (Posix.getUserEntryForName user)
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
 pause = interpretOptimistically $ \settings _ -> do
-  Log.write (view logger settings) $
-    Log.plain ("Press any key to continue\n")
+  Logger.write IO.stdout settings "Press any key to continue\n"
   IO.hSetBuffering IO.stdin IO.NoBuffering
   getChar
   IO.hSetBuffering IO.stdin IO.LineBuffering
@@ -146,13 +145,11 @@ confirm = interpret go
       (do k <- prompt ("Proceed? [Y/n] ")
           k)
       (\_ ->
-         do Log.write (view logger settings)
-                      (Log.plain "\n")
+         do Logger.write IO.stdout settings "\n"
             return ExitSuccess)
    where
     prompt message = fix $ \loop -> do
-      Log.write (view logger settings) $
-        Log.plain message
+      Logger.write IO.stdout settings message
       res <- getLine
       case map toLower res of
         "y" -> return ks

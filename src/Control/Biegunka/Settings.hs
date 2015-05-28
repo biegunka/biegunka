@@ -7,7 +7,14 @@ module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
     Settings
   , defaultSettings
-  , HasRunRoot(..), biegunkaRoot, logger, targets, local, templates, Templates(..)
+  , HasRunRoot(..)
+  , biegunkaRoot
+  , logger
+  , _logger
+  , targets
+  , local
+  , templates
+  , Templates(..)
     -- ** Script targets controls
   , Targets(..)
     -- ** Biegunka mode
@@ -18,7 +25,7 @@ import Control.Lens
 import Data.Default.Class (Default(..))
 import Data.Set (Set)
 
-import Control.Biegunka.Log (Logger)
+import Control.Biegunka.Logger (Logger, HasLogger(..))
 import Control.Biegunka.Script (HasRunRoot(..))
 import Control.Biegunka.Templates
 import Control.Biegunka.Templates.HStringTemplate
@@ -26,12 +33,12 @@ import Control.Biegunka.Templates.HStringTemplate
 
 -- | Settings common for all interpreters and also specific for this one
 data Settings a = Settings
-  { __runRoot     :: FilePath    -- ^ Root path for 'Source' layer
-  , _biegunkaRoot :: FilePath    -- ^ Absolute of the Biegunka data files root
-  , _logger       :: Logger      -- ^ Interpreters' logger handle
-  , _targets      :: Targets     -- ^ Namespaces to focus on
-  , _local        :: a           -- ^ Interpreter specific settings
-  , _templates    :: Templates   -- ^ Templates mapping
+  { __runRoot     :: FilePath     -- ^ Root path for 'Source' layer
+  , _biegunkaRoot :: FilePath     -- ^ Absolute of the Biegunka data files root
+  , __logger      :: Maybe Logger -- ^ 'Logger' handle
+  , _targets      :: Targets      -- ^ Namespaces to focus on
+  , _local        :: a            -- ^ Interpreter specific settings
+  , _templates    :: Templates    -- ^ Templates mapping
   , _mode         :: Mode
   }
 
@@ -55,8 +62,11 @@ _runRoot :: Lens' (Settings a) FilePath
 -- | Absolute path of the Biegunka data files root
 biegunkaRoot :: Lens' (Settings a) FilePath
 
--- | Logger channel
-logger :: Lens' (Settings a) Logger
+instance HasLogger (Settings a) where
+  logger = _logger.traverse
+
+-- |
+_logger :: Lens' (Settings a) (Maybe Logger)
 
 -- | Namespaces to focus on
 targets :: Lens' (Settings a) Targets
@@ -79,7 +89,7 @@ defaultSettings :: Settings ()
 defaultSettings = Settings
   { __runRoot     = "~"
   , _biegunkaRoot = "~/.biegunka"
-  , _logger       = undefined -- sorry
+  , __logger      = Nothing
   , _targets      = All
   , _local        = ()
   , _templates    = hStringTemplate ()

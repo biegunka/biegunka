@@ -11,7 +11,7 @@ import           Control.Monad.Free (Free, iter)
 import           System.FilePath (splitFileName, splitDirectories, makeRelative)
 import           System.Directory.Layout (Layout)
 import qualified System.Directory.Layout as Layout
-import           System.IO (Handle, hGetLine, hClose, hSetBuffering, BufferMode(..))
+import qualified System.IO as IO
 import           System.Environment (withArgs, withProgName)
 import           System.Exit (ExitCode(..))
 import qualified System.Posix as Posix
@@ -20,20 +20,19 @@ import           Test.Hspec.Runner (hspecWithResult, defaultConfig, Config(..), 
 
 import           Control.Biegunka.Biegunka (Interpreter, interpret)
 import           Control.Biegunka.Language
-import qualified Control.Biegunka.Log as Log
+import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script
-import           Control.Biegunka.Settings (logger)
 
 check :: Interpreter
-check = interpret $ \os terms k -> do
+check = interpret $ \settings terms k -> do
   (infd, outfd) <- Posix.createPipe
   withFd infd $ \inh -> do
     a <- async . forever $
-      hGetLine inh >>=
-        Log.write (view logger os) .  Log.plain . (++ "\n")
+      IO.hGetLine inh >>=
+        Logger.write IO.stdout settings . (++ "\n")
     s <- withFd outfd $ \outh -> do
-      let rr = view runRoot os
-      hSetBuffering outh LineBuffering
+      let rr = view runRoot settings
+      IO.hSetBuffering outh IO.LineBuffering
       withProgName "biegunka" .  withArgs [] $
         hspecWithResult defaultConfig
           { configFormatter  = Just progress
@@ -46,8 +45,8 @@ check = interpret $ \os terms k -> do
       0 -> k
       n -> return (ExitFailure n)
 
-withFd :: Posix.Fd -> (Handle -> IO a) -> IO a
-withFd fd = bracket (Posix.fdToHandle fd) hClose
+withFd :: Posix.Fd -> (IO.Handle -> IO a) -> IO a
+withFd fd = bracket (Posix.fdToHandle fd) IO.hClose
 
 termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
 termsLayout p = iter go . fmap return where
