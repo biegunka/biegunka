@@ -40,7 +40,6 @@ import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (MonadState, StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
-import Data.Copointed (copoint)
 import Data.Default.Class (Default(..))
 import Data.List (isSuffixOf, intercalate)
 #if __GLASGOW_HASKELL__ < 710
@@ -235,11 +234,16 @@ runScript
   -> Annotations
   -> Script s a
   -> (Free (Term Annotate s) a, MAnnotations)
-runScript s e (Script i) =
-  let r       = runStateT (runReaderT i e) s
-      ast     = fmap fst r
-      (_, as) = iter copoint r
-  in (ast, as)
+runScript s e (Script i) = let
+    r       = runStateT (runReaderT i e) s
+    ast     = fmap fst r
+    (_, as) = iter nextTerm r
+  in
+    (ast, as)
+ where
+  nextTerm (TS    _ _ _ x) = x
+  nextTerm (TA    _ _   x) = x
+  nextTerm (TWait   _   x) = x
 {-# INLINE runScript #-}
 
 -- | Get annotated DSL without annotations

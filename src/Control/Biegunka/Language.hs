@@ -22,7 +22,6 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 #endif
 
 import Control.Monad.Free (Free(..))
-import Data.Copointed (Copointed(..))
 import Data.Set (Set)
 import System.Process (CmdSpec)
 
@@ -59,12 +58,6 @@ instance Traversable (Term f s) where
   traverse f (TA    a z   x) = TA    a z   <$> f x
   traverse f (TWait   w   x) = TWait   w   <$> f x
   {-# INLINE traverse #-}
-
--- | Peek next 'Term'
-instance Copointed (Term f s) where
-  copoint (TS    _ _ _ x) = x
-  copoint (TA    _ _   x) = x
-  copoint (TWait   _   x) = x
 
 -- | 'Sources' scope terms data
 data Source = Source {
