@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- | Controlling execution
 module Control.Biegunka.Execute.Settings
   ( Executor
@@ -13,7 +14,7 @@ module Control.Biegunka.Execute.Settings
   , Work(..)
   ) where
 
-import           Control.Applicative
+import           Control.Applicative (Applicative, (<$>), (<*>), pure)
 import           Control.Exception (bracket)
 import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (TVar, newTVarIO)
@@ -28,16 +29,17 @@ import qualified Data.Set as Set
 import           Prelude hiding (lookup, null)
 import qualified System.Posix as Posix
 
+import           Control.Biegunka.Logger (HasLogger(logger))
 import           Control.Biegunka.Execute.Watcher (Watcher)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
-import           Control.Biegunka.Settings (Settings, local)
+import           Control.Biegunka.Settings (HasSettings(settings), Settings)
 
 
 -- | Convenient type alias for task-local-state-ful IO
 -- tagged with crosstask execution environment @s@
-type Executor a = ReaderT (Settings Execution) IO a
+type Executor a = ReaderT Execution IO a
 
-runExecutor :: Settings Execution -> Executor a -> IO a
+runExecutor :: Execution -> Executor a -> IO a
 runExecutor = flip runReaderT
 
 forkExecutor :: Executor a -> Executor ()
@@ -50,10 +52,11 @@ forkExecutor io = do
 
 -- | Multithread accessable parts
 data Execution = Execution
-  { _watch  :: Watcher
-  , _user   :: TVar (Meep Posix.CUid Int) -- ^ Current user id and sessions counter
-  , _repos  :: TVar (Set String)          -- ^ Already updated repositories
-  , _source :: TVar (Maybe (NonEmpty String))
+  { _watch    :: Watcher
+  , _user     :: TVar (Meep Posix.CUid Int) -- ^ Current user id and sessions counter
+  , _repos    :: TVar (Set String)          -- ^ Already updated repositories
+  , _source   :: TVar (Maybe (NonEmpty String))
+  , _settings :: Settings
   }
 
 -- | Workload
@@ -84,16 +87,21 @@ instance HasExecution Execution where
   execution = id
   {-# INLINE execution #-}
 
-instance HasExecution (Settings Execution) where
-  execution = local
-  {-# INLINE execution #-}
+instance HasSettings Execution where
+  settings f x = f (_settings x) <&> \y -> x { _settings = y }
+  {-# INLINE settings #-}
+
+instance HasLogger Applicative Execution where
+  logger = settings.logger
+  {-# INLINE logger #-}
 
 -- | Set up an 'Execution' to be used by 'Executor'.
-withExecution :: (Execution -> IO a) -> IO a
-withExecution f =
+withExecution :: Settings -> (Execution -> IO a) -> IO a
+withExecution s f =
   bracket Watcher.new Watcher.wait $ \watcher -> do
     e <-
       Execution watcher <$> newTVarIO Meep.empty
                         <*> newTVarIO Set.empty
                         <*> newTVarIO Nothing
+                        <*> pure s
     f e

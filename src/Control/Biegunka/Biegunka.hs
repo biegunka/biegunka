@@ -4,9 +4,12 @@
 {-# LANGUAGE ViewPatterns #-}
 module Control.Biegunka.Biegunka
   ( -- * Wrap/unwrap biegunka interpreters
-    biegunka, Interpreter, interpret, interpretOptimistically
+    biegunka
+  , Interpreter(..)
+  , optimistically
     -- * Generic interpreters
-  , pause, confirm
+  , pause
+  , confirm
     -- * Auxiliary
   , expandHome
   ) where
@@ -17,7 +20,6 @@ import           Control.Monad (guard)
 import           Control.Monad.Free (Free)
 import           Data.Bool (bool)
 import           Data.Char (toLower)
-import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
 import qualified Data.List as List
 #if __GLASGOW_HASKELL__ < 710
@@ -32,7 +34,8 @@ import qualified System.Posix as Posix
 
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Logger as Logger
-import           Control.Biegunka.Script (Script, Annotate, namespaces, segmented, runScript)
+import           Control.Biegunka.Script
+  (Script, Annotate, defaultMAnnotations, defaultAnnotations, namespaces, segmented, runScript)
 import           Control.Biegunka.Settings
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
@@ -40,74 +43,57 @@ import qualified System.IO.Error as IO
 import qualified Git_biegunka as Git
 import           Paths_biegunka (version)
 
-{-# ANN module ("HLint: ignore Use join" :: String) #-}
 
-
--- | Abstract 'Interpreter' data type
+-- | 'Interpreter' data type.
+--
+-- Given a 'Settings', a script, and a continuation restulting in an 'ExitCode'
+-- does something resulting in an 'ExitCode'.
 newtype Interpreter = I
-  (Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode -> IO ExitCode)
+  (Settings -> Free (Term Annotate 'Sources) () -> IO ExitCode -> IO ExitCode)
 
--- | Default 'Interpreter' does nothing
-instance Default Interpreter where
-  def = I $ \_ _ k -> k
-
--- | Two 'Interpreter's combined take the same script and do things with it one after another
+-- | The composition of two 'Interpreter's is the 'Interpreter' in which the
+-- second operand is the continuation of the first.
 instance Semigroup Interpreter where
   I f <> I g = I $ \c s k -> f c s (g c s k)
 
--- | Combination of the 'Default' and 'Semigroup' instances
+-- | Empty 'Interpreter' is the 'Interpreter' that does nothing and simply
+-- calls the continuation.
 instance Monoid Interpreter where
-  mempty  = def
+  mempty  = I $ \_ _ k -> k
   mappend = (<>)
 
--- | Construct 'Interpreter'
---
--- Provides 'Settings', script and continuation, which is supposed to be called
--- on success to interpreter
-interpret
-  :: (Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode -> IO ExitCode)
+-- | Optimistic 'Interpreter' always calls the continuation, assuming that
+-- no exceptions were thrown.
+optimistically
+  :: (Settings -> Free (Term Annotate 'Sources) () -> IO ())
   -> Interpreter
-interpret = I
-
--- | Construct 'Interpreter' optimistically
---
--- It is optimistic in a sense what it always calls the continuation, provided that
--- no exceptions were thrown
-interpretOptimistically
-  :: (Settings () -> Free (Term Annotate 'Sources) () -> IO ())
-  -> Interpreter
-interpretOptimistically f =
-  interpret $ \c s k -> f c s >> k
-
--- | Run 'Interpreter'
-runInterpreter :: Interpreter -> Settings () -> Free (Term Annotate 'Sources) () -> IO ExitCode
-runInterpreter (I f) c s = f c s (return ExitSuccess)
-
+optimistically f =
+  I (\c s k -> f c s >> k)
 
 -- | Entry point into the library
-biegunka :: (Settings () -> Settings ()) -- ^ User defined settings
-         -> Interpreter                  -- ^ Combined interpreters
-         -> Script 'Sources ()           -- ^ Script to interpret
+biegunka :: (Settings -> Settings ) -- ^ User defined settings
+         -> Interpreter             -- ^ Combined interpreters
+         -> Script 'Sources ()      -- ^ Script to interpret
          -> IO ExitCode
-biegunka (($ def) -> c) interpreter script = do
+biegunka (($ defaultSettings) -> c) (I interpret) script = do
   rr <- views runRoot expandHome c
   br <- views biegunkaRoot expandHome c
   Logger.with $ \l -> do
-    Logger.write IO.stdout l (info rr br c)
-    let (annotatedScript, annotations) = runScript def (set runRoot rr def) script
-        settings = c
+    Logger.write IO.stdout l (info rr br)
+    let (annotatedScript, annotations) = runScript defaultMAnnotations (set runRoot rr defaultAnnotations) script
+        c' = c
           & runRoot      .~ rr
           & biegunkaRoot .~ br
           & _logger      ?~ l
           & targets      .~ Subset (setOf (namespaces.folded.from segmented) annotations)
-    runInterpreter interpreter settings annotatedScript
+    interpret c' annotatedScript (return ExitSuccess)
  where
-  info rr br settings = List.intercalate "\n" $
+  info rr br = List.intercalate "\n" $
     [ "* Library version: " ++ showVersion version ++ "-" ++ Git.hash
     , "* Relative filepaths are deemed relative to " ++ rr
     , "* Data will be saved in "                     ++ br
     ] ++
-    bool [] ["* Offline mode"] (has (mode._Offline) settings)
+    bool [] ["* Offline mode"] (has (mode._Offline) c)
 
 
 -- | Expand \"~\" at the start of the path
@@ -128,30 +114,31 @@ getHome user = fmap Posix.homeDirectory (Posix.getUserEntryForName user)
 
 -- | Interpreter that just waits user to press any key
 pause :: Interpreter
-pause = interpretOptimistically $ \settings _ -> do
-  Logger.write IO.stdout settings "Press any key to continue\n"
+pause = optimistically $ \c _ -> do
+  Logger.write IO.stdout c "Press any key to continue\n"
   IO.hSetBuffering IO.stdin IO.NoBuffering
   getChar
   IO.hSetBuffering IO.stdin IO.LineBuffering
 
 -- | Interpreter that awaits user confirmation
 confirm :: Interpreter
-confirm = interpret go
+confirm = I go
  where
-  go settings _ ks =
+  go c _ ks =
     catchJust
       (guard . IO.isEOFError)
-      (do k <- prompt ("Proceed? [Y/n] ")
+      (do k <- prompt "Proceed? [Y/n] "
           k)
       (\_ ->
-         do Logger.write IO.stdout settings "\n"
+         do Logger.write IO.stdout c "\n"
             return ExitSuccess)
    where
     prompt message = fix $ \loop -> do
-      Logger.write IO.stdout settings message
+      Logger.write IO.stdout c message
       res <- getLine
       case map toLower res of
         "y" -> return ks
         ""  -> return ks
         "n" -> return (return (ExitFailure 1))
         _   -> loop
+{-# ANN confirm ("HLint: ignore Use join" :: String) #-}

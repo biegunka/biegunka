@@ -11,7 +11,6 @@ module Generate where
 import           Control.Lens hiding ((<.>))
 import           Control.Monad.Trans.Writer (WriterT, execWriter, tell)
 import           Data.Char (toUpper)
-import           Data.Default.Class (def)
 import           Data.Foldable (for_, toList)
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
@@ -27,7 +26,7 @@ import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Namespace
   (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open)
 import           Control.Biegunka.Settings
-  (biegunkaRoot, Targets(..), targets)
+  (defaultSettings, biegunkaRoot, Targets(..), targets)
 
 
 scriptFor :: FilePath -> FilePath -> [String] -> IO ()
@@ -35,7 +34,7 @@ scriptFor rrpat brpat ns = do
   rr <- expandHome rrpat
   br <- expandHome brpat
 
-  db <- open (def & set biegunkaRoot br & set targets (targeted ns))
+  db <- open (defaultSettings & set biegunkaRoot br & set targets (targeted ns))
 
   let theses = view (these.namespaces) db
       types  = uniqueSourcesTypes theses

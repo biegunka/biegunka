@@ -1,4 +1,7 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeFamilies #-}
 -- | A synchronized logger for multithreaded environments.
 module Control.Biegunka.Logger
   ( Logger
@@ -11,11 +14,13 @@ module Control.Biegunka.Logger
   , stop
   ) where
 
+import           Control.Applicative (Const)
 import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM (STM, atomically)
 import           Control.Concurrent.STM.TQueue
-import           Control.Lens (Traversal', forOf_, to)
+import           Control.Lens (LensLike', forOf_, to)
+import           Control.Lens (Traversed)
 import           Control.Monad.Catch (MonadMask, bracket)
 import           Control.Monad.IO.Class (MonadIO(liftIO))
 import           Data.Function (fix)
@@ -27,10 +32,10 @@ import qualified System.IO.Error as IO
 newtype Logger = Logger { unLogger :: TQueue Command }
 
 -- | Structures that have a 'Logger' inside of them.
-class HasLogger a where
-  logger :: Traversal' a Logger
+class HasLogger c a | a -> c where
+  logger :: c f => LensLike' f a Logger
 
-instance HasLogger Logger where
+instance HasLogger Functor Logger where
   logger = id
 
 -- Logger messages.
@@ -66,11 +71,11 @@ stop (Logger queue) = liftIO $ do
   takeMVar var
 
 -- | Atomically write a string to a 'IO.Handle'.
-write :: HasLogger l => IO.Handle -> l -> String -> IO ()
+write :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> String -> IO ()
 write h l = atomically . writeSTM h l
 
 -- | Schedule a write of a string to a 'IO.Handle' inside an 'STM' transaction.
-writeSTM :: HasLogger l => IO.Handle -> l -> String -> STM ()
+writeSTM :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> String -> STM ()
 writeSTM h l msg =
   forOf_ (logger.to unLogger)
          l

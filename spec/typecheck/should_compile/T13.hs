@@ -1,16 +1,14 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Check that biegunka mode is configurable
 module OverloadedStrings where
 
-import Control.Lens
 import Control.Biegunka
-import Data.Default.Class (def)
+import Control.Lens
+import Data.Monoid (mempty)
 import System.Exit (ExitCode)
 
 
 main :: IO ExitCode
-main = biegunka (set mode Offline . set mode Online) def script
+main = biegunka (set mode Offline . set mode Online) mempty script
  where
   script = return ()

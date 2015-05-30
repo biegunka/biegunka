@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -31,7 +30,7 @@ import Control.Biegunka.Check (check)
 import Control.Biegunka.Script (Script)
 
 
-type Runner a = (Settings () -> Settings ()) -> Script 'Sources () -> IO a
+type Runner a = (Settings -> Settings) -> Script 'Sources () -> IO a
 
 -- | Get environment and 'Runner' from the command line options.
 runnerOf :: Environments a => p a -> IO (a, Runner b)
@@ -49,7 +48,7 @@ parser p = info (helper <*> go) fullDesc
   go = (,) <$> p
            <*> runner
 
-  runner = (\i f -> \g -> biegunka (g . f) i >=> exitWith)
+  runner = (\i f g -> biegunka (g . f) i >=> exitWith)
     <$> interpreters
     <*> modes
 

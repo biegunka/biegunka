@@ -12,7 +12,10 @@ module Control.Biegunka.Script
   ( -- * Script types
     Script(..), Annotate(..)
     -- ** Annotations
-  , MAnnotations, Annotations
+  , MAnnotations
+  , defaultMAnnotations
+  , Annotations
+  , defaultAnnotations
     -- ** Environment
   , HasRunRoot(..), HasSourceRoot(..)
     -- * Get annotated script
@@ -25,7 +28,7 @@ module Control.Biegunka.Script
   , namespaces
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..), Retries(..), incr, into, peekToken
+  , URI, User(..), React(..), Retries(..), defaultRetries, incr, into, peekToken
     -- * Namespace
   , Namespace
   , Segment
@@ -40,7 +43,7 @@ import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (MonadState, StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
-import Data.Default.Class (Default(..))
+import Data.Bool (bool)
 import Data.List (isSuffixOf, intercalate)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (mempty)
@@ -54,7 +57,6 @@ import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
 
-{-# ANN module "HLint: ignore Use if" #-}
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -96,8 +98,8 @@ data React = Ignorant | Abortive
 newtype Retries = Retries { unRetries :: Int }
     deriving (Show, Read, Eq, Ord)
 
-instance Default Retries where
-  def = Retries 0
+defaultRetries :: Retries
+defaultRetries = Retries 0
 
 -- | Increment retry count
 incr :: Retries -> Retries
@@ -116,18 +118,17 @@ data Annotations = Annotations
   , _actionReaction :: React      -- ^ How to react on action failure
   } deriving (Show)
 
-instance Default Annotations where
-  def = Annotations
-    { __runRoot       = mempty
-    , _segments       = []
-    , __sourceRoot    = mempty
-    , _sourceURL      = mempty
-    , _activeUser     = Nothing
-    , _maxRetries     = Retries 1
-    , _sourceReaction = Abortive
-    , _actionReaction = Ignorant
-    }
-  {-# INLINE def #-}
+defaultAnnotations :: Annotations
+defaultAnnotations = Annotations
+  { __runRoot       = mempty
+  , _segments       = []
+  , __sourceRoot    = mempty
+  , _sourceURL      = mempty
+  , _activeUser     = Nothing
+  , _maxRetries     = Retries 1
+  , _sourceReaction = Abortive
+  , _actionReaction = Ignorant
+  }
 
 -- | Script annotations state
 --
@@ -137,12 +138,11 @@ data MAnnotations = MAnnotations
   , _tokens     :: Stream Token
   } deriving (Show, Eq)
 
-instance Default MAnnotations where
-  def = MAnnotations
-    { _namespaces = mempty
-    , _tokens = startFrom (Token 0)
-    }
-  {-# INLINE def #-}
+defaultMAnnotations :: MAnnotations
+defaultMAnnotations = MAnnotations
+  { _namespaces = mempty
+  , _tokens = startFrom (Token 0)
+  }
 
 -- | All namespaces encountered so far
 namespaces :: Lens' MAnnotations (Set [Segment])
@@ -211,10 +211,6 @@ newtype Script s a = Script
       ReaderT Annotations
         (StateT MAnnotations (Free (Term Annotate s))) a
   } deriving (Functor, Applicative, Monad, MonadReader Annotations)
-
-instance Default a => Default (Script s a) where
-  def = return def
-  {-# INLINE def #-}
 
 -- | Biegunka script shell commands
 instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
@@ -352,9 +348,7 @@ actioned f = Script $ do
 -- "/to/from"
 constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
 constructTargetFilePath r s path =
-  r </> path </> case "/" `isSuffixOf` path of
-    True  -> view filename s
-    False -> ""
+  r </> path </> bool "" (view filename s) ("/" `isSuffixOf` path)
 
 -- | A hack to support the notion of making destination 'FilePath' inside some directory
 into :: FilePath -> FilePath
@@ -374,3 +368,4 @@ segmented = iso (reverse . splitOn '/') (intercalate "/" . reverse)
       go xs = case break (== e) xs of
         (y, []) -> y : []
         (y, ys) -> y : go ys
+{-# ANN segmented "HLint: ignore Use list literal" #-}

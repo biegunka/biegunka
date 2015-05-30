@@ -25,7 +25,6 @@ import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
 import qualified Crypto.Hash as Hash
 import qualified Data.ByteString.Char8 as ByteString
-import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
 import qualified Data.Set as Set
@@ -43,7 +42,7 @@ import           Text.Printf (printf)
 
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Settings
-  (Templates(..), templates, local, Mode(..), mode)
+  (Templates(..), templates, Mode(..), mode)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
   (describeTerm, sourceIdentifier, prettyDiff, removal, runChanges)
@@ -51,18 +50,18 @@ import           Control.Biegunka.Execute.Exception
 import qualified Control.Biegunka.Execute.IO as EIO
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Language
-import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
+import           Control.Biegunka.Biegunka (Interpreter, optimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import qualified Control.Biegunka.Patience as Patience
 import           Control.Biegunka.Script
 import           Control.Biegunka.Templates (templating)
 
-{-# ANN module "HLint: ignore Use if" #-}
+{-# ANN module "HLint: ignore Use const" #-}
 
 
 -- | Real run interpreter
 run :: Interpreter
-run = interpretOptimistically go where
+run = optimistically go where
   go settings s = do
     let db' = Ns.fromScript s
     bracket (Ns.open settings) Ns.close $ \db -> do
@@ -70,24 +69,22 @@ run = interpretOptimistically go where
       mapM_ (safely removeDirectory) (Ns.diff Ns.sources (view Ns.these db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
-          withExecution $ \e ->
-            runExecutor (set local e settings) (forkExecutor (task (views mode io settings) s))
+          withExecution settings $ \e ->
+            runExecutor e (forkExecutor (task (views mode io settings) s))
       Ns.commit (db & Ns.these .~ db')
    where
     io Offline = runAction
     io Online  = runAll
 
-    remove path = do
-      file <- D.doesFileExist path
-      case file of
+    remove path =
+      D.doesFileExist path >>= \case
         True  -> do
           Logger.write IO.stdout settings (removal path)
           D.removeFile path
         False -> D.removeDirectoryRecursive path
 
-    removeDirectory path = do
-      directory <- D.doesDirectoryExist path
-      case directory of
+    removeDirectory path =
+      D.doesDirectoryExist path >>= \case
         True  -> do
           Logger.write IO.stdout settings (removal path)
           D.removeDirectoryRecursive path
@@ -97,10 +94,10 @@ run = interpretOptimistically go where
 
 -- | Dry run interpreter
 dryRun :: Interpreter
-dryRun = interpretOptimistically $ \settings s ->
+dryRun = optimistically $ \settings s ->
   bracket (Ns.open settings) Ns.close $ \db -> do
-    withExecution $ \e ->
-      runExecutor (set local e settings) (forkExecutor (task runPure s))
+    withExecution settings $ \e ->
+      runExecutor e (forkExecutor (task runPure s))
     Logger.write IO.stdout settings (runChanges db (Ns.fromScript s))
 
 
@@ -117,7 +114,7 @@ task f = go
  where
   go (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
     forkExecutor (task f t)
-    flip fix def $ \loop rs ->
+    flip fix defaultRetries $ \loop rs ->
       executeIO (f rs) c >>= \case
         False ->
           if rs < asMaxRetries
@@ -131,7 +128,7 @@ task f = go
           task f b
           doneWith asToken
   go (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
-    flip fix def $ \loop rs ->
+    flip fix defaultRetries $ \loop rs ->
       executeIO (f rs) c >>= \case
         False ->
           if rs < aaMaxRetries
@@ -141,7 +138,7 @@ task f = go
               Ignorant -> go x
         True -> go x
   go (Free c@(TWait _ x)) = do
-    executeIO (f def) c
+    executeIO (f defaultRetries) c
     go x
   go (Pure _) = return ()
 
@@ -253,7 +250,7 @@ ioOnline term = case term of
 
   TA _ (Template src dst) _ -> do
     Templates ts <- view templates
-    return $ do
+    return $
       IO.withSystemTempFile "biegunka" $ \tempfp h -> do
         IO.hClose h
         Text.writeFile tempfp . templating ts =<< Text.readFile src

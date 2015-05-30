@@ -18,13 +18,13 @@ import qualified System.Posix as Posix
 import           Test.Hspec.Formatters (progress)
 import           Test.Hspec.Runner (hspecWithResult, defaultConfig, Config(..), ColorMode(..), summaryFailures)
 
-import           Control.Biegunka.Biegunka (Interpreter, interpret)
+import           Control.Biegunka.Biegunka (Interpreter(I))
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script
 
 check :: Interpreter
-check = interpret $ \settings terms k -> do
+check = I $ \settings terms k -> do
   (infd, outfd) <- Posix.createPipe
   withFd infd $ \inh -> do
     a <- async . forever $

@@ -11,7 +11,6 @@ import           Control.Monad.Trans.Writer (execWriter, tell)
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy.Char8 as B
 import           Data.Char (toUpper)
-import           Data.Default.Class (def)
 import           Data.Foldable (for_)
 import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
@@ -23,7 +22,7 @@ import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Namespace
   (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open, who)
 import           Control.Biegunka.Settings
-  (biegunkaRoot, Targets(..), targets)
+  (defaultSettings, biegunkaRoot, Targets(..), targets)
 
 import           Options
 
@@ -42,7 +41,7 @@ list :: FilePath -> [String] -> Format -> IO ()
 list brpat ns format = do
   br <- expandHome brpat
 
-  let settings = def & set biegunkaRoot br & set targets (targeted ns)
+  let settings = defaultSettings & set biegunkaRoot br & set targets (targeted ns)
 
   case format of
     Format pattern -> case formattingText pattern of

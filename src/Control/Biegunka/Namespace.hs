@@ -39,6 +39,7 @@ import           Data.Aeson
 import           Data.Foldable (any, elem, for_)
 import           Data.Function (on)
 import           Data.List ((\\))
+import           Data.Maybe (fromMaybe)
 import           Data.Map (Map)
 import qualified Data.Map as M
 #if __GLASGOW_HASKELL__ < 710
@@ -61,7 +62,7 @@ import Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
 
 
 who :: Maybe (Either String Int) -> String
-who = either id show . maybe (Left "(unknown)") id
+who = either id show . fromMaybe (Left "(unknown)")
 
 
 data SourceRecord_v0 = SR_v0 String FilePath FilePath
@@ -218,7 +219,7 @@ those :: Lens' (Partitioned a) a
 --
 -- Searches @'appData'\/groups@ path for namespace data. Starts empty
 -- if nothing is found
-open :: Settings () -> IO (Partitioned Namespaces)
+open :: Settings -> IO (Partitioned Namespaces)
 open settings = do
   let (path, _) = settings & biegunkaRoot <</>~ "groups"
   acid <- openLocalStateFrom path mempty
