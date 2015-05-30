@@ -8,12 +8,18 @@ module Control.Biegunka.Execute.Describe
     -- * Specific description formatting
   , describeTerm, removal
   , sourceIdentifier
+  , prettyDiff
   ) where
 
 import           Control.Exception (SomeException)
 import           Data.Bool (bool)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
+import           Data.Monoid (mempty, mconcat)
+import           Data.Text.Lazy (Text)
+import qualified Data.Text.Lazy as Text
+import           Data.Text.Lazy.Builder (Builder)
+import qualified Data.Text.Lazy.Builder as Builder
 import           Text.Printf (printf)
 
 import           Control.Lens
@@ -22,6 +28,7 @@ import           System.Process (CmdSpec(..))
 import           Control.Biegunka.Namespace (Partitioned, Namespaces, these, files, sources)
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
+import           Control.Biegunka.Patience (Hunk(..), Judgement(..), judgement)
 
 -- | Describe an action and its outcome.
 describeTerm
@@ -62,12 +69,12 @@ describeTerm (Retries n) mout withSource ta =
       printf "%s source[%s] update" t d
     TA _ a _ ->
       case a of
-        Link s d       ->
+        Link s d ->
           printf "symlink[%s] update (point to [%s])" d s
-        Copy s d _     ->
+        Copy s d ->
           printf "file[%s] update (copy [%s])" d s
-        Template s d _ ->
-          printf "file[%s] update (interpolate [%s])" d s
+        Template s d ->
+          printf "file[%s] update (from template [%s])" d s
         Command p (ShellCommand c) ->
           printf "execute[%s] (from [%s])" c p
         Command p (RawCommand c as) ->
@@ -79,11 +86,30 @@ sourceIdentifier :: Term Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
   TS (AS { asSegments }) (Source _ url _ _) _ _ -> Just (url :| asSegments)
   TA (AA { aaSegments, aaURI }) _ _ -> Just (aaURI :| aaSegments)
-  TM _ _ -> Nothing
+  TWait _ _ -> Nothing
 
--- | Describe file or directory removal
-removal :: FilePath -> String
-removal = printf "Removing: %s\n"
+prettyDiff :: [Hunk Text] -> String
+prettyDiff =
+  toString . unline . (mempty :) . map (prettyHunk . fmap Builder.fromLazyText)
+
+prettyHunk :: Hunk Builder -> Builder
+prettyHunk (Hunk n i m j ls) = unline (prettyHeader : map prettyLine ls)
+ where
+  prettyHeader = Builder.fromString (printf "      %s@@ -%d,%d +%d,%d @@" reset n i m j)
+
+prettyLine :: Judgement Builder -> Builder
+prettyLine j = mconcat
+  [ Builder.fromString "      "
+  , judgement (decorate red '-') (decorate green '+') (decorate reset ' ') j
+  ]
+ where
+  decorate col ch x = mconcat [Builder.fromString col, Builder.singleton ch, x]
+
+toString :: Builder -> String
+toString = Text.unpack . Builder.toLazyText
+
+unline :: [Builder] -> Builder
+unline = mconcat . List.intersperse (Builder.singleton '\n')
 
 -- | Describe changes which will happen after the run
 runChanges :: Partitioned Namespaces -> Namespaces -> String
@@ -97,6 +123,10 @@ runChanges db gs = unlines $ "" : concatMap about
   about (msg, color, xs) = case length xs of
     0 -> []
     n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
+
+-- | Describe file or directory removal
+removal :: FilePath -> String
+removal = printf "Removing: %s\n"
 
 red :: String
 red = "\ESC[31;2m"

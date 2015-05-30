@@ -8,12 +8,9 @@ module Control.Biegunka.Templates
 import Data.Text (Text)
 
 
--- | Templating implementations
+-- | A templating system implementation.
 class TemplateSystem t where
-  templating
-    :: t
-    -> Text -- ^ Incoming text
-    -> Text -- ^ Generated outcome
+  templating :: t -> Text -> Text
 
--- | Wraps templating system, hiding implementation
+-- | Wrap a templating system, hiding the implementation.
 data Templates = forall t. TemplateSystem t => Templates t

@@ -33,7 +33,6 @@ import qualified System.Posix as Posix
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script (Script, Annotate, namespaces, segmented, runScript)
-import           Control.Biegunka.Script.Token (tokens)
 import           Control.Biegunka.Settings
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
@@ -95,7 +94,7 @@ biegunka (($ def) -> c) interpreter script = do
   br <- views biegunkaRoot expandHome c
   Logger.with $ \l -> do
     Logger.write IO.stdout l (info rr br c)
-    let (annotatedScript, annotations) = runScript def (set runRoot rr def) tokens script
+    let (annotatedScript, annotations) = runScript def (set runRoot rr def) script
         settings = c
           & runRoot      .~ rr
           & biegunkaRoot .~ br

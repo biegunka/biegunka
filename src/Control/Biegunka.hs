@@ -11,7 +11,7 @@ module Control.Biegunka
     -- * Sources layer primitives
   , Sourceable(..)
     -- * Actions layer primitives
-  , link, register, copy, copyFile, copyDirectory, substitute, raw
+  , link, register, copy, substitute, raw
     -- * Script environment
   , sourceRoot
     -- * Modifiers

@@ -10,10 +10,9 @@ import qualified Data.Set as Set
 import           Data.Set.Lens (setOf)
 import           Test.Hspec
 
-import Control.Biegunka.Language (Term(..), Action(..), Source(..), Modifier(..))
+import Control.Biegunka.Language (Term(..), Action(..), Source(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script
-import Control.Biegunka.Script.Token (tokens, noTokens)
 import Control.Biegunka.Source.Directory (directory)
 
 
@@ -21,58 +20,58 @@ spec :: Spec
 spec = describe "Biegunka DSL" $ do
   context "chaining" $ do
     it "gives unchained tasks different ids" $
-      let ast = evalScript def def tokens (directory "/" (return ()) >> directory "/" (return ()))
+      let ast = evalScript def def (directory "/" (return ()) >> directory "/" (return ()))
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
           (Free (TS (AS { asToken = t }) _ (Pure ())
             (Pure ())))) -> s /= t
         _ -> False
     it "gives chained tasks different ids" $
-      let ast = evalScript def def tokens (directory "/" (return ()) `prerequisiteOf` directory "/" (return ()))
+      let ast = evalScript def def (directory "/" (return ()) `prerequisiteOf` directory "/" (return ()))
       in case ast of
         Free (TS (AS { asToken = s })  _ (Pure ())
-          (Free (TM _
+          (Free (TWait _
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))))) -> s /= t
         _ -> False
     it "gives Wait modifier correct tasks ids" $
-      let ast = evalScript def def tokens (directory "/" (return ()) <~> directory "/" (return ()))
+      let ast = evalScript def def (directory "/" (return ()) <~> directory "/" (return ()))
       in case ast of
         Free (TS _ _ (Pure ())
-          (Free (TM (Wait ids)
+          (Free (TWait ids
             (Free (TS (AS { asToken = t }) _ (Pure ())
               (Pure ())))))) -> toList ids `shouldBe` [toEnum 0 .. pred t]
         _ -> expectationFailure "DSL pattern failed"
   context "relative paths" $ do
     it "mangles relative paths for Actions" $
-      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") noTokens (link "from" "to")
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") (link "from" "to")
       in case ast of
         Free (TA _ (Link "source/from" "app/to") (Pure ())) -> True
         _ -> False
     it "mangles relative paths for Sources" $
-      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") tokens (directory "to" (return ()))
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") (directory "to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "absolute paths" $ do
     it "does not mangle absolute paths for Actions" $
-      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") noTokens (link "from" "/to")
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") (link "from" "/to")
       in case ast of
         Free (TA _ (Link "source/from" "/to") (Pure ())) -> True
         _ -> False
     it "does not mangle absolute paths for Sources" $
-      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") tokens (directory "/to" (return ()))
+      let ast = evalScript def (def & set runRoot "app" & set sourceRoot "source") (directory "/to" (return ()))
       in case ast of
         Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "namespaces" $ do
     it "does not matter how nested namespaces are constructed" $
-      let ast = evalScript def def tokens $
+      let ast = evalScript def def $
             namespace "foo" $
               namespace "bar" $
                 namespace "baz" $
                   directory "/" (return ())
-          ast' = evalScript def def tokens $
+          ast' = evalScript def def $
             namespace "foo/bar/baz" $
               directory "/" (return ())
       in case (ast, ast') of
@@ -81,7 +80,7 @@ spec = describe "Biegunka DSL" $ do
          ) -> pendingWith "this example should probably be removed"
         _ -> expectationFailure "bad"
     it "collects all mentioned namespaces no matter what" $
-      let (_, as) = runScript def def tokens $ do
+      let (_, as) = runScript def def $ do
             namespace "foo" $ do
               namespace "bar" $
                 directory "/" (return ())
@@ -93,7 +92,7 @@ spec = describe "Biegunka DSL" $ do
             directory "/" (return ())
       in setOf (namespaces.folded.from segmented) as == Set.fromList ["foo", "foo/bar", "baz", "quux", ""]
     it "ignores \"\" if no unnamespaced source is mentioned" $
-      let (_, as) = runScript def def tokens $ do
+      let (_, as) = runScript def def $ do
             namespace "baz" $
               directory "/" (return ())
             namespace "quux" $

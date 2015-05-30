@@ -273,7 +273,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
       namespaces . at namespace . non mempty <>= NR (M.singleton record mempty)
       iterM (populate namespace record) i
       next
-    TM _ next -> next
+    TWait _ next -> next
 
   populate
     :: String                                      -- ^ Namespace
@@ -285,12 +285,12 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
       for_ (toRecord action (fmap user aaUser)) $ \record ->
         assign (namespaces.ix ns.ix source.contains record) True
       next
-    TM _ next -> next
+    TWait _ next -> next
    where
-    toRecord (Link src dst)       = toFileRecord "link" src dst
-    toRecord (Copy src dst _)     = toFileRecord "copy" src dst
-    toRecord (Template src dst _) = toFileRecord "template" src dst
-    toRecord (Command {})         = const Nothing
+    toRecord (Link src dst)     = toFileRecord "link" src dst
+    toRecord (Copy src dst)     = toFileRecord "copy" src dst
+    toRecord (Template src dst) = toFileRecord "template" src dst
+    toRecord (Command {})       = const Nothing
 
     toFileRecord fileType fromSource filePath fileOwner =
       Just FR { fileType, fromSource, filePath, fileOwner }

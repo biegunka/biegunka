@@ -49,8 +49,10 @@ spec = do
       withBiegunkaDirectory $ \tmp -> do
         make tmp (dir "a" simple_copying_layout_0)
         biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-          D.directory tmp $
-            copy "a" (tmp </> "b")
+          D.directory tmp $ do
+            copy "a/foo"      (tmp </> "b/foo")
+            copy "a/bar"      (tmp </> "b/bar")
+            copy "a/baz/quux" (tmp </> "b/baz/quux")
         fit tmp (dir "b" simple_copying_layout_0)
      `shouldReturn`
       fromErrors []

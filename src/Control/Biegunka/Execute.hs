@@ -23,33 +23,39 @@ import           Control.Monad.Catch
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
+import qualified Crypto.Hash as Hash
+import qualified Data.ByteString.Char8 as ByteString
 import           Data.Default.Class (Default(..))
 import           Data.Function (fix)
-import qualified Data.Set as S
-import qualified Data.Text.IO as T
+import           Data.Proxy (Proxy(Proxy))
+import qualified Data.Set as Set
+import qualified Data.Text.IO as Text
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.FilePath (dropFileName)
 import           System.Environment (getEnvironment)
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
+import qualified System.IO.Temp as IO
 import qualified System.Posix as Posix
 import qualified System.Process as P
 import           Text.Printf (printf)
 
-import           Control.Biegunka.Action (copy)
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Settings
   (Templates(..), templates, local, Mode(..), mode)
 import qualified Control.Biegunka.Namespace as Ns
-import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Execute.Describe
-  (runChanges, describeTerm, sourceIdentifier, removal)
+  (describeTerm, sourceIdentifier, prettyDiff, removal, runChanges)
 import           Control.Biegunka.Execute.Exception
+import qualified Control.Biegunka.Execute.IO as EIO
+import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Language
 import           Control.Biegunka.Biegunka (Interpreter, interpretOptimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
+import qualified Control.Biegunka.Patience as Patience
 import           Control.Biegunka.Script
+import           Control.Biegunka.Templates (templating)
 
 {-# ANN module "HLint: ignore Use if" #-}
 
@@ -134,7 +140,7 @@ task f = go
               Abortive -> return ()
               Ignorant -> go x
         True -> go x
-  go (Free c@(TM _ x)) = do
+  go (Free c@(TWait _ x)) = do
     executeIO (f def) c
     go x
   go (Pure _) = return ()
@@ -142,7 +148,7 @@ task f = go
 -- | Execute a single command.
 executeIO
   :: (Term Annotate s a -> Executor (IO Bool)) -> Term Annotate s a -> Executor Bool
-executeIO _ (TM (Wait waits) _) = do
+executeIO _ (TWait waits _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
   return True
@@ -215,10 +221,10 @@ ioOnline term = case term of
     return $ do
       updated <- atomically $ do
         rs <- readTVar rstv
-        if dst `S.member` rs
+        if dst `Set.member` rs
           then return True
           else do
-            writeTVar rstv $ S.insert dst rs
+            writeTVar rstv $ Set.insert dst rs
             return False
       if updated
         then return Nothing
@@ -226,7 +232,7 @@ ioOnline term = case term of
           D.createDirectoryIfMissing True $ dropFileName dst
           update dst
      `onException`
-      atomically (modifyTVar rstv (S.delete dst))
+      atomically (modifyTVar rstv (Set.delete dst))
 
   TA _ (Link src dst) _ -> return $ do
     msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
@@ -234,20 +240,28 @@ ioOnline term = case term of
       Right src'
         | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
         | otherwise   -> Nothing
-    overWriteWith Posix.createSymbolicLink src dst
+    EIO.prepareDestination dst
+    Posix.createSymbolicLink src dst
     return msg
 
-  TA _ (Copy src dst spec) _ -> return $ do
+  TA _ (Copy src dst) _ -> return $ do
     IO.tryIOError (D.removeDirectoryRecursive dst)
-    D.createDirectoryIfMissing True $ dropFileName dst
-    copy src dst spec
-    return Nothing
+    diff <- EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst
+    EIO.prepareDestination dst
+    D.copyFile src dst `IO.catchIOError` (throwM . CopyingException)
+    return (fmap showDiff diff)
 
-  TA _ (Template src dst substitute) _ -> do
+  TA _ (Template src dst) _ -> do
     Templates ts <- view templates
     return $ do
-      overWriteWith (\s d -> T.writeFile d . substitute ts =<< T.readFile s) src dst
-      return Nothing
+      IO.withSystemTempFile "biegunka" $ \tempfp h -> do
+        IO.hClose h
+        Text.writeFile tempfp . templating ts =<< Text.readFile src
+        diff <- EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst
+        EIO.prepareDestination dst
+        D.renameFile tempfp dst
+          `IO.catchIOError` \_ -> D.copyFile tempfp dst
+        return (fmap showDiff diff)
 
   TA ann (Command p spec) _ -> return $ do
     defenv <- getEnvironment
@@ -274,17 +288,20 @@ ioOnline term = case term of
     e <- P.waitForProcess ph
     IO.hClose out
     e `onFailure` \status ->
-      T.hGetContents err >>= throwM . ShellException status
+      Text.hGetContents err >>= throwM . ShellException status
     return Nothing
    where
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TM _ _ -> return $ return Nothing
+  TWait _ _ -> return (return Nothing)
  where
-  overWriteWith g src dst = do
-    D.createDirectoryIfMissing True (dropFileName dst)
-    IO.tryIOError (Posix.removeLink dst) -- removeLink throws an exception if the file is missing
-    g src dst
+  showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> String
+  showDiff =
+    either (printf "contents changed from none to ‘%s’" . showHash)
+           (\(x, y, d) ->
+             printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
+             ++ prettyDiff d)
+  showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
 
 runAction :: Retries -> Term Annotate s a -> Executor (IO Bool)
 runAction r t@(TS {}) = runPure r t
@@ -299,12 +316,11 @@ doneWith tok = do
   watcher <- view watch
   Watcher.done watcher tok
 
-
 -- | Get user associated with term
 getUser :: Term Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
-getUser (TM _ _) = Nothing
+getUser (TWait _ _) = Nothing
 
 userID :: User -> IO Posix.UserID
 userID (UserID i)   = return i

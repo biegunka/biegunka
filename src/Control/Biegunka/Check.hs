@@ -64,14 +64,14 @@ termsLayout p = iter go . fmap return where
               Layout.symlink f file
                 & Layout.user .~ aaUser
                 & Layout.exists .~ True
-      Copy file target _ ->
+      Copy file target ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
               Layout.file f
                 & Layout.contents ?~ Layout.copyOf file
                 & Layout.user .~ aaUser
-      Template _ target _ ->
+      Template _ target ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
@@ -80,7 +80,7 @@ termsLayout p = iter go . fmap return where
       Command {} ->
         return ()
     spec
-  go (TM _ spec) = spec
+  go (TWait _ spec) = spec
 
   rel = makeRelative p
 

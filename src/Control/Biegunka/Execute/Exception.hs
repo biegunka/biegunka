@@ -11,7 +11,7 @@ module Control.Biegunka.Execute.Exception
   , onFailure
   ) where
 
-import Control.Exception (Exception, throwIO)
+import Control.Exception (Exception, IOException, throwIO)
 import Data.Monoid ((<>))
 import Data.Typeable (Typeable)
 import System.Exit (ExitCode(..))
@@ -21,17 +21,11 @@ import qualified Data.Text as T
 
 
 -- | Copying files/directories failure (with catched IO exception)
-data CopyingException = CopyingException FilePath FilePath String
+newtype CopyingException = CopyingException IOException
     deriving (Typeable)
 
 instance Show CopyingException where
-  show (CopyingException source destination ioerror) = nicely $
-       "Copying "
-    <> T.pack source
-    <> " to "
-    <> T.pack destination
-    <> " has failed.\nError:\n"
-    <> T.pack ioerror
+  show (CopyingException exn) = nicely ("Copying failed:\n" <> T.pack (show exn))
 
 instance Exception CopyingException
 

@@ -1,14 +1,16 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 -- | Specifies configuration language
 module Control.Biegunka.Language
   ( Scope(..)
-  , Term(..), Action(..), Source(..), Modifier(..)
-  , CopySpec(..)
-  , Token
+  , Term(..)
+  , Action(..)
+  , Source(..)
+  , Token(..)
   ) where
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -22,16 +24,11 @@ import Data.Traversable (Traversable(..), fmapDefault, foldMapDefault)
 import Control.Monad.Free (Free(..))
 import Data.Copointed (Copointed(..))
 import Data.Set (Set)
-import Data.Text (Text)
 import System.Process (CmdSpec)
-
-import Control.Biegunka.Templates
-import Control.Biegunka.Script.Token
 
 
 -- | Language terms scopes [kind]
 data Scope = Actions | Sources
-
 
 -- | Language terms datatype.
 --
@@ -42,9 +39,12 @@ data Scope = Actions | Sources
 --
 -- Consists of 2 scopes ('Actions' and 'Sources') and also scope-agnostic modifiers.
 data Term :: (Scope -> *) -> Scope -> * -> * where
-  TS :: f 'Sources -> Source -> Free (Term f 'Actions) () -> x -> Term f 'Sources x
-  TA :: f 'Actions -> Action -> x -> Term f 'Actions x
-  TM :: Modifier -> x -> Term f s x
+  TS    :: f 'Sources -> Source -> Free (Term f 'Actions) () -> x -> Term f 'Sources x
+  TA    :: f 'Actions -> Action -> x -> Term f 'Actions x
+  TWait :: Set Token -> x -> Term f s x
+
+newtype Token = Token Integer
+  deriving (Show, Eq, Enum, Ord)
 
 instance Functor (Term f s) where
   fmap = fmapDefault
@@ -55,16 +55,16 @@ instance Foldable (Term f s) where
   {-# INLINE foldMap #-}
 
 instance Traversable (Term f s) where
-  traverse f (TS a s i x) = TS a s i <$> f x
-  traverse f (TA a z   x) = TA a z   <$> f x
-  traverse f (TM   w   x) = TM   w   <$> f x
+  traverse f (TS    a s i x) = TS    a s i <$> f x
+  traverse f (TA    a z   x) = TA    a z   <$> f x
+  traverse f (TWait   w   x) = TWait   w   <$> f x
   {-# INLINE traverse #-}
 
 -- | Peek next 'Term'
 instance Copointed (Term f s) where
-  copoint (TS _ _ _ x) = x
-  copoint (TA _ _   x) = x
-  copoint (TM   _   x) = x
+  copoint (TS    _ _ _ x) = x
+  copoint (TA    _ _   x) = x
+  copoint (TWait   _   x) = x
 
 -- | 'Sources' scope terms data
 data Source = Source {
@@ -78,23 +78,13 @@ data Source = Source {
   , supdate :: FilePath -> IO (Maybe String)
   }
 
--- | 'Actions' scope terms data
+-- | A single action that can be perfomed in the 'Actions' scope.
 data Action =
-    -- | Symbolic link
+    -- | Symbolically link the file.
     Link FilePath FilePath
-    -- | Verbatim copy
-  | Copy FilePath FilePath CopySpec
-    -- | Copy with template substitutions
-  | Template FilePath FilePath (forall t. TemplateSystem t => t -> Text -> Text)
-    -- | External command
+    -- | Copy the file verbatim.
+  | Copy FilePath FilePath
+    -- | Generate the file from the template.
+  | Template FilePath FilePath
+    -- | Run external command.
   | Command FilePath CmdSpec
-
--- | Copying settings
-data CopySpec =
-    OnlyDirectories
-  | OnlyFiles
-  | BothDirectoriesAndFiles
-    deriving (Show, Read)
-
--- | Modificators for other datatypes
-data Modifier = Wait (Set Token)

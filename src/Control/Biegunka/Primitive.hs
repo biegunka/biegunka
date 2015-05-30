@@ -7,23 +7,28 @@
 -- All concrete primitives docs assume you have default settings
 module Control.Biegunka.Primitive
   ( -- * Actions layer primitives
-    link, register, copy, copyFile, copyDirectory, substitute
+    link
+  , register
+  , copy
+  , substitute
   , raw
     -- * Modifiers
   , namespace
-  , sudo, retries, reacting, prerequisiteOf, (<~>)
+  , sudo
+  , retries
+  , reacting
+  , prerequisiteOf
+  , (<~>)
   ) where
 
 import           Control.Lens
 import           Control.Monad.Reader (local)
-import qualified Data.Set as S
+import qualified Data.Set as Set
 import           System.FilePath ((</>))
 import           System.Command.QQ (Eval(..))
 
 import Control.Biegunka.Language
 import Control.Biegunka.Script
-import Control.Biegunka.Script.Token (peek)
-import Control.Biegunka.Templates
 
 
 infixr 7 `prerequisiteOf`, <~>
@@ -71,40 +76,16 @@ link :: FilePath -> FilePath -> Script 'Actions ()
 link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructTargetFilePath rfp src dst))
 {-# INLINE link #-}
 
--- | Copies file or directory to specified filepath
+-- | Copies a file to specified filepath
 --
 -- > git "https://example.com/source.git" "git/source" $
 -- >   copy "some-file" "anywhere"
 --
 -- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
 copy :: FilePath -> FilePath -> Script 'Actions ()
-copy = copy' BothDirectoriesAndFiles
+copy src dst =
+  actioned (\rfp sfp -> Copy (sfp </> src) (constructTargetFilePath rfp src dst))
 {-# INLINE copy #-}
-
--- | Copies only single file to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   copy "some-file" "anywhere"
---
--- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyFile :: FilePath -> FilePath -> Script 'Actions ()
-copyFile = copy' OnlyFiles
-{-# INLINE copyFile #-}
-
--- | Copies file or directory to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   copy "some-file" "anywhere"
---
--- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copyDirectory :: FilePath -> FilePath -> Script 'Actions ()
-copyDirectory = copy' OnlyDirectories
-{-# INLINE copyDirectory #-}
-
-copy' :: CopySpec -> FilePath -> FilePath -> Script 'Actions ()
-copy' spec src dst = actioned (\rfp sfp ->
-  Copy (sfp </> src) (constructTargetFilePath rfp src dst) spec)
-{-# INLINE copy' #-}
 
 -- | Substitutes templates in @HStringTemplate@ syntax
 -- in given file and writes result to specified filepath
@@ -118,7 +99,7 @@ copy' spec src dst = actioned (\rfp sfp ->
 -- 'templates' part of 'Controls'
 substitute :: FilePath -> FilePath -> Script 'Actions ()
 substitute src dst = actioned (\rfp sfp ->
-  Template (sfp </> src) (constructTargetFilePath rfp src dst) templating)
+  Template (sfp </> src) (constructTargetFilePath rfp src dst))
 {-# INLINE substitute #-}
 
 
@@ -155,10 +136,10 @@ reacting reaction (Script inner) = Script $
 -- Connects two scripts which forces them to run sequentially one after another.
 prerequisiteOf :: Script 'Sources a -> Script 'Sources b -> Script 'Sources b
 prerequisiteOf a b = do
-  s <- Script peek
+  s <- Script peekToken
   a
-  t <- Script peek
-  script (TM (Wait (S.fromList [s .. pred t])) ())
+  t <- Script peekToken
+  script (TWait (Set.fromList [s .. pred t]) ())
   b
 {-# INLINE prerequisiteOf #-}
 

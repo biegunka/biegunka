@@ -29,7 +29,10 @@ library
     , base                 >= 4.6    && < 5
     , bytestring
     , command-qq           >= 0.1    && < 1
+    , conduit              >= 1.2    && < 1.3
+    , conduit-extra        >= 1.1    && < 1.2
     , containers
+    , cryptohash           >= 0.11   && < 0.12
     , data-default-class   >= 0      && < 1
     , directory
     , directory-layout     >= 0.7    && < 0.8
@@ -44,22 +47,23 @@ library
     , optparse-applicative >= 0.11   && < 0.12
     , pointed              >= 3      && < 5
     , process
+    , resourcet            >= 1.1    && < 1.2
     , semigroups           >= 0.8.4  && < 1
     , safecopy             >= 0.8    && < 0.9
     , stm                  >= 2.4    && < 3
     , template-haskell
+    , temporary            >= 1.2    && < 1.3
     , text                 >= 0.11   && < 1.3
     , transformers
     , unix
-    , void                 >= 0.6    && < 1
   hs-source-dirs: src
   exposed-modules:
     Control.Biegunka
-    Control.Biegunka.Action
     Control.Biegunka.Biegunka
     Control.Biegunka.Check
     Control.Biegunka.Execute
     Control.Biegunka.Execute.Describe
+    Control.Biegunka.Execute.IO
     Control.Biegunka.Execute.Exception
     Control.Biegunka.Execute.Settings
     Control.Biegunka.Execute.Watcher
@@ -67,10 +71,10 @@ library
     Control.Biegunka.Logger
     Control.Biegunka.Namespace
     Control.Biegunka.Options
+    Control.Biegunka.Patience
     Control.Biegunka.Primitive
     Control.Biegunka.QQ
     Control.Biegunka.Script
-    Control.Biegunka.Script.Token
     Control.Biegunka.Settings
     Control.Biegunka.Source
     Control.Biegunka.Source.Directory

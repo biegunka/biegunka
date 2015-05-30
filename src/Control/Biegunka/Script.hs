@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -24,7 +25,7 @@ module Control.Biegunka.Script
   , namespaces
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..), Retries(..), incr, into
+  , URI, User(..), React(..), Retries(..), incr, into, peekToken
     -- * Namespace
   , Namespace
   , Segment
@@ -36,7 +37,7 @@ import Control.Applicative (Applicative(..), (<$>))
 #endif
 import Control.Lens
 import Control.Monad.Free (Free(..), iter, liftF)
-import Control.Monad.State (StateT(..))
+import Control.Monad.State (MonadState, StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Copointed (copoint)
@@ -46,7 +47,6 @@ import Data.List (isSuffixOf, intercalate)
 import Data.Monoid (mempty)
 #endif
 import Data.Set (Set)
-import Data.Void (Void)
 import System.Command.QQ (Eval(..))
 import System.Directory.Layout (User(..))
 import System.FilePath ((</>))
@@ -54,7 +54,6 @@ import System.FilePath.Lens
 import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
-import Control.Biegunka.Script.Token
 
 {-# ANN module "HLint: ignore Use if" #-}
 
@@ -136,16 +135,24 @@ instance Default Annotations where
 -- Mnemonic is 'Mutable Annotations'
 data MAnnotations = MAnnotations
   { _namespaces :: Set [Segment] -- ^ All encountered namespaces
-  } deriving (Show, Read)
+  , _tokens     :: Stream Token
+  } deriving (Show, Eq)
 
 instance Default MAnnotations where
   def = MAnnotations
     { _namespaces = mempty
+    , _tokens = startFrom (Token 0)
     }
   {-# INLINE def #-}
 
+-- | All namespaces encountered so far
+namespaces :: Lens' MAnnotations (Set [Segment])
+namespaces f x = f (_namespaces x) <&> \y -> x { _namespaces = y }
 
--- * Lenses
+-- | Token stream.
+tokens :: Lens' MAnnotations (Stream Token)
+tokens f x = f (_tokens x) <&> \y -> x { _tokens = y }
+
 
 class HasRunRoot s where
   -- | Absolute path of the Source layer root
@@ -197,18 +204,13 @@ sourceReaction f x = f (_sourceReaction x) <&> \y -> x { _sourceReaction = y }
 actionReaction :: Lens' Annotations React
 actionReaction f x = f (_actionReaction x) <&> \y -> x { _actionReaction = y }
 
--- | All namespaces encountered so far
-namespaces :: Lens' MAnnotations (Set [Segment])
-namespaces f x = f (_namespaces x) <&> \y -> x { _namespaces = y }
-
 
 -- | Newtype used to provide better error messages
 -- for type errors in DSL (for users, mostly)
 newtype Script s a = Script
   { unScript ::
-      StreamT (Tokenize s)
-        (ReaderT Annotations
-          (StateT MAnnotations (Free (Term Annotate s)))) a
+      ReaderT Annotations
+        (StateT MAnnotations (Free (Term Annotate s))) a
   } deriving (Functor, Applicative, Monad, MonadReader Annotations)
 
 instance Default a => Default (Script s a) where
@@ -221,20 +223,20 @@ instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
   {-# INLINE eval #-}
 
 
-type family Tokenize (s :: Scope) :: *
-type instance Tokenize 'Actions = Void
-type instance Tokenize 'Sources = Token
+data Stream a = Cons a (Stream a)
+    deriving (Show, Eq)
 
+startFrom :: Enum a => a -> Stream a
+startFrom x = Cons x (startFrom (succ x))
 
 -- | Get annotated DSL and resulting annotations alongside
 runScript
   :: MAnnotations
   -> Annotations
-  -> Infinite (Tokenize s)
   -> Script s a
   -> (Free (Term Annotate s) a, MAnnotations)
-runScript s e es (Script i) =
-  let r       = runStateT (runReaderT (runStreamT es i) e) s
+runScript s e (Script i) =
+  let r       = runStateT (runReaderT i e) s
       ast     = fmap fst r
       (_, as) = iter copoint r
   in (ast, as)
@@ -244,10 +246,9 @@ runScript s e es (Script i) =
 evalScript
   :: MAnnotations
   -> Annotations
-  -> Infinite (Tokenize s)
   -> Script s a
   -> Free (Term Annotate s) a
-evalScript = (((fst .) .) .) . runScript
+evalScript = ((fst .) .) . runScript
 {-# INLINE evalScript #-}
 
 -- | Lift DSL term to annotated 'Script'
@@ -258,19 +259,20 @@ script = Script . liftS
 -- | Half-lift DSL term to 'Script'
 liftS
   :: Term Annotate s a
-  -> StreamT (Tokenize s) (ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s)))) a
+  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 
 
 -- | Annotate 'Actions' DSL
 annotateActions
-  :: Script 'Actions a
-  -> StreamT Token
-      (ReaderT Annotations
-        (StateT MAnnotations (Free (Term Annotate 'Sources)))) (Free (Term Annotate 'Actions) a)
+  :: Monad m
+  => Script 'Actions a
+  -> ReaderT Annotations (StateT MAnnotations m) (Free (Term Annotate 'Actions) a)
 annotateActions i =
-  lift . ReaderT $ \e -> StateT $ \s -> return (runScript s e noTokens i)
+  ReaderT $ \e ->
+    StateT $ \s ->
+      return (runScript s e i)
 
 -- | Abstract away all plumbing needed to make source
 sourced
@@ -279,9 +281,8 @@ sourced
 sourced ty url path inner update = Script $ do
   rr <- view runRoot
   local (set sourceRoot (constructTargetFilePath rr url path) . set sourceURL url) $ do
-    token <- next
     annotation <- AS
-      <$> pure token
+      <$> nextToken
       <*> view segments
       <*> view activeUser
       <*> view maxRetries
@@ -293,6 +294,17 @@ sourced ty url path inner update = Script $ do
     liftS $ TS annotation (Source ty url sr update) ast ()
 
     namespaces . contains (asSegments annotation) .= True
+
+nextToken :: MonadState MAnnotations m => m Token
+nextToken = do
+  Cons t ts <- use tokens
+  tokens .= ts
+  return t
+
+peekToken :: MonadState MAnnotations m => m Token
+peekToken = do
+  Cons t _ <- use tokens
+  return t
 
 -- | Get 'Actions' scope script from 'FilePath' mangling
 actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
