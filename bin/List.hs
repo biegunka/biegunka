@@ -12,7 +12,6 @@ import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy.Char8 as B
 import           Data.Char (toUpper)
 import           Data.Foldable (for_)
-import qualified Data.Set as S
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as T
@@ -20,9 +19,8 @@ import           System.IO (hFlush, hPutStrLn, stderr, stdout)
 
 import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Namespace
-  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open, who)
-import           Control.Biegunka.Settings
-  (defaultSettings, biegunkaRoot, Targets(..), targets)
+  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), namespaces, namespacing, withDb, who)
+import           Control.Biegunka.Settings (defaultSettings, biegunkaRoot)
 
 import           Options
 
@@ -37,27 +35,25 @@ instance Functor Formatted where
   fmap g (Formatted p s f) = Formatted (g . p) (g . s) (g . f)
 
 
-list :: FilePath -> [String] -> Format -> IO ()
-list brpat ns format = do
+list :: FilePath -> Format -> IO ()
+list brpat format = do
   br <- expandHome brpat
 
-  let settings = defaultSettings & set biegunkaRoot br & set targets (targeted ns)
+  let settings = set biegunkaRoot br defaultSettings
 
   case format of
     Format pattern -> case formattingText pattern of
       Left errorMessage ->
         badformat errorMessage pattern
       Right formatted -> do
-        db <- open settings
-        T.putStr (execWriter (info formatted (view (these.namespaces) db)))
+        withDb settings $
+          T.putStr . execWriter . info formatted . view (namespaces.namespacing)
         hFlush stdout
     JSON -> do
-      db <- open settings
-      B.putStrLn . A.encode $ view these db
+      withDb settings $
+        B.putStrLn . A.encode . view namespaces
+      hFlush stdout
  where
-  targeted [] = All
-  targeted xs = Children (S.fromList xs)
-
   info formatted db =
     ifor_ db $ \nsName (NR nsData) -> do
       tell $ nsFormat formatted nsName
@@ -106,7 +102,7 @@ formatting xs = do
         s <- rules c
         t <- format rules cs
         return (\a -> s a ++ t a)
-      _ -> Left ("incomplete %-placeholder at the end")
+      _ -> Left "incomplete %-placeholder at the end"
     v:vs -> fmap (\g r -> v : g r) (format rules vs)
     []   -> Right (const "")
 

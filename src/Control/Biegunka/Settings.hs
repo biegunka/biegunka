@@ -9,8 +9,6 @@ module Control.Biegunka.Settings
   , defaultSettings
   , logger
   , Templates(..)
-    -- ** Script targets controls
-  , Targets(..)
     -- ** Biegunka mode
   , Mode(..)
   , _Online
@@ -19,7 +17,6 @@ module Control.Biegunka.Settings
 
 import Control.Applicative (Applicative)
 import Control.Lens
-import Data.Set (Set)
 
 import Control.Biegunka.Logger (Logger, HasLogger(..))
 import Control.Biegunka.Script (HasRunRoot(..))
@@ -32,7 +29,6 @@ data Settings = Settings
   { _runRoot      :: FilePath     -- ^ Root path for 'Source' layer
   , _biegunkaRoot :: FilePath     -- ^ Absolute of the Biegunka data files root
   , __logger      :: Maybe Logger -- ^ 'Logger' handle
-  , _targets      :: Targets      -- ^ Namespaces to focus on
   , _templates    :: Templates    -- ^ Templates mapping
   , _mode         :: Mode         -- ^ Biegunka mode
   }
@@ -42,9 +38,6 @@ class HasSettings t where
 
   _logger :: Lens' t (Maybe Logger)
   _logger = settings . \f x -> f (__logger x) <&> \y -> x { __logger = y }
-
-  targets :: Lens' t Targets
-  targets = settings . \f x -> f (_targets x) <&> \y -> x { _targets = y }
 
   templates :: Lens' t Templates
   templates = settings . \f x -> f (_templates x) <&> \y -> x { _templates = y }
@@ -70,17 +63,9 @@ defaultSettings = Settings
   { _runRoot      = "~"
   , _biegunkaRoot = "~/.biegunka"
   , __logger      = Nothing
-  , _targets      = All
   , _templates    = hStringTemplate ()
   , _mode         = defaultMode
   }
-
--- | Namespaces to focus on
-data Targets =
-    All                     -- All namespaces
-  | Subset   (Set FilePath) -- The subset of namespaces
-  | Children (Set FilePath) -- All children of the subset of namespaces
-    deriving (Show, Eq)
 
 data Mode = Offline | Online
     deriving (Show, Eq)

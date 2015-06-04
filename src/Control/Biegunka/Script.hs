@@ -19,13 +19,12 @@ module Control.Biegunka.Script
     -- ** Environment
   , HasRunRoot(..), HasSourceRoot(..)
     -- * Get annotated script
-  , runScript, evalScript
+  , evalScript
     -- * Script mangling
   , script, sourced, actioned, constructTargetFilePath
     -- * Lenses
   , segments
   , sourceURL
-  , namespaces
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
   , URI, User(..), React(..), Retries(..), defaultRetries, incr, into, peekToken
@@ -48,7 +47,6 @@ import Data.List (isSuffixOf, intercalate)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (mempty)
 #endif
-import Data.Set (Set)
 import System.Command.QQ (Eval(..))
 import System.Directory.Layout (User(..))
 import System.FilePath ((</>))
@@ -134,19 +132,13 @@ defaultAnnotations = Annotations
 --
 -- Mnemonic is 'Mutable Annotations'
 data MAnnotations = MAnnotations
-  { _namespaces :: Set [Segment] -- ^ All encountered namespaces
-  , _tokens     :: Stream Token
+  { _tokens     :: Stream Token
   } deriving (Show, Eq)
 
 defaultMAnnotations :: MAnnotations
 defaultMAnnotations = MAnnotations
-  { _namespaces = mempty
-  , _tokens = startFrom (Token 0)
+  { _tokens = startFrom (Token 0)
   }
-
--- | All namespaces encountered so far
-namespaces :: Lens' MAnnotations (Set [Segment])
-namespaces f x = f (_namespaces x) <&> \y -> x { _namespaces = y }
 
 -- | Token stream.
 tokens :: Lens' MAnnotations (Stream Token)
@@ -292,8 +284,6 @@ sourced ty url path inner update = Script $ do
     sr  <- view sourceRoot
 
     liftS $ TS annotation (Source ty url sr update) ast ()
-
-    namespaces . contains (asSegments annotation) .= True
 
 nextToken :: MonadState MAnnotations m => m Token
 nextToken = do

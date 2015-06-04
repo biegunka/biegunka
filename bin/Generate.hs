@@ -24,39 +24,33 @@ import           System.IO (hFlush, stdout)
 
 import           Control.Biegunka.Biegunka (expandHome)
 import           Control.Biegunka.Namespace
-  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), these, namespaces, open)
-import           Control.Biegunka.Settings
-  (defaultSettings, biegunkaRoot, Targets(..), targets)
+  (NamespaceRecord(..), SourceRecord(..), FileRecord(..), namespaces, namespacing, withDb)
+import           Control.Biegunka.Settings (defaultSettings, biegunkaRoot)
 
 
-scriptFor :: FilePath -> FilePath -> [String] -> IO ()
-scriptFor rrpat brpat ns = do
+scriptFor :: FilePath -> FilePath -> IO ()
+scriptFor rrpat brpat = do
   rr <- expandHome rrpat
   br <- expandHome brpat
-
-  db <- open (defaultSettings & set biegunkaRoot br & set targets (targeted ns))
-
-  let theses = view (these.namespaces) db
-      types  = uniqueSourcesTypes theses
-      script = execWriter (gen theses rr types)
-  T.putStr script
-  hFlush stdout
+  withDb (set biegunkaRoot br defaultSettings) $ \db -> do
+    let nss    = view (namespaces.namespacing) db
+        types  = uniqueSourcesTypes nss
+        script = execWriter (gen nss rr types)
+    T.putStr script
+    hFlush stdout
  where
-  targeted [] = All
-  targeted xs = Children (S.fromList xs)
-
   gen db root sources = do
     tell (boilerplate sources)
     ifor_ db $ \nsName (NR nsData) -> do
       write $ namespace nsName
-      case M.null nsData of
-        True  -> write $ indent sourceIndent emptyScript
-        False ->
+      if M.null nsData
+        then write $ indent sourceIndent emptyScript
+        else
           ifor_ nsData $ \sourceRecord fileRecords -> do
             write $ source root sourceRecord
-            case S.null fileRecords of
-              True  -> write $ indent fileIndent emptyScript
-              False ->
+            if S.null fileRecords
+              then write $ indent fileIndent emptyScript
+              else
                 for_ fileRecords $
                   tell . line . file root (sourcePath sourceRecord) (sourceOwner sourceRecord)
 

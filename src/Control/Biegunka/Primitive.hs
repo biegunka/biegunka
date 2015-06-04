@@ -49,11 +49,8 @@ infixr 7 `prerequisiteOf`, <~>
 -- >   git "https://github.com/ekmett/lens"
 -- >     ...
 namespace :: String -> Script 'Sources a -> Script 'Sources a
-namespace segment (Script inner) = Script $
-  local (over segments (segment :)) $ do
-    xs <- view segments
-    namespaces . contains xs .= True
-    inner
+namespace segment (Script inner) =
+  Script (local (over segments (segment :)) inner)
 {-# INLINE namespace #-}
 
 -- | Links source to specified filepath

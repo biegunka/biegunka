@@ -26,7 +26,6 @@ import qualified Data.List as List
 import           Data.Monoid (Monoid(..))
 #endif
 import           Data.Semigroup (Semigroup(..))
-import           Data.Set.Lens (setOf)
 import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
@@ -35,7 +34,7 @@ import qualified System.Posix as Posix
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script
-  (Script, Annotate, defaultMAnnotations, defaultAnnotations, namespaces, segmented, runScript)
+  (Script, Annotate, defaultMAnnotations, defaultAnnotations, evalScript)
 import           Control.Biegunka.Settings
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
@@ -80,12 +79,11 @@ biegunka (($ defaultSettings) -> c) (I interpret) script = do
   br <- views biegunkaRoot expandHome c
   Logger.with $ \l -> do
     Logger.write IO.stdout l (info rr br)
-    let (annotatedScript, annotations) = runScript defaultMAnnotations (set runRoot rr defaultAnnotations) script
+    let annotatedScript = evalScript defaultMAnnotations (set runRoot rr defaultAnnotations) script
         c' = c
           & runRoot      .~ rr
           & biegunkaRoot .~ br
           & _logger      ?~ l
-          & targets      .~ Subset (setOf (namespaces.folded.from segmented) annotations)
     interpret c' annotatedScript (return ExitSuccess)
  where
   info rr br = List.intercalate "\n" $

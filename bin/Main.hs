@@ -30,10 +30,10 @@ main = do
       -> defaulted target >>= initialize
     RunScript target args
       -> defaulted target >>= run args
-    List datadir format ns ->
-      list datadir ns format
-    GenScript appdir datadir ns ->
-      scriptFor appdir datadir ns
+    List datadir format ->
+      list datadir format
+    GenScript appdir datadir ->
+      scriptFor appdir datadir
     Version ->
       printf "biegunka version %s\n" (showVersion version)
 

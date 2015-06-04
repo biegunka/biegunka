@@ -64,14 +64,14 @@ run :: Interpreter
 run = optimistically go where
   go settings s = do
     let db' = Ns.fromScript s
-    bracket (Ns.open settings) Ns.close $ \db -> do
-      mapM_ (safely remove)          (Ns.diff (map Ns.filePath . Ns.files)     (view Ns.these db) db')
-      mapM_ (safely removeDirectory) (Ns.diff (map Ns.sourcePath . Ns.sources) (view Ns.these db) db')
+    Ns.withDb settings $ \db -> do
+      mapM_ (safely remove)          (Ns.diff (map Ns.filePath . Ns.files)     (view Ns.namespaces db) db')
+      mapM_ (safely removeDirectory) (Ns.diff (map Ns.sourcePath . Ns.sources) (view Ns.namespaces db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           withExecution settings $ \e ->
             runExecutor e (forkExecutor (task (views mode io settings) s))
-      Ns.commit (db & Ns.these .~ db')
+      Ns.commit db db'
    where
     io Offline = runAction
     io Online  = runAll
@@ -95,7 +95,7 @@ run = optimistically go where
 -- | Dry run interpreter
 dryRun :: Interpreter
 dryRun = optimistically $ \settings s ->
-  bracket (Ns.open settings) Ns.close $ \db -> do
+  Ns.withDb settings $ \db -> do
     withExecution settings $ \e ->
       runExecutor e (forkExecutor (task runPure s))
     Logger.write IO.stdout settings (runChanges db (Ns.fromScript s))

@@ -20,23 +20,28 @@
 --
 --   * Last, interpreter says 'close'
 module Control.Biegunka.Namespace
-  ( Partitioned, Namespaces, NamespaceRecord(..), SourceRecord(..), FileRecord(..)
-  , these, those, namespaces
-  , open, commit, close, fromScript
+  ( Db, Namespaces, NamespaceRecord(..), SourceRecord(..), FileRecord(..)
+  , HasNamespaces(namespaces)
+  , namespacing
+  , withDb
+  , commit
+  , fromScript
   , diff, files, sources
   , who
   , segmented
   ) where
 
 import           Control.Applicative
+import           Control.Exception (bracket)
 import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad ((<=<))
 import           Control.Monad.Free (Free(..), iterM)
-import           Control.Monad.State (State, execState)
+import           Control.Monad.Reader (asks)
+import           Control.Monad.State (State, execState, modify)
 import           Data.Acid
 import           Data.Acid.Local
 import           Data.Aeson
-import           Data.Foldable (any, elem, for_)
+import           Data.Foldable (for_)
 import           Data.Function (on)
 import           Data.List ((\\))
 import           Data.Maybe (fromMaybe)
@@ -52,8 +57,7 @@ import           Data.Typeable (Typeable)
 import           Prelude hiding (any, elem)
 import           System.FilePath.Lens hiding (extension)
 
-import Control.Biegunka.Settings
-  (Settings, Targets(..), biegunkaRoot, targets)
+import Control.Biegunka.Settings (Settings, biegunkaRoot)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
 
@@ -158,8 +162,19 @@ deriveSafeCopy 0 'base ''NamespaceRecord
 -- | All namespaces data
 --
 -- A mapping from namespace names to 'NamespaceRecord's
-newtype Namespaces = Namespaces { _namespaces :: Map String NamespaceRecord }
+newtype Namespaces = Namespaces { _unNamespaces :: Map String NamespaceRecord }
     deriving (Show, Typeable)
+
+type instance Index Namespaces = String
+type instance IxValue Namespaces = NamespaceRecord
+
+instance Ixed Namespaces where
+  ix k = namespacing.ix k
+  {-# INLINE ix #-}
+
+instance At Namespaces where
+  at k = namespacing.at k
+  {-# INLINE at #-}
 
 instance ToJSON Namespaces where
   toJSON (Namespaces gs) = object [ "groups" .= toJSON gs ]
@@ -168,18 +183,23 @@ instance Monoid Namespaces where
   mempty = Namespaces mempty
   Namespaces xs `mappend` Namespaces ys = Namespaces (xs `mappend` ys)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Namespaces
+class HasNamespaces a where
+  namespaces :: Lens' a Namespaces
 
--- | All namespace data
-namespaces :: Lens' Namespaces (Map String NamespaceRecord)
+instance HasNamespaces Namespaces where
+  namespaces = id
+  {-# INLINE namespaces #-}
+
+namespacing :: Iso' Namespaces (Map String NamespaceRecord)
+namespacing = iso _unNamespaces Namespaces
 
 deriveSafeCopy 0 'base ''Namespaces
 
 getMapping :: Query Namespaces (Map String NamespaceRecord)
-getMapping = view namespaces
+getMapping = asks _unNamespaces
 
 putMapping :: Map String NamespaceRecord -> Update Namespaces ()
-putMapping = assign namespaces
+putMapping y = modify (\x -> x { _unNamespaces = y })
 
 makeAcidic ''Namespaces ['getMapping, 'putMapping]
 
@@ -191,54 +211,44 @@ makeAcidic ''Namespaces ['getMapping, 'putMapping]
 --
 -- Relevant namespaces (or 'these') are namespaces mentioned in script so
 -- interpreter won't deal with others (or 'those')
-data Partitioned a = Partitioned
-  { _acidic :: AcidState a -- ^ The namespace database handle
-  , _these  :: a           -- ^ Namespaces targeted by the script
-  , _those  :: a           -- ^ All other namespaces
+data Db = Db
+  { _commit     :: Namespaces -> IO ()
+  , _close      :: IO ()
+  , _namespaces :: Namespaces
   }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Partitioned
+instance HasNamespaces Db where
+  namespaces = (\f x -> f (_namespaces x) <&> \y -> x { _namespaces = y }).namespaces
+  {-# INLINE namespaces #-}
 
--- | Namespace database handle
-acidic :: Lens' (Partitioned a) (AcidState a)
-
--- | Namespaces targeted by the script
-these :: Lens' (Partitioned a) a
-
--- | All other namespaces
-those :: Lens' (Partitioned a) a
-
+withDb :: Settings -> (Db -> IO a) -> IO a
+withDb s = bracket (open s) close
 
 -- | Open namespace data from disk
 --
 -- Searches @'appData'\/groups@ path for namespace data. Starts empty
 -- if nothing is found
-open :: Settings -> IO (Partitioned Namespaces)
+open :: Settings -> IO Db
 open settings = do
   let (path, _) = settings & biegunkaRoot <</>~ "groups"
   acid <- openLocalStateFrom path mempty
   gs   <- query acid GetMapping
-  let (xs, ys) = mentioned (partition (view targets settings)) gs
-  return Partitioned { _acidic = acid, _these = xs, _those = ys }
- where
-  partition All          = \_ _ -> True
-  partition (Subset s)   = \k _ -> k `elem` s
-  partition (Children s) = \k _ -> any (`isChildOf` k) s
-   where
-    isChildOf x y = x `elem` directories y
-    directories   = toListOf (takingWhile (/= ".") (iterated (view directory)))
-
-  mentioned p gs = let (xs, ys) = M.partitionWithKey p gs in (Namespaces xs, Namespaces ys)
+  return Db
+    { _commit = \db -> update acid (PutMapping (_unNamespaces db))
+    , _close = createCheckpointAndClose acid
+    , _namespaces = Namespaces gs
+    }
+{-# ANN open ("HLint: ignore Avoid lambda" :: String) #-}
 
 -- | Update namespace data
 --
 -- Combines 'these' and 'those' to get full state
-commit :: Partitioned Namespaces -> IO ()
-commit db = update (view acidic db) (PutMapping (M.union (view (those.namespaces) db) (view (these.namespaces) db)))
+commit :: Db -> Namespaces -> IO ()
+commit = _commit
 
 -- | Save namespace data to disk
-close :: Partitioned Namespaces -> IO ()
-close = createCheckpointAndClose . view acidic
+close :: Db -> IO ()
+close = _close
 
 -- | Get namespace difference
 diff :: Eq b => (a -> [b]) -> a -> a -> [b]
@@ -246,11 +256,11 @@ diff f = (\\) `on` f
 
 -- | Get all destination filepaths in 'Namespaces'
 files :: Namespaces -> [FileRecord]
-files = S.elems <=< M.elems . unGR <=< M.elems . view namespaces
+files = S.elems <=< M.elems . unGR <=< M.elems . _unNamespaces
 
 -- | Get all sources location in 'Namespaces'
 sources :: Namespaces -> [SourceRecord]
-sources = M.keys . unGR <=< M.elems . view namespaces
+sources = M.keys . unGR <=< M.elems . _unNamespaces
 
 
 -- | Extract namespace data from script
@@ -265,7 +275,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
           namespace = view (from segmented) asSegments
-      namespaces . at namespace . non mempty <>= NR (M.singleton record mempty)
+      at namespace . non mempty <>= NR (M.singleton record mempty)
       iterM (populate namespace record) i
       next
     TWait _ next -> next
@@ -278,7 +288,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
   populate ns source term = case term of
     TA (AA { aaUser }) action next -> do
       for_ (toRecord action (fmap user aaUser)) $ \record ->
-        assign (namespaces.ix ns.ix source.contains record) True
+        assign (ix ns.ix source.contains record) True
       next
     TWait _ next -> next
    where

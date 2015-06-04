@@ -26,7 +26,7 @@ import           Text.Printf (printf)
 import           Control.Lens
 import           System.Process (CmdSpec(..))
 
-import           Control.Biegunka.Namespace (Partitioned, Namespaces)
+import           Control.Biegunka.Namespace (Db, Namespaces)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
@@ -114,7 +114,7 @@ unline :: [Builder] -> Builder
 unline = mconcat . List.intersperse (Builder.singleton '\n')
 
 -- | Describe changes which will happen after the run
-runChanges :: Partitioned Namespaces -> Namespaces -> String
+runChanges :: Db -> Namespaces -> String
 runChanges db gs = unlines $ "" : concatMap about
   [ ("deleted files",    red,    map Ns.filePath df)
   , ("deleted sources",  red,    map Ns.sourcePath ds)
@@ -127,8 +127,8 @@ runChanges db gs = unlines $ "" : concatMap about
   about (msg, color, xs) = case length xs of
     0 -> []
     n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
-  (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.these db)) (Ns.files gs)
-  (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.these db)) (Ns.sources gs)
+  (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.namespaces db)) (Ns.files gs)
+  (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.namespaces db)) (Ns.sources gs)
 
 -- | /O(n^2)/
 --

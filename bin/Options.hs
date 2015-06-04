@@ -6,13 +6,13 @@ import Options.Applicative
 
 -- | @biegunka@ subcommands
 data BiegunkaCommand
-  = Init FilePath                 -- ^ @biegunka init@
-  | RunScript                     -- ^ @biegunka run@ or @biegunka check@
+  = Init FilePath         -- ^ @biegunka init@
+  | RunScript             -- ^ @biegunka run@ or @biegunka check@
       FilePath [String]
-  | List FilePath Format [String] -- ^ @biegunka list@
+  | List FilePath Format  -- ^ @biegunka list@
   | GenScript
-      FilePath FilePath [String]  -- ^ @biegunka generate@
-  | Version                       -- ^ Print @biegunka@ version
+      FilePath FilePath   -- ^ @biegunka generate@
+  | Version               -- ^ Print @biegunka@ version
     deriving (Show, Eq)
 
 -- | @biegunka list@ formats
@@ -40,7 +40,6 @@ options = info (helper <*> opts) fullDesc
     listOptions = List
       <$> dataDir
       <*> listFormats
-      <*> otherArguments
     listFormats =
       Format <$> strOption (long "format"
         <> value defaultBiegunkaListFormat
@@ -52,7 +51,6 @@ options = info (helper <*> opts) fullDesc
     genScriptOptions = GenScript
       <$> appDir
       <*> dataDir
-      <*> otherArguments
 
     appDir = strOption (long "app-dir"
       <> value defaultBiegunkaAppDirectory

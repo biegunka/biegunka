@@ -1,13 +1,10 @@
 {-# LANGUAGE GADTs #-}
 module DSLSpec (spec) where
 
+import Control.Lens
+import Control.Monad.Free (Free(..))
 import Data.Foldable (toList)
-
-import           Control.Lens
-import           Control.Monad.Free (Free(..))
-import qualified Data.Set as Set
-import           Data.Set.Lens (setOf)
-import           Test.Hspec
+import Test.Hspec
 
 import Control.Biegunka.Language (Term(..), Action(..), Source(..))
 import Control.Biegunka.Primitive
@@ -63,7 +60,7 @@ spec = describe "Biegunka DSL" $ do
       in case ast of
         Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
-  context "namespaces" $ do
+  context "namespaces" $
     it "does not matter how nested namespaces are constructed" $
       let ast = evalScript defaultMAnnotations defaultAnnotations $
             namespace "foo" $
@@ -78,24 +75,5 @@ spec = describe "Biegunka DSL" $ do
          , Free (TS AS { asSegments = _ } Source {} (Pure ()) (Pure ()))
          ) -> pendingWith "this example should probably be removed"
         _ -> expectationFailure "bad"
-    it "collects all mentioned namespaces no matter what" $
-      let (_, as) = runScript defaultMAnnotations defaultAnnotations $ do
-            namespace "foo" $ do
-              namespace "bar" $
-                directory "/" (return ())
-              directory "/" (return ())
-            namespace "baz" $
-              directory "/" (return ())
-            namespace "quux" $
-              return ()
-            directory "/" (return ())
-      in setOf (namespaces.folded.from segmented) as == Set.fromList ["foo", "foo/bar", "baz", "quux", ""]
-    it "ignores \"\" if no unnamespaced source is mentioned" $
-      let (_, as) = runScript defaultMAnnotations defaultAnnotations $ do
-            namespace "baz" $
-              directory "/" (return ())
-            namespace "quux" $
-              return ()
-      in setOf (namespaces.folded.from segmented) as == Set.fromList ["baz", "quux"]
 
   it "does something useful" pending
