@@ -13,6 +13,7 @@ module Control.Biegunka.Execute.Describe
 
 import           Control.Exception (SomeException)
 import           Data.Bool (bool)
+import           Data.Function (on)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
 import           Data.Monoid (mempty, mconcat)
@@ -25,7 +26,8 @@ import           Text.Printf (printf)
 import           Control.Lens
 import           System.Process (CmdSpec(..))
 
-import           Control.Biegunka.Namespace (Partitioned, Namespaces, these, files, sources)
+import           Control.Biegunka.Namespace (Partitioned, Namespaces)
+import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
 import           Control.Biegunka.Patience (Hunk(..), Judgement(..), judgement)
@@ -114,15 +116,33 @@ unline = mconcat . List.intersperse (Builder.singleton '\n')
 -- | Describe changes which will happen after the run
 runChanges :: Partitioned Namespaces -> Namespaces -> String
 runChanges db gs = unlines $ "" : concatMap about
-  [ ("added files",     green, (files gs List.\\ files (view these db)))
-  , ("added sources",   green, (sources gs List.\\ sources (view these db)))
-  , ("deleted files",   red,   (files (view these db) List.\\ files gs))
-  , ("deleted sources", red,   (sources (view these db) List.\\ sources gs))
+  [ ("deleted files",    red,    map Ns.filePath df)
+  , ("deleted sources",  red,    map Ns.sourcePath ds)
+  , ("modified files",   yellow, map Ns.filePath mf)
+  , ("modified sources", yellow, map Ns.sourcePath ms)
+  , ("added files",      green,  map Ns.filePath nf)
+  , ("added sources",    green,  map Ns.sourcePath ns)
   ] ++ [""]
  where
   about (msg, color, xs) = case length xs of
     0 -> []
     n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
+  (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.these db)) (Ns.files gs)
+  (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.these db)) (Ns.sources gs)
+
+-- | /O(n^2)/
+--
+-- I have no idea if it works.
+changes :: (Eq a, Ord b) => (a -> b) -> [a] -> [a] -> ([a], [a], [a])
+changes f xs ys = (xsys, ms, ysxs)
+ where
+  ms =
+    map head (filter (not . null . drop 1 . List.nub)
+                     (List.groupBy ((==) `on` f)
+                                   (List.sortBy (compare `on` f)
+                                                (xs ++ ys))))
+  xsys = List.deleteFirstsBy ((==) `on` f) xs ys
+  ysxs = List.deleteFirstsBy ((==) `on` f) ys xs
 
 -- | Describe file or directory removal
 removal :: FilePath -> String

@@ -65,8 +65,8 @@ run = optimistically go where
   go settings s = do
     let db' = Ns.fromScript s
     bracket (Ns.open settings) Ns.close $ \db -> do
-      mapM_ (safely remove)          (Ns.diff Ns.files   (view Ns.these db) db')
-      mapM_ (safely removeDirectory) (Ns.diff Ns.sources (view Ns.these db) db')
+      mapM_ (safely remove)          (Ns.diff (map Ns.filePath . Ns.files)     (view Ns.these db) db')
+      mapM_ (safely removeDirectory) (Ns.diff (map Ns.sourcePath . Ns.sources) (view Ns.these db) db')
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           withExecution settings $ \e ->

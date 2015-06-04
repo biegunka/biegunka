@@ -73,13 +73,11 @@ data SourceRecord = SR
   , fromLocation :: FilePath                  -- 'Source' location (url, basically)
   , sourcePath   :: FilePath                  -- Path to 'Source'
   , sourceOwner  :: Maybe (Either String Int) -- 'Source' owner
-  } deriving (Show, Read)
-
--- | Only destination filepath matters for equality
-instance Eq SourceRecord where
-  (==) = (==) `on` sourcePath
+  } deriving (Show, Eq)
 
 -- | Only destination filepath matters for ordering
+--
+-- FIXME: Use a newtype.
 instance Ord SourceRecord where
   (<=) = (<=) `on` sourcePath
 
@@ -109,11 +107,7 @@ data FileRecord = FR
   , fromSource :: FilePath                  -- File source location (path on disk)
   , filePath   :: FilePath                  -- Path to file
   , fileOwner  :: Maybe (Either String Int) -- File owner
-  } deriving (Show)
-
--- | Only destination filepath matters for equality
-instance Eq FileRecord where
-  (==) = (==) `on` filePath
+  } deriving (Show, Eq)
 
 -- | Only destination filepath matters for ordering
 instance Ord FileRecord where
@@ -251,12 +245,12 @@ diff :: Eq b => (a -> [b]) -> a -> a -> [b]
 diff f = (\\) `on` f
 
 -- | Get all destination filepaths in 'Namespaces'
-files :: Namespaces -> [FilePath]
-files = map filePath . S.elems <=< M.elems . unGR <=< M.elems . view namespaces
+files :: Namespaces -> [FileRecord]
+files = S.elems <=< M.elems . unGR <=< M.elems . view namespaces
 
 -- | Get all sources location in 'Namespaces'
-sources :: Namespaces -> [FilePath]
-sources = map sourcePath . M.keys . unGR <=< M.elems . view namespaces
+sources :: Namespaces -> [SourceRecord]
+sources = M.keys . unGR <=< M.elems . view namespaces
 
 
 -- | Extract namespace data from script
