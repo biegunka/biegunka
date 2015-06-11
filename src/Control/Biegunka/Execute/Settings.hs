@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- | Controlling execution
@@ -14,7 +15,9 @@ module Control.Biegunka.Execute.Settings
   , Work(..)
   ) where
 
+#if (!MIN_VERSION_base(4,8,0))
 import           Control.Applicative (Applicative, (<$>), (<*>), pure)
+#endif
 import           Control.Exception (bracket)
 import           Control.Concurrent (forkFinally)
 import           Control.Concurrent.STM.TVar (TVar, newTVarIO)

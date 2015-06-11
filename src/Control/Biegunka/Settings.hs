@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- | Controlling biegunka interpreters and their composition
@@ -15,7 +16,9 @@ module Control.Biegunka.Settings
   , _Offline
   ) where
 
+#if (!MIN_VERSION_base(4,8,0))
 import Control.Applicative (Applicative)
+#endif
 import Control.Lens
 
 import Control.Biegunka.Logger (Logger, HasLogger(..))

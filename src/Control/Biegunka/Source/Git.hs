@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 -- | Support for git repositories as 'Sources'
 {-# LANGUAGE TypeFamilies #-}
 module Control.Biegunka.Source.Git
@@ -17,7 +18,9 @@ module Control.Biegunka.Source.Git
 
 import           Control.Exception (bracket)
 import           Data.Bool (bool)
+#if (!MIN_VERSION_base(4,8,0))
 import           Data.Monoid (Monoid(mempty, mappend))
+#endif
 import qualified Data.Text as Text
 import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))
