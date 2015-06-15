@@ -1,11 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | Namespace data.
@@ -20,14 +16,13 @@
 --
 --   * Last, interpreter says 'close'
 module Control.Biegunka.Namespace
-  ( Db, Namespaces, NamespaceRecord(..), SourceRecord(..), FileRecord(..)
+  ( Db, Namespaces(..), NamespaceRecord(..), SourceRecord(..), FileRecord(..)
   , HasNamespaces(namespaces)
   , namespacing
   , withDb
   , commit
   , fromScript
   , diff, files, sources
-  , who
   , segmented
   ) where
 
@@ -40,11 +35,9 @@ import           Control.Monad.Reader (asks)
 import           Control.Monad.State (State, execState, modify)
 import           Data.Acid
 import           Data.Acid.Local
-import           Data.Aeson
 import           Data.Foldable (for_)
 import           Data.Function (on)
 import           Data.List ((\\))
-import           Data.Maybe (fromMaybe)
 import           Data.Map (Map)
 import qualified Data.Map as M
 #if __GLASGOW_HASKELL__ < 710
@@ -60,13 +53,6 @@ import           System.FilePath.Lens hiding (extension)
 import Control.Biegunka.Settings (Settings, biegunkaRoot)
 import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
 import Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
-
--- $setup
--- >>> import Data.Default
-
-
-who :: Maybe (Either String Int) -> String
-who = either id show . fromMaybe (Left "(unknown)")
 
 
 data SourceRecord_v0 = SR_v0 String FilePath FilePath
@@ -84,14 +70,6 @@ data SourceRecord = SR
 -- FIXME: Use a newtype.
 instance Ord SourceRecord where
   (<=) = (<=) `on` sourcePath
-
-instance ToJSON SourceRecord where
-  toJSON SR { sourceType, fromLocation, sourcePath, sourceOwner } = object
-    [ "type" .= sourceType
-    , "from" .= fromLocation
-    , "path" .= sourcePath
-    , "user" .= who sourceOwner
-    ]
 
 deriveSafeCopy 0 'base ''SourceRecord_v0
 
@@ -116,14 +94,6 @@ data FileRecord = FR
 -- | Only destination filepath matters for ordering
 instance Ord FileRecord where
   (<=) = (<=) `on` filePath
-
-instance ToJSON FileRecord where
-  toJSON FR { fileType, fromSource, filePath, fileOwner } = object
-    [ "type" .= fileType
-    , "from" .= fromSource
-    , "path" .= filePath
-    , "user" .= who fileOwner
-    ]
 
 deriveSafeCopy 0 'base ''FileRecord_v0
 
@@ -151,11 +121,6 @@ type instance IxValue NamespaceRecord = Set FileRecord
 instance Ixed NamespaceRecord where
   ix k f (NR x) = NR <$> ix k f x
 
-instance ToJSON NamespaceRecord where
-  toJSON (NR t) = object [             "sources" .= map repo   (M.toList t)]
-   where
-    repo (k, v) = object ["info" .= k, "files"   .= map toJSON (S.toList v)]
-
 deriveSafeCopy 0 'base ''NamespaceRecord
 
 
@@ -175,9 +140,6 @@ instance Ixed Namespaces where
 instance At Namespaces where
   at k = namespacing.at k
   {-# INLINE at #-}
-
-instance ToJSON Namespaces where
-  toJSON (Namespaces gs) = object [ "groups" .= toJSON gs ]
 
 instance Monoid Namespaces where
   mempty = Namespaces mempty
