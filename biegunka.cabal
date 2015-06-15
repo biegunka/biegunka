@@ -137,7 +137,9 @@ test-suite spec
     , hspec-expectations-lens
     , lens
     , optparse-applicative
+    , process
     , semigroups
+    , silently
     , temporary
     , text
     , transformers
@@ -150,6 +152,7 @@ test-suite spec
   other-modules:
     Control.Biegunka.BiegunkaSpec
     Control.Biegunka.OptionsSpec
+    Control.Biegunka.Source.GitSpec
     BehavioursSpec
     DSLSpec
   ghc-options:

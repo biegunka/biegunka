@@ -3,8 +3,8 @@
 , data-default-class, directory, directory-layout, exceptions
 , filepath, free, hspec, hspec-expectations-lens, HStringTemplate
 , lens, meep, mtl, optparse-applicative, process, resourcet
-, safecopy, semigroups, stdenv, stm, template-haskell, temporary
-, text, transformers, unix
+, safecopy, semigroups, silently, stdenv, stm, template-haskell
+, temporary, text, transformers, unix
 }:
 mkDerivation {
   pname = "biegunka";
@@ -22,7 +22,8 @@ mkDerivation {
   testDepends = [
     base containers data-default-class directory directory-layout
     filepath free hspec hspec-expectations-lens lens
-    optparse-applicative semigroups temporary text transformers unix
+    optparse-applicative process semigroups silently temporary text
+    transformers unix
   ];
   homepage = "http://biegunka.budueba.com/";
   description = "Configuration development";
