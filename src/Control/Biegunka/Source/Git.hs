@@ -1,10 +1,10 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE CPP #-}
--- | Support for git repositories as 'Sources'
 {-# LANGUAGE TypeFamilies #-}
+-- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git
   ( -- * Source layer
     git', git, git_
@@ -18,7 +18,7 @@ module Control.Biegunka.Source.Git
 
 import           Control.Exception (bracket)
 import           Data.Bool (bool)
-#if (!MIN_VERSION_base(4,8,0))
+#if __GLASGOW_HASKELL__ < 710
 import           Data.Monoid (Monoid(mempty, mappend))
 #endif
 import qualified Data.Text as Text

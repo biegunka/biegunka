@@ -16,7 +16,7 @@ module Control.Biegunka.Settings
   , _Offline
   ) where
 
-#if (!MIN_VERSION_base(4,8,0))
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative)
 #endif
 import Control.Lens

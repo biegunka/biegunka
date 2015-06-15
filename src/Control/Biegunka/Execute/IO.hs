@@ -1,15 +1,11 @@
-{-# LANGUAGE CPP #-}
 module Control.Biegunka.Execute.IO
   ( compareContents
   , hash
   , prepareDestination
   ) where
 
-#if (!MIN_VERSION_base(4,8,0))
-import           Control.Applicative ((<$))
-#endif
 import           Control.Exception (handleJust)
-import           Control.Monad (guard)
+import           Control.Monad (guard, void)
 import           Control.Monad.Trans.Resource (runResourceT)
 import qualified Crypto.Hash as Hash
 import           Data.Conduit
@@ -20,6 +16,8 @@ import qualified System.IO.Error as IO
 import qualified System.Posix as Posix
 
 import qualified Control.Biegunka.Patience as Patience
+
+{-# ANN module "HLint: ignore Use const" #-}
 
 
 -- | Compare the contents of two files. Returns @Just (Left digest)@ if
@@ -47,7 +45,7 @@ compareContents _ src dst = do
 -- | Create a directory for a file with a given filepath to reside in and
 -- unlink the filepath if there's a resident already.
 prepareDestination :: FilePath -> IO ()
-prepareDestination fp = () <$ do
+prepareDestination fp = void $ do
   D.createDirectoryIfMissing True (dropFileName fp)
   IO.tryIOError (Posix.removeLink fp)
 

@@ -15,7 +15,7 @@ module Control.Biegunka.Execute.Settings
   , Work(..)
   ) where
 
-#if (!MIN_VERSION_base(4,8,0))
+#if __GLASGOW_HASKELL__ < 710
 import           Control.Applicative (Applicative, (<$>), (<*>), pure)
 #endif
 import           Control.Exception (bracket)

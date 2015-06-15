@@ -21,5 +21,7 @@ let g:syntastic_haskell_hdevtools_args = s:hdevtools_options
 	\ , '-Wall'
 	\ , '-fno-warn-unused-do-bind'
 	\ , '-fno-warn-type-defaults'
+	\ , '-optP-include'
+	\ , '-optPdist/build/autogen/cabal_macros.h'
 	\ ] + s:discover_cabal_sandbox(".cabal-sandbox/*.conf.d")
 	\ )
