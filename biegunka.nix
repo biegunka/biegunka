@@ -9,7 +9,7 @@
 mkDerivation {
   pname = "biegunka";
   version = "0.2";
-  src = builtins.filterSource (_: type: type != "unknown") ./.;
+  src = ./.;
   isLibrary = true;
   isExecutable = true;
   buildDepends = [
