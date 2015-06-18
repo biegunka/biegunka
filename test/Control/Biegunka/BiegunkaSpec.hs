@@ -16,8 +16,8 @@ spec :: Spec
 spec =
   describe "expandHome" $ do
     it "expands bare ~ to the user home directory" $ do
-      dir <- expandHome "~"
       home <- getHomeDirectory
+      dir <- expandHome "~"
       dir `shouldBe` home
 
     it "reflects changes to HOME" $
@@ -27,20 +27,20 @@ spec =
         dir `shouldBe` "foo"
 
     it "expands ~/$path to $path in the user home directory" $ do
-      dir <- expandHome "~/foo"
       home <- getHomeDirectory
+      dir <- expandHome "~/foo"
       dir `shouldBe` home </> "foo"
 
     it "expands ~$user to the $user user home directory" $ do
       name <- getName
+      home <- getHome
       dir <- expandHome ("~" ++ name)
-      home <- getHomeDirectory
       dir `shouldBe` home
 
     it "expands ~$user/$path to $path in the $user user home directory" $ do
       name <- getName
+      home <- getHome
       dir <- expandHome ("~" ++ name ++ "/foo")
-      home <- getHomeDirectory
       dir `shouldBe` home </> "foo"
 
     it "is 'id' for other absolute patterns" $
@@ -51,3 +51,6 @@ spec =
 
 getName :: IO String
 getName = fmap Posix.userName . Posix.getUserEntryForID =<< Posix.getEffectiveUserID
+
+getHome :: IO FilePath
+getHome = fmap Posix.homeDirectory . Posix.getUserEntryForID =<< Posix.getEffectiveUserID
