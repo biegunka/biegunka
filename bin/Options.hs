@@ -1,14 +1,15 @@
 -- | @biegunka@ tool options
 module Options where
 
-import Options.Applicative
+import           Control.Monad (guard)
+import qualified Data.List as List
+import           Options.Applicative
 
 
 -- | @biegunka@ subcommands
 data BiegunkaCommand
   = Init FilePath
-  | RunScript
-      FilePath [String]
+  | RunScript FilePath [String]
   | Json FilePath
   | Version
     deriving (Show, Eq)
@@ -30,7 +31,8 @@ options = info (helper <*> opts) fullDesc
       <$> strOption (long "data-dir"
         <> value defaultBiegunkaDataDirectory <> help "Biegunka data directory")
 
-    destination = argument str (value defaultBiegunkaScriptName)
+    destination = argument (do x <- str; guard (not ("-" `List.isPrefixOf` x)); return x)
+                           (value defaultBiegunkaScriptName)
 
     otherArguments = many (argument str idm)
 
