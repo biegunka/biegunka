@@ -1,28 +1,26 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
 import           Data.Char (toLower)
 import           Data.Version (showVersion)
 import           Options.Applicative (customExecParser, prefs, showHelpOnError)
-import qualified System.Directory as D
-import           System.Exit (ExitCode(..), exitWith)
+import           System.Directory (doesDirectoryExist, doesFileExist, copyFile)
+import           System.Exit (exitFailure)
 import           System.FilePath ((</>))
-import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
+import qualified System.IO as IO
 import           Text.Printf (printf)
 
-import           Paths_biegunka
-
+import qualified Git_biegunka as Git
 import qualified Json
 import           Options
+import           Paths_biegunka (getDataFileName, version)
 import           Run (run)
-
-{-# ANN module ("HLint: ignore Use hierarchical imports" :: String) #-}
-{-# ANN module ("HLint: ignore Use if" :: String) #-}
 
 
 main :: IO ()
 main = do
-  hSetBuffering stdout NoBuffering
+  IO.hSetBuffering IO.stdout IO.NoBuffering
   biegunkaCommand <- customExecParser (prefs showHelpOnError) options
   case biegunkaCommand of
     Init target
@@ -32,14 +30,13 @@ main = do
     Json datadir ->
       Json.out datadir
     Version ->
-      printf "biegunka version %s\n" (showVersion version)
+      printf "biegunka %s-%s\n" (showVersion version) Git.hash
 
 -- | Append default biegunka script name if target
 -- happens to be a directory
 defaulted :: FilePath -> IO FilePath
-defaulted target = do
-  exists <- D.doesDirectoryExist target
-  case exists of
+defaulted target =
+  doesDirectoryExist target >>= \case
     True  -> return (target </> defaultBiegunkaScriptName)
     False -> return target
 
@@ -47,25 +44,22 @@ defaulted target = do
 initialize :: FilePath -> IO ()
 initialize target = do
   template <- getDataFileName "data/biegunka-init.template"
-  destinationExists <- D.doesFileExist target
-  case destinationExists of
-    True -> do
-      response <- prompt $ target ++ " already exists! Overwrite?"
-      case response of
-        True  -> copy template
-        False -> do
-          putStrLn "Failed to initialize biegunka script: Already Exists"
-          exitWith (ExitFailure 1)
+  doesFileExist target >>= \case
+    True -> prompt (target ++ " already exists! Overwrite?") >>= \case
+      True  -> copy template
+      False -> do
+        IO.hPutStrLn IO.stderr "Failed to initialize biegunka script: Already Exists"
+        exitFailure
     False -> copy template
  where
   copy source = do
-    D.copyFile source target
-    putStrLn $ "Initialized biegunka script at " ++ target
+    copyFile source target
+    putStrLn ("Initialized biegunka script at " ++ target)
 
 prompt :: String -> IO Bool
 prompt message = do
-  putStr $ message ++ " [y/n] "
-  hFlush stdout
+  putStr (message ++ " [y/n] ")
+  IO.hFlush IO.stdout
   response <- getLine
   case map toLower response of
     "y" -> return True

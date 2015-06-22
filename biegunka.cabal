@@ -150,8 +150,6 @@ test-suite spec
     Control.Biegunka.OptionsSpec
     BehavioursSpec
     DSLSpec
-    Git_biegunka
-    Paths_biegunka
   ghc-options:
     -Wall
     -Werror
