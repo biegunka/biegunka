@@ -108,7 +108,6 @@ executable biegunka
   main-is:
     Main.hs
   other-modules:
-    Generate
     List
     Options
     Run
@@ -151,7 +150,6 @@ test-suite spec
     Control.Biegunka.OptionsSpec
     BehavioursSpec
     DSLSpec
-    GenerateSpec
     Git_biegunka
     Paths_biegunka
   ghc-options:

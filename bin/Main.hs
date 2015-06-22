@@ -12,7 +12,6 @@ import           Text.Printf (printf)
 
 import Paths_biegunka
 
-import Generate (scriptFor)
 import List (list)
 import Options
 import Run (run)
@@ -32,8 +31,6 @@ main = do
       -> defaulted target >>= run args
     List datadir format ->
       list datadir format
-    GenScript appdir datadir ->
-      scriptFor appdir datadir
     Version ->
       printf "biegunka version %s\n" (showVersion version)
 

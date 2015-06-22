@@ -10,8 +10,6 @@ data BiegunkaCommand
   | RunScript             -- ^ @biegunka run@ or @biegunka check@
       FilePath [String]
   | List FilePath Format  -- ^ @biegunka list@
-  | GenScript
-      FilePath FilePath   -- ^ @biegunka generate@
   | Version               -- ^ Print @biegunka@ version
     deriving (Show, Eq)
 
@@ -33,9 +31,7 @@ options = info (helper <*> opts) fullDesc
     command "run"  (info (RunScript <$> destination <*> otherArguments)
       (progDesc "Run biegunka script")) <>
     command "list"  (info listOptions
-      (progDesc "List biegunka namespace data")) <>
-    command "generate"  (info genScriptOptions
-      (progDesc "Generate script for saved namespaces"))
+      (progDesc "List biegunka namespace data"))
    where
     listOptions = List
       <$> dataDir
@@ -47,14 +43,6 @@ options = info (helper <*> opts) fullDesc
      <|>
       flag' JSON (long "json"
         <> help "JSON Output format")
-
-    genScriptOptions = GenScript
-      <$> appDir
-      <*> dataDir
-
-    appDir = strOption (long "app-dir"
-      <> value defaultBiegunkaAppDirectory
-      <> help "Biegunka root")
 
     dataDir = strOption (long "data-dir"
       <> value defaultBiegunkaDataDirectory
