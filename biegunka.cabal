@@ -108,7 +108,7 @@ executable biegunka
   main-is:
     Main.hs
   other-modules:
-    List
+    Json
     Options
     Run
   ghc-options:

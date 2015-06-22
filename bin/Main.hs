@@ -10,11 +10,11 @@ import           System.FilePath ((</>))
 import           System.IO (hFlush, hSetBuffering, BufferMode(..), stdout)
 import           Text.Printf (printf)
 
-import Paths_biegunka
+import           Paths_biegunka
 
-import List (list)
-import Options
-import Run (run)
+import qualified Json
+import           Options
+import           Run (run)
 
 {-# ANN module ("HLint: ignore Use hierarchical imports" :: String) #-}
 {-# ANN module ("HLint: ignore Use if" :: String) #-}
@@ -29,8 +29,8 @@ main = do
       -> defaulted target >>= initialize
     RunScript target args
       -> defaulted target >>= run args
-    List datadir format ->
-      list datadir format
+    Json datadir ->
+      Json.out datadir
     Version ->
       printf "biegunka version %s\n" (showVersion version)
 
