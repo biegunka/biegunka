@@ -242,7 +242,6 @@ ioOnline term = case term of
     return msg
 
   TA _ (Copy src dst) _ -> return $ do
-    IO.tryIOError (D.removeDirectoryRecursive dst)
     diff <- EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst
     EIO.prepareDestination dst
     D.copyFile src dst `IO.catchIOError` (throwM . CopyingException)
