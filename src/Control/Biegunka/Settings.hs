@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- | Controlling biegunka interpreters and their composition
@@ -16,9 +15,6 @@ module Control.Biegunka.Settings
   , _Offline
   ) where
 
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative)
-#endif
 import Control.Lens
 
 import Control.Biegunka.Logger (Logger, HasLogger(..))

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -18,9 +17,6 @@ module Control.Biegunka.Source.Git
 
 import           Control.Exception (bracket)
 import           Data.Bool (bool)
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid (Monoid(mempty, mappend))
-#endif
 import qualified Data.Text as Text
 import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
 import           System.FilePath ((</>))

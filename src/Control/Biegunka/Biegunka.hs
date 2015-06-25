@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -23,9 +22,6 @@ import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Function (fix)
 import qualified Data.List as List
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid (Monoid(..))
-#endif
 import           Data.Semigroup (Semigroup(..))
 import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))

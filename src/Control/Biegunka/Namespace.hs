@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -40,9 +39,6 @@ import           Data.Function (on)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid (Monoid(..))
-#endif
 import           Data.SafeCopy (deriveSafeCopy, base, extension, Migrate(..))
 import           Data.Set (Set)
 import qualified Data.Set as S
@@ -50,9 +46,9 @@ import           Data.Typeable (Typeable)
 import           Prelude hiding (any, elem)
 import           System.FilePath.Lens hiding (extension)
 
-import Control.Biegunka.Settings (Settings, biegunkaRoot)
-import Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
-import Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
+import           Control.Biegunka.Settings (Settings, biegunkaRoot)
+import           Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
+import           Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
 
 
 data SourceRecord_v0 = SR_v0 String FilePath FilePath

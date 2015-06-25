@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -34,9 +33,6 @@ module Control.Biegunka.Script
   , segmented
   ) where
 
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..), (<$>))
-#endif
 import Control.Lens
 import Control.Monad.Free (Free(..), iter, liftF)
 import Control.Monad.State (MonadState, StateT(..))
@@ -44,9 +40,6 @@ import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
 import Data.Bool (bool)
 import Data.List (isSuffixOf, intercalate)
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (mempty)
-#endif
 import System.Command.QQ (Eval(..))
 import System.Directory.Layout (User(..))
 import System.FilePath ((</>))

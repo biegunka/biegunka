@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -17,9 +16,6 @@ import           Data.Bool (bool)
 import           Data.Function (on)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid (mempty, mconcat)
-#endif
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as Text
 import           Data.Text.Lazy.Builder (Builder)
