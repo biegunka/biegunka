@@ -68,7 +68,7 @@ runBiegunkaProcess args = do
   return (inh, ph)
  where
   process = CreateProcess
-    { cmdspec       = RawCommand "cabal" (["exec", "runhaskell", "--"] ++ args)
+    { cmdspec       = RawCommand "cabal" (["--no-require-sandbox", "exec", "runhaskell", "--"] ++ args)
     , cwd           = Nothing
     , env           = Nothing
     , std_in        = CreatePipe
