@@ -5,9 +5,10 @@ require "open3"
 require "rspec"
 require_relative "./spec_helper"
 
+GHC = ENV['NIX_GHC'] || "ghc"
 
 def compile file, opts
-  external_command = "cabal exec ghc -- -fno-code #{opts.join(" ")} #{file}"
+  external_command = "cabal exec -- #{GHC} -isrc -idist/build/autogen -fno-code #{opts.join(" ")} #{file}"
   stdout, stderr, status = Open3.capture3 external_command
   { stdout: stdout, stderr: stderr, exitcode: status.exitstatus }
 end

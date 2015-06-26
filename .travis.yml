@@ -1,17 +1,16 @@
 language: haskell
 
-ghc:
-    - 7.8
+ghc: 7.8
 
 before_install:
-    - curl -L https://get.rvm.io | bash -s stable --ruby --gems='rspec'
-    - source /home/travis/.rvm/scripts/rvm
-    - cabal install alex --constraint='transformers >= 0.4'
-    - cabal install happy
-    - cabal install c2hs
-    - cabal install cabal-install
-    - hash -r
+    - |
+      curl -L https://get.rvm.io | bash -s stable --ruby --gems='rspec'
+      source /home/travis/.rvm/scripts/rvm
+      bash <(curl -sS https://nixos.org/nix/install)
+      source $HOME/.nix-profile/etc/profile.d/nix.sh
+      hash -r
 
-script:
-    - cabal install --enable-tests --run-tests
-    - rspec
+install:
+    - nix-shell --run 'cabal test && rspec'
+
+script: true
