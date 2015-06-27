@@ -91,33 +91,37 @@ git u p s = git' u p (actions s)
 git_ :: URI -> FilePath -> Script 'Sources ()
 git_ u p = git' u p mempty
 
-updateGit :: URI -> FilePath -> Git -> IO (Maybe String)
+updateGit :: URI -> FilePath -> Git -> IO (Maybe String, IO ())
 updateGit u p Git { _branch, _failIfAhead } =
   doesDirectoryExist p >>= \case
     True -> do
       let rbr = "origin" </> _branch
-      before <- gitHash p
+      before <- gitHash p "HEAD"
       remotes <- lines `fmap` askGit p ["remote"]
       when ("origin" `notElem` remotes) $
         askGit_ p ["remote", "add", "origin", u]
       askGit_ p ["fetch", "origin", _branch]
-      currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
-      when (currentBranch /= Just _branch) $
-        askGit_ p ["checkout", "-B", _branch, "--track", rbr]
-      ahead <- (not . null . lines) `fmap`
-        askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
-      if ahead && _failIfAhead
-        then sourceFailure (Text.pack "local branch is ahead of remote")
-        else askGit_ p ["rebase", rbr]
-      after <- gitHash p
-      return (bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after))
-    False -> do
-      askGit_ "/" ["clone", u, p, "-b", _branch]
-      after <- gitHash p
-      return (Just (printf "checked ‘%s’ out" after))
+      after <- gitHash p rbr
+      return
+        ( bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after)
+        , do
+          currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
+          when (currentBranch /= Just _branch) $
+            askGit_ p ["checkout", "-B", _branch, "--track", rbr]
+          ahead <- (not . null . lines) `fmap`
+            askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
+          if ahead && _failIfAhead
+            then sourceFailure (Text.pack "local branch is ahead of remote")
+            else askGit_ p ["rebase", rbr]
+        )
+    False ->
+      return
+        ( Just "first checkout"
+        , askGit_ "/" ["clone", u, p, "-b", _branch]
+        )
 
-gitHash :: FilePath -> IO String
-gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
+gitHash :: FilePath -> String -> IO String
+gitHash path ref = askGit path ["rev-parse", "--short", ref]
 
 askGit_ :: FilePath -> [String] -> IO ()
 askGit_ f = void . askGit f

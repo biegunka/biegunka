@@ -66,6 +66,7 @@ library
     Control.Biegunka.Execute.Exception
     Control.Biegunka.Execute.Settings
     Control.Biegunka.Execute.Watcher
+    Control.Biegunka.Interpreter
     Control.Biegunka.Language
     Control.Biegunka.Logger
     Control.Biegunka.Namespace

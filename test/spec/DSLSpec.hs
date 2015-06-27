@@ -6,7 +6,7 @@ import Control.Monad.Free (Free(..))
 import Data.Foldable (toList)
 import Test.Hspec
 
-import Control.Biegunka.Language (Term(..), Action(..), Source(..))
+import Control.Biegunka.Language (TermF(..), Action(..), Source(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script
 import Control.Biegunka.Source.Directory (directory)
@@ -47,7 +47,7 @@ spec = describe "Biegunka DSL" $ do
     it "mangles relative paths for Sources" $
       let ast = evalScript defaultMAnnotations (defaultAnnotations & set runRoot "app" & set sourceRoot "source") (directory "to" (return ()))
       in case ast of
-        Free (TS _ (Source { spath = "app/to" }) (Pure ()) (Pure ())) -> True
+        Free (TS _ (Source { sourcePath = "app/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "absolute paths" $ do
     it "does not mangle absolute paths for Actions" $
@@ -58,7 +58,7 @@ spec = describe "Biegunka DSL" $ do
     it "does not mangle absolute paths for Sources" $
       let ast = evalScript defaultMAnnotations (defaultAnnotations & set runRoot "app" & set sourceRoot "source") (directory "/to" (return ()))
       in case ast of
-        Free (TS _ (Source { spath = "/to" }) (Pure ()) (Pure ())) -> True
+        Free (TS _ (Source { sourcePath = "/to" }) (Pure ()) (Pure ())) -> True
         _ -> False
   context "namespaces" $
     it "does not matter how nested namespaces are constructed" $

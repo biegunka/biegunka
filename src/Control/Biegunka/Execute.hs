@@ -6,7 +6,8 @@
 {-# LANGUAGE RankNTypes #-}
 -- | Real run interpreter
 module Control.Biegunka.Execute
-  ( run, dryRun
+  ( run
+  , runDiff
   ) where
 
 import           Control.Applicative
@@ -25,17 +26,17 @@ import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
 import qualified Crypto.Hash as Hash
 import qualified Data.ByteString.Char8 as ByteString
+import           Data.Foldable (for_)
 import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
 import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
-import           System.FilePath (dropFileName)
+import           System.FilePath (dropFileName, takeFileName, addExtension)
 import           System.Environment (getEnvironment)
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
-import qualified System.IO.Temp as IO
 import qualified System.Posix as Posix
 import qualified System.Process as P
 import           Text.Printf (printf)
@@ -45,12 +46,12 @@ import           Control.Biegunka.Settings
   (Templates(..), templates, Mode(..), mode)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
-  (describeTerm, sourceIdentifier, prettyDiff, removal, runChanges)
+  (describeTerm, sourceIdentifier, prettyDiff, removal)
 import           Control.Biegunka.Execute.Exception
 import qualified Control.Biegunka.Execute.IO as EIO
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Language
-import           Control.Biegunka.Biegunka (Interpreter, optimistically)
+import           Control.Biegunka.Interpreter (Interpreter, optimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
 import qualified Control.Biegunka.Patience as Patience
 import           Control.Biegunka.Script
@@ -70,12 +71,9 @@ run = optimistically go where
       bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
         bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
           withExecution settings $ \e ->
-            runExecutor e (forkExecutor (task (views mode io settings) s))
+            runExecutor e (forkExecutor (execute s))
       Ns.commit db db'
    where
-    io Offline = runAction
-    io Online  = runAll
-
     remove path =
       D.doesFileExist path >>= \case
         True  -> do
@@ -92,59 +90,55 @@ run = optimistically go where
 
     safely doThings = IO.tryIOError . doThings
 
--- | Dry run interpreter
-dryRun :: Interpreter
-dryRun = optimistically $ \settings s ->
-  Ns.withDb settings $ \db -> do
-    withExecution settings $ \e ->
-      runExecutor e (forkExecutor (task runPure s))
-    Logger.write IO.stdout settings (runChanges db (Ns.fromScript s))
+-- | Show the diff between the current state of the system and the
+-- result of running the script.
+runDiff :: Interpreter
+runDiff = optimistically go where
+  go settings s =
+    bracket Posix.getEffectiveUserID Posix.setEffectiveUserID $ \_ ->
+      bracket Posix.getEffectiveGroupID Posix.setEffectiveGroupID $ \_ ->
+        withExecution settings $ \e ->
+          runExecutor (set onlyDiff True e) (forkExecutor (execute s))
 
-
--- | Run a single task
+-- | Execute a single task.
 --
 -- Sources are executed concurrently, while Actions are executed sequentially.
 -- Every action may retry the specified amount of times, and retries do not accumulate
 -- across actions.
-task
-  :: (forall a t. Retries -> Term Annotate t a -> Executor (IO Bool))
-  -> Free (Term Annotate s) ()
-  -> Executor ()
-task f = go
- where
-  go (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
-    forkExecutor (task f t)
-    flip fix defaultRetries $ \loop rs ->
-      executeIO (f rs) c >>= \case
-        False ->
-          if rs < asMaxRetries
-            then loop (incr rs)
-            else case asReaction of
-              Abortive -> doneWith asToken
-              Ignorant -> do
-                task f b
-                doneWith asToken
-        True -> do
-          task f b
-          doneWith asToken
-  go (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
-    flip fix defaultRetries $ \loop rs ->
-      executeIO (f rs) c >>= \case
-        False ->
-          if rs < aaMaxRetries
-            then loop (incr rs)
-            else case aaReaction of
-              Abortive -> return ()
-              Ignorant -> go x
-        True -> go x
-  go (Free c@(TWait _ x)) = do
-    executeIO (f defaultRetries) c
-    go x
-  go (Pure _) = return ()
+execute :: Term Annotate s () -> Executor ()
+execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
+  forkExecutor (execute t)
+  flip fix defaultRetries $ \loop rs ->
+    executeIO (doGenIO rs) c >>= \case
+      False ->
+        if rs < asMaxRetries
+          then loop (incr rs)
+          else case asReaction of
+            Abortive -> doneWith asToken
+            Ignorant -> do
+              execute b
+              doneWith asToken
+      True -> do
+        execute b
+        doneWith asToken
+execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
+  flip fix defaultRetries $ \loop rs ->
+    executeIO (doGenIO rs) c >>= \case
+      False ->
+        if rs < aaMaxRetries
+          then loop (incr rs)
+          else case aaReaction of
+            Abortive -> return ()
+            Ignorant -> execute x
+      True -> execute x
+execute (Free c@(TWait _ x)) = do
+  executeIO (doGenIO defaultRetries) c
+  execute x
+execute (Pure _) = return ()
 
 -- | Execute a single command.
 executeIO
-  :: (Term Annotate s a -> Executor (IO Bool)) -> Term Annotate s a -> Executor Bool
+  :: (TermF Annotate s a -> Executor (IO Bool)) -> TermF Annotate s a -> Executor Bool
 executeIO _ (TWait waits _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
@@ -187,21 +181,32 @@ executeIO getIO term = do
     -- If counter approaches zero, then current user left
     modifyTVar users (at uid . non 0 -~ 1)
 
-runAll :: Retries -> Term Annotate s a -> Executor (IO Bool)
-runAll retries t = do
+doGenIO :: Retries -> TermF Annotate s a -> Executor (IO Bool)
+doGenIO retries t = do
   e  <- ask
-  io <- ioOnline t
-  return $ do
-    res <- trySynchronous io
-    case sourceIdentifier t of
-      Nothing -> return True
-      Just i  -> atomically $ do
-        ms <- readTVar (view source e)
-        Logger.writeSTM (either (\_ -> IO.stderr) (\_ -> IO.stdout) res)
+  genIO t <&> \io ->
+    trySynchronous io >>= \case
+      Left exc -> do
+        logMessage e IO.stderr (Left exc)
+        return False
+      Right (diff, finish)
+        | view onlyDiff e -> do
+          for_ diff (logMessage e IO.stdout . pure . pure)
+          return True
+        | otherwise -> do
+          res <- trySynchronous finish
+          logMessage e (either (\_ -> IO.stderr) (\_ -> IO.stdout) res) (diff <$ res)
+          return (either (\_ -> False) (\_ -> True) res)
+ where
+  logMessage e stream diff =
+    for_ (sourceIdentifier t) $ \i ->
+      atomically $ do
+        ms <- readTVar (view activeSource e)
+        Logger.writeSTM stream
                         e
-                        (describeTerm retries res (maybe True (/= i) ms) t)
-        writeTVar (view source e) (Just i)
-        return (either (\_ -> False) (\_ -> True) res)
+                        (describeTerm retries diff (maybe True (/= i) ms) t)
+        writeTVar (view activeSource e) (Just i)
+{-# ANN doGenIO "HLint: ignore Use >=>" #-}
 
 -- | Catch all synchronous exceptions.
 trySynchronous :: IO a -> IO (Either SomeException a)
@@ -211,25 +216,28 @@ trySynchronous =
       Just (SomeAsyncException _) -> Nothing
       _ -> Just e)
 
-ioOnline :: Term Annotate s a -> Executor (IO (Maybe String))
-ioOnline term = case term of
-  TS _ (Source _ _ dst update) _ _ -> do
-    rstv <- view repos
-    return $ do
-      updated <- atomically $ do
-        rs <- readTVar rstv
-        if dst `Set.member` rs
-          then return True
-          else do
-            writeTVar rstv $ Set.insert dst rs
-            return False
-      if updated
-        then return Nothing
-        else do
-          D.createDirectoryIfMissing True $ dropFileName dst
-          update dst
-     `onException`
-      atomically (modifyTVar rstv (Set.delete dst))
+genIO :: TermF Annotate s a -> Executor (IO (Maybe String, IO ()))
+genIO term = case term of
+  TS _ (Source _ _ dst update) _ _ ->
+    view mode >>= \case
+      Offline -> return (return (Nothing, return ()))
+      Online  -> do
+        rstv <- view repos
+        return $ do
+          updated <- atomically $ do
+            rs <- readTVar rstv
+            if dst `Set.member` rs
+              then return True
+              else do
+                writeTVar rstv (Set.insert dst rs)
+                return False
+          if updated
+            then return (Nothing, return ())
+            else do
+              D.createDirectoryIfMissing True (dropFileName dst)
+              update dst
+             `onException`
+              atomically (modifyTVar rstv (Set.delete dst))
 
   TA _ (Link src dst) _ -> return $ do
     msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
@@ -237,59 +245,60 @@ ioOnline term = case term of
       Right src'
         | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
         | otherwise   -> Nothing
-    EIO.prepareDestination dst
-    Posix.createSymbolicLink src dst
-    return msg
+    return (msg, do EIO.prepareDestination dst; Posix.createSymbolicLink src dst)
 
   TA _ (Copy src dst) _ -> return $ do
-    diff <- EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst
-    EIO.prepareDestination dst
-    D.copyFile src dst `IO.catchIOError` (throwM . CopyingException)
-    return (fmap showDiff diff)
+    msg <- fmap (fmap showDiff)
+                (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
+    return (msg, do EIO.prepareDestination dst; D.copyFile src dst)
 
   TA _ (Template src dst) _ -> do
     Templates ts <- view templates
-    return $
-      IO.withSystemTempFile "biegunka" $ \tempfp h -> do
-        IO.hClose h
-        Text.writeFile tempfp . templating ts =<< Text.readFile src
-        diff <- EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst
-        EIO.prepareDestination dst
-        D.renameFile tempfp dst
-          `IO.catchIOError` \_ -> D.copyFile tempfp dst
-        return (fmap showDiff diff)
+    td <- view tempDir
+    return $ do
+      (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
+      IO.hClose h
+      Text.writeFile tempfp . templating ts =<< Text.readFile src
+      msg <- fmap (fmap showDiff)
+                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+      return
+        ( msg
+        , do EIO.prepareDestination dst
+             D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+        )
 
-  TA ann (Command p spec) _ -> return $ do
-    defenv <- getEnvironment
-    (_, Just out, Just err, ph) <- P.createProcess
-      P.CreateProcess
-        { P.cmdspec       = spec
-        , P.cwd           = Just p
-        , P.env =
-            Just ( ("RUN_ROOT",    view runRoot    ann)
-                 : ("SOURCE_ROOT", view sourceRoot ann)
-                 : defenv `except`
-                     [ "CABAL_SANDBOX_CONFIG"
-                     , "CABAL_SANDBOX_PACKAGE_PATH"
-                     , "GHC_PACKAGE_PATH"
-                     , "RUN_ROOT"
-                     , "SOURCE_ROOT"])
-        , P.std_in        = P.Inherit
-        , P.std_out       = P.CreatePipe
-        , P.std_err       = P.CreatePipe
-        , P.close_fds     = False
-        , P.create_group  = False
-        , P.delegate_ctlc = False
-        }
-    e <- P.waitForProcess ph
-    IO.hClose out
-    e `onFailure` \status ->
-      Text.hGetContents err >>= throwM . ShellException status
-    return Nothing
+  TA ann (Command p spec) _ -> return (return (Nothing, cmd))
    where
+    cmd = do
+      defenv <- getEnvironment
+      (_, Just out, Just err, ph) <- P.createProcess
+        P.CreateProcess
+          { P.cmdspec       = spec
+          , P.cwd           = Just p
+          , P.env =
+              Just ( ("RUN_ROOT",    view runRoot    ann)
+                   : ("SOURCE_ROOT", view sourceRoot ann)
+                   : defenv `except`
+                       [ "CABAL_SANDBOX_CONFIG"
+                       , "CABAL_SANDBOX_PACKAGE_PATH"
+                       , "GHC_PACKAGE_PATH"
+                       , "RUN_ROOT"
+                       , "SOURCE_ROOT"
+                       ])
+          , P.std_in        = P.Inherit
+          , P.std_out       = P.CreatePipe
+          , P.std_err       = P.CreatePipe
+          , P.close_fds     = False
+          , P.create_group  = False
+          , P.delegate_ctlc = False
+          }
+      e <- P.waitForProcess ph
+      IO.hClose out
+      e `onFailure` \status ->
+        Text.hGetContents err >>= throwM . ShellException status
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TWait _ _ -> return (return Nothing)
+  TWait _ _ -> return (return (Nothing, return ()))
  where
   showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> String
   showDiff =
@@ -299,13 +308,6 @@ ioOnline term = case term of
              ++ prettyDiff d)
   showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
 
-runAction :: Retries -> Term Annotate s a -> Executor (IO Bool)
-runAction r t@(TS {}) = runPure r t
-runAction r t         = runAll r t
-
-runPure :: Applicative m => a -> Term Annotate s b -> Executor (m Bool)
-runPure _ _ = pure (pure True)
-
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()
 doneWith tok = do
@@ -313,7 +315,7 @@ doneWith tok = do
   Watcher.done watcher tok
 
 -- | Get user associated with term
-getUser :: Term Annotate s a -> Maybe User
+getUser :: TermF Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
 getUser (TA (AA { aaUser }) _ _) = aaUser
 getUser (TWait _ _) = Nothing

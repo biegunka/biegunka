@@ -29,7 +29,7 @@ import           Control.Applicative
 import           Control.Exception (bracket)
 import           Control.Lens hiding ((.=), (<.>))
 import           Control.Monad ((<=<))
-import           Control.Monad.Free (Free(..), iterM)
+import           Control.Monad.Free (iterM)
 import           Control.Monad.Reader (asks)
 import           Control.Monad.State (State, execState, modify)
 import           Data.Acid
@@ -47,7 +47,7 @@ import           Prelude hiding (any, elem)
 import           System.FilePath.Lens hiding (extension)
 
 import           Control.Biegunka.Settings (Settings, biegunkaRoot)
-import           Control.Biegunka.Language (Scope(..), Term(..), Source(..), Action(..))
+import           Control.Biegunka.Language (Scope(..), Term, TermF(..), Source(Source), Action(..))
 import           Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
 
 
@@ -225,10 +225,10 @@ sources = M.keys . unGR <=< M.elems . _unNamespaces
 --
 -- Won't get /all/ mentioned namespaces but only those for which there is
 -- some useful action to do.
-fromScript :: Free (Term Annotate 'Sources) a -> Namespaces
+fromScript :: Term Annotate 'Sources a -> Namespaces
 fromScript script = execState (iterM construct script) (Namespaces mempty)
  where
-  construct :: Term Annotate 'Sources (State Namespaces a) -> State Namespaces a
+  construct :: TermF Annotate 'Sources (State Namespaces a) -> State Namespaces a
   construct term = case term of
     TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
@@ -239,9 +239,9 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     TWait _ next -> next
 
   populate
-    :: String                                      -- ^ Namespace
-    -> SourceRecord                                -- ^ Source info record
-    -> Term Annotate 'Actions (State Namespaces a) -- ^ Current script term
+    :: String                                       -- ^ Namespace
+    -> SourceRecord                                 -- ^ Source info record
+    -> TermF Annotate 'Actions (State Namespaces a) -- ^ Current script term
     -> State Namespaces a
   populate ns source term = case term of
     TA (AA { aaUser }) action next -> do

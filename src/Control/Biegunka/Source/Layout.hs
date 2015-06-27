@@ -18,10 +18,12 @@ layout
   -> Script 'Sources ()
 layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner update
  where
-  update abspath = do
-    l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
-    traverseOf_ _Left print l
-    return Nothing
+  update abspath =
+    return
+      ( Nothing
+      , do l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
+           traverseOf_ _Left print l
+      )
 
 
 -- | Make specified layout and do nothing

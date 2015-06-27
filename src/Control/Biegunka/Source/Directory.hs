@@ -23,4 +23,4 @@ directory relpath inner =
     exists <- doesDirectoryExist abspath
     unless exists $
       sourceFailure "No directory found!"
-    return Nothing
+    return (Nothing, return ())
