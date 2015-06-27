@@ -1,16 +1,10 @@
-language: haskell
-
-ghc: 7.8
-
 before_install:
-    - |
-      curl -L https://get.rvm.io | bash -s stable --ruby --gems='rspec'
-      source /home/travis/.rvm/scripts/rvm
-      bash <(curl -sS https://nixos.org/nix/install)
-      source $HOME/.nix-profile/etc/profile.d/nix.sh
-      hash -r
+    - curl -sS https://nixos.org/nix/install | sh
+    - source $HOME/.nix-profile/etc/profile.d/nix.sh
 
 install:
-    - nix-shell --run 'cabal test && rspec'
+    - nix-shell --run 'true'
 
-script: true
+script:
+    - nix-shell --run 'cabal test'
+    - nix-shell --run '$(dirname $NIX_GHC)/runhaskell -package-db=$NIX_GHC_LIBDIR/package.conf.d test/typecheck/Spec.hs'

@@ -15,6 +15,8 @@ data-files:
   data/biegunka-init.template
 extra-source-files:
   README.markdown
+  test/typecheck/should_compile/*.hs
+  test/typecheck/should_fail/*.hs
 
 source-repository head
   type: git
@@ -142,7 +144,7 @@ test-suite spec
     , unix
   hs-source-dirs:
     bin
-    test
+    test/spec
   main-is:
     Spec.hs
   other-modules:
