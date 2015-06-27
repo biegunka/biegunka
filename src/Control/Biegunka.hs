@@ -20,7 +20,7 @@ module Control.Biegunka
     -- * Auxiliary
   , into
     -- * Commandline options parser autogeneration
-  , runner_, runnerOf, Environments, Generic, Proxy(Proxy)
+  , runner_, runnerOf, Environments(..), Generic, Proxy(Proxy)
     -- * Quasiquoters
   , multiline, sh, shell
     -- * Settings
@@ -45,7 +45,7 @@ import Control.Biegunka.Language (Scope(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)
 import Control.Biegunka.QQ (multiline, sh, shell)
-import Control.Biegunka.Options (Environments, runnerOf, runner_)
+import Control.Biegunka.Options (Environments(..), runnerOf, runner_)
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Source (Sourceable(..))
 
