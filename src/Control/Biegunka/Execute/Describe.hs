@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Describe execution I/O actions
 module Control.Biegunka.Execute.Describe
   ( -- * General description formatting
@@ -16,6 +17,9 @@ import           Data.Bool (bool)
 import           Data.Function (on)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
+import           Data.Monoid ((<>))
+import           Data.String (IsString(fromString))
+import qualified Data.Text as Strict
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as Text
 import           Data.Text.Lazy.Builder (Builder)
@@ -37,33 +41,33 @@ describeTerm
   -> Either SomeException (Maybe String)
   -> Bool
   -> Term Annotate s a
-  -> String
+  -> Strict.Text
 describeTerm (Retries n) mout withSource ta =
-  case mout of
-    Left e -> unlines .
+  Text.toStrict $ case mout of
+    Left e -> Text.unlines .
       (if withSource then (prefixf ta :) else id) $
-        ("  * " ++ doc
-                ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
-                ++ printf " [%sexception%s]" red reset)
-        : map (\l -> printf "    %s%s%s" red l reset) (lines (show e))
-    Right Nothing -> unlines $
+        ("  * " <> fromString doc
+                <> fromString retry
+                <> fromString (printf " [%sexception%s]" red reset))
+        : map (\l -> fromString (printf "    %s%s%s" red l reset)) (lines (show e))
+    Right Nothing -> Text.unlines $
       (if withSource then (prefixf ta :) else id)
-        [ "  * " ++ doc
-                 ++ " (up-to-date)"
-                 ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
+        [ "  * " <> fromString doc
+                 <> " (up-to-date)"
+                 <> fromString retry
         ]
-    Right (Just out) -> unlines $
+    Right (Just out) -> Text.unlines $
       (if withSource then (prefixf ta :) else id)
-        [ "  * " ++ doc
-                 ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
-                 ++ printf "\n    %s- %s%s" green out reset
+        [ "  * " <> fromString doc
+                 <> fromString retry
+                 <> fromString (printf "\n    %s- %s%s" green out reset)
         ]
  where
-  prefixf :: Term Annotate s a -> String
+  prefixf :: Term Annotate s a -> Text
   prefixf t = case sourceIdentifier t of
     Nothing -> ""
     Just (url :| ns) ->
-      List.intercalate "::" (reverse (printf "[%s]" url : ns))
+      Text.intercalate "::" (reverse (fromString (printf "[%s]" url) : map fromString ns))
 
   doc = case ta of
     TS _ (Source t _ d _) _ _  ->
@@ -81,6 +85,8 @@ describeTerm (Retries n) mout withSource ta =
         Command p (RawCommand c as) ->
           printf "execute[%s] (from [%s])" (unwords (c : as)) p
     _ -> ""
+
+  retry = bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
 
 -- | Note that the components are in the reverse order.
 sourceIdentifier :: Term Annotate s a -> Maybe (NonEmpty String)
@@ -113,20 +119,22 @@ unline :: [Builder] -> Builder
 unline = mconcat . List.intersperse (Builder.singleton '\n')
 
 -- | Describe changes which will happen after the run
-runChanges :: Db -> Namespaces -> Maybe String
-runChanges db gs = fmap (\xs -> unlines ("" : xs ++ [""])) (nonempty info)
+runChanges :: Db -> Namespaces -> Maybe Strict.Text
+runChanges db gs =
+  fmap (\xs -> Text.toStrict (Text.unlines ("" : xs ++ [""]))) (nonempty info)
  where
   info = concatMap about
-    [ ("deleted files",    red,    map Ns.filePath df)
-    , ("deleted sources",  red,    map Ns.sourcePath ds)
-    , ("modified files",   yellow, map Ns.filePath mf)
-    , ("modified sources", yellow, map Ns.sourcePath ms)
-    , ("added files",      green,  map Ns.filePath nf)
-    , ("added sources",    green,  map Ns.sourcePath ns)
+    [ ("deleted files",    fromString red,    map (fromString . Ns.filePath) df)
+    , ("deleted sources",  fromString red,    map (fromString . Ns.sourcePath) ds)
+    , ("modified files",   fromString yellow, map (fromString . Ns.filePath) mf)
+    , ("modified sources", fromString yellow, map (fromString . Ns.sourcePath) ms)
+    , ("added files",      fromString green,  map (fromString . Ns.filePath) nf)
+    , ("added sources",    fromString green,  map (fromString . Ns.sourcePath) ns)
     ]
   about (msg, color, xs) = case length xs of
     0 -> []
-    n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
+    n -> (msg <> " (" <> fromString (show n) <> "):")
+       : map (\x -> "  " <> color <> x <> fromString reset) xs
   (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.namespaces db)) (Ns.files gs)
   (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.namespaces db)) (Ns.sources gs)
   nonempty xs@(_ : _) = Just xs
@@ -147,8 +155,8 @@ changes f xs ys = (xsys, ms, ysxs)
   ysxs = List.deleteFirstsBy ((==) `on` f) ys xs
 
 -- | Describe file or directory removal
-removal :: FilePath -> String
-removal = printf "Removing: %s\n"
+removal :: IsString s => FilePath -> s
+removal = fromString . printf "Removing: %s\n"
 
 red :: String
 red = "\ESC[31;2m"

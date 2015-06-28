@@ -22,6 +22,8 @@ import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Function (fix)
 import           Data.Semigroup (Semigroup(..))
+import           Data.String (fromString)
+import qualified Data.Text as Text
 import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
@@ -82,15 +84,15 @@ biegunka (($ defaultSettings) -> c) (I interpret) script = do
           & _logger      ?~ l
     interpret c' annotatedScript (return ExitSuccess)
  where
-  info rr br = unlines $
+  info rr br = Text.unlines $
     [ "   ___  _                    __          "
     , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
     , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "
-    , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> version
+    , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> fromString version
     , "           /___/                         "
     , ""
-    , "* Relative filepaths are deemed relative to " ++ rr
-    , "* Data will be saved in "                     ++ br
+    , "* Relative filepaths are deemed relative to " <> fromString rr
+    , "* Data will be saved in "                     <> fromString br
     ] ++
     bool [] ["* Offline mode"] (has (mode._Offline) c)
    where

@@ -24,6 +24,8 @@ import           Control.Lens (Traversed)
 import           Control.Monad.Catch (MonadMask, bracket)
 import           Control.Monad.IO.Class (MonadIO(liftIO))
 import           Data.Function (fix)
+import           Data.Text (Text)
+import qualified Data.Text.IO as Text
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
 
@@ -40,8 +42,8 @@ instance HasLogger Functor Logger where
 
 -- Logger messages.
 data Command =
-    Display IO.Handle String -- ^ Display a message
-  | Stop (MVar ())           -- ^ Take a poison pill
+    Display IO.Handle Text -- ^ Display a message
+  | Stop (MVar ())         -- ^ Take a poison pill
 
 -- | Run an action with a 'Logger' listening.
 with :: (MonadIO m, MonadMask m) => (Logger -> m a) -> m a
@@ -57,7 +59,7 @@ start = liftIO $ do
   consume q = fix $ \loop ->
     atomically (readTQueue q) >>= \case
       Display h msg ->
-        do IO.tryIOError (do IO.hPutStr h msg; IO.hFlush h)
+        do IO.tryIOError (do Text.hPutStr h msg; IO.hFlush h)
            loop
       Stop var      -> putMVar var ()
 
@@ -71,11 +73,11 @@ stop (Logger queue) = liftIO $ do
   takeMVar var
 
 -- | Atomically write a string to a 'IO.Handle'.
-write :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> String -> IO ()
+write :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> Text -> IO ()
 write h l = atomically . writeSTM h l
 
 -- | Schedule a write of a string to a 'IO.Handle' inside an 'STM' transaction.
-writeSTM :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> String -> STM ()
+writeSTM :: (HasLogger c l, c (Const (Traversed () STM))) => IO.Handle -> l -> Text -> STM ()
 writeSTM h l msg =
   forOf_ (logger.to unLogger)
          l

@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Check interpreter
 module Control.Biegunka.Check (check) where
 
@@ -8,6 +9,8 @@ import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Free (Free, iter)
+import           Data.Monoid ((<>))
+import qualified Data.Text.IO as Text
 import           System.FilePath (splitFileName, splitDirectories, makeRelative)
 import           System.Directory.Layout (Layout)
 import qualified System.Directory.Layout as Layout
@@ -28,8 +31,8 @@ check = I $ \settings terms k -> do
   (infd, outfd) <- Posix.createPipe
   withFd infd $ \inh -> do
     a <- async . forever $
-      IO.hGetLine inh >>=
-        Logger.write IO.stdout settings . (++ "\n")
+      Text.hGetLine inh >>=
+        Logger.write IO.stdout settings . (<> "\n")
     s <- withFd outfd $ \outh -> do
       let rr = view runRoot settings
       IO.hSetBuffering outh IO.LineBuffering
