@@ -25,6 +25,7 @@ import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
 import qualified Crypto.Hash as Hash
 import qualified Data.ByteString.Char8 as ByteString
+import           Data.Foldable (for_)
 import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
 import qualified Data.Set as Set
@@ -98,7 +99,7 @@ dryRun = optimistically $ \settings s ->
   Ns.withDb settings $ \db -> do
     withExecution settings $ \e ->
       runExecutor e (forkExecutor (task runPure s))
-    Logger.write IO.stdout settings (runChanges db (Ns.fromScript s))
+    for_ (runChanges db (Ns.fromScript s)) (Logger.write IO.stdout settings)
 
 
 -- | Run a single task

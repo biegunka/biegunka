@@ -21,7 +21,6 @@ import           Control.Monad.Free (Free)
 import           Data.Bool (bool)
 import           Data.Char (toLower)
 import           Data.Function (fix)
-import qualified Data.List as List
 import           Data.Semigroup (Semigroup(..))
 import           Data.Version (showVersion)
 import           System.Exit (ExitCode(..))
@@ -83,7 +82,7 @@ biegunka (($ defaultSettings) -> c) (I interpret) script = do
           & _logger      ?~ l
     interpret c' annotatedScript (return ExitSuccess)
  where
-  info rr br = List.intercalate "\n" $
+  info rr br = unlines $
     [ "   ___  _                    __          "
     , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
     , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "

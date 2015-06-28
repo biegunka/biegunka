@@ -113,21 +113,24 @@ unline :: [Builder] -> Builder
 unline = mconcat . List.intersperse (Builder.singleton '\n')
 
 -- | Describe changes which will happen after the run
-runChanges :: Db -> Namespaces -> String
-runChanges db gs = unlines $ "" : concatMap about
-  [ ("deleted files",    red,    map Ns.filePath df)
-  , ("deleted sources",  red,    map Ns.sourcePath ds)
-  , ("modified files",   yellow, map Ns.filePath mf)
-  , ("modified sources", yellow, map Ns.sourcePath ms)
-  , ("added files",      green,  map Ns.filePath nf)
-  , ("added sources",    green,  map Ns.sourcePath ns)
-  ] ++ [""]
+runChanges :: Db -> Namespaces -> Maybe String
+runChanges db gs = fmap (\xs -> unlines ("" : xs ++ [""])) (nonempty info)
  where
+  info = concatMap about
+    [ ("deleted files",    red,    map Ns.filePath df)
+    , ("deleted sources",  red,    map Ns.sourcePath ds)
+    , ("modified files",   yellow, map Ns.filePath mf)
+    , ("modified sources", yellow, map Ns.sourcePath ms)
+    , ("added files",      green,  map Ns.filePath nf)
+    , ("added sources",    green,  map Ns.sourcePath ns)
+    ]
   about (msg, color, xs) = case length xs of
     0 -> []
     n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
   (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.namespaces db)) (Ns.files gs)
   (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.namespaces db)) (Ns.sources gs)
+  nonempty xs@(_ : _) = Just xs
+  nonempty []         = Nothing
 
 -- | /O(n^2)/
 --
