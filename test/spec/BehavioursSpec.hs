@@ -132,4 +132,4 @@ simple_layout_registering tmp = do
 
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
-withBiegunkaDirectory = withSystemTempDirectory "biegunka-XXXXXX"
+withBiegunkaDirectory = withSystemTempDirectory "biegunka-"
