@@ -15,12 +15,11 @@ module Control.Biegunka.Source.Git
   , URI
   ) where
 
-import           Control.Exception (bracket)
 import           Data.Bool (bool)
 import qualified Data.Text as Text
-import           System.Directory (getCurrentDirectory, setCurrentDirectory, doesDirectoryExist)
+import           System.Directory (doesDirectoryExist)
 import           System.FilePath ((</>))
-import           System.Process (readProcessWithExitCode)
+import qualified System.Process as P
 import           Text.Printf (printf)
 
 import Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
@@ -115,11 +114,9 @@ updateGit u p Git { _remote, _branch } =
  where
   gitHash = fmap (Text.unpack . Text.stripEnd) (askGit p ["rev-parse", "--short", "HEAD"])
 
-  askGit workingDirectory args = bracket
-    getCurrentDirectory
-    setCurrentDirectory $ \_ -> do
-      setCurrentDirectory workingDirectory
-      (exitcode, out, err) <- readProcessWithExitCode "git" args []
-      exitcode `onFailure`
-        \_ -> sourceFailure (Text.pack err)
-      return (Text.pack out)
+  askGit cwd args = do
+    let proc = P.proc "git" args
+    (exitcode, out, err) <-
+      P.readCreateProcessWithExitCode proc { P.cwd = Just cwd } ""
+    exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
+    return (Text.pack out)
