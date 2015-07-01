@@ -12,7 +12,7 @@ category:            System
 cabal-version:       >= 1.10
 build-type:          Custom
 data-files:
-  data/biegunka-init.template
+  data/Biegunka.hs
 extra-source-files:
   README.markdown
   test/typecheck/should_compile/*.hs
