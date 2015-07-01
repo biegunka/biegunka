@@ -21,7 +21,7 @@ main = do
   shouldFail <- ls "./test/typecheck/should_fail"
   testCases <- traverse testCase (shouldCompile ++ shouldFail)
   hspec $
-    for_ testCases $ \case
+    for_ (Success "./data/Biegunka.hs" : testCases) $ \case
       Success file ->
         it ("‘" <> file <> "’ compiles") $ do
           (ec, _out, err) <- callCompiler ghc file

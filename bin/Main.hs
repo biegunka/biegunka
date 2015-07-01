@@ -43,7 +43,7 @@ defaulted target =
 
 initialize :: FilePath -> IO ()
 initialize target = do
-  template <- getDataFileName "data/biegunka-init.template"
+  template <- getDataFileName "data/Biegunka.hs"
   doesFileExist target >>= \case
     True -> prompt (target ++ " already exists! Overwrite?") >>= \case
       True  -> copy template
