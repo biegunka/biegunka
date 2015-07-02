@@ -33,7 +33,7 @@ generateGit_biegunka lbi =
 
 gitHash :: IO String
 gitHash =
-  catchIOError (fmap sanitize (readProcess "git" ["rev-parse", "--short", "HEAD"] ""))
+  catchIOError (fmap sanitize (readProcess "git" ["describe", "--always", "--dirty=-dev"] ""))
                (\_ -> return "unknown")
  where
   sanitize = List.dropWhileEnd Char.isSpace
