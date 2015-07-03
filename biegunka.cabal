@@ -138,6 +138,7 @@ test-suite spec
     , lens
     , optparse-applicative
     , process
+    , random
     , semigroups
     , silently
     , temporary

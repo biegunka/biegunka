@@ -4,11 +4,13 @@ import           Test.Hspec
 import           Control.Biegunka
 import           Control.Biegunka.Source.Git (git_)
 import           Control.Lens
+import           Control.Monad               (liftM)
 import           Data.Maybe                  (listToMaybe)
 import           System.FilePath             ((</>))
-import           System.IO.Silently          (silence)
+-- import           System.IO.Silently          (silence)
 import           System.IO.Temp              (withSystemTempDirectory)
 import qualified System.Process              as P
+import           System.Random
 
 spec :: Spec
 spec = do
@@ -18,7 +20,7 @@ spec = do
 
       it "creates new directory and set branch correctly" $ \tmp -> do
           let repo = tmp </> "biegunka-test"
-          silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
+          biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
             git_ testRepo "biegunka-test"
           currentBranch repo `shouldReturn` Just "master"
           repoHaveCleanState repo `shouldReturn` True
@@ -31,7 +33,7 @@ spec = do
             let repo = tmp </> "biegunka-test"
             _ <- askGit tmp ["clone", testRepo]
             gitHashBefore <- gitHash repo
-            silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
+            biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
               git_ testRepo "biegunka-test"
             gitHashAfter <- gitHash repo
             gitHashBefore `shouldBe` gitHashAfter
@@ -73,7 +75,9 @@ spec = do
 
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
-withBiegunkaDirectory = withSystemTempDirectory "biegunka-"
+withBiegunkaDirectory action = do
+ str <- liftM (take 10 . randomRs ('a','z')) newStdGen
+ withSystemTempDirectory ("biegunka-" ++ str ++ "-") action
 
 currentBranch :: FilePath -> IO (Maybe String)
 currentBranch path = (listToMaybe . lines) `fmap` askGit path ["rev-parse", "--abbrev-ref", "HEAD"]

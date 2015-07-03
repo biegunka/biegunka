@@ -2,7 +2,7 @@
 , command-qq, conduit, conduit-extra, containers, cryptohash
 , data-default-class, directory, directory-layout, exceptions
 , filepath, free, hspec, hspec-expectations-lens, HStringTemplate
-, lens, meep, mtl, optparse-applicative, process, resourcet
+, lens, meep, mtl, optparse-applicative, process, random, resourcet
 , safecopy, semigroups, silently, stdenv, stm, template-haskell
 , temporary, text, transformers, unix
 }:
@@ -22,8 +22,8 @@ mkDerivation {
   testDepends = [
     base containers data-default-class directory directory-layout
     filepath free hspec hspec-expectations-lens lens
-    optparse-applicative process semigroups silently temporary text
-    transformers unix
+    optparse-applicative process random semigroups silently temporary
+    text transformers unix
   ];
   homepage = "http://biegunka.budueba.com/";
   description = "Configuration development";
