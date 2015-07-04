@@ -78,6 +78,7 @@ library
     Control.Biegunka.Source
     Control.Biegunka.Source.Directory
     Control.Biegunka.Source.Git
+    Control.Biegunka.Source.Git.Internal
     Control.Biegunka.Source.Layout
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
@@ -141,7 +142,6 @@ test-suite spec
     , process
     , random
     , semigroups
-    , silently
     , temporary
     , text
     , transformers

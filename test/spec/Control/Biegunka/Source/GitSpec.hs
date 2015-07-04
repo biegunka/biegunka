@@ -2,31 +2,23 @@ module Control.Biegunka.Source.GitSpec (spec) where
 import           Test.Hspec
 import           Test.Hspec.Expectations.Contrib
 
-import           Control.Biegunka
-import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
-import           Control.Biegunka.Source.Git        (git_)
+import qualified Control.Biegunka.Source.Git.Internal as Git
 
-import           Control.Lens
-import           Control.Monad                      (liftM)
-import           Control.Monad                      (void)
-import           Data.Maybe                         (listToMaybe)
-import qualified Data.Text                          as Text
-import           System.Directory                   (createDirectory)
-import           System.FilePath                    ((</>))
-import           System.IO.Silently                 (silence)
-import           System.IO.Temp                     (withSystemTempDirectory)
-import qualified System.Process                     as P
+import           Control.Monad                        (liftM)
+import           Data.Maybe                           (listToMaybe)
+import           System.Directory                     (createDirectory)
+import           System.FilePath                      ((</>))
+import           System.IO.Temp                       (withSystemTempDirectory)
 import           System.Random
 
 spec :: Spec
 spec = do
   around withBiegunkaDirectory $
-    describe "git" $ do
+    describe "updateGit" $ do
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
-          silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-            retries 0 $ git_ repoRemote repoLocal
+          Git.updateGit repoRemote repoLocal Git.defaultGit
           currentBranch repoLocal `shouldReturn` Just "master"
           modifiedFiles repoLocal `shouldReturn` []
 
@@ -34,23 +26,21 @@ spec = do
         context "when remote branch has no new commits" $
           it "does nothing" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
-            askGit' tmp ["clone", repoRemote, repoLocal]
-            gitHashBefore <- gitHash repoLocal
-            silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-              retries 0 $ git_ repoRemote repoLocal
-            gitHashAfter <- gitHash repoLocal
+            Git.askGit' tmp ["clone", repoRemote, repoLocal]
+            gitHashBefore <- Git.gitHash repoLocal
+            Git.updateGit repoRemote repoLocal Git.defaultGit
+            gitHashAfter <- Git.gitHash repoLocal
             gitHashBefore `shouldBe` gitHashAfter
             modifiedFiles repoLocal `shouldReturn` []
 
         context "when remote branch has new commits" $
           it "updates local branch" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
-            askGit' tmp ["clone", repoRemote, repoLocal]
-            gitHashOfNewCommit <- gitHash repoLocal
-            askGit' repoLocal ["reset", "--hard", "HEAD~1"]
-            silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-              retries 0 $ git_ repoRemote repoLocal
-            gitHashAfter <- gitHash repoLocal
+            Git.askGit' tmp ["clone", repoRemote, repoLocal]
+            gitHashOfNewCommit <- Git.gitHash repoLocal
+            Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
+            Git.updateGit repoRemote repoLocal Git.defaultGit
+            gitHashAfter <- Git.gitHash repoLocal
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []
 
@@ -59,13 +49,12 @@ spec = do
           context "when failIfAhead flag isn't set" $
             it "does nothing" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
-              askGit' tmp ["clone", repoRemote, repoLocal]
-              gitHashBefore <- gitHash repoLocal
+              Git.askGit' tmp ["clone", repoRemote, repoLocal]
+              gitHashBefore <- Git.gitHash repoLocal
               appendFile (repoLocal </> "file") "new string"
-              askGit repoLocal $ credentials ++ ["commit", "-a", "-m", "add new string to file"]
-              silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-                retries 0 $ git_ repoRemote repoLocal
-              gitHashAfter <- gitHash repoLocal
+              Git.askGit repoLocal $ credentials ++ ["commit", "-a", "-m", "add new string to file"]
+              Git.updateGit repoRemote repoLocal Git.defaultGit
+              gitHashAfter <- Git.gitHash repoLocal
               modifiedFiles repoLocal `shouldReturn` []
               gitHashAfter `shouldNotBe` gitHashBefore
 
@@ -92,41 +81,25 @@ withBiegunkaDirectory action = do
  withSystemTempDirectory ("biegunka-" ++ str ++ "-") action
 
 currentBranch :: FilePath -> IO (Maybe String)
-currentBranch path = (listToMaybe . lines) `fmap` askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
+currentBranch path = (listToMaybe . lines) `fmap` Git.askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
 
 modifiedFiles :: FilePath -> IO [String]
-modifiedFiles repo = lines `fmap` askGit repo ["diff-index", "HEAD"]
-
-gitHash :: FilePath -> IO String
-gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
-
-askGit :: FilePath -> [String] -> IO String
-askGit cwd args = Text.unpack . Text.stripEnd <$> go
- where
-  go = do
-    let proc = P.proc "git" args
-    (exitcode, out, err) <-
-      P.readCreateProcessWithExitCode proc { P.cwd = Just cwd } ""
-    exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
-    return (Text.pack out)
-
-askGit' :: FilePath -> [String] -> IO ()
-askGit' f args = void $ askGit f args
+modifiedFiles repo = lines `fmap` Git.askGit repo ["diff-index", "HEAD"]
 
 buildRemoteRepo :: FilePath -> IO (FilePath, FilePath)
 buildRemoteRepo path = do
   let repo = path </> "test-repo-remote"
   let file = repo </> "file"
   createDirectory repo
-  askGit' repo ["init"]
-  askGit' repo $ credentials ++ ["commit", "--allow-empty", "--message", "initial"]
+  Git.askGit' repo ["init"]
+  Git.askGit' repo $ credentials ++ ["commit", "--allow-empty", "--message", "initial"]
   writeFile file "hi\nthere\n!\n"
-  askGit' repo ["add", file]
-  askGit' repo $ credentials ++ ["commit", "--message", "Change 1"]
+  Git.askGit' repo ["add", file]
+  Git.askGit' repo $ credentials ++ ["commit", "--message", "Change 1"]
   writeFile file "never\nmind\n!\n"
-  askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 2"]
+  Git.askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 2"]
   writeFile file "just\nkidding\n!\n"
-  askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 3"]
+  Git.askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 3"]
   return (repo, path </> "test-repo-local")
 
 credentials :: [String]
