@@ -3,15 +3,15 @@ import           Test.Hspec
 import           Test.Hspec.Expectations.Contrib
 
 import           Control.Biegunka
-import           Control.Biegunka.Source.Git (git_ {-, git', failIfAhead-})
+import           Control.Biegunka.Source.Git     (git_)
 import           Control.Lens
-import           Control.Monad               (liftM)
-import Control.Monad (void)
-import           Data.Maybe                  (listToMaybe)
-import           System.FilePath             ((</>))
-import           System.IO.Silently          (silence)
-import           System.IO.Temp              (withSystemTempDirectory)
-import qualified System.Process              as P
+import           Control.Monad                   (liftM)
+import           Control.Monad                   (void)
+import           Data.Maybe                      (listToMaybe)
+import           System.FilePath                 ((</>))
+import           System.IO.Silently              (silence)
+import           System.IO.Temp                  (withSystemTempDirectory)
+import qualified System.Process                  as P
 import           System.Random
 
 spec :: Spec
@@ -23,7 +23,7 @@ spec = do
       it "creates new directory and set branch correctly" $ \tmp -> do
         let repo = tmp </> "biegunka-test"
         silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-          (retries 0 $ git_ testRepo "biegunka-test")
+          retries 0 $ git_ testRepo "biegunka-test"
         currentBranch repo `shouldReturn` Just "master"
         haveCleanState repo `shouldReturn` True
 
@@ -36,7 +36,7 @@ spec = do
           askGit' tmp ["clone", testRepo]
           gitHashBefore <- gitHash repo
           silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-            (retries 0 $ git_ testRepo "biegunka-test")
+            retries 0 $ git_ testRepo "biegunka-test"
           gitHashAfter <- gitHash repo
           gitHashBefore `shouldBe` gitHashAfter
           haveCleanState repo `shouldReturn` True
@@ -49,7 +49,7 @@ spec = do
           gitHashOfNewCommit <- gitHash repo
           askGit' repo ["reset", "--hard", "HEAD~1", testRepo]
           silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-            (retries 0 $ git_ testRepo "biegunka-test")
+            retries 0 $ git_ testRepo "biegunka-test"
           gitHashAfter <- gitHash repo
           gitHashAfter `shouldBe` gitHashOfNewCommit
           haveCleanState repo `shouldReturn` True
@@ -65,10 +65,9 @@ spec = do
             askGit' tmp ["clone", testRepo]
             gitHashBefore <- gitHash repo
             appendFile (repo </> "file") "new string"
-            readFile (repo </> "file")
-            askGit repo ["commit", "-a", "-m", "add new string to file"]
+            askGit repo ["-c", "user.name=biegunka-test", "-c", "user.email=mail@example.com", "commit", "-a", "-m", "add new string to file"]
             silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-              (retries 0 $ git_ testRepo "biegunka-test")
+              retries 0 $ git_ testRepo "biegunka-test"
             gitHashAfter <- gitHash repo
             haveCleanState repo `shouldReturn` True
             gitHashAfter `shouldNotBe` gitHashBefore
