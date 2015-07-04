@@ -28,7 +28,7 @@ spec = do
           silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
             retries 0 $ git_ repoRemote repoLocal
           currentBranch repoLocal `shouldReturn` Just "master"
-          haveCleanState repoLocal `shouldReturn` True
+          modifiedFiles repoLocal `shouldReturn` []
 
       context "when local branch have no commits ahead of remote branch" $ do
         context "when remote branch have no new commits" $
@@ -40,7 +40,7 @@ spec = do
               retries 0 $ git_ repoRemote repoLocal
             gitHashAfter <- gitHash repoLocal
             gitHashBefore `shouldBe` gitHashAfter
-            haveCleanState repoLocal `shouldReturn` True
+            modifiedFiles repoLocal `shouldReturn` []
 
         context "when remote branch have new commits" $
           it "updates local branch" $ \tmp -> do
@@ -52,7 +52,7 @@ spec = do
               retries 0 $ git_ repoRemote repoLocal
             gitHashAfter <- gitHash repoLocal
             gitHashAfter `shouldBe` gitHashOfNewCommit
-            haveCleanState repoLocal `shouldReturn` True
+            modifiedFiles repoLocal `shouldReturn` []
 
       context "when local branch have commits ahead of remote branch" $ do
         context "when remote branch have no new commits" $ do
@@ -66,7 +66,7 @@ spec = do
               silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
                 retries 0 $ git_ repoRemote repoLocal
               gitHashAfter <- gitHash repoLocal
-              haveCleanState repoLocal `shouldReturn` True
+              modifiedFiles repoLocal `shouldReturn` []
               gitHashAfter `shouldNotBe` gitHashBefore
 
           context "when failIfAhead flag is set" $
@@ -94,8 +94,8 @@ withBiegunkaDirectory action = do
 currentBranch :: FilePath -> IO (Maybe String)
 currentBranch path = (listToMaybe . lines) `fmap` askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
 
-haveCleanState :: FilePath -> IO Bool
-haveCleanState path = (null . lines) `fmap` askGit path ["diff-index", "HEAD"]
+modifiedFiles :: FilePath -> IO [String]
+modifiedFiles repo = lines `fmap` askGit repo ["diff-index", "HEAD"]
 
 gitHash :: FilePath -> IO String
 gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
