@@ -2,7 +2,7 @@
 -- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git.Internal
   ( git', git, git_
-  , Git
+  , Git (..)
   , actions, branch, failIfAhead
   , URI
   , askGit, askGit', updateGit
@@ -62,10 +62,10 @@ failIfAhead y = Mod (\x -> x { _failIfAhead = y })
 -- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
 --
 -- @
--- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\" $ def
---   & branch .~ \"develop\"
---   & actions .~ do
---       link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\"
+-- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\
+--   (branch \"develop\") <>
+--   (actions .~ do
+--       link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\")
 -- @
 --
 --  1. Clone repository from @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@
@@ -101,7 +101,8 @@ updateGit u p Git { _branch, _failIfAhead } =
       currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
       when (currentBranch /= Just _branch) $
         askGit' p ["checkout", "-B", _branch, "--track", rbr]
-      commitsAhead <- (not . null . lines) `fmap` askGit p ["rev-list", _branch ++ "..origin"]
+      commitsAhead <- (not . null . lines) `fmap`
+        askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
       if (commitsAhead && _failIfAhead)
         then sourceFailure (Text.pack "local branch is ahead of remote")
         else askGit' p ["rebase", rbr]
