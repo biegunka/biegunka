@@ -30,10 +30,11 @@ generateGit_biegunka lbi =
  where
   autogen = autogenModulesDir lbi
   git_biegunka = autogen </> "Git_biegunka" <.> "hs"
+{-# ANN generateGit_biegunka "HLint: ignore Use camelCase" #-}
 
 gitHash :: IO String
 gitHash =
-  catchIOError (fmap sanitize (readProcess "git" ["describe", "--always", "--dirty=-dev"] ""))
+  catchIOError (fmap sanitize (readProcess "git" ["describe", "--always", "--dirty=-dirty"] ""))
                (\_ -> return "unknown")
  where
   sanitize = List.dropWhileEnd Char.isSpace

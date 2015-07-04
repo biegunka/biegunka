@@ -37,7 +37,7 @@ import qualified System.IO as IO
 import qualified System.IO.Error as IO
 
 import qualified Git_biegunka as Git
-import           Paths_biegunka (version)
+import qualified Paths_biegunka as Paths
 
 
 -- | 'Interpreter' data type.
@@ -84,11 +84,18 @@ biegunka (($ defaultSettings) -> c) (I interpret) script = do
     interpret c' annotatedScript (return ExitSuccess)
  where
   info rr br = List.intercalate "\n" $
-    [ "* Library version: " ++ showVersion version ++ "-" ++ Git.hash
+    [ "   ___  _                    __          "
+    , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
+    , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "
+    , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> version
+    , "           /___/                         "
+    , ""
     , "* Relative filepaths are deemed relative to " ++ rr
     , "* Data will be saved in "                     ++ br
     ] ++
     bool [] ["* Offline mode"] (has (mode._Offline) c)
+   where
+    version = showVersion Paths.version ++ "-" ++ Git.hash
 
 
 -- | Expand \"~\" at the start of the path
