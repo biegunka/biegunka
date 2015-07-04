@@ -23,15 +23,15 @@ spec = do
   around withBiegunkaDirectory $
     describe "git" $ do
       context "when local path doesn't exist" $
-        it "creates new directory and set branch correctly" $ \tmp -> do
+        it "creates new directory and sets branch correctly" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
             retries 0 $ git_ repoRemote repoLocal
           currentBranch repoLocal `shouldReturn` Just "master"
           modifiedFiles repoLocal `shouldReturn` []
 
-      context "when local branch have no commits ahead of remote branch" $ do
-        context "when remote branch have no new commits" $
+      context "when local branch has no commits ahead of remote branch" $ do
+        context "when remote branch has no new commits" $
           it "does nothing" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             askGit' tmp ["clone", repoRemote, repoLocal]
@@ -42,7 +42,7 @@ spec = do
             gitHashBefore `shouldBe` gitHashAfter
             modifiedFiles repoLocal `shouldReturn` []
 
-        context "when remote branch have new commits" $
+        context "when remote branch has new commits" $
           it "updates local branch" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             askGit' tmp ["clone", repoRemote, repoLocal]
@@ -54,8 +54,8 @@ spec = do
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []
 
-      context "when local branch have commits ahead of remote branch" $ do
-        context "when remote branch have no new commits" $ do
+      context "when local branch has commits ahead of remote branch" $ do
+        context "when remote branch has no new commits" $ do
           context "when failIfAhead flag isn't set" $
             it "does nothing" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
@@ -73,7 +73,7 @@ spec = do
             it "fails with exception" $ \_ ->
               pending
 
-        context "when remote branch have new commits" $ do
+        context "when remote branch has new commits" $ do
           context "when failIfAhead flag isn't set" $
             it "rebases local commits onto a remote branch" $ \_ ->
               pending
@@ -82,7 +82,7 @@ spec = do
             it "fails with exception" $ \_ ->
               pending
 
-      context "when repo have a dirty state" $
+      context "when repo has a dirty state" $
         it "fails with exception" $ \_ ->
           pending
 
