@@ -3,94 +3,88 @@ import           Test.Hspec
 import           Test.Hspec.Expectations.Contrib
 
 import           Control.Biegunka
-import           Control.Biegunka.Source.Git     (git_)
+import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
+import           Control.Biegunka.Source.Git        (git_)
+
 import           Control.Lens
-import           Control.Monad                   (liftM)
-import           Control.Monad                   (void)
-import           Data.Maybe                      (listToMaybe)
-import           System.FilePath                 ((</>))
-import           System.IO.Silently              (silence)
-import           System.IO.Temp                  (withSystemTempDirectory)
-import qualified System.Process                  as P
+import           Control.Monad                      (liftM)
+import           Control.Monad                      (void)
+import           Data.Maybe                         (listToMaybe)
+import qualified Data.Text                          as Text
+import           System.Directory                   (createDirectory)
+import           System.FilePath                    ((</>))
+import           System.IO.Silently                 (silence)
+import           System.IO.Temp                     (withSystemTempDirectory)
+import qualified System.Process                     as P
 import           System.Random
 
 spec :: Spec
 spec = do
-  describe "git_" $ around withBiegunkaDirectory $ do
-
-    context "when local path doesn't exist" $
-
-      it "creates new directory and set branch correctly" $ \tmp -> do
-        let repo = tmp </> "biegunka-test"
-        silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-          retries 0 $ git_ testRepo "biegunka-test"
-        currentBranch repo `shouldReturn` Just "master"
-        haveCleanState repo `shouldReturn` True
-
-    context "when local branch have no commits ahead of remote branch" $ do
-
-      context "when remote branch have no new commits" $
-
-        it "does nothing" $ \tmp -> do
-          let repo = tmp </> "biegunka-test"
-          askGit' tmp ["clone", testRepo]
-          gitHashBefore <- gitHash repo
+  around withBiegunkaDirectory $
+    describe "git" $ do
+      context "when local path doesn't exist" $
+        it "creates new directory and set branch correctly" $ \tmp -> do
+          (repoRemote, repoLocal) <- buildRemoteRepo tmp
           silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-            retries 0 $ git_ testRepo "biegunka-test"
-          gitHashAfter <- gitHash repo
-          gitHashBefore `shouldBe` gitHashAfter
-          haveCleanState repo `shouldReturn` True
+            retries 0 $ git_ repoRemote repoLocal
+          currentBranch repoLocal `shouldReturn` Just "master"
+          haveCleanState repoLocal `shouldReturn` True
 
-      context "when remote branch have new commits" $
-
-        it "updates local branch" $ \tmp -> do
-          let repo = tmp </> "biegunka-test"
-          askGit' tmp ["clone", testRepo]
-          gitHashOfNewCommit <- gitHash repo
-          askGit' repo ["reset", "--hard", "HEAD~1", testRepo]
-          silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-            retries 0 $ git_ testRepo "biegunka-test"
-          gitHashAfter <- gitHash repo
-          gitHashAfter `shouldBe` gitHashOfNewCommit
-          haveCleanState repo `shouldReturn` True
-
-    context "when local branch have commits ahead of remote branch" $ do
-
-      context "when remote branch have no new commits" $ do
-
-        context "when failIfAhead flag isn't set" $
-
+      context "when local branch have no commits ahead of remote branch" $ do
+        context "when remote branch have no new commits" $
           it "does nothing" $ \tmp -> do
-            let repo = tmp </> "biegunka-test"
-            askGit' tmp ["clone", testRepo]
-            gitHashBefore <- gitHash repo
-            appendFile (repo </> "file") "new string"
-            askGit repo ["-c", "user.name=biegunka-test", "-c", "user.email=mail@example.com", "commit", "-a", "-m", "add new string to file"]
+            (repoRemote, repoLocal) <- buildRemoteRepo tmp
+            askGit' tmp ["clone", repoRemote, repoLocal]
+            gitHashBefore <- gitHash repoLocal
             silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-              retries 0 $ git_ testRepo "biegunka-test"
-            gitHashAfter <- gitHash repo
-            haveCleanState repo `shouldReturn` True
-            gitHashAfter `shouldNotBe` gitHashBefore
-        context "when failIfAhead flag is set" $
+              retries 0 $ git_ repoRemote repoLocal
+            gitHashAfter <- gitHash repoLocal
+            gitHashBefore `shouldBe` gitHashAfter
+            haveCleanState repoLocal `shouldReturn` True
 
-          it "fails with exception" $ \_ ->
-            pending
+        context "when remote branch have new commits" $
+          it "updates local branch" $ \tmp -> do
+            (repoRemote, repoLocal) <- buildRemoteRepo tmp
+            askGit' tmp ["clone", repoRemote, repoLocal]
+            gitHashOfNewCommit <- gitHash repoLocal
+            askGit' repoLocal ["reset", "--hard", "HEAD~1"]
+            silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
+              retries 0 $ git_ repoRemote repoLocal
+            gitHashAfter <- gitHash repoLocal
+            gitHashAfter `shouldBe` gitHashOfNewCommit
+            haveCleanState repoLocal `shouldReturn` True
 
-      context "when remote branch have new commits" $ do
+      context "when local branch have commits ahead of remote branch" $ do
+        context "when remote branch have no new commits" $ do
+          context "when failIfAhead flag isn't set" $
+            it "does nothing" $ \tmp -> do
+              (repoRemote, repoLocal) <- buildRemoteRepo tmp
+              askGit' tmp ["clone", repoRemote, repoLocal]
+              gitHashBefore <- gitHash repoLocal
+              appendFile (repoLocal </> "file") "new string"
+              askGit repoLocal $ credentials ++ ["commit", "-a", "-m", "add new string to file"]
+              silence $ biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
+                retries 0 $ git_ repoRemote repoLocal
+              gitHashAfter <- gitHash repoLocal
+              haveCleanState repoLocal `shouldReturn` True
+              gitHashAfter `shouldNotBe` gitHashBefore
 
-        context "when failIfAhead flag isn't set" $
+          context "when failIfAhead flag is set" $
+            it "fails with exception" $ \_ ->
+              pending
 
-          it "rebases local commits onto a remote branch" $ \_ ->
-            pending
+        context "when remote branch have new commits" $ do
+          context "when failIfAhead flag isn't set" $
+            it "rebases local commits onto a remote branch" $ \_ ->
+              pending
 
-        context "when failIfAhead flag is set" $
-          it "fails with exception" $ \_ ->
-            pending
+          context "when failIfAhead flag is set" $
+            it "fails with exception" $ \_ ->
+              pending
 
-    context "when repo have a dirty state" $
-      it "fails with exception" $ \_ ->
-        pending
-
+      context "when repo have a dirty state" $
+        it "fails with exception" $ \_ ->
+          pending
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
 withBiegunkaDirectory action = do
@@ -107,14 +101,33 @@ gitHash :: FilePath -> IO String
 gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
 
 askGit :: FilePath -> [String] -> IO String
-askGit cwd args = do
-  let proc = P.proc "git" args
-  (_, out, _) <-
-    P.readCreateProcessWithExitCode proc { P.cwd = Just cwd } ""
-  return out
+askGit cwd args = Text.unpack . Text.stripEnd <$> go
+ where
+  go = do
+    let proc = P.proc "git" args
+    (exitcode, out, err) <-
+      P.readCreateProcessWithExitCode proc { P.cwd = Just cwd } ""
+    exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
+    return (Text.pack out)
 
 askGit' :: FilePath -> [String] -> IO ()
 askGit' f args = void $ askGit f args
 
-testRepo :: String
-testRepo = "https://bitbucket.com/dmalikov/biegunka-test"
+buildRemoteRepo :: FilePath -> IO (FilePath, FilePath)
+buildRemoteRepo path = do
+  let repo = path </> "test-repo-remote"
+  let file = repo </> "file"
+  createDirectory repo
+  askGit' repo ["init"]
+  askGit' repo $ credentials ++ ["commit", "--allow-empty", "--message", "initial"]
+  writeFile file "hi\nthere\n!\n"
+  askGit' repo ["add", file]
+  askGit' repo $ credentials ++ ["commit", "--message", "Change 1"]
+  writeFile file "never\nmind\n!\n"
+  askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 2"]
+  writeFile file "just\nkidding\n!\n"
+  askGit' repo $ credentials ++ ["commit", "-a", "--message", "Change 3"]
+  return (repo, path </> "test-repo-local")
+
+credentials :: [String]
+credentials = ["-c", "user.name=biegunka-test", "-c", "user.email=mail@example.com"]
