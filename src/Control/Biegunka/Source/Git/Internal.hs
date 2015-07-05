@@ -105,11 +105,12 @@ updateGit u p Git { _branch, _failIfAhead } =
       return
         ( bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after)
         , do
-          currentBranch <- (listToMaybe . lines) `fmap` runGit p ["rev-parse", "--abbrev-ref", "HEAD"]
+          currentBranch <- fmap (listToMaybe . lines)
+                                (runGit p ["rev-parse", "--abbrev-ref", "HEAD"])
           when (currentBranch /= Just _branch)
                (void (runGit p ["checkout", "-B", _branch, "--track", rbr]))
-          ahead <- (not . null . lines) `fmap`
-            runGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
+          ahead <- fmap (not . null . lines)
+                        (runGit p ["rev-list", rbr ++ ".." ++ _branch])
           if ahead && _failIfAhead
             then sourceFailure "local branch is ahead of remote"
             else Nothing <$ runGit p ["rebase", rbr]
