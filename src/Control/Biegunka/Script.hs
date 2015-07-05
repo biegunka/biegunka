@@ -262,15 +262,12 @@ annotateActions i =
 
 -- | Abstract away all plumbing needed to make source
 sourced
-  :: String
-  -> URI
-  -> FilePath
+  :: Source
   -> Script 'Actions ()
-  -> (FilePath -> IO (Maybe String, IO (Maybe String)))
   -> Script 'Sources ()
-sourced sourceType sourceUri path inner sourceUpdate = Script $ do
+sourced Source { sourceType, sourceFrom, sourceTo = path, sourceUpdate } inner = Script $ do
   rr <- view runRoot
-  local (set sourceRoot (constructTargetFilePath rr sourceUri path) . set sourceURL sourceUri) $ do
+  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceURL sourceFrom) $ do
     ann <- AS
       <$> nextToken
       <*> view segments
@@ -279,9 +276,9 @@ sourced sourceType sourceUri path inner sourceUpdate = Script $ do
       <*> view sourceReaction
 
     ast <- annotateActions inner
-    sourcePath <- view sourceRoot
+    sourceTo <- view sourceRoot
 
-    liftS (TS ann Source { sourceType, sourceUri, sourcePath, sourceUpdate } ast ())
+    liftS (TS ann Source { sourceType, sourceFrom, sourceTo, sourceUpdate } ast ())
 
 nextToken :: MonadState MAnnotations m => m Token
 nextToken = do

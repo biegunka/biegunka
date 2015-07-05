@@ -57,8 +57,8 @@ instance Traversable (TermF f s) where
 -- | 'Sources' scope terms data
 data Source = Source
   { sourceType   :: String
-  , sourceUri    :: String
-  , sourcePath   :: FilePath
+  , sourceFrom   :: String
+  , sourceTo     :: FilePath
   , sourceUpdate :: FilePath -> IO (Maybe String, IO (Maybe String))
   }
 

@@ -50,8 +50,8 @@ withFd fd = bracket (Posix.fdToHandle fd) IO.hClose
 
 termsLayout :: FilePath -> Term Annotate s () -> Layout ()
 termsLayout p = iter go . fmap return where
-  go (TS AS { asUser } Source { sourcePath } innards spec) = do
-    Layout.emptydir (rel sourcePath)
+  go (TS AS { asUser } Source { sourceTo } innards spec) = do
+    Layout.emptydir (rel sourceTo)
       & Layout.user .~ asUser
     termsLayout p innards
     spec

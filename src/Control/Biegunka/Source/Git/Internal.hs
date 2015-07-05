@@ -14,19 +14,19 @@ module Control.Biegunka.Source.Git.Internal
   , defaultGit
   ) where
 
-import           Control.Monad                      (void, when)
-import           Data.Bool                          (bool)
-import           Data.Maybe                         (listToMaybe)
-import qualified Data.Text                          as Text
-import           System.Directory                   (doesDirectoryExist)
-import           System.FilePath                    ((</>))
-import qualified System.Process                     as P
-import           Text.Printf                        (printf)
+import           Control.Monad (void, when)
+import           Data.Bool (bool)
+import           Data.Maybe (listToMaybe)
+import qualified Data.Text as Text
+import           System.Directory (doesDirectoryExist)
+import           System.FilePath ((</>))
+import qualified System.Process as P
+import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
-import           Control.Biegunka.Language          (Scope (..))
+import           Control.Biegunka.Language (Scope(..), Source(..))
 import           Control.Biegunka.Script
-import           Control.Biegunka.Source            (Sourceable (..))
+import           Control.Biegunka.Source (Sourceable(..))
 
 
 -- | Git repository's settings
@@ -78,8 +78,12 @@ failIfAhead = Mod (\x -> x { _failIfAhead = True })
 --
 --  3. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Mod Git -> Script 'Sources ()
-git' url path (Mod f) =
-  sourced "git" url path _actions (\p -> updateGit url p g)
+git' url path (Mod f) = sourced Source
+  { sourceType   = "git"
+  , sourceFrom   = url
+  , sourceTo     = path
+  , sourceUpdate = \p -> updateGit url p g
+  } _actions
  where
   g@Git { _actions } = f defaultGit
 

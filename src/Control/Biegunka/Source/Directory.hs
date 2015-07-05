@@ -16,8 +16,12 @@ directory
   :: FilePath
   -> Script 'Actions ()
   -> Script 'Sources ()
-directory relpath inner =
-  sourced "directory" relpath relpath inner update
+directory relpath = sourced Source
+  { sourceType   = "directory"
+  , sourceFrom   = relpath
+  , sourceTo     = relpath
+  , sourceUpdate = update
+  }
  where
   update abspath = do
     exists <- doesDirectoryExist abspath
