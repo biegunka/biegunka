@@ -1,16 +1,16 @@
 module Control.Biegunka.Source.GitSpec (spec) where
 import           Test.Hspec
-import           Test.Hspec.Expectations.Contrib
 
 import           Control.Biegunka.Execute.Exception   (SourceException (..))
 import qualified Control.Biegunka.Source.Git.Internal as Git
 
-import           Control.Monad                        (liftM)
+import           Control.Applicative                  (liftA2)
 import           Data.Maybe                           (listToMaybe)
 import           System.Directory                     (createDirectory)
 import           System.FilePath                      ((</>))
 import           System.IO.Temp                       (withSystemTempDirectory)
 import           System.Random
+import           Text.Read                            (readMaybe)
 
 spec :: Spec
 spec = do
@@ -25,13 +25,13 @@ spec = do
 
       context "when local branch has no commits ahead of remote branch" $ do
         context "when remote branch has no new commits" $
-          it "does nothing" $ \tmp -> do
+          it "does not change checkout state" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             Git.askGit' tmp ["clone", repoRemote, repoLocal]
             gitHashBefore <- Git.gitHash repoLocal
             Git.updateGit repoRemote repoLocal Git.defaultGit
             gitHashAfter <- Git.gitHash repoLocal
-            gitHashBefore `shouldBe` gitHashAfter
+            gitHashAfter `shouldBe` gitHashBefore
             modifiedFiles repoLocal `shouldReturn` []
 
         context "when remote branch has new commits" $
@@ -48,21 +48,21 @@ spec = do
       context "when local branch has commits ahead of remote branch" $ do
         context "when remote branch has no new commits" $ do
           context "when failIfAhead flag isn't set" $
-            it "does nothing" $ \tmp -> do
+            it "does not change checkout state" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.askGit' tmp ["clone", repoRemote, repoLocal]
+              addNewFile repoLocal
               gitHashBefore <- Git.gitHash repoLocal
-              modify repoLocal
               Git.updateGit repoRemote repoLocal Git.defaultGit
               gitHashAfter <- Git.gitHash repoLocal
+              gitHashAfter `shouldBe` gitHashBefore
               modifiedFiles repoLocal `shouldReturn` []
-              gitHashAfter `shouldNotBe` gitHashBefore
 
           context "when failIfAhead flag is set" $
             it "fails with exception" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.askGit' tmp ["clone", repoRemote, repoLocal]
-              modify repoLocal
+              addNewFile repoLocal
               Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
                 `shouldThrow` sourceException
 
@@ -73,18 +73,18 @@ spec = do
               Git.askGit' tmp ["clone", repoRemote, repoLocal]
               numberOfCommitsRemote <- numberOfCommits repoLocal
               Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
-              modify repoLocal
+              addNewFile repoLocal
               Git.updateGit repoRemote repoLocal Git.defaultGit
               numberOfCommitsLocal <- numberOfCommits repoLocal
               modifiedFiles repoLocal `shouldReturn` []
-              numberOfCommitsLocal `shouldBe` ((+) 1) `fmap` numberOfCommitsRemote
+              liftA2 (-) numberOfCommitsLocal numberOfCommitsRemote `shouldBe` Just 1
 
           context "when failIfAhead flag is set" $
             it "fails with exception" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.askGit' tmp ["clone", repoRemote, repoLocal]
               Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
-              modify repoLocal
+              addNewFile repoLocal
               Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
                 `shouldThrow` sourceException
 
@@ -93,13 +93,12 @@ spec = do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.askGit' tmp ["clone", repoRemote, repoLocal]
           Git.askGit' repoLocal ["reset", "--soft", "HEAD~1"]
-          Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
-            `shouldThrow` sourceException
+          Git.updateGit repoRemote repoLocal Git.defaultGit `shouldThrow` sourceException
 
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
 withBiegunkaDirectory action = do
- str <- liftM (take 10 . randomRs ('a','z')) newStdGen
+ str <- (take 10 . randomRs ('a','z')) `fmap` newStdGen
  withSystemTempDirectory ("biegunka-" ++ str ++ "-") action
 
 currentBranch :: FilePath -> IO (Maybe String)
@@ -128,19 +127,16 @@ buildRemoteRepo path = do
 sourceException :: Selector SourceException
 sourceException = const True
 
-prependFile :: FilePath -> String -> IO ()
-prependFile path s = do
-  content <- readFile path
-  length content `seq` writeFile path $ s ++ content
-
-modify :: FilePath -> IO ()
-modify path = do
+addNewFile :: FilePath -> IO ()
+addNewFile path = do
   setCredentials path
-  prependFile (path </> "file") "new string"
-  Git.askGit' path ["commit", "-a", "-m", "add new string to file"]
+  let anotherFile = path </> "another-file"
+  writeFile anotherFile "something"
+  Git.askGit' path ["add", anotherFile]
+  Git.askGit' path ["commit", "-m", "add new file"]
 
 numberOfCommits :: FilePath -> IO (Maybe Int)
-numberOfCommits path = (liftM read . listToMaybe . lines) `fmap` Git.askGit path ["rev-list", "--count", "HEAD"]
+numberOfCommits path = ((readMaybe =<<) . listToMaybe . lines) `fmap` Git.askGit path ["rev-list", "--count", "HEAD"]
 
 setCredentials :: FilePath -> IO ()
 setCredentials path = do
