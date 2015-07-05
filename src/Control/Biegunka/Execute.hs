@@ -312,7 +312,7 @@ genIO term = case term of
  where
   showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> String
   showDiff =
-    either (printf "contents changed from none to ‘%s’" . showHash)
+    either (printf "contents changed from ‘none’ to ‘%s’" . showHash)
            (\(x, y, d) ->
              printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
              ++ prettyDiff d)
