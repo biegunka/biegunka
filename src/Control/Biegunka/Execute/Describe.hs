@@ -83,7 +83,7 @@ sourceIdentifier = \case
 
 prettyDiff :: [Hunk Text] -> String
 prettyDiff =
-  nonempty "(no diff)" (toString . unline . (mempty :) . map (prettyHunk . fmap Builder.fromLazyText))
+  nonempty " (no diff)" (toString . unline . (mempty :) . map (prettyHunk . fmap Builder.fromLazyText))
 
 nonempty :: b -> ([a] -> b) -> [a] -> b
 nonempty z _ [] = z
