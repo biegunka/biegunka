@@ -1,18 +1,21 @@
 module Control.Biegunka.Source.GitSpec (spec) where
-import           Test.Hspec
-
-import           Control.Biegunka.Execute.Exception   (SourceException (..))
-import qualified Control.Biegunka.Source.Git.Internal as Git
 
 import           Control.Applicative                  (liftA2)
 import           Data.Maybe                           (listToMaybe)
 import           System.Directory                     (createDirectory)
 import           System.FilePath                      ((</>))
 import           System.IO.Temp                       (withSystemTempDirectory)
+import           Test.Hspec.Lens
 import           Text.Read                            (readMaybe)
 
+import           Control.Biegunka.Execute.Exception   (_SourceException)
+import qualified Control.Biegunka.Source.Git.Internal as Git
+
+{-# ANN module "HLint: ignore Reduce duplication" #-}
+
+
 spec :: Spec
-spec = do
+spec =
   around (withSystemTempDirectory "biegunka-") $
     describe "updateGit" $ do
       context "when local path doesn't exist" $
@@ -26,7 +29,7 @@ spec = do
         context "when remote branch has no new commits" $
           it "does not change checkout state" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
-            Git.askGit' tmp ["clone", repoRemote, repoLocal]
+            Git.askGit_ tmp ["clone", repoRemote, repoLocal]
             gitHashBefore <- Git.gitHash repoLocal
             Git.updateGit repoRemote repoLocal Git.defaultGit
             gitHashAfter <- Git.gitHash repoLocal
@@ -36,9 +39,9 @@ spec = do
         context "when remote branch has new commits" $
           it "updates local branch" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
-            Git.askGit' tmp ["clone", repoRemote, repoLocal]
+            Git.askGit_ tmp ["clone", repoRemote, repoLocal]
             gitHashOfNewCommit <- Git.gitHash repoLocal
-            Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
+            Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
             Git.updateGit repoRemote repoLocal Git.defaultGit
             gitHashAfter <- Git.gitHash repoLocal
             gitHashAfter `shouldBe` gitHashOfNewCommit
@@ -49,7 +52,7 @@ spec = do
           context "when failIfAhead flag isn't set" $
             it "does not change checkout state" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
-              Git.askGit' tmp ["clone", repoRemote, repoLocal]
+              Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
               gitHashBefore <- Git.gitHash repoLocal
               Git.updateGit repoRemote repoLocal Git.defaultGit
@@ -60,18 +63,18 @@ spec = do
           context "when failIfAhead flag is set" $
             it "fails with exception" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
-              Git.askGit' tmp ["clone", repoRemote, repoLocal]
+              Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
               Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
-                `shouldThrow` sourceException
+                `shouldThrow` _SourceException
 
         context "when remote branch has new commits" $ do
           context "when failIfAhead flag isn't set" $
             it "rebases local commits onto a remote branch" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
-              Git.askGit' tmp ["clone", repoRemote, repoLocal]
+              Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               numberOfCommitsRemote <- numberOfCommits repoLocal
-              Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
+              Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
               Git.updateGit repoRemote repoLocal Git.defaultGit
               numberOfCommitsLocal <- numberOfCommits repoLocal
@@ -81,18 +84,18 @@ spec = do
           context "when failIfAhead flag is set" $
             it "fails with exception" $ \tmp -> do
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
-              Git.askGit' tmp ["clone", repoRemote, repoLocal]
-              Git.askGit' repoLocal ["reset", "--hard", "HEAD~1"]
+              Git.askGit_ tmp ["clone", repoRemote, repoLocal]
+              Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
               Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
-                `shouldThrow` sourceException
+                `shouldThrow` _SourceException
 
       context "when repo has a dirty state" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
-          Git.askGit' tmp ["clone", repoRemote, repoLocal]
-          Git.askGit' repoLocal ["reset", "--soft", "HEAD~1"]
-          Git.updateGit repoRemote repoLocal Git.defaultGit `shouldThrow` sourceException
+          Git.askGit_ tmp ["clone", repoRemote, repoLocal]
+          Git.askGit_ repoLocal ["reset", "--soft", "HEAD~1"]
+          Git.updateGit repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
 
 
 currentBranch :: FilePath -> IO (Maybe String)
@@ -106,33 +109,35 @@ buildRemoteRepo path = do
   let repo = path </> "test-repo-remote"
   let file = repo </> "file"
   createDirectory repo
-  Git.askGit' repo ["init"]
+  Git.askGit_ repo ["init"]
   setCredentials repo
-  Git.askGit' repo ["commit", "--allow-empty", "--message", "initial"]
+  Git.askGit_ repo ["commit", "--allow-empty", "--message", "initial"]
   writeFile file "hi\nthere\n!\n"
-  Git.askGit' repo ["add", file]
-  Git.askGit' repo ["commit", "--message", "Change 1"]
+  Git.askGit_ repo ["add", file]
+  Git.askGit_ repo ["commit", "--message", "Change 1"]
   appendFile file "never\nmind\n!\n"
-  Git.askGit' repo ["commit", "-a", "--message", "Change 2"]
+  Git.askGit_ repo ["commit", "-a", "--message", "Change 2"]
   appendFile file "just\nkidding\n!\n"
-  Git.askGit' repo ["commit", "-a", "--message", "Change 3"]
+  Git.askGit_ repo ["commit", "-a", "--message", "Change 3"]
   return (repo, path </> "test-repo-local")
 
-sourceException :: Selector SourceException
-sourceException = const True
+shouldReturn :: (Eq a, Show a) => IO a -> a -> IO ()
+shouldReturn mx y = do
+  x <- mx
+  x `shouldBe` y
 
 addNewFile :: FilePath -> IO ()
 addNewFile path = do
   setCredentials path
   let anotherFile = path </> "another-file"
   writeFile anotherFile "something"
-  Git.askGit' path ["add", anotherFile]
-  Git.askGit' path ["commit", "-m", "add new file"]
+  Git.askGit_ path ["add", anotherFile]
+  Git.askGit_ path ["commit", "-m", "add new file"]
 
 numberOfCommits :: FilePath -> IO (Maybe Int)
 numberOfCommits path = (readMaybe =<<) . listToMaybe . lines <$> Git.askGit path ["rev-list", "--count", "HEAD"]
 
 setCredentials :: FilePath -> IO ()
 setCredentials path = do
-  Git.askGit' path ["config", "--local", "user.name", "A U Thor"]
-  Git.askGit' path ["config", "--local", "user.email", "author@example.com"]
+  Git.askGit_ path ["config", "--local", "user.name", "A U Thor"]
+  Git.askGit_ path ["config", "--local", "user.email", "author@example.com"]

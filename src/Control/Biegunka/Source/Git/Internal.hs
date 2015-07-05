@@ -9,7 +9,7 @@ module Control.Biegunka.Source.Git.Internal
   , Git (..)
   , actions, branch, failIfAhead
   , URI
-  , askGit, askGit', updateGit
+  , askGit, askGit_, updateGit
   , gitHash
   , defaultGit
   ) where
@@ -59,8 +59,8 @@ branch :: String -> Mod Git
 branch y = Mod (\x -> x { _branch = y })
 
 -- | Set silent rebasing behavior.
-failIfAhead :: Bool -> Mod Git
-failIfAhead y = Mod (\x -> x { _failIfAhead = y })
+failIfAhead :: Mod Git
+failIfAhead = Mod (\x -> x { _failIfAhead = True })
 
 
 -- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
@@ -99,36 +99,33 @@ updateGit u p Git { _branch, _failIfAhead } =
       before <- gitHash p
       remotes <- lines `fmap` askGit p ["remote"]
       when ("origin" `notElem` remotes) $
-        askGit' p ["remote", "add", "origin", u]
-      -- Typical git: <https://stackoverflow.com/questions/11347712/git-fetch-only-for-current-branch>
-      askGit' p ["fetch", "origin", _branch]
+        askGit_ p ["remote", "add", "origin", u]
+      askGit_ p ["fetch", "origin", _branch]
       currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
       when (currentBranch /= Just _branch) $
-        askGit' p ["checkout", "-B", _branch, "--track", rbr]
-      commitsAhead <- (not . null . lines) `fmap`
+        askGit_ p ["checkout", "-B", _branch, "--track", rbr]
+      ahead <- (not . null . lines) `fmap`
         askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
-      if (commitsAhead && _failIfAhead)
+      if ahead && _failIfAhead
         then sourceFailure (Text.pack "local branch is ahead of remote")
-        else askGit' p ["rebase", rbr]
+        else askGit_ p ["rebase", rbr]
       after <- gitHash p
       return (bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after))
     False -> do
-      askGit' "/" ["clone", u, p, "-b", _branch]
+      askGit_ "/" ["clone", u, p, "-b", _branch]
       after <- gitHash p
       return (Just (printf "checked ‘%s’ out" after))
 
 gitHash :: FilePath -> IO String
 gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
 
-askGit' :: FilePath -> [String] -> IO ()
-askGit' f args = void $ askGit f args
+askGit_ :: FilePath -> [String] -> IO ()
+askGit_ f = void . askGit f
 
 askGit :: FilePath -> [String] -> IO String
-askGit cwd args = Text.unpack . Text.stripEnd <$> go
+askGit cwd args = Text.unpack . Text.stripEnd <$> do
+  (exitcode, out, err) <- P.readCreateProcessWithExitCode proc ""
+  exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
+  return (Text.pack out)
  where
-  go = do
-    let proc = P.proc "git" args
-    (exitcode, out, err) <-
-      P.readCreateProcessWithExitCode proc { P.cwd = Just cwd } ""
-    exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
-    return (Text.pack out)
+  proc = (P.proc "git" args) { P.cwd = Just cwd }

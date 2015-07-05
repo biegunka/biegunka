@@ -10,4 +10,4 @@ module Control.Biegunka.Source.Git
   , URI
   ) where
 
-import           Control.Biegunka.Source.Git.Internal
+import Control.Biegunka.Source.Git.Internal

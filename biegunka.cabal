@@ -134,7 +134,6 @@ test-suite spec
     , filepath
     , free
     , hspec
-    , hspec-expectations
     , hspec-expectations-lens
     , lens
     , optparse-applicative
