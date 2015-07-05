@@ -9,7 +9,7 @@ module Control.Biegunka.Source.Git.Internal
   , Git (..)
   , actions, branch, failIfAhead
   , URI
-  , askGit, askGit_, updateGit
+  , runGit, updateGit
   , gitHash
   , defaultGit
   ) where
@@ -97,37 +97,34 @@ updateGit u p Git { _branch, _failIfAhead } =
     True -> do
       let rbr = "origin" </> _branch
       before <- gitHash p "HEAD"
-      remotes <- lines `fmap` askGit p ["remote"]
-      when ("origin" `notElem` remotes) $
-        askGit_ p ["remote", "add", "origin", u]
-      askGit_ p ["fetch", "origin", _branch]
+      remotes <- lines `fmap` runGit p ["remote"]
+      when ("origin" `notElem` remotes)
+           (void (runGit p ["remote", "add", "origin", u]))
+      runGit p ["fetch", "origin", _branch]
       after <- gitHash p rbr
       return
         ( bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after)
         , do
-          currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
-          when (currentBranch /= Just _branch) $
-            askGit_ p ["checkout", "-B", _branch, "--track", rbr]
+          currentBranch <- (listToMaybe . lines) `fmap` runGit p ["rev-parse", "--abbrev-ref", "HEAD"]
+          when (currentBranch /= Just _branch)
+               (void (runGit p ["checkout", "-B", _branch, "--track", rbr]))
           ahead <- (not . null . lines) `fmap`
-            askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
+            runGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
           if ahead && _failIfAhead
             then sourceFailure (Text.pack "local branch is ahead of remote")
-            else askGit_ p ["rebase", rbr]
+            else void (runGit p ["rebase", rbr])
         )
     False ->
       return
         ( Just "first checkout"
-        , askGit_ "/" ["clone", u, p, "-b", _branch]
+        , void (runGit "/" ["clone", u, p, "-b", _branch])
         )
 
 gitHash :: FilePath -> String -> IO String
-gitHash path ref = askGit path ["rev-parse", "--short", ref]
+gitHash path ref = runGit path ["rev-parse", "--short", ref]
 
-askGit_ :: FilePath -> [String] -> IO ()
-askGit_ f = void . askGit f
-
-askGit :: FilePath -> [String] -> IO String
-askGit cwd args = Text.unpack . Text.stripEnd <$> do
+runGit :: FilePath -> [String] -> IO String
+runGit cwd args = Text.unpack . Text.stripEnd <$> do
   (exitcode, out, err) <- P.readCreateProcessWithExitCode proc ""
   exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
   return (Text.pack out)
