@@ -1,4 +1,8 @@
-{-# LANGUAGE DataKinds, FlexibleInstances, LambdaCase, NamedFieldPuns, TypeFamilies #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE TypeFamilies      #-}
 -- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git.Internal
   ( git', git, git_

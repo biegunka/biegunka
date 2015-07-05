@@ -9,12 +9,11 @@ import           Data.Maybe                           (listToMaybe)
 import           System.Directory                     (createDirectory)
 import           System.FilePath                      ((</>))
 import           System.IO.Temp                       (withSystemTempDirectory)
-import           System.Random
 import           Text.Read                            (readMaybe)
 
 spec :: Spec
 spec = do
-  around withBiegunkaDirectory $
+  around (withSystemTempDirectory "biegunka-") $
     describe "updateGit" $ do
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
@@ -95,11 +94,6 @@ spec = do
           Git.askGit' repoLocal ["reset", "--soft", "HEAD~1"]
           Git.updateGit repoRemote repoLocal Git.defaultGit `shouldThrow` sourceException
 
-
-withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
-withBiegunkaDirectory action = do
- str <- take 10 . randomRs ('a','z') <$> newStdGen
- withSystemTempDirectory ("biegunka-" ++ str ++ "-") action
 
 currentBranch :: FilePath -> IO (Maybe String)
 currentBranch path = listToMaybe . lines <$> Git.askGit path ["rev-parse", "--abbrev-ref", "HEAD"]

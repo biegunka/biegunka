@@ -8,7 +8,3 @@ install:
 script:
     - nix-shell --run 'cabal test'
     - nix-shell --run '$(dirname $NIX_GHC)/runhaskell -package-db=$NIX_GHC_LIBDIR/package.conf.d test/typecheck/Spec.hs'
-    - cat dist/test/biegunka-0.2-spec.log
-
-
-
