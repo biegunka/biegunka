@@ -98,14 +98,14 @@ spec = do
 
 withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
 withBiegunkaDirectory action = do
- str <- (take 10 . randomRs ('a','z')) `fmap` newStdGen
+ str <- take 10 . randomRs ('a','z') <$> newStdGen
  withSystemTempDirectory ("biegunka-" ++ str ++ "-") action
 
 currentBranch :: FilePath -> IO (Maybe String)
-currentBranch path = (listToMaybe . lines) `fmap` Git.askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
+currentBranch path = listToMaybe . lines <$> Git.askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
 
 modifiedFiles :: FilePath -> IO [String]
-modifiedFiles path = lines `fmap` Git.askGit path ["diff-index", "HEAD"]
+modifiedFiles path = lines <$> Git.askGit path ["diff-index", "HEAD"]
 
 buildRemoteRepo :: FilePath -> IO (FilePath, FilePath)
 buildRemoteRepo path = do
@@ -136,7 +136,7 @@ addNewFile path = do
   Git.askGit' path ["commit", "-m", "add new file"]
 
 numberOfCommits :: FilePath -> IO (Maybe Int)
-numberOfCommits path = ((readMaybe =<<) . listToMaybe . lines) `fmap` Git.askGit path ["rev-list", "--count", "HEAD"]
+numberOfCommits path = (readMaybe =<<) . listToMaybe . lines <$> Git.askGit path ["rev-list", "--count", "HEAD"]
 
 setCredentials :: FilePath -> IO ()
 setCredentials path = do
