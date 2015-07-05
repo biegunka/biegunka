@@ -21,8 +21,9 @@ layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner updat
   update abspath =
     return
       ( Nothing
-      , do l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
-           traverseOf_ _Left print l
+      , Nothing <$ do
+          l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
+          traverseOf_ _Left print l
       )
 
 

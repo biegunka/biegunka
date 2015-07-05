@@ -195,7 +195,9 @@ doGenIO retries t = do
           return True
         | otherwise -> do
           res <- trySynchronous finish
-          logMessage e (either (\_ -> IO.stderr) (\_ -> IO.stdout) res) (diff <$ res)
+          logMessage e
+                     (either (\_ -> IO.stderr) (\_ -> IO.stdout) res)
+                     (fmap (\finalDiff -> finalDiff <|> diff) res)
           return (either (\_ -> False) (\_ -> True) res)
  where
   logMessage e stream diff =
@@ -206,6 +208,7 @@ doGenIO retries t = do
                         e
                         (describeTerm retries diff (maybe True (/= i) ms) t)
         writeTVar (view activeSource e) (Just i)
+{-# ANN doGenIO "HLint: ignore Avoid lambda" #-}
 {-# ANN doGenIO "HLint: ignore Use >=>" #-}
 
 -- | Catch all synchronous exceptions.
@@ -216,11 +219,11 @@ trySynchronous =
       Just (SomeAsyncException _) -> Nothing
       _ -> Just e)
 
-genIO :: TermF Annotate s a -> Executor (IO (Maybe String, IO ()))
+genIO :: TermF Annotate s a -> Executor (IO (Maybe String, IO (Maybe String)))
 genIO term = case term of
   TS _ (Source _ _ dst update) _ _ ->
     view mode >>= \case
-      Offline -> return (return (Nothing, return ()))
+      Offline -> return (return (Nothing, return Nothing))
       Online  -> do
         rstv <- view repos
         return $ do
@@ -232,7 +235,7 @@ genIO term = case term of
                 writeTVar rstv (Set.insert dst rs)
                 return False
           if updated
-            then return (Nothing, return ())
+            then return (Nothing, return Nothing)
             else do
               D.createDirectoryIfMissing True (dropFileName dst)
               update dst
@@ -245,12 +248,18 @@ genIO term = case term of
       Right src'
         | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
         | otherwise   -> Nothing
-    return (msg, do EIO.prepareDestination dst; Posix.createSymbolicLink src dst)
+    return
+      ( msg
+      , Nothing <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
+      )
 
   TA _ (Copy src dst) _ -> return $ do
     msg <- fmap (fmap showDiff)
                 (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
-    return (msg, do EIO.prepareDestination dst; D.copyFile src dst)
+    return
+      ( msg
+      , Nothing <$ do EIO.prepareDestination dst; D.copyFile src dst
+      )
 
   TA _ (Template src dst) _ -> do
     Templates ts <- view templates
@@ -263,11 +272,12 @@ genIO term = case term of
                   (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
       return
         ( msg
-        , do EIO.prepareDestination dst
-             D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+        , Nothing <$ do
+            EIO.prepareDestination dst
+            D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
         )
 
-  TA ann (Command p spec) _ -> return (return (Nothing, cmd))
+  TA ann (Command p spec) _ -> return (return (Nothing, Nothing <$ cmd))
    where
     cmd = do
       defenv <- getEnvironment
@@ -298,7 +308,7 @@ genIO term = case term of
         Text.hGetContents err >>= throwM . ShellException status
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TWait _ _ -> return (return (Nothing, return ()))
+  TWait _ _ -> return (return (Nothing, return Nothing))
  where
   showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> String
   showDiff =

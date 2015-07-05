@@ -91,7 +91,7 @@ git u p s = git' u p (actions s)
 git_ :: URI -> FilePath -> Script 'Sources ()
 git_ u p = git' u p mempty
 
-updateGit :: URI -> FilePath -> Git -> IO (Maybe String, IO ())
+updateGit :: URI -> FilePath -> Git -> IO (Maybe String, IO (Maybe String))
 updateGit u p Git { _branch, _failIfAhead } =
   doesDirectoryExist p >>= \case
     True -> do
@@ -112,12 +112,14 @@ updateGit u p Git { _branch, _failIfAhead } =
             runGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
           if ahead && _failIfAhead
             then sourceFailure (Text.pack "local branch is ahead of remote")
-            else void (runGit p ["rebase", rbr])
+            else Nothing <$ runGit p ["rebase", rbr]
         )
     False ->
       return
         ( Just "first checkout"
-        , void (runGit "/" ["clone", u, p, "-b", _branch])
+        , do runGit "/" ["clone", u, p, "-b", _branch]
+             after <- gitHash p "HEAD"
+             return (Just (printf "‘none’ → ‘%s’" after))
         )
 
 gitHash :: FilePath -> String -> IO String

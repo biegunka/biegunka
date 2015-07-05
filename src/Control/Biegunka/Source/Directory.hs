@@ -21,6 +21,6 @@ directory relpath inner =
  where
   update abspath = do
     exists <- doesDirectoryExist abspath
-    unless exists $
-      sourceFailure "No directory found!"
-    return (Nothing, return ())
+    unless exists
+           (sourceFailure "No directory found!")
+    return (Nothing, return Nothing)

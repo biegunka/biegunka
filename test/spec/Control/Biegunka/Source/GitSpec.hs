@@ -98,7 +98,7 @@ spec =
           fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
 
 fullUpdate :: Git.URI -> FilePath -> Git.Git -> IO ()
-fullUpdate url fp config = do
+fullUpdate url fp config = () <$ do
   (_, finish) <- Git.updateGit url fp config
   finish
 

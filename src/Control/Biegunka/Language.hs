@@ -59,7 +59,7 @@ data Source = Source
   { sourceType   :: String
   , sourceUri    :: String
   , sourcePath   :: FilePath
-  , sourceUpdate :: FilePath -> IO (Maybe String, IO ())
+  , sourceUpdate :: FilePath -> IO (Maybe String, IO (Maybe String))
   }
 
 -- | A single action that can be perfomed in the 'Actions' scope.
