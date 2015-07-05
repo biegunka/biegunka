@@ -111,7 +111,7 @@ updateGit u p Git { _branch, _failIfAhead } =
           ahead <- (not . null . lines) `fmap`
             runGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
           if ahead && _failIfAhead
-            then sourceFailure (Text.pack "local branch is ahead of remote")
+            then sourceFailure "local branch is ahead of remote"
             else Nothing <$ runGit p ["rebase", rbr]
         )
     False ->
@@ -128,7 +128,7 @@ gitHash path ref = runGit path ["rev-parse", "--short", ref]
 runGit :: FilePath -> [String] -> IO String
 runGit cwd args = Text.unpack . Text.stripEnd <$> do
   (exitcode, out, err) <- P.readCreateProcessWithExitCode proc ""
-  exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
+  exitcode `onFailure` \_ -> sourceFailure err
   return (Text.pack out)
  where
   proc = (P.proc "git" args) { P.cwd = Just cwd }

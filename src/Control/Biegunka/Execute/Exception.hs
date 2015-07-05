@@ -15,7 +15,6 @@ import           Control.Exception (SomeException, Exception, throwIO)
 import           Control.Exception.Lens (exception)
 import           Control.Lens
 import           Control.Monad (void)
-import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Typeable (Typeable)
@@ -35,19 +34,19 @@ instance Exception ShellException
 
 -- | Source emerging failure with paths and output
 newtype SourceException = SourceException
-  { unSourceException :: Text
+  { unSourceException :: String
   } deriving (Typeable)
 
 instance Show SourceException where
-  show (SourceException fs) = T.unpack $ "Update failed:\n" <> fs
+  show (SourceException fs) = "Update failed:\n" ++ fs
 
 instance Exception SourceException
 
-_SourceException :: Prism' SomeException Text
+_SourceException :: Prism' SomeException String
 _SourceException = exception.iso unSourceException SourceException
 
 -- | Report 'Source' emerge failure to Biegunka.
-sourceFailure :: Text -> IO a
+sourceFailure :: String -> IO a
 sourceFailure = throwIO . SourceException
 
 -- | Check process exit code and perform 'IO' action on failure
