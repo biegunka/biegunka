@@ -51,7 +51,7 @@ biegunka (($ defaultSettings) -> c) (I interpret) script = do
     [ "   ___  _                    __          "
     , "  / _ )(_)__ ___ ___ _____  / /_____ _   "
     , " / _  / / -_) _ `/ // / _ \\/  '_/ _ `/   "
-    , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " <> version
+    , "/____/_/\\__/\\_, /\\_,_/_//_/_/\\_\\\\_,_/  " ++ version
     , "           /___/                         "
     , ""
     , "* Relative filepaths are deemed relative to " ++ rr

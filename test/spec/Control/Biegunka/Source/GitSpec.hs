@@ -21,7 +21,7 @@ spec =
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
-          Git.updateGit repoRemote repoLocal Git.defaultGit
+          fullUpdate repoRemote repoLocal Git.defaultGit
           currentBranch repoLocal `shouldReturn` Just "master"
           modifiedFiles repoLocal `shouldReturn` []
 
@@ -30,9 +30,9 @@ spec =
           it "does not change checkout state" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             Git.askGit_ tmp ["clone", repoRemote, repoLocal]
-            gitHashBefore <- Git.gitHash repoLocal
-            Git.updateGit repoRemote repoLocal Git.defaultGit
-            gitHashAfter <- Git.gitHash repoLocal
+            gitHashBefore <- Git.gitHash repoLocal "HEAD"
+            fullUpdate repoRemote repoLocal Git.defaultGit
+            gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashBefore
             modifiedFiles repoLocal `shouldReturn` []
 
@@ -40,10 +40,10 @@ spec =
           it "updates local branch" $ \tmp -> do
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             Git.askGit_ tmp ["clone", repoRemote, repoLocal]
-            gitHashOfNewCommit <- Git.gitHash repoLocal
+            gitHashOfNewCommit <- Git.gitHash repoLocal "HEAD"
             Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
-            Git.updateGit repoRemote repoLocal Git.defaultGit
-            gitHashAfter <- Git.gitHash repoLocal
+            fullUpdate repoRemote repoLocal Git.defaultGit
+            gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []
 
@@ -54,9 +54,9 @@ spec =
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
-              gitHashBefore <- Git.gitHash repoLocal
-              Git.updateGit repoRemote repoLocal Git.defaultGit
-              gitHashAfter <- Git.gitHash repoLocal
+              gitHashBefore <- Git.gitHash repoLocal "HEAD"
+              fullUpdate repoRemote repoLocal Git.defaultGit
+              gitHashAfter <- Git.gitHash repoLocal "HEAD"
               gitHashAfter `shouldBe` gitHashBefore
               modifiedFiles repoLocal `shouldReturn` []
 
@@ -65,7 +65,7 @@ spec =
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
-              Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
+              fullUpdate repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
                 `shouldThrow` _SourceException
 
         context "when remote branch has new commits" $ do
@@ -76,7 +76,7 @@ spec =
               numberOfCommitsRemote <- numberOfCommits repoLocal
               Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              Git.updateGit repoRemote repoLocal Git.defaultGit
+              fullUpdate repoRemote repoLocal Git.defaultGit
               numberOfCommitsLocal <- numberOfCommits repoLocal
               modifiedFiles repoLocal `shouldReturn` []
               liftA2 (-) numberOfCommitsLocal numberOfCommitsRemote `shouldBe` Just 1
@@ -87,7 +87,7 @@ spec =
               Git.askGit_ tmp ["clone", repoRemote, repoLocal]
               Git.askGit_ repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              Git.updateGit repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
+              fullUpdate repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
                 `shouldThrow` _SourceException
 
       context "when repo has a dirty state" $
@@ -95,8 +95,12 @@ spec =
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.askGit_ tmp ["clone", repoRemote, repoLocal]
           Git.askGit_ repoLocal ["reset", "--soft", "HEAD~1"]
-          Git.updateGit repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
 
+fullUpdate :: Git.URI -> FilePath -> Git.Git -> IO ()
+fullUpdate url fp config = do
+  (_, finish) <- Git.updateGit url fp config
+  finish
 
 currentBranch :: FilePath -> IO (Maybe String)
 currentBranch path = listToMaybe . lines <$> Git.askGit path ["rev-parse", "--abbrev-ref", "HEAD"]
