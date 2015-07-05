@@ -18,7 +18,7 @@ data Type = Foo | QuxQuux
 instance Environments Type
 
 spec :: Spec
-spec = do
+spec =
   describe "parser" $ do
     context "when asked for a single-word environment" $
       it "returns the corresponding constructor" $
@@ -29,7 +29,7 @@ spec = do
         parse Proxy ["--qux-quux"] `shouldHave` _Just._1.only QuxQuux
 
     describe "interpreters" $
-      for_ ["--changes", "--run", "--problems", "--force", "--all"] $ \i ->
+      for_ ["--diff", "--run", "--problems", "--force", "--all"] $ \i ->
         it ("parser includes the ‘" ++ i ++ "’ interpreter") $
           parse Proxy [i, "--foo"] `shouldHave` _Just._1.only Foo
 

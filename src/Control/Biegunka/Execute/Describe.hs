@@ -3,30 +3,22 @@
 {-# LANGUAGE NamedFieldPuns #-}
 -- | Describe execution I/O actions
 module Control.Biegunka.Execute.Describe
-  ( -- * General description formatting
-    runChanges
-    -- * Specific description formatting
-  , describeTerm, removal
+  ( describeTerm, removal
   , sourceIdentifier
   , prettyDiff
   ) where
 
 import           Control.Exception (SomeException)
 import           Data.Bool (bool)
-import           Data.Function (on)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as Text
 import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
+import           System.Process (CmdSpec(..))
 import           Text.Printf (printf)
 
-import           Control.Lens
-import           System.Process (CmdSpec(..))
-
-import           Control.Biegunka.Namespace (Db, Namespaces)
-import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Language
 import           Control.Biegunka.Script
 import           Control.Biegunka.Patience (Hunk(..), Judgement(..), judgement)
@@ -36,7 +28,7 @@ describeTerm
   :: Retries
   -> Either SomeException (Maybe String)
   -> Bool
-  -> Term Annotate s a
+  -> TermF Annotate s a
   -> String
 describeTerm (Retries n) mout withSource ta =
   case mout of
@@ -59,7 +51,7 @@ describeTerm (Retries n) mout withSource ta =
                  ++ printf "\n    %s- %s%s" green out reset
         ]
  where
-  prefixf :: Term Annotate s a -> String
+  prefixf :: TermF Annotate s a -> String
   prefixf t = case sourceIdentifier t of
     Nothing -> ""
     Just (url :| ns) ->
@@ -83,7 +75,7 @@ describeTerm (Retries n) mout withSource ta =
     _ -> ""
 
 -- | Note that the components are in the reverse order.
-sourceIdentifier :: Term Annotate s a -> Maybe (NonEmpty String)
+sourceIdentifier :: TermF Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
   TS (AS { asSegments }) (Source _ url _ _) _ _ -> Just (url :| asSegments)
   TA (AA { aaSegments, aaURI }) _ _ -> Just (aaURI :| aaSegments)
@@ -91,7 +83,11 @@ sourceIdentifier = \case
 
 prettyDiff :: [Hunk Text] -> String
 prettyDiff =
-  toString . unline . (mempty :) . map (prettyHunk . fmap Builder.fromLazyText)
+  nonempty " (no diff)" (toString . unline . (mempty :) . map (prettyHunk . fmap Builder.fromLazyText))
+
+nonempty :: b -> ([a] -> b) -> [a] -> b
+nonempty z _ [] = z
+nonempty _ f xs = f xs
 
 prettyHunk :: Hunk Builder -> Builder
 prettyHunk (Hunk n i m j ls) = unline (prettyHeader : map prettyLine ls)
@@ -111,37 +107,6 @@ toString = Text.unpack . Builder.toLazyText
 
 unline :: [Builder] -> Builder
 unline = mconcat . List.intersperse (Builder.singleton '\n')
-
--- | Describe changes which will happen after the run
-runChanges :: Db -> Namespaces -> String
-runChanges db gs = unlines $ "" : concatMap about
-  [ ("deleted files",    red,    map Ns.filePath df)
-  , ("deleted sources",  red,    map Ns.sourcePath ds)
-  , ("modified files",   yellow, map Ns.filePath mf)
-  , ("modified sources", yellow, map Ns.sourcePath ms)
-  , ("added files",      green,  map Ns.filePath nf)
-  , ("added sources",    green,  map Ns.sourcePath ns)
-  ] ++ [""]
- where
-  about (msg, color, xs) = case length xs of
-    0 -> []
-    n -> printf "%s (%d):" msg n : map (\x -> "  " ++ color ++ x ++ reset) xs
-  (df, mf, nf) = changes Ns.filePath (Ns.files (view Ns.namespaces db)) (Ns.files gs)
-  (ds, ms, ns) = changes Ns.sourcePath (Ns.sources (view Ns.namespaces db)) (Ns.sources gs)
-
--- | /O(n^2)/
---
--- I have no idea if it works.
-changes :: (Eq a, Ord b) => (a -> b) -> [a] -> [a] -> ([a], [a], [a])
-changes f xs ys = (xsys, ms, ysxs)
- where
-  ms =
-    map head (filter (not . null . drop 1 . List.nub)
-                     (List.groupBy ((==) `on` f)
-                                   (List.sortBy (compare `on` f)
-                                                (xs ++ ys))))
-  xsys = List.deleteFirstsBy ((==) `on` f) xs ys
-  ysxs = List.deleteFirstsBy ((==) `on` f) ys xs
 
 -- | Describe file or directory removal
 removal :: FilePath -> String

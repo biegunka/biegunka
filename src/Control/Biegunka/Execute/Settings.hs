@@ -6,7 +6,7 @@ module Control.Biegunka.Execute.Settings
   , forkExecutor
     -- * Executor environment
   , Execution
-  , HasExecution(execution, watch, user, repos, source)
+  , HasExecution(..)
     -- * Initialize 'Execution'
   , withExecution
     -- * Auxiliary types
@@ -25,6 +25,7 @@ import qualified Data.Meep as Meep
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Prelude hiding (lookup, null)
+import qualified System.IO.Temp as IO
 import qualified System.Posix as Posix
 
 import           Control.Biegunka.Logger (HasLogger(logger))
@@ -53,8 +54,11 @@ data Execution = Execution
   { _watch    :: Watcher
   , _user     :: TVar (Meep Posix.CUid Int) -- ^ Current user id and sessions counter
   , _repos    :: TVar (Set String)          -- ^ Already updated repositories
-  , _source   :: TVar (Maybe (NonEmpty String))
+  , _activeSource
+              :: TVar (Maybe (NonEmpty String))
   , _settings :: Settings
+  , _onlyDiff :: Bool
+  , _tempDir  :: FilePath
   }
 
 -- | Workload
@@ -77,9 +81,17 @@ class HasExecution t where
   repos = execution . \f x -> f (_repos x) <&> \y -> x { _repos = y }
   {-# INLINE repos #-}
 
-  source :: Lens' t (TVar (Maybe (NonEmpty String)))
-  source = execution . \f x -> f (_source x) <&> \y -> x { _source = y }
-  {-# INLINE source #-}
+  activeSource :: Lens' t (TVar (Maybe (NonEmpty String)))
+  activeSource = execution . \f x -> f (_activeSource x) <&> \y -> x { _activeSource = y }
+  {-# INLINE onlyDiff #-}
+
+  onlyDiff :: Lens' t Bool
+  onlyDiff = execution . \f x -> f (_onlyDiff x) <&> \y -> x { _onlyDiff = y }
+  {-# INLINE activeSource #-}
+
+  tempDir :: Lens' t FilePath
+  tempDir = execution . \f x -> f (_tempDir x) <&> \y -> x { _tempDir = y }
+  {-# INLINE tempDir #-}
 
 instance HasExecution Execution where
   execution = id
@@ -96,10 +108,13 @@ instance HasLogger Applicative Execution where
 -- | Set up an 'Execution' to be used by 'Executor'.
 withExecution :: Settings -> (Execution -> IO a) -> IO a
 withExecution s f =
-  bracket Watcher.new Watcher.wait $ \watcher -> do
-    e <-
-      Execution watcher <$> newTVarIO Meep.empty
-                        <*> newTVarIO Set.empty
-                        <*> newTVarIO Nothing
-                        <*> pure s
-    f e
+  IO.withSystemTempDirectory "biegunka" $ \dir ->
+    bracket Watcher.new Watcher.wait $ \watcher -> do
+      e <-
+        Execution watcher <$> newTVarIO Meep.empty
+                          <*> newTVarIO Set.empty
+                          <*> newTVarIO Nothing
+                          <*> pure s
+                          <*> pure False
+                          <*> pure dir
+      f e

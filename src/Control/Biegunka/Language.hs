@@ -6,7 +6,8 @@
 -- | Specifies configuration language
 module Control.Biegunka.Language
   ( Scope(..)
-  , Term(..)
+  , Term
+  , TermF(..)
   , Action(..)
   , Source(..)
   , Token(..)
@@ -21,6 +22,8 @@ import System.Process (CmdSpec)
 -- | Language terms scopes [kind]
 data Scope = Actions | Sources
 
+type Term f s = Free (TermF f s)
+
 -- | Language terms datatype.
 --
 -- "Biegunka.Primitive" contains DSL primitives constructed
@@ -29,38 +32,34 @@ data Scope = Actions | Sources
 -- User should *never* have a need to construct any DSL term using these manually.
 --
 -- Consists of 2 scopes ('Actions' and 'Sources') and also scope-agnostic modifiers.
-data Term :: (Scope -> *) -> Scope -> * -> * where
-  TS    :: f 'Sources -> Source -> Free (Term f 'Actions) () -> x -> Term f 'Sources x
-  TA    :: f 'Actions -> Action -> x -> Term f 'Actions x
-  TWait :: Set Token -> x -> Term f s x
+data TermF :: (Scope -> *) -> Scope -> * -> * where
+  TS    :: f 'Sources -> Source -> Free (TermF f 'Actions) () -> x -> TermF f 'Sources x
+  TA    :: f 'Actions -> Action -> x -> TermF f 'Actions x
+  TWait :: Set Token -> x -> TermF f s x
 
 newtype Token = Token Integer
   deriving (Show, Eq, Enum, Ord)
 
-instance Functor (Term f s) where
+instance Functor (TermF f s) where
   fmap = fmapDefault
   {-# INLINE fmap #-}
 
-instance Foldable (Term f s) where
+instance Foldable (TermF f s) where
   foldMap = foldMapDefault
   {-# INLINE foldMap #-}
 
-instance Traversable (Term f s) where
+instance Traversable (TermF f s) where
   traverse f (TS    a s i x) = TS    a s i <$> f x
   traverse f (TA    a z   x) = TA    a z   <$> f x
   traverse f (TWait   w   x) = TWait   w   <$> f x
   {-# INLINE traverse #-}
 
 -- | 'Sources' scope terms data
-data Source = Source {
-  -- | Source type
-    stype :: String
-  -- | URI where source is located
-  , suri :: String
-  -- | Where to emerge source on FS (relative to Biegunka root setting)
-  , spath :: FilePath
-  -- | How to update source
-  , supdate :: FilePath -> IO (Maybe String)
+data Source = Source
+  { sourceType   :: String
+  , sourceFrom   :: String
+  , sourceTo     :: FilePath
+  , sourceUpdate :: FilePath -> IO (Maybe String, IO (Maybe String))
   }
 
 -- | A single action that can be perfomed in the 'Actions' scope.

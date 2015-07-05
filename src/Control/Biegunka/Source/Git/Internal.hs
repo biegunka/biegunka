@@ -9,24 +9,24 @@ module Control.Biegunka.Source.Git.Internal
   , Git (..)
   , actions, branch, failIfAhead
   , URI
-  , askGit, askGit_, updateGit
+  , runGit, updateGit
   , gitHash
   , defaultGit
   ) where
 
-import           Control.Monad                      (void, when)
-import           Data.Bool                          (bool)
-import           Data.Maybe                         (listToMaybe)
-import qualified Data.Text                          as Text
-import           System.Directory                   (doesDirectoryExist)
-import           System.FilePath                    ((</>))
-import qualified System.Process                     as P
-import           Text.Printf                        (printf)
+import           Control.Monad (void, when)
+import           Data.Bool (bool)
+import           Data.Maybe (listToMaybe)
+import qualified Data.Text as Text
+import           System.Directory (doesDirectoryExist)
+import           System.FilePath ((</>))
+import qualified System.Process as P
+import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
-import           Control.Biegunka.Language          (Scope (..))
+import           Control.Biegunka.Language (Scope(..), Source(..))
 import           Control.Biegunka.Script
-import           Control.Biegunka.Source            (Sourceable (..))
+import           Control.Biegunka.Source (Sourceable(..))
 
 
 -- | Git repository's settings
@@ -78,8 +78,12 @@ failIfAhead = Mod (\x -> x { _failIfAhead = True })
 --
 --  3. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
 git' :: URI -> FilePath -> Mod Git -> Script 'Sources ()
-git' url path (Mod f) =
-  sourced "git" url path _actions (\p -> updateGit url p g)
+git' url path (Mod f) = sourced Source
+  { sourceType   = "git"
+  , sourceFrom   = url
+  , sourceTo     = path
+  , sourceUpdate = \p -> updateGit url p g
+  } _actions
  where
   g@Git { _actions } = f defaultGit
 
@@ -91,41 +95,45 @@ git u p s = git' u p (actions s)
 git_ :: URI -> FilePath -> Script 'Sources ()
 git_ u p = git' u p mempty
 
-updateGit :: URI -> FilePath -> Git -> IO (Maybe String)
+updateGit :: URI -> FilePath -> Git -> IO (Maybe String, IO (Maybe String))
 updateGit u p Git { _branch, _failIfAhead } =
   doesDirectoryExist p >>= \case
     True -> do
       let rbr = "origin" </> _branch
-      before <- gitHash p
-      remotes <- lines `fmap` askGit p ["remote"]
-      when ("origin" `notElem` remotes) $
-        askGit_ p ["remote", "add", "origin", u]
-      askGit_ p ["fetch", "origin", _branch]
-      currentBranch <- (listToMaybe . lines) `fmap` askGit p ["rev-parse", "--abbrev-ref", "HEAD"]
-      when (currentBranch /= Just _branch) $
-        askGit_ p ["checkout", "-B", _branch, "--track", rbr]
-      ahead <- (not . null . lines) `fmap`
-        askGit p ["rev-list", "origin/" ++ _branch ++ ".." ++ _branch]
-      if ahead && _failIfAhead
-        then sourceFailure (Text.pack "local branch is ahead of remote")
-        else askGit_ p ["rebase", rbr]
-      after <- gitHash p
-      return (bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after))
-    False -> do
-      askGit_ "/" ["clone", u, p, "-b", _branch]
-      after <- gitHash p
-      return (Just (printf "checked ‘%s’ out" after))
+      before <- gitHash p "HEAD"
+      remotes <- lines `fmap` runGit p ["remote"]
+      when ("origin" `notElem` remotes)
+           (void (runGit p ["remote", "add", "origin", u]))
+      runGit p ["fetch", "origin", _branch]
+      after <- gitHash p rbr
+      return
+        ( bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after)
+        , do
+          currentBranch <- fmap (listToMaybe . lines)
+                                (runGit p ["rev-parse", "--abbrev-ref", "HEAD"])
+          when (currentBranch /= Just _branch)
+               (void (runGit p ["checkout", "-B", _branch, "--track", rbr]))
+          ahead <- fmap (not . null . lines)
+                        (runGit p ["rev-list", rbr ++ ".." ++ _branch])
+          if ahead && _failIfAhead
+            then sourceFailure "local branch is ahead of remote"
+            else Nothing <$ runGit p ["rebase", rbr]
+        )
+    False ->
+      return
+        ( Just "first checkout"
+        , do runGit "/" ["clone", u, p, "-b", _branch]
+             after <- gitHash p "HEAD"
+             return (Just (printf "‘none’ → ‘%s’" after))
+        )
 
-gitHash :: FilePath -> IO String
-gitHash path = askGit path ["rev-parse", "--short", "HEAD"]
+gitHash :: FilePath -> String -> IO String
+gitHash path ref = runGit path ["rev-parse", "--short", ref]
 
-askGit_ :: FilePath -> [String] -> IO ()
-askGit_ f = void . askGit f
-
-askGit :: FilePath -> [String] -> IO String
-askGit cwd args = Text.unpack . Text.stripEnd <$> do
+runGit :: FilePath -> [String] -> IO String
+runGit cwd args = Text.unpack . Text.stripEnd <$> do
   (exitcode, out, err) <- P.readCreateProcessWithExitCode proc ""
-  exitcode `onFailure` \_ -> sourceFailure (Text.pack err)
+  exitcode `onFailure` \_ -> sourceFailure err
   return (Text.pack out)
  where
   proc = (P.proc "git" args) { P.cwd = Just cwd }

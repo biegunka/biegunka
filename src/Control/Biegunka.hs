@@ -5,7 +5,7 @@ module Control.Biegunka
   , Templates(..), templates
     -- * Interpreters
   , Interpreter
-  , pause, confirm, dryRun, run, check
+  , pause, confirm, changes, run, check
     -- * Types
   , Script, Scope(..)
     -- * Sources layer primitives
@@ -34,13 +34,14 @@ import Data.Proxy (Proxy(Proxy))
 import GHC.Generics (Generic)
 import System.Directory.Layout (username, uid)
 
-import Control.Biegunka.Biegunka (Interpreter, biegunka, pause, confirm)
+import Control.Biegunka.Biegunka (biegunka)
 import Control.Biegunka.Settings
   ( Settings, defaultSettings, biegunkaRoot
   , Templates(..), templates
   , mode, Mode(..)
   )
-import Control.Biegunka.Execute (run, dryRun)
+import Control.Biegunka.Execute (run)
+import Control.Biegunka.Interpreter (Interpreter, pause, confirm, changes)
 import Control.Biegunka.Language (Scope(..))
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)

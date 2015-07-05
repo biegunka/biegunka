@@ -20,11 +20,13 @@ import Data.Char (isUpper, toLower)
 import Data.Foldable (asum)
 import GHC.Generics (Generic, M1(M1), D1, C1, Constructor(conName), (:+:)(L1, R1), U1(U1), Rep, from)
 import Options.Applicative
+import Prelude hiding (all)
 import System.Exit (exitWith)
 
-import Control.Biegunka.Biegunka (biegunka, confirm)
-import Control.Biegunka.Settings (Settings, Mode(Offline), mode)
-import Control.Biegunka.Execute (run, dryRun)
+import Control.Biegunka.Biegunka (biegunka)
+import Control.Biegunka.Interpreter (confirm, changes)
+import Control.Biegunka.Settings (Settings, Mode(..), mode, defaultMode)
+import Control.Biegunka.Execute (run, runDiff)
 import Control.Biegunka.Language (Scope(Sources))
 import Control.Biegunka.Check (check)
 import Control.Biegunka.Script (Script)
@@ -53,22 +55,26 @@ parser p = info (helper <*> go) fullDesc
     <*> modes
 
   interpreters = asum
-    [ flag' dryRun  (long "changes"  <> help "List script changes")
-    , flag' safeRun (long "run"      <> help "Run script")
-    , flag' check   (long "problems" <> help "List problematic filepaths")
-    , flag' run     (long "force"    <> help "Run script without confirmation")
-    , flag' allRun  (long "all"      <> help "A combination of --dry-run, --run, and --problems")
-    , pure allRun
+    [ flag' diff  (long "diff"     <> help "Show what will change when the script is run")
+    , flag' safe  (long "run"      <> help "Run script")
+    , flag' check (long "problems" <> help "Show problems")
+    , flag' run   (long "force"    <> help "Run script without a confirmation")
+    , flag' all   (long "all"      <> help "A combination of --changes, --run, and --problems")
+    , pure all
     ]
 
-  allRun  = dryRun <> safeRun <> check
-  safeRun = confirm <> run
+  diff = changes <> runDiff
+  all  = changes <> safe <> check
+  safe = confirm <> run
 
   modes = asum
-    [ flag' (set mode Offline) (long "offline" <> help "Run script offline")
-    , flag' id                 (long "online"  <> help "Run script online")
-    , pure id
+    [ flag' offline (long "offline" <> help "Run script offline")
+    , flag' online  (long "online"  <> help "Run script online")
+    , pure (set mode defaultMode)
     ]
+
+  offline = set mode Offline
+  online  = set mode Online
 
 -- | Contruct a parser from a list of environments.
 fromEnvironments :: Environments a => p a -> Parser a

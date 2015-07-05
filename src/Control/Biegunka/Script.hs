@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
 -- | Configuration script machinery
 --
@@ -34,7 +35,7 @@ module Control.Biegunka.Script
   ) where
 
 import Control.Lens
-import Control.Monad.Free (Free(..), iter, liftF)
+import Control.Monad.Free (iter, liftF)
 import Control.Monad.State (MonadState, StateT(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), local)
 import Control.Monad.Trans (lift)
@@ -194,7 +195,7 @@ actionReaction f x = f (_actionReaction x) <&> \y -> x { _actionReaction = y }
 newtype Script s a = Script
   { unScript ::
       ReaderT Annotations
-        (StateT MAnnotations (Free (Term Annotate s))) a
+        (StateT MAnnotations (Term Annotate s)) a
   } deriving (Functor, Applicative, Monad, MonadReader Annotations)
 
 -- | Biegunka script shell commands
@@ -214,7 +215,7 @@ runScript
   :: MAnnotations
   -> Annotations
   -> Script s a
-  -> (Free (Term Annotate s) a, MAnnotations)
+  -> (Term Annotate s a, MAnnotations)
 runScript s e (Script i) = let
     r       = runStateT (runReaderT i e) s
     ast     = fmap fst r
@@ -232,19 +233,19 @@ evalScript
   :: MAnnotations
   -> Annotations
   -> Script s a
-  -> Free (Term Annotate s) a
+  -> Term Annotate s a
 evalScript = ((fst .) .) . runScript
 {-# INLINE evalScript #-}
 
 -- | Lift DSL term to annotated 'Script'
-script :: Term Annotate s a -> Script s a
+script :: TermF Annotate s a -> Script s a
 script = Script . liftS
 {-# INLINE script #-}
 
 -- | Half-lift DSL term to 'Script'
 liftS
-  :: Term Annotate s a
-  -> ReaderT Annotations (StateT MAnnotations (Free (Term Annotate s))) a
+  :: TermF Annotate s a
+  -> ReaderT Annotations (StateT MAnnotations (Term Annotate s)) a
 liftS = lift . liftF
 {-# INLINE liftS #-}
 
@@ -253,7 +254,7 @@ liftS = lift . liftF
 annotateActions
   :: Monad m
   => Script 'Actions a
-  -> ReaderT Annotations (StateT MAnnotations m) (Free (Term Annotate 'Actions) a)
+  -> ReaderT Annotations (StateT MAnnotations m) (Term Annotate 'Actions a)
 annotateActions i =
   ReaderT $ \e ->
     StateT $ \s ->
@@ -261,12 +262,13 @@ annotateActions i =
 
 -- | Abstract away all plumbing needed to make source
 sourced
-  :: String -> URI -> FilePath
-  -> Script 'Actions () -> (FilePath -> IO (Maybe String)) -> Script 'Sources ()
-sourced ty url path inner update = Script $ do
+  :: Source
+  -> Script 'Actions ()
+  -> Script 'Sources ()
+sourced Source { sourceType, sourceFrom, sourceTo = path, sourceUpdate } inner = Script $ do
   rr <- view runRoot
-  local (set sourceRoot (constructTargetFilePath rr url path) . set sourceURL url) $ do
-    annotation <- AS
+  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceURL sourceFrom) $ do
+    ann <- AS
       <$> nextToken
       <*> view segments
       <*> view activeUser
@@ -274,9 +276,9 @@ sourced ty url path inner update = Script $ do
       <*> view sourceReaction
 
     ast <- annotateActions inner
-    sr  <- view sourceRoot
+    sourceTo <- view sourceRoot
 
-    liftS $ TS annotation (Source ty url sr update) ast ()
+    liftS (TS ann Source { sourceType, sourceFrom, sourceTo, sourceUpdate } ast ())
 
 nextToken :: MonadState MAnnotations m => m Token
 nextToken = do
@@ -295,7 +297,7 @@ actioned f = Script $ do
   rr <- view runRoot
   sr <- view sourceRoot
 
-  annotation <- AA
+  ann <- AA
     <$> pure rr
     <*> view segments
     <*> pure sr
@@ -304,7 +306,7 @@ actioned f = Script $ do
     <*> view maxRetries
     <*> view actionReaction
 
-  liftS $ TA annotation (f rr sr) ()
+  liftS (TA ann (f rr sr) ())
 
 
 -- | Construct destination 'FilePath'

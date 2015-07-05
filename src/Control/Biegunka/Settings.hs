@@ -11,6 +11,7 @@ module Control.Biegunka.Settings
   , Templates(..)
     -- ** Biegunka mode
   , Mode(..)
+  , defaultMode
   , _Online
   , _Offline
   ) where

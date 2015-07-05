@@ -7,7 +7,7 @@ import           Control.Concurrent.Async (async, waitCatch)
 import           Control.Exception (bracket)
 import           Control.Lens
 import           Control.Monad
-import           Control.Monad.Free (Free, iter)
+import           Control.Monad.Free (iter)
 import           System.FilePath (splitFileName, splitDirectories, makeRelative)
 import           System.Directory.Layout (Layout)
 import qualified System.Directory.Layout as Layout
@@ -18,7 +18,7 @@ import qualified System.Posix as Posix
 import           Test.Hspec.Formatters (progress)
 import           Test.Hspec.Runner (hspecWithResult, defaultConfig, Config(..), ColorMode(..), summaryFailures)
 
-import           Control.Biegunka.Biegunka (Interpreter(I))
+import           Control.Biegunka.Interpreter (Interpreter(I))
 import           Control.Biegunka.Language
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Script
@@ -48,10 +48,10 @@ check = I $ \settings terms k -> do
 withFd :: Posix.Fd -> (IO.Handle -> IO a) -> IO a
 withFd fd = bracket (Posix.fdToHandle fd) IO.hClose
 
-termsLayout :: FilePath -> Free (Term Annotate s) () -> Layout ()
+termsLayout :: FilePath -> Term Annotate s () -> Layout ()
 termsLayout p = iter go . fmap return where
-  go (TS AS { asUser } Source { spath } innards spec) = do
-    Layout.emptydir (rel spath)
+  go (TS AS { asUser } Source { sourceTo } innards spec) = do
+    Layout.emptydir (rel sourceTo)
       & Layout.user .~ asUser
     termsLayout p innards
     spec

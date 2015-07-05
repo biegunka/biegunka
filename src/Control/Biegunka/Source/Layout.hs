@@ -12,16 +12,24 @@ import Control.Biegunka.Script
 
 -- | Make specified layout and use is as 'Source'
 layout
-  :: Layout a          -- ^ Layout to make
-  -> FilePath          -- ^ Layout root
+  :: Layout a           -- ^ Layout to make
+  -> FilePath           -- ^ Layout root
   -> Script 'Actions () -- ^ What to do with layout files
   -> Script 'Sources ()
-layout dirlayout relpath inner = sourced "dummy" "localhost" relpath inner update
+layout dirlayout relpath = sourced Source
+  { sourceType   = "dummy"
+  , sourceFrom   = "localhost"
+  , sourceTo     = relpath
+  , sourceUpdate = update
+  }
  where
-  update abspath = do
-    l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
-    traverseOf_ _Left print l
-    return Nothing
+  update abspath =
+    return
+      ( Nothing
+      , Nothing <$ do
+          l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
+          traverseOf_ _Left print l
+      )
 
 
 -- | Make specified layout and do nothing
