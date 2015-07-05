@@ -9,6 +9,7 @@ import           Test.Hspec.Lens
 import           Text.Read                            (readMaybe)
 
 import           Control.Biegunka.Execute.Exception   (_SourceException)
+import           Control.Biegunka.Source (Repository, url, path)
 import qualified Control.Biegunka.Source.Git.Internal as Git
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
@@ -21,7 +22,7 @@ spec =
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
-          fullUpdate repoRemote repoLocal Git.defaultGit
+          fullUpdate (url repoRemote . path repoLocal)
           currentBranch repoLocal `shouldReturn` Just "master"
           modifiedFiles repoLocal `shouldReturn` []
 
@@ -31,7 +32,7 @@ spec =
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             Git.runGit tmp ["clone", repoRemote, repoLocal]
             gitHashBefore <- Git.gitHash repoLocal "HEAD"
-            fullUpdate repoRemote repoLocal Git.defaultGit
+            fullUpdate (url repoRemote . path repoLocal)
             gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashBefore
             modifiedFiles repoLocal `shouldReturn` []
@@ -42,7 +43,7 @@ spec =
             Git.runGit tmp ["clone", repoRemote, repoLocal]
             gitHashOfNewCommit <- Git.gitHash repoLocal "HEAD"
             Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
-            fullUpdate repoRemote repoLocal Git.defaultGit
+            fullUpdate (url repoRemote . path repoLocal)
             gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []
@@ -55,7 +56,7 @@ spec =
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
               gitHashBefore <- Git.gitHash repoLocal "HEAD"
-              fullUpdate repoRemote repoLocal Git.defaultGit
+              fullUpdate (url repoRemote . path repoLocal)
               gitHashAfter <- Git.gitHash repoLocal "HEAD"
               gitHashAfter `shouldBe` gitHashBefore
               modifiedFiles repoLocal `shouldReturn` []
@@ -65,8 +66,7 @@ spec =
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
-              fullUpdate repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
-                `shouldThrow` _SourceException
+              fullUpdate (url repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
 
         context "when remote branch has new commits" $ do
           context "when failIfAhead flag isn't set" $
@@ -76,7 +76,7 @@ spec =
               numberOfCommitsRemote <- numberOfCommits repoLocal
               Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              fullUpdate repoRemote repoLocal Git.defaultGit
+              fullUpdate (url repoRemote . path repoLocal)
               numberOfCommitsLocal <- numberOfCommits repoLocal
               modifiedFiles repoLocal `shouldReturn` []
               liftA2 (-) numberOfCommitsLocal numberOfCommitsRemote `shouldBe` Just 1
@@ -87,44 +87,45 @@ spec =
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              fullUpdate repoRemote repoLocal (Git.defaultGit { Git._failIfAhead = True })
-                `shouldThrow` _SourceException
+              fullUpdate (url repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
 
       context "when repo has a dirty state" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["reset", "--soft", "HEAD~1"]
-          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
 
       context "when current branch differs from the one biegunka going to checkout" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["checkout", "-b", "another-branch"]
-          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
 
       context "when remote uri from a local repo differs from the one biegunka going to fetch from" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["remote", "set-url", "origin", "https://example.com"]
-          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
 
-fullUpdate :: Git.URI -> FilePath -> Git.Git -> IO ()
-fullUpdate url fp config = () <$ do
-  (_, finish) <- Git.updateGit url fp config
+fullUpdate :: Git.Git Repository FilePath -> IO ()
+fullUpdate f = () <$ do
+  (_, finish) <- Git.update config (Git.configPath config)
   finish
+ where
+  config = f Git.defaultConfig
 
 currentBranch :: FilePath -> IO (Maybe String)
-currentBranch path = listToMaybe . lines <$> Git.runGit path ["rev-parse", "--abbrev-ref", "HEAD"]
+currentBranch fp = listToMaybe . lines <$> Git.runGit fp ["rev-parse", "--abbrev-ref", "HEAD"]
 
 modifiedFiles :: FilePath -> IO [String]
-modifiedFiles path = lines <$> Git.runGit path ["diff-index", "HEAD"]
+modifiedFiles fp = lines <$> Git.runGit fp ["diff-index", "HEAD"]
 
 buildRemoteRepo :: FilePath -> IO (FilePath, FilePath)
-buildRemoteRepo path = do
-  let repo = path </> "test-repo-remote"
+buildRemoteRepo fp = do
+  let repo = fp </> "test-repo-remote"
   let file = repo </> "file"
   createDirectory repo
   Git.runGit repo ["init"]
@@ -137,7 +138,7 @@ buildRemoteRepo path = do
   Git.runGit repo ["commit", "-a", "--message", "Change 2"]
   appendFile file "just\nkidding\n!\n"
   Git.runGit repo ["commit", "-a", "--message", "Change 3"]
-  return (repo, path </> "test-repo-local")
+  return (repo, fp </> "test-repo-local")
 
 shouldReturn :: (Eq a, Show a) => IO a -> a -> IO ()
 shouldReturn mx y = do
@@ -145,17 +146,17 @@ shouldReturn mx y = do
   x `shouldBe` y
 
 addNewFile :: FilePath -> IO ()
-addNewFile path = () <$ do
-  setCredentials path
-  let anotherFile = path </> "another-file"
+addNewFile fp = () <$ do
+  setCredentials fp
+  let anotherFile = fp </> "another-file"
   writeFile anotherFile "something"
-  Git.runGit path ["add", anotherFile]
-  Git.runGit path ["commit", "-m", "add new file"]
+  Git.runGit fp ["add", anotherFile]
+  Git.runGit fp ["commit", "-m", "add new file"]
 
 numberOfCommits :: FilePath -> IO (Maybe Int)
-numberOfCommits path = (readMaybe =<<) . listToMaybe . lines <$> Git.runGit path ["rev-list", "--count", "HEAD"]
+numberOfCommits fp = (readMaybe =<<) . listToMaybe . lines <$> Git.runGit fp ["rev-list", "--count", "HEAD"]
 
 setCredentials :: FilePath -> IO ()
-setCredentials path = () <$ do
-  Git.runGit path ["config", "--local", "user.name", "A U Thor"]
-  Git.runGit path ["config", "--local", "user.email", "author@example.com"]
+setCredentials fp = () <$ do
+  Git.runGit fp ["config", "--local", "user.name", "A U Thor"]
+  Git.runGit fp ["config", "--local", "user.email", "author@example.com"]

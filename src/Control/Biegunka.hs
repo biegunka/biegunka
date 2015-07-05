@@ -8,8 +8,6 @@ module Control.Biegunka
   , pause, confirm, changes, run, check
     -- * Types
   , Script, Scope(..)
-    -- * Sources layer primitives
-  , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, substitute, raw
     -- * Script environment
@@ -48,7 +46,6 @@ import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..)
 import Control.Biegunka.QQ (multiline, sh, shell)
 import Control.Biegunka.Options (Environments(..), runnerOf, runner_)
 import Control.Biegunka.Check (check)
-import Control.Biegunka.Source (Sourceable(..))
 
 
 infix 4 ~>
