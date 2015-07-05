@@ -78,6 +78,7 @@ library
     Control.Biegunka.Source
     Control.Biegunka.Source.Directory
     Control.Biegunka.Source.Git
+    Control.Biegunka.Source.Git.Internal
     Control.Biegunka.Source.Layout
     Control.Biegunka.Templates
     Control.Biegunka.Templates.HStringTemplate
@@ -133,9 +134,11 @@ test-suite spec
     , filepath
     , free
     , hspec
+    , hspec-expectations
     , hspec-expectations-lens
     , lens
     , optparse-applicative
+    , process
     , semigroups
     , temporary
     , text
@@ -149,6 +152,7 @@ test-suite spec
   other-modules:
     Control.Biegunka.BiegunkaSpec
     Control.Biegunka.OptionsSpec
+    Control.Biegunka.Source.GitSpec
     BehavioursSpec
     DSLSpec
   ghc-options:
