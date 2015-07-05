@@ -22,7 +22,7 @@ script :: Script 'Sources ()
 script = do
   namespace "my-dotfiles" $ do
     -- Your dotfiles repositories go here
-    git "git@github.com:user/dotfiles" "somewhere/under/~" $
+    git (url "git@github.com:user/dotfiles" . path "somewhere/under/~") $
       -- What exactly to do with the cloned repository?
       return ()
     return ()

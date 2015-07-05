@@ -10,11 +10,11 @@ import Control.Biegunka.Source.Git
 import System.FilePath
 
 
-a_script :: Script Sources ()
-a_script = do
+aScript :: Script 'Sources ()
+aScript = do
   namespace "main" $
-    git_ "git@github.com:ghc/ghc" "ghc"
+    git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
   namespace "still-main" $
-    git_ "git@github.com:ghc/ghc" ("ghc" </> "chg")
+    git (url "git@github.com:ghc/ghc" . path ("ghc" </> "chg")) (return ())
   namespace "not-so-main" $
-    git_ "git@github.com:aghc/aghc" (into "ghc")
+    git (url "git@github.com:aghc/aghc" . path (into "ghc")) (return ())

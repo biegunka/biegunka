@@ -9,9 +9,9 @@ import System.Exit (ExitCode)
 
 
 main :: IO ExitCode
-main = biegunka id run $ do
+main = biegunka id run $
   namespace "outer" $ do
     namespace "inner" $
-      git_ "git@github.com:ghc/ghc" "ghc"
-    git_ "git@github.com:ghc/ghc" "ghc"
+      git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
+    git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
 

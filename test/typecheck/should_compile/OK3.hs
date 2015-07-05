@@ -10,19 +10,19 @@ import Control.Biegunka.Source.Git
 main :: IO ()
 main = return ()
 
-sources :: Script Sources ()
+sources :: Script 'Sources ()
 sources =
   sudo (username "nobody") $
-    git "https://example.com/dotfiles.git" "/" $
+    git (url "https://example.com/dotfiles.git" . path "/") $
       return ()
 
-sources' :: Script Sources ()
+sources' :: Script 'Sources ()
 sources' =
   sudo (username "nobody") $
-    git "https://example.com/dotfiles.git" "/" $
+    git (url "https://example.com/dotfiles.git" . path "/") $
       return ()
 
-actions :: Script Actions ()
+actions :: Script 'Actions ()
 actions =
   sudo (uid 0) $
     link "source" "destination"

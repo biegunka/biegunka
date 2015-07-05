@@ -1,4 +1,4 @@
--- | Support for git repositories as 'Sources'
+-- | Git repositories as ''Sources'.
 module Control.Biegunka.Source.Git
   ( git
   , Git

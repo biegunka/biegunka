@@ -8,6 +8,9 @@ import Control.Biegunka
 import Control.Biegunka.Source.Git
 
 
-main = biegunka id run $ do
-  namespace "main" $
-    git_ "git@github.com:ghc/ghc" "ghc"
+main :: IO ()
+main = do
+  biegunka id run $
+    namespace "main" $
+      git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
+  return ()

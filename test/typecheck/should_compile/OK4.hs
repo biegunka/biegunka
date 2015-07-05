@@ -10,13 +10,13 @@ import Control.Biegunka.Source.Git
 main :: IO ()
 main = return ()
 
-sources :: Script Sources ()
+sources :: Script 'Sources ()
 sources =
   reacting Ignorant $
-    git "https://example.com/dotfiles.git" "/" $
+    git (url "https://example.com/dotfiles.git" . path "/") $
       return ()
 
-actions :: Script Actions ()
+actions :: Script 'Actions ()
 actions =
   reacting Abortive $
     link "source" "destination"
