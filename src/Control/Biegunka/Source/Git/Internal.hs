@@ -14,7 +14,6 @@ module Control.Biegunka.Source.Git.Internal
   , defaultGit
   ) where
 
-import           Control.Monad (void, when)
 import           Data.Bool (bool)
 import           Data.Maybe (listToMaybe)
 import qualified Data.Text as Text
@@ -101,9 +100,10 @@ updateGit u p Git { _branch, _failIfAhead } =
     True -> do
       let rbr = "origin" </> _branch
       before <- gitHash p "HEAD"
-      remotes <- lines `fmap` runGit p ["remote"]
-      when ("origin" `notElem` remotes)
-           (void (runGit p ["remote", "add", "origin", u]))
+      remotes <- lines <$> runGit p ["remote"]
+      if "origin" `notElem` remotes
+        then () <$ runGit p ["remote", "add", "origin", u]
+        else assertUrl u p
       runGit p ["fetch", "origin", _branch]
       after <- gitHash p rbr
       return
@@ -111,8 +111,7 @@ updateGit u p Git { _branch, _failIfAhead } =
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit p ["rev-parse", "--abbrev-ref", "HEAD"])
-          when (currentBranch /= Just _branch)
-               (void (runGit p ["checkout", "-B", _branch, "--track", rbr]))
+          assertBranch _branch currentBranch
           ahead <- fmap (not . null . lines)
                         (runGit p ["rev-list", rbr ++ ".." ++ _branch])
           if ahead && _failIfAhead
@@ -126,6 +125,26 @@ updateGit u p Git { _branch, _failIfAhead } =
              after <- gitHash p "HEAD"
              return (Just (printf "‘none’ → ‘%s’" after))
         )
+
+assertBranch :: String -> Maybe String -> IO ()
+assertBranch remoteBranch = \case
+    Just currentBranch
+      | currentBranch == remoteBranch -> return ()
+      | otherwise ->
+        sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+    Nothing ->
+      sourceFailure "unable to determine current branch"
+
+assertUrl :: URI -> FilePath -> IO ()
+assertUrl u p =
+  listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
+    Just localURI
+      | localURI == u -> return ()
+      | otherwise ->
+        sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
+    Nothing ->
+      sourceFailure "unable to determine \"origin\" remote's uri"
+
 
 gitHash :: FilePath -> String -> IO String
 gitHash path ref = runGit path ["rev-parse", "--short", ref]

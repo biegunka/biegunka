@@ -97,6 +97,20 @@ spec =
           Git.runGit repoLocal ["reset", "--soft", "HEAD~1"]
           fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
 
+      context "when current branch differs from the one biegunka going to checkout" $
+        it "fails with exception" $ \tmp -> do
+          (repoRemote, repoLocal) <- buildRemoteRepo tmp
+          Git.runGit tmp ["clone", repoRemote, repoLocal]
+          Git.runGit repoLocal ["checkout", "-b", "another-branch"]
+          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+
+      context "when remote uri from a local repo differs from the one biegunka going to fetch from" $
+        it "fails with exception" $ \tmp -> do
+          (repoRemote, repoLocal) <- buildRemoteRepo tmp
+          Git.runGit tmp ["clone", repoRemote, repoLocal]
+          Git.runGit repoLocal ["remote", "set-url", "origin", "https://example.com"]
+          fullUpdate repoRemote repoLocal Git.defaultGit `shouldThrow` _SourceException
+
 fullUpdate :: Git.URI -> FilePath -> Git.Git -> IO ()
 fullUpdate url fp config = () <$ do
   (_, finish) <- Git.updateGit url fp config
