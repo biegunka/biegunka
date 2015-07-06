@@ -38,20 +38,20 @@ import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
 
 
 
--- | Clone repository from the url to the specified path using provided 'Git' settings. Sample:
+-- | Clone or update a clone of the git repository, then run a script on its contents.
+--
+-- An example:
 --
 -- @
--- git' \"git\@github.com:edwinb\/Idris-dev\" \"git\/Idris-dev\
---   (branch \"develop\") <>
---   (actions .~ do
---       link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\")
+-- git (url \"git\@github.com:edwinb\/Idris-dev\" . path \"git\/Idris-dev\" . branch \"develop\") $ do
+--   link \"contribs\/tool-support\/vim\" \".vim\/bundle\/idris-vim\")
 -- @
 --
---  1. Clone repository from @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@
+--  1. Clone the git repository at @https:\/\/github.com\/edwinb\/Idris-dev.git@ to @~\/git\/Idris-dev@.
 --
---  2. Checkout to @develop@
+--  2. Check out the @develop@ branch.
 --
---  3. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
+--  3. Link the @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ directory to @~\/.vim\/bundle\/Idris-vim@
 git :: Git Url FilePath -> Script 'Actions () -> Script 'Sources ()
 git f = sourced Source
   { sourceType   = "git"
