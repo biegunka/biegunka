@@ -14,7 +14,6 @@ module Control.Biegunka.Source.Git.Internal
   , defaultGit
   ) where
 
-import           Control.Monad (void, when)
 import           Data.Bool (bool)
 import           Data.Maybe (listToMaybe)
 import qualified Data.Text as Text
@@ -103,8 +102,8 @@ updateGit u p Git { _branch, _failIfAhead } =
       before <- gitHash p "HEAD"
       remotes <- lines <$> runGit p ["remote"]
       if "origin" `notElem` remotes
-        then void (runGit p ["remote", "add", "origin", u])
-        else checkRemote u p
+        then () <$ (runGit p ["remote", "add", "origin", u])
+        else assertUrl u p
       runGit p ["fetch", "origin", _branch]
       after <- gitHash p rbr
       return
@@ -112,7 +111,7 @@ updateGit u p Git { _branch, _failIfAhead } =
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit p ["rev-parse", "--abbrev-ref", "HEAD"])
-          checkBranch currentBranch _branch
+          assertBranch _branch currentBranch
           ahead <- fmap (not . null . lines)
                         (runGit p ["rev-list", rbr ++ ".." ++ _branch])
           if ahead && _failIfAhead
@@ -127,20 +126,21 @@ updateGit u p Git { _branch, _failIfAhead } =
              return (Just (printf "‘none’ → ‘%s’" after))
         )
 
-checkBranch :: Maybe String -> String -> IO ()
-checkBranch maybeCurrentBranch remoteBranch =
-  case maybeCurrentBranch of
-    Just currentBranch ->
-      when (currentBranch /= remoteBranch) $
-           sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+assertBranch :: String -> Maybe String -> IO ()
+assertBranch remoteBranch = \case
+    Just currentBranch | currentBranch /= remoteBranch
+      -> sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+                       | otherwise
+      -> return ()
     Nothing -> sourceFailure "unable to determine current branch"
 
-checkRemote :: URI -> FilePath -> IO ()
-checkRemote u p =
+assertUrl :: URI -> FilePath -> IO ()
+assertUrl u p =
   listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
-    Just localURI ->
-      when (localURI /= u) $
-           sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
+    Just localURI | localURI /= u
+      -> sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
+                  | otherwise
+      -> return ()
     Nothing ->
       sourceFailure "unable to determine \"origin\" remote's uri"
 
