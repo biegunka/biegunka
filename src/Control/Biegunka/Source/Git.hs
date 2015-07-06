@@ -1,8 +1,9 @@
 -- | Git repositories as ''Sources'.
 module Control.Biegunka.Source.Git
-  ( git
-  , Git
-  , Repository
+  ( Git
+  , git
+  , git_
+  , Url
   , Config
   , url
   , path

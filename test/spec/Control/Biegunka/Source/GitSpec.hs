@@ -9,7 +9,7 @@ import           Test.Hspec.Lens
 import           Text.Read                            (readMaybe)
 
 import           Control.Biegunka.Execute.Exception   (_SourceException)
-import           Control.Biegunka.Source (Repository, url, path)
+import           Control.Biegunka.Source (Url, url, path)
 import qualified Control.Biegunka.Source.Git.Internal as Git
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
@@ -110,7 +110,7 @@ spec =
           Git.runGit repoLocal ["remote", "set-url", "origin", "https://example.com"]
           fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
 
-fullUpdate :: Git.Git Repository FilePath -> IO ()
+fullUpdate :: Git.Git Url FilePath -> IO ()
 fullUpdate f = () <$ do
   (_, finish) <- Git.update config (Git.configPath config)
   finish

@@ -1,13 +1,13 @@
 {-# LANGUAGE FunctionalDependencies #-}
 -- | Generally useful 'Sources' related definitions
 module Control.Biegunka.Source
-  ( Repository
+  ( Url
   , HasUrl(..)
   , HasPath(..)
   ) where
 
+import Control.Biegunka.Script (Url)
 
-type Repository = String
 
 -- | Types containing an URL that can be changed.
 class HasUrl s t a | s -> a, t -> a, a s -> t where

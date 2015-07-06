@@ -12,6 +12,6 @@ main :: IO ExitCode
 main = biegunka id run $
   namespace "outer" $ do
     namespace "inner" $
-      git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
-    git (url "git@github.com:ghc/ghc" . path "ghc") (return ())
+      git_ (url "git@github.com:ghc/ghc" . path "ghc")
+    git_ (url "git@github.com:ghc/ghc" . path "ghc")
 

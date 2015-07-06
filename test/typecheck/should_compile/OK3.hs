@@ -13,14 +13,7 @@ main = return ()
 sources :: Script 'Sources ()
 sources =
   sudo (username "nobody") $
-    git (url "https://example.com/dotfiles.git" . path "/") $
-      return ()
-
-sources' :: Script 'Sources ()
-sources' =
-  sudo (username "nobody") $
-    git (url "https://example.com/dotfiles.git" . path "/") $
-      return ()
+    git_ (url "https://example.com/dotfiles.git" . path "/")
 
 actions :: Script 'Actions ()
 actions =

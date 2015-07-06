@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -6,9 +7,10 @@
 {-# LANGUAGE TypeFamilies      #-}
 -- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git.Internal
-  ( git
-  , Git
-  , Repository
+  ( Git
+  , git
+  , git_
+  , Url
   , Config(..)
   , url
   , path
@@ -20,6 +22,7 @@ module Control.Biegunka.Source.Git.Internal
   , gitHash
   ) where
 
+import           Data.Bifunctor (Bifunctor(..))
 import           Data.Bool (bool)
 import           Data.Maybe (listToMaybe)
 import qualified Data.Text as Text
@@ -30,8 +33,8 @@ import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
 import           Control.Biegunka.Language (Scope(..), Source(..))
-import           Control.Biegunka.Script
-import           Control.Biegunka.Source (Repository, HasPath(..), HasUrl(..))
+import           Control.Biegunka.Script (Script, sourced)
+import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
 
 
 
@@ -49,7 +52,7 @@ import           Control.Biegunka.Source (Repository, HasPath(..), HasUrl(..))
 --  2. Checkout to @develop@
 --
 --  3. Link @~\/git\/Idris-dev\/contribs\/tool-support\/vim@ to @~\/.vim\/bundle\/Idris-vim@
-git :: Git Repository FilePath -> Script 'Actions () -> Script 'Sources ()
+git :: Git Url FilePath -> Script 'Actions () -> Script 'Sources ()
 git f = sourced Source
   { sourceType   = "git"
   , sourceFrom   = configUrl
@@ -60,28 +63,40 @@ git f = sourced Source
   config@Config { configUrl, configPath } =
     f defaultConfig
 
-type Git a b = Config () () -> Config a b
+-- | A version of 'git' that only clones and/or updates the repository.
+git_ :: Git Url FilePath -> Script 'Sources ()
+git_ f = git f (return ())
+
+type Git a b = Config NoUrl NoPath -> Config a b
 
 data Config a b = Config
   { configUrl         :: a
   , configPath        :: b
   , configBranch      :: String
   , configFailIfAhead :: Bool
-  }
+  } deriving (Functor)
 
-defaultConfig :: Config () ()
+instance Bifunctor Config where
+  first f config = config { configUrl = f (configUrl config) }
+  second = fmap
+
+defaultConfig :: Config NoUrl NoPath
 defaultConfig = Config
-  { configUrl         = ()
-  , configPath        = ()
+  { configUrl         = NoUrl
+  , configPath        = NoPath
   , configBranch      = "master"
   , configFailIfAhead = False
   }
 
-instance HasUrl (Config a b) (Config Repository b) Repository where
-  url u config = config { configUrl = u }
+data NoUrl = NoUrl
+
+data NoPath = NoPath
+
+instance HasUrl (Config a b) (Config Url b) Url where
+  url = first . const
 
 instance HasPath (Config a b) (Config a FilePath) FilePath where
-  path p config = config { configPath = p }
+  path = second . const
 
 -- | Set git branch to track.
 branch :: String -> Config a b -> Config a b
@@ -91,7 +106,7 @@ branch b config = config { configBranch = b }
 failIfAhead :: Config a b -> Config a b
 failIfAhead config = config { configFailIfAhead = True }
 
-update :: Config Repository a -> FilePath -> IO (Maybe String, IO (Maybe String))
+update :: Config Url a -> FilePath -> IO (Maybe String, IO (Maybe String))
 update Config { configUrl, configBranch, configFailIfAhead } fp =
   doesDirectoryExist fp >>= \case
     True -> do
@@ -132,7 +147,7 @@ assertBranch remoteBranch = \case
     Nothing ->
       sourceFailure "Unable to determine what branch is checked out."
 
-assertUrl :: URI -> FilePath -> IO ()
+assertUrl :: Url -> FilePath -> IO ()
 assertUrl remoteURI p =
   listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
     Just currentURI
