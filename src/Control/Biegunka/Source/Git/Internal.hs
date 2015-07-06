@@ -102,7 +102,7 @@ updateGit u p Git { _branch, _failIfAhead } =
       before <- gitHash p "HEAD"
       remotes <- lines <$> runGit p ["remote"]
       if "origin" `notElem` remotes
-        then () <$ (runGit p ["remote", "add", "origin", u])
+        then () <$ runGit p ["remote", "add", "origin", u]
         else assertUrl u p
       runGit p ["fetch", "origin", _branch]
       after <- gitHash p rbr
@@ -128,19 +128,20 @@ updateGit u p Git { _branch, _failIfAhead } =
 
 assertBranch :: String -> Maybe String -> IO ()
 assertBranch remoteBranch = \case
-    Just currentBranch | currentBranch /= remoteBranch
-      -> sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
-                       | otherwise
-      -> return ()
-    Nothing -> sourceFailure "unable to determine current branch"
+    Just currentBranch
+      | currentBranch == remoteBranch -> return ()
+      | otherwise ->
+        sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+    Nothing ->
+      sourceFailure "unable to determine current branch"
 
 assertUrl :: URI -> FilePath -> IO ()
 assertUrl u p =
   listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
-    Just localURI | localURI /= u
-      -> sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
-                  | otherwise
-      -> return ()
+    Just localURI
+      | localURI == u -> return ()
+      | otherwise ->
+        sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
     Nothing ->
       sourceFailure "unable to determine \"origin\" remote's uri"
 
