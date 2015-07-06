@@ -8,12 +8,16 @@ import           Control.Monad (when, unless)
 import           Data.Foldable (for_)
 import           Data.Function (fix)
 import           Data.List (isPrefixOf, partition)
+import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import           System.Exit (ExitCode(..), exitSuccess, exitWith)
 import           System.FilePath.Lens (directory)
 import           System.Process
 import qualified System.IO as IO
+
+import           Control.Biegunka.Logger (Logger)
+import qualified Control.Biegunka.Logger as Logger
 
 
 -- | Runs (or checks) biegunka script.
@@ -28,15 +32,17 @@ import qualified System.IO as IO
 --   * Script path directory name is added to paths where ghc searches for
 --   modules (@-i@ option)
 run :: [String] -> FilePath -> IO ()
-run args target = do
-  let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
-  stopBar <- rotateBar
-  (inh, pid) <- runBiegunkaProcess
-    stopBar
-    (ghcArgs ++ ["-i" ++ view directory target] ++ [target] ++ biegunkaArgs)
-  _ <- pipe_ IO.stdin inh
-  exitcode <- waitForProcess pid
-  exit exitcode
+run args target =
+  Logger.with $ \logger -> do
+    let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
+    stopBar <- rotateBar
+    (inh, pid) <- runBiegunkaProcess
+      logger
+      stopBar
+      (ghcArgs ++ ["-i" ++ view directory target] ++ [target] ++ biegunkaArgs)
+    _ <- pipe_ (Text.hGetChunk IO.stdin) (Logger.write inh logger . Text.unpack)
+    exitcode <- waitForProcess pid
+    exit exitcode
  where
   exit ExitSuccess =
     exitSuccess
@@ -53,28 +59,27 @@ rotateBar = do
   rotation = for_ (cycle "/-\\|/-\\|") (\c -> do putChar '\r'; putChar c; threadDelay 80000)
 
 -- | Pipe one 'IO.Handle' into another.
-pipe_ :: IO.Handle -> IO.Handle -> IO ThreadId
+pipe_ :: IO Text -> (Text -> IO ()) -> IO ThreadId
 pipe_ = pipe (return ())
 
 -- | Pipe one 'IO.Handle' into another and do _something_ on
 -- receiving the first line.
-pipe :: IO () -> IO.Handle -> IO.Handle -> IO ThreadId
-pipe io inh outh =
+pipe :: IO () -> IO Text -> (Text -> IO ()) -> IO ThreadId
+pipe io get put =
   forkIO (flip fix True (\loop first ->
-    (do chunk <- Text.hGetChunk inh
+    (do chunk <- get
         unless (Text.null chunk)
                (do when first io
-                   Text.hPutStr outh chunk
-                   IO.hFlush outh
+                   put chunk
                    loop False))))
 {-# ANN pipe "HLint: ignore Redundant flip" #-}
 
-runBiegunkaProcess :: IO () -> [String] -> IO (IO.Handle, ProcessHandle)
-runBiegunkaProcess stopBar args = do
+runBiegunkaProcess :: Logger -> IO () -> [String] -> IO (IO.Handle, ProcessHandle)
+runBiegunkaProcess logger stopBar args = do
   (Just inh, Just outh, Just errh, ph) <- createProcess process
   IO.hSetBuffering inh IO.NoBuffering
-  _ <- pipe stopBar outh IO.stdout
-  _ <- pipe stopBar errh IO.stderr
+  _ <- pipe stopBar (Text.hGetChunk outh) (Logger.write IO.stdout logger . Text.unpack)
+  _ <- pipe stopBar (Text.hGetChunk errh) (Logger.write IO.stderr logger . Text.unpack)
   return (inh, ph)
  where
   process = CreateProcess
