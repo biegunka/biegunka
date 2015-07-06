@@ -101,9 +101,10 @@ updateGit u p Git { _branch, _failIfAhead } =
     True -> do
       let rbr = "origin" </> _branch
       before <- gitHash p "HEAD"
-      remotes <- lines `fmap` runGit p ["remote"]
-      when ("origin" `notElem` remotes)
-           (void (runGit p ["remote", "add", "origin", u]))
+      remotes <- lines <$> runGit p ["remote"]
+      if "origin" `notElem` remotes
+        then void (runGit p ["remote", "add", "origin", u])
+        else checkRemote u p
       runGit p ["fetch", "origin", _branch]
       after <- gitHash p rbr
       return
@@ -111,8 +112,7 @@ updateGit u p Git { _branch, _failIfAhead } =
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit p ["rev-parse", "--abbrev-ref", "HEAD"])
-          when (currentBranch /= Just _branch)
-               (void (runGit p ["checkout", "-B", _branch, "--track", rbr]))
+          checkBranch currentBranch _branch
           ahead <- fmap (not . null . lines)
                         (runGit p ["rev-list", rbr ++ ".." ++ _branch])
           if ahead && _failIfAhead
@@ -126,6 +126,24 @@ updateGit u p Git { _branch, _failIfAhead } =
              after <- gitHash p "HEAD"
              return (Just (printf "‘none’ → ‘%s’" after))
         )
+
+checkBranch :: Maybe String -> String -> IO ()
+checkBranch maybeCurrentBranch remoteBranch =
+  case maybeCurrentBranch of
+    Just currentBranch ->
+      when (currentBranch /= remoteBranch) $
+           sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+    Nothing -> sourceFailure "unable to determine current branch"
+
+checkRemote :: URI -> FilePath -> IO ()
+checkRemote u p =
+  listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
+    Just localURI ->
+      when (localURI /= u) $
+           sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
+    Nothing ->
+      sourceFailure "unable to determine \"origin\" remote's uri"
+
 
 gitHash :: FilePath -> String -> IO String
 gitHash path ref = runGit path ["rev-parse", "--short", ref]
