@@ -169,8 +169,8 @@ segments f x = f (_segments x) <&> \y -> x { _segments = y }
 _sourceRoot :: Lens' Annotations FilePath
 _sourceRoot f x = f (__sourceRoot x) <&> \y -> x { __sourceRoot = y }
 
--- | Current source url
-sourceUrl :: Lens' Annotations String
+-- | Current source non-url
+sourceUrl :: Lens' Annotations Url
 sourceUrl f x = f (_sourceUrl x) <&> \y -> x { _sourceUrl = y }
 
 -- | Current user
