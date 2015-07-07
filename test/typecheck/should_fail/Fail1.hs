@@ -10,6 +10,6 @@ main :: IO ()
 main = void (biegunka id run (link ".xmonad/xmonad.hs" ".xmonad/xmonad.hs.bak"))
 
 -- STDERR
---     Couldn't match type ‘'Actions’ with ‘'Sources’
+--     Couldn't match type 'Actions with 'Sources
 --     Expected type: Script 'Sources ()
 --       Actual type: Script 'Actions ()

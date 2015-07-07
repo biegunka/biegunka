@@ -9,7 +9,6 @@
 module Control.Biegunka.Source.Git.Internal
   ( Git
   , git
-  , git_
   , Url
   , Config(..)
   , url
@@ -62,10 +61,6 @@ git f = sourced Source
  where
   config@Config { configUrl, configPath } =
     f defaultConfig
-
--- | A version of 'git' that only clones and/or updates the repository.
-git_ :: Git Url FilePath -> Script 'Sources ()
-git_ f = git f (return ())
 
 type Git a b = Config NoUrl NoPath -> Config a b
 

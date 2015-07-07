@@ -12,7 +12,7 @@ main :: IO ()
 main = do
   biegunka id run $ do
     namespace "main" $
-      git_ (url "git@github.com:ghc/ghc" . path "ghc")
+      git (url "git@github.com:ghc/ghc" . path "ghc") pass
     namespace "other" $
-      git_ (url "git@github.com:ghc/testsuite" . path "ghc-testsuite")
-  return ()
+      git (url "git@github.com:ghc/testsuite" . path "ghc-testsuite") pass
+  pass

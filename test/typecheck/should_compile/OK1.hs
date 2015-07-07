@@ -12,5 +12,5 @@ main :: IO ()
 main = do
   biegunka id run $
     namespace "main" $
-      git_ (url "git@github.com:ghc/ghc" . path "ghc")
-  return ()
+      git (url "git@github.com:ghc/ghc" . path "ghc") pass
+  pass

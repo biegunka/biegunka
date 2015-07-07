@@ -2,7 +2,6 @@
 module Control.Biegunka.Source.Git
   ( Git
   , git
-  , git_
   , Url
   , Config
   , url

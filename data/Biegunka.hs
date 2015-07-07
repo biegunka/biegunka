@@ -24,7 +24,7 @@ script = do
     -- Your dotfiles repositories go here
     git (url "git@github.com:user/dotfiles" . path "somewhere/under/~") $
       -- What exactly to do with the cloned repository?
-      return ()
-    return ()
+      pass
+    pass
   -- Other namespaces go there
-  return ()
+  pass

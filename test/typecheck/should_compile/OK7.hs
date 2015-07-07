@@ -12,6 +12,6 @@ main = do
   biegunka id run $
     namespace "outer" $ do
       namespace "inner" $
-        git_ (url "git@github.com:ghc/ghc" . path "ghc")
-      git_ (url "git@github.com:ghc/ghc" . path "ghc")
-  return ()
+        git (url "git@github.com:ghc/ghc" . path "ghc") pass
+      git (url "git@github.com:ghc/ghc" . path "ghc") pass
+  pass

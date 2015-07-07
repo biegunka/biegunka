@@ -13,8 +13,8 @@ import System.FilePath
 aScript :: Script 'Sources ()
 aScript = do
   namespace "main" $
-    git_ (url "git@github.com:ghc/ghc" . path "ghc")
+    git (url "git@github.com:ghc/ghc" . path "ghc") pass
   namespace "still-main" $
-    git_ (url "git@github.com:ghc/ghc" . path ("ghc" </> "chg"))
+    git (url "git@github.com:ghc/ghc" . path ("ghc" </> "chg")) pass
   namespace "not-so-main" $
-    git_ (url "git@github.com:aghc/aghc" . path (into "ghc"))
+    git (url "git@github.com:aghc/aghc" . path (into "ghc")) pass

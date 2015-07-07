@@ -8,12 +8,12 @@ import Control.Biegunka.Source.Git
 
 
 main :: IO ()
-main = return ()
+main = pass
 
 sources :: Script 'Sources ()
 sources =
   reacting Ignorant $
-    git_ (url "https://example.com/dotfiles.git" . path "/")
+    git (url "https://example.com/dotfiles.git" . path "/") pass
 
 actions :: Script 'Actions ()
 actions =

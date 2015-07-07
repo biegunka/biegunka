@@ -26,6 +26,7 @@ module Control.Biegunka
   , mode, Mode(..)
     -- * Little helpers
   , (~>)
+  , pass
   ) where
 
 import Data.Proxy (Proxy(Proxy))
@@ -52,3 +53,7 @@ infix 4 ~>
 -- | An alias for '(,)' for better looking pairing
 (~>) :: a -> b -> (a, b)
 (~>) = (,)
+
+-- | Do nothing.
+pass :: Applicative m => m ()
+pass = pure ()
