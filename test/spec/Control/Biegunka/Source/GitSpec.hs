@@ -1,14 +1,16 @@
 module Control.Biegunka.Source.GitSpec (spec) where
 
-import           Control.Applicative                  (liftA2)
-import           Data.Maybe                           (listToMaybe)
-import           System.Directory                     (createDirectory)
-import           System.FilePath                      ((</>))
-import           System.IO.Temp                       (withSystemTempDirectory)
+import           Control.Applicative (liftA2)
+import           Control.Lens (set)
+import           Data.Maybe (listToMaybe)
+import           System.Directory (createDirectory)
+import           System.FilePath ((</>))
+import           System.IO.Temp (withSystemTempDirectory)
 import           Test.Hspec.Lens
-import           Text.Read                            (readMaybe)
+import           Text.Read (readMaybe)
 
-import           Control.Biegunka.Execute.Exception   (_SourceException)
+import           Control.Biegunka
+import           Control.Biegunka.Execute.Exception (_SourceException)
 import           Control.Biegunka.Source (Url, url, path)
 import qualified Control.Biegunka.Source.Git.Internal as Git
 
@@ -17,7 +19,7 @@ import qualified Control.Biegunka.Source.Git.Internal as Git
 
 spec :: Spec
 spec =
-  around (withSystemTempDirectory "biegunka-") $
+  around (withSystemTempDirectory "biegunka-") $ do
     describe "updateGit" $ do
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
@@ -109,6 +111,21 @@ spec =
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["remote", "set-url", "origin", "https://example.com"]
           fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
+
+    describe "biegunka" $
+      context "when local branch has no commits ahead of remote branch" $
+        context "when remote branch has new commits" $
+          it "updates local branch" $ \tmp -> do
+            (repoRemote, repoLocal) <- buildRemoteRepo tmp
+            Git.runGit tmp ["clone", repoRemote, repoLocal]
+            gitHashOfNewCommit <- Git.gitHash repoLocal "HEAD"
+            Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
+            biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
+              Git.git (url repoRemote . path repoLocal) pass
+            gitHashAfter <- Git.gitHash repoLocal "HEAD"
+            gitHashAfter `shouldBe` gitHashOfNewCommit
+            modifiedFiles repoLocal `shouldReturn` []
+
 
 fullUpdate :: Git.Git Url FilePath -> IO ()
 fullUpdate f = () <$ do
