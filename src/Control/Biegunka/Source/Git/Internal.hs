@@ -131,19 +131,19 @@ assertBranch remoteBranch = \case
     Just currentBranch
       | currentBranch == remoteBranch -> return ()
       | otherwise ->
-        sourceFailure $ "current branch " ++ currentBranch ++ " doesn't match " ++ remoteBranch
+        sourceFailure $ "The wrong branch is checked out.\nExpected: ‘" ++ remoteBranch ++ "’\n But got: ‘" ++ currentBranch ++ "’"
     Nothing ->
-      sourceFailure "unable to determine current branch"
+      sourceFailure "Unable to determine what branch is checked out."
 
 assertUrl :: URI -> FilePath -> IO ()
-assertUrl u p =
+assertUrl remoteURI p =
   listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
-    Just localURI
-      | localURI == u -> return ()
+    Just currentURI
+      | currentURI == remoteURI -> return ()
       | otherwise ->
-        sourceFailure $ "current uri " ++ localURI ++ " doesn't match " ++ u
+        sourceFailure $ "The ‘origin’ remote points to the wrong repository.\nExpected: ‘" ++ remoteURI ++ "’\n But got: ‘" ++ currentURI ++ "’"
     Nothing ->
-      sourceFailure "unable to determine \"origin\" remote's uri"
+      sourceFailure "Unable to determine what repository the ‘origin’ remote points to."
 
 
 gitHash :: FilePath -> String -> IO String
