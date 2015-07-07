@@ -7,7 +7,7 @@ module Chaining where
 import Control.Biegunka
 
 
-chained_script_0 :: Script Actions ()
+chained_script_0 :: Script 'Actions ()
 chained_script_0 =
   [sh| echo hello |]
  <~>

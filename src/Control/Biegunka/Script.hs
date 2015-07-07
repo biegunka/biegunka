@@ -24,10 +24,10 @@ module Control.Biegunka.Script
   , script, sourced, actioned, constructTargetFilePath
     -- * Lenses
   , segments
-  , sourceURL
+  , sourceUrl
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , URI, User(..), React(..), Retries(..), defaultRetries, incr, into, peekToken
+  , Url, User(..), React(..), Retries(..), defaultRetries, incr, into, peekToken
     -- * Namespace
   , Namespace
   , Segment
@@ -70,15 +70,15 @@ data instance Annotate 'Actions = AA
   { aaRunRoot    :: FilePath
   , aaSegments   :: [Segment]
   , aaSourceRoot :: FilePath
-  , aaURI        :: URI
+  , aaUrl        :: Url
   , aaUser       :: Maybe User
   , aaMaxRetries :: Retries
   , aaReaction   :: React
   }
 
 
--- | Repository URI (like @git\@github.com:whoever/whatever.git@)
-type URI = String
+-- | Not really a URL.
+type Url = String
 
 -- | Failure reaction
 --
@@ -103,7 +103,7 @@ data Annotations = Annotations
   { __runRoot       :: FilePath   -- ^ Absolute path of the Source layer root
   , _segments       :: [Segment]  -- ^ Namespace segments
   , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
-  , _sourceURL      :: URI        -- ^ Current source url
+  , _sourceUrl      :: Url        -- ^ Current source non-url
   , _activeUser     :: Maybe User -- ^ Maximum action order in current source
   , _maxRetries     :: Retries    -- ^ Maximum retries count
   , _sourceReaction :: React      -- ^ How to react on source failure
@@ -115,7 +115,7 @@ defaultAnnotations = Annotations
   { __runRoot       = mempty
   , _segments       = []
   , __sourceRoot    = mempty
-  , _sourceURL      = mempty
+  , _sourceUrl      = mempty
   , _activeUser     = Nothing
   , _maxRetries     = Retries 1
   , _sourceReaction = Abortive
@@ -169,9 +169,9 @@ segments f x = f (_segments x) <&> \y -> x { _segments = y }
 _sourceRoot :: Lens' Annotations FilePath
 _sourceRoot f x = f (__sourceRoot x) <&> \y -> x { __sourceRoot = y }
 
--- | Current source url
-sourceURL :: Lens' Annotations String
-sourceURL f x = f (_sourceURL x) <&> \y -> x { _sourceURL = y }
+-- | Current source non-url
+sourceUrl :: Lens' Annotations Url
+sourceUrl f x = f (_sourceUrl x) <&> \y -> x { _sourceUrl = y }
 
 -- | Current user
 activeUser :: Lens' Annotations (Maybe User)
@@ -267,7 +267,7 @@ sourced
   -> Script 'Sources ()
 sourced Source { sourceType, sourceFrom, sourceTo = path, sourceUpdate } inner = Script $ do
   rr <- view runRoot
-  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceURL sourceFrom) $ do
+  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceUrl sourceFrom) $ do
     ann <- AS
       <$> nextToken
       <*> view segments
@@ -301,7 +301,7 @@ actioned f = Script $ do
     <$> pure rr
     <*> view segments
     <*> pure sr
-    <*> view sourceURL
+    <*> view sourceUrl
     <*> view activeUser
     <*> view maxRetries
     <*> view actionReaction

@@ -8,8 +8,6 @@ module Control.Biegunka
   , pause, confirm, changes, run, check
     -- * Types
   , Script, Scope(..)
-    -- * Sources layer primitives
-  , Sourceable(..)
     -- * Actions layer primitives
   , link, register, copy, substitute, raw
     -- * Script environment
@@ -28,6 +26,7 @@ module Control.Biegunka
   , mode, Mode(..)
     -- * Little helpers
   , (~>)
+  , pass
   ) where
 
 import Data.Proxy (Proxy(Proxy))
@@ -48,10 +47,13 @@ import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..)
 import Control.Biegunka.QQ (multiline, sh, shell)
 import Control.Biegunka.Options (Environments(..), runnerOf, runner_)
 import Control.Biegunka.Check (check)
-import Control.Biegunka.Source (Sourceable(..))
 
 
 infix 4 ~>
 -- | An alias for '(,)' for better looking pairing
 (~>) :: a -> b -> (a, b)
 (~>) = (,)
+
+-- | Do nothing.
+pass :: Applicative m => m ()
+pass = pure ()

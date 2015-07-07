@@ -78,7 +78,7 @@ describeTerm (Retries n) mout withSource ta =
 sourceIdentifier :: TermF Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
   TS (AS { asSegments }) (Source _ url _ _) _ _ -> Just (url :| asSegments)
-  TA (AA { aaSegments, aaURI }) _ _ -> Just (aaURI :| aaSegments)
+  TA (AA { aaSegments, aaUrl }) _ _ -> Just (aaUrl :| aaSegments)
   TWait _ _ -> Nothing
 
 prettyDiff :: [Hunk Text] -> String

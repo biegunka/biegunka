@@ -1,13 +1,13 @@
--- | Support for git repositories as 'Sources'
+-- | Git repositories as ''Sources'.
 module Control.Biegunka.Source.Git
-  ( -- * Source layer
-    git', git, git_
-    -- * Types
-  , Git
-    -- * Modifiers
-  , actions, branch, failIfAhead
-    -- * Type synonyms
-  , URI
+  ( Git
+  , git
+  , Url
+  , Config
+  , url
+  , path
+  , branch
+  , failIfAhead
   ) where
 
 import Control.Biegunka.Source.Git.Internal

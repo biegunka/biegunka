@@ -1,19 +1,24 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FunctionalDependencies #-}
 -- | Generally useful 'Sources' related definitions
-{-# LANGUAGE TypeFamilies #-}
 module Control.Biegunka.Source
-  ( Sourceable(..)
+  ( Url
+  , HasUrl(..)
+  , HasPath(..)
   ) where
 
-import Control.Biegunka.Language
-import Control.Biegunka.Script
+import Control.Biegunka.Script (Url)
 
 
--- | Common 'Sources' structure
-class Sourceable s where
-  data Mod s
+-- | Types that contain a URL.
+--
+-- Having only a setter simplifies the interface, so we omit the getter,
+-- as the user is not supposed to look into the configuration.
+class HasUrl s t a | s -> a, t -> a, a s -> t where
+  url :: a -> s -> t
 
-  -- | Actions to run after source update
-  actions :: Script 'Actions () -> Mod s
-
-  (==>) :: String -> FilePath -> Mod s -> Script 'Sources ()
+-- | Types that contain a file path.
+--
+-- Having only a setter simplifies the interface, so we omit the getter,
+-- as the user is not supposed to look into the configuration.
+class HasPath s t a | s -> a, t -> a, a s -> t where
+  path :: a -> s -> t

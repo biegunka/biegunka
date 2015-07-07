@@ -5,13 +5,13 @@ module Main where
 
 import Control.Biegunka
 import Control.Biegunka.Source.Git
-import System.Exit (ExitCode)
 
 
-main :: IO ExitCode
-main = biegunka id run $ do
-  namespace "outer" $ do
-    namespace "inner" $
-      git_ "git@github.com:ghc/ghc" "ghc"
-    git_ "git@github.com:ghc/ghc" "ghc"
-
+main :: IO ()
+main = do
+  biegunka id run $
+    namespace "outer" $ do
+      namespace "inner" $
+        git (url "git@github.com:ghc/ghc" . path "ghc") pass
+      git (url "git@github.com:ghc/ghc" . path "ghc") pass
+  pass

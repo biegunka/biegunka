@@ -1,6 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 -- | Example 'Source' based on 'directory-layout'
-module Control.Biegunka.Source.Layout (Layout, layout, layout_) where
+module Control.Biegunka.Source.Layout
+  ( Layout
+  , layout
+  ) where
 
 import Control.Lens
 import System.FilePath (takeDirectory, takeFileName)
@@ -30,11 +33,3 @@ layout dirlayout relpath = sourced Source
           l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
           traverseOf_ _Left print l
       )
-
-
--- | Make specified layout and do nothing
-layout_
-  :: Layout a -- ^ Layout to make
-  -> FilePath -- ^ Layout root
-  -> Script 'Sources ()
-layout_ l p = layout l p (return ())

@@ -8,21 +8,14 @@ import Control.Biegunka.Source.Git
 
 
 main :: IO ()
-main = return ()
+main = pass
 
-sources :: Script Sources ()
+sources :: Script 'Sources ()
 sources =
   sudo (username "nobody") $
-    git "https://example.com/dotfiles.git" "/" $
-      return ()
+    git (url "https://example.com/dotfiles.git" . path "/") pass
 
-sources' :: Script Sources ()
-sources' =
-  sudo (username "nobody") $
-    git "https://example.com/dotfiles.git" "/" $
-      return ()
-
-actions :: Script Actions ()
+actions :: Script 'Actions ()
 actions =
   sudo (uid 0) $
     link "source" "destination"
