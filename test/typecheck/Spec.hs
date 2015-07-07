@@ -41,7 +41,7 @@ callCompiler :: FilePath -> FilePath -> IO (ExitCode, String, String)
 callCompiler ghc file =
   readProcessWithExitCode
     "cabal"
-    ["exec", "--", "env", "LANG=C", ghc, "-O0", "-fno-code", "-isrc", "-idist/build/autogen", file]
+    ["exec", "--", ghc, "-O0", "-fno-code", "-isrc", "-idist/build/autogen", file]
     ""
 
 -- | A test case is either a file that compiles successfully
