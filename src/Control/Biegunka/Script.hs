@@ -77,7 +77,7 @@ data instance Annotate 'Actions = AA
   }
 
 
--- | Not really an URL.
+-- | Not really a URL.
 type Url = String
 
 -- | Failure reaction
