@@ -18,7 +18,7 @@ module Control.Biegunka
     -- * Auxiliary
   , into
     -- * Commandline options parser autogeneration
-  , runner_, runnerOf, Environments(..), Generic, Proxy(Proxy)
+  , runner_, runnerOf, Environments(..), Generic
     -- * Quasiquoters
   , multiline, sh, shell
     -- * Settings
@@ -29,7 +29,6 @@ module Control.Biegunka
   , pass
   ) where
 
-import Data.Proxy (Proxy(Proxy))
 import GHC.Generics (Generic)
 import System.Directory.Layout (username, uid)
 

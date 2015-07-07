@@ -1,8 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 module Control.Biegunka.Options
   ( Runner
@@ -11,32 +12,32 @@ module Control.Biegunka.Options
   , Environments(..)
 
   , parser
-  , fromEnvironments
   ) where
 
-import Control.Lens hiding (from)
-import Control.Monad ((>=>))
-import Data.Char (isUpper, toLower)
-import Data.Foldable (asum)
-import GHC.Generics (Generic, M1(M1), D1, C1, Constructor(conName), (:+:)(L1, R1), U1(U1), Rep, from)
-import Options.Applicative
-import Prelude hiding (all)
-import System.Exit (exitWith)
+import           Control.Lens
+import           Control.Monad ((>=>))
+import           Data.Char (isUpper, toLower)
+import           Data.Foldable (asum)
+import           Data.Proxy (Proxy(Proxy))
+import qualified GHC.Generics as G
+import           Options.Applicative
+import           Prelude hiding (all)
+import           System.Exit (exitWith)
 
-import Control.Biegunka.Biegunka (biegunka)
-import Control.Biegunka.Interpreter (confirm, changes)
-import Control.Biegunka.Settings (Settings, Mode(..), mode, defaultMode)
-import Control.Biegunka.Execute (run, runDiff)
-import Control.Biegunka.Language (Scope(Sources))
-import Control.Biegunka.Check (check)
-import Control.Biegunka.Script (Script)
+import           Control.Biegunka.Biegunka (biegunka)
+import           Control.Biegunka.Interpreter (confirm, changes)
+import           Control.Biegunka.Settings (Settings, Mode(..), mode, defaultMode)
+import           Control.Biegunka.Execute (run, runDiff)
+import           Control.Biegunka.Language (Scope(Sources))
+import           Control.Biegunka.Check (check)
+import           Control.Biegunka.Script (Script)
 
 
 type Runner a = (Settings -> Settings) -> Script 'Sources () -> IO a
 
 -- | Get environment and 'Runner' from the command line options.
-runnerOf :: Environments a => p a -> IO (a, Runner b)
-runnerOf xs = execParser (parser (fromEnvironments xs))
+runnerOf :: Environments a => IO (a, Runner b)
+runnerOf = execParser (parser environments)
 
 -- | Get 'Runner' from the command line options.
 runner_ :: IO (Runner b)
@@ -76,36 +77,39 @@ parser p = info (helper <*> go) fullDesc
   offline = set mode Offline
   online  = set mode Online
 
--- | Contruct a parser from a list of environments.
-fromEnvironments :: Environments a => p a -> Parser a
-fromEnvironments = asum . map (\(name, val) -> flag' val (long name)) . environments
-
 -- | List of possible environments.
 --
 -- The strings `environments` returns must be unique.
 class Environments a where
-  environments :: proxy a -> [(String, a)]
-  default environments :: (Bounded a, Enum a, Generic a, GEnvironment (Rep a)) => proxy a -> [(String, a)]
-  environments _ = map (\a -> (genvironment (from a), a)) [minBound .. maxBound :: a]
+  environments :: Parser a
+  default environments :: (r ~ G.Rep a, G.Generic a, GEnvironment r) => Parser a
+  environments = fmap G.to (genv Option { optionName = Nothing })
 
 class GEnvironment p where
-  genvironment :: p a -> String
+  genv :: Option -> Parser (p a)
 
-instance (GEnvironment f, GEnvironment g) => GEnvironment (f :+: g) where
-  genvironment (L1 x) = genvironment x
-  genvironment (R1 x) = genvironment x
+-- | Datatype declaration's metadata is ignored.
+instance GEnvironment f => GEnvironment (G.D1 c f) where
+  genv = fmap G.M1 . genv
 
-instance GEnvironment f => GEnvironment (D1 c f) where
-  genvironment (M1 x) = genvironment x
+-- | Sums are translated to sums of parsers.
+instance (GEnvironment f, GEnvironment g) => GEnvironment (f G.:+: g) where
+  genv x = fmap G.L1 (genv x) <|> fmap G.R1 (genv x)
 
--- `GEnvironment f` constraint ensures that it's impossible
--- to construct invalid instances with `Generics`
-instance (Constructor c, GEnvironment f) => GEnvironment (C1 c f) where
-  genvironment m@(M1 _) = camelCase2hyphens (conName m)
+-- | Constructor names are converted from camelCase to lisp-case
+-- and then used as option names.
+instance (G.Constructor c, GEnvironment f) => GEnvironment (G.C1 c f) where
+  genv _ = fmap G.M1 (genv Option { optionName = Just (camelCase2hyphens con) })
+   where
+    con = G.conName (G.M1 Proxy :: G.M1 t c Proxy b)
 
--- because unary constructors are the only ones for which derivation works!
-instance GEnvironment U1 where
-  genvironment U1 = undefined
+-- | Unary constructors are simple flags.
+instance GEnvironment G.U1 where
+  genv Option { optionName } = maybe empty (flag' G.U1 . long) optionName
+
+newtype Option = Option
+  { optionName :: Maybe String
+  } deriving (Show, Eq)
 
 -- Convert data constructor name from CamelCase to hyphen-case
 -- for use in command line options.
