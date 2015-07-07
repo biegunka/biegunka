@@ -9,10 +9,16 @@ module Control.Biegunka.Source
 import Control.Biegunka.Script (Url)
 
 
--- | Types containing an URL that can be changed.
+-- | Types that contain an URL.
+--
+-- Having only a setter simplifies the interface, so we omit a getter,
+-- as the user is not supposed to look into the configuration.
 class HasUrl s t a | s -> a, t -> a, a s -> t where
   url :: a -> s -> t
 
--- | Types containing a file path that can be changed.
+-- | Types that contain a file path.
+--
+-- Having only a setter simplifies the interface, so we omit a getter,
+-- as the user is not supposed to look into the configuration.
 class HasPath s t a | s -> a, t -> a, a s -> t where
   path :: a -> s -> t
