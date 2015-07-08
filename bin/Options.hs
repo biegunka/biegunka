@@ -1,49 +1,81 @@
+{-# LANGUAGE LambdaCase #-}
 -- | @biegunka@ tool options
-module Options where
+module Options
+  ( parse
+  , Command(..)
+  , _Init
+  , _Run
+  , _Json
+  , _Version
+  , _Help
+  , scriptName
+  , defaultBiegunkaDataDirectory
+  ) where
 
-import           Control.Monad (guard)
+import           Control.Lens
 import qualified Data.List as List
-import           Options.Applicative
+import           Data.Version (showVersion)
+import           Prelude hiding (init)
+import           Text.Printf (printf)
+
+import qualified Paths_biegunka as Paths
+import qualified Git_biegunka as Git
 
 
--- | @biegunka@ subcommands
-data BiegunkaCommand
+data Command
   = Init FilePath
-  | RunScript FilePath [String]
+  | Run (Maybe FilePath) [String]
   | Json FilePath
-  | Version
+  | Version String
+  | Help String
     deriving (Show, Eq)
 
-
--- | @biegunka@ tool command line options parser
-options :: ParserInfo BiegunkaCommand
-options = info (helper <*> opts) fullDesc
+parse :: [String] -> Either String Command
+parse = \case
+  ["init", x] -> pure (Init x)
+  ("run" : "--" : xs) -> pure (Run Nothing xs)
+  ("run" : x : "--" : xs) -> pure (Run (Just x) xs)
+  ["json"] -> pure (Json defaultBiegunkaDataDirectory)
+  ["json", x] -> pure (Json x)
+  ["version"] -> pure (Version version)
+  ["help"] -> pure (Help help)
+  _ -> Left help
  where
-  opts = flag' Version (long "version" <> help "Print version") <|> subcommands
-
-  subcommands = subparser $
-    command "init" (info (Init <$> destination) (progDesc "Initialize biegunka script")) <>
-    command "run"  (info (RunScript <$> destination <*> otherArguments)
-      (progDesc "Run biegunka script")) <>
-    command "json"  (info listOptions (progDesc "Print biegunka data as a JSON document"))
-   where
-    listOptions = Json
-      <$> strOption (long "data-dir"
-        <> value defaultBiegunkaDataDirectory <> help "Biegunka data directory")
-
-    destination = argument (do x <- str; guard (not ("-" `List.isPrefixOf` x)); return x)
-                           (value defaultBiegunkaScriptName)
-
-    otherArguments = many (argument str idm)
+  help = List.intercalate "\n"
+    [ "biegunka " ++ version
+    , ""
+    , "biegunka init DIR"
+    , "    put Biegunka.hs template in DIR"
+    , "biegunka run [SCRIPT | Biegunka.hs]"
+    , "    run SCRIPT with OPTIONS"
+    , "biegunka json [DIRECTORY | ~/.biegunka]"
+    , "    show JSON with Biegunka data in DIR"
+    , "biegunka version"
+    , "    show version and exit"
+    , "biegunka help"
+    , "    show this text and exit"
+    ]
+  version = printf "%s-%s" (showVersion Paths.version) Git.hash
 
 -- | Filename which @biegunka init@ creates by default
-defaultBiegunkaScriptName :: FilePath
-defaultBiegunkaScriptName = "Biegunka.hs"
+scriptName :: FilePath
+scriptName = "Biegunka.hs"
 
 -- | @biegunka list@ and @biegunka generate@ default data directory
 defaultBiegunkaDataDirectory :: String
 defaultBiegunkaDataDirectory = "~/.biegunka"
 
--- | @biegunka generate@ default app root
-defaultBiegunkaAppDirectory :: String
-defaultBiegunkaAppDirectory = "~"
+_Init :: Prism' Command FilePath
+_Init = prism' Init (\case Init x -> Just x; _ -> Nothing)
+
+_Run :: Prism' Command (Maybe FilePath, [String])
+_Run = prism' (uncurry Run) (\case Run x y -> Just (x, y); _ -> Nothing)
+
+_Json :: Prism' Command FilePath
+_Json = prism' Json (\case Json x -> Just x; _ -> Nothing)
+
+_Version :: Prism' Command String
+_Version = prism' Version (\case Version x -> Just x; _ -> Nothing)
+
+_Help :: Prism' Command String
+_Help = prism' Help (\case Help x -> Just x; _ -> Nothing)

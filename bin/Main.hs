@@ -3,58 +3,62 @@
 module Main (main) where
 
 import           Data.Char (toLower)
-import           Data.Version (showVersion)
-import           Options.Applicative (customExecParser, prefs, showHelpOnError)
-import           System.Directory (doesDirectoryExist, doesFileExist, copyFile)
-import           System.Exit (exitFailure)
-import           System.FilePath ((</>))
+import qualified Data.List as List
+import           System.Directory (doesFileExist, copyFile)
+import           System.Environment (getArgs)
+import           System.Exit (die)
+import           System.FilePath (combine)
 import qualified System.IO as IO
+import qualified System.Posix as Posix
 import           Text.Printf (printf)
 
-import qualified Git_biegunka as Git
 import qualified Json
 import           Options
-import           Paths_biegunka (getDataFileName, version)
-import           Run (run)
+import qualified Paths_biegunka as Paths
+import           Run (runScript, findScript)
 
 
 main :: IO ()
 main = do
   IO.hSetBuffering IO.stdout IO.NoBuffering
-  biegunkaCommand <- customExecParser (prefs showHelpOnError) options
-  case biegunkaCommand of
-    Init target
-      -> defaulted target >>= initialize
-    RunScript target args
-      -> defaulted target >>= run args
-    Json datadir ->
-      Json.out datadir
-    Version ->
-      printf "biegunka %s-%s\n" (showVersion version) Git.hash
-
--- | Append default biegunka script name if target
--- happens to be a directory
-defaulted :: FilePath -> IO FilePath
-defaulted target =
-  doesDirectoryExist target >>= \case
-    True  -> return (target </> defaultBiegunkaScriptName)
-    False -> return target
+  command <- fmap Options.parse getArgs
+  case command of
+    Right (Init target) -> initialize target
+    Right (Run (Just script) args) -> runScript script args
+    Right (Run Nothing args) ->
+      findScript >>= \case
+        [script] -> runScript script args
+        [] -> die "No scripts were found in the tree."
+        scripts -> die . List.intercalate "\n" $
+          ["Found several scripts:"] ++
+          map ("  " ++) scripts ++
+          ["Please, pass the one to run as an argument."]
+    Right (Json datadir) -> Json.out datadir
+    Right (Version version) -> putStrLn version
+    Right (Help help) -> putStrLn help
+    Left help -> die help
 
 
 initialize :: FilePath -> IO ()
-initialize target = do
-  template <- getDataFileName "data/Biegunka.hs"
-  doesFileExist target >>= \case
-    True -> prompt (target ++ " already exists! Overwrite?") >>= \case
-      True  -> copy template
-      False -> do
-        IO.hPutStrLn IO.stderr "Failed to initialize biegunka script: Already Exists"
-        exitFailure
-    False -> copy template
+initialize dir = do
+  template <- Paths.getDataFileName "data/Biegunka.hs"
+  doesFileExist script >>= \case
+    False ->
+      do copyFile template script
+         Posix.setFileMode script mode
+         putStrLn (printf "Initialized biegunka script at ‘%s’" script)
+    True -> prompt (printf "‘%s’ already exists! Overwrite?" script) >>= \case
+      False -> die "Failed to initialize biegunka script: Already Exists"
+      True ->
+        do copyFile template script
+           Posix.setFileMode script mode
+           putStrLn (printf "Re-initialized biegunka script at ‘%s’" script)
  where
-  copy source = do
-    copyFile source target
-    putStrLn ("Initialized biegunka script at " ++ target)
+  script = combine dir scriptName
+  mode =
+    List.foldl' Posix.unionFileModes
+                Posix.nullFileMode
+                [Posix.ownerReadMode, Posix.ownerWriteMode, Posix.groupReadMode, Posix.otherReadMode]
 
 prompt :: String -> IO Bool
 prompt message = do

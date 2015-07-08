@@ -98,15 +98,18 @@ executable biegunka
     , base                 >= 3 && < 5
     , biegunka             >= 0.2
     , bytestring
+    , conduit
+    , conduit-extra
     , containers
     , data-default-class
     , directory
     , filepath
     , lens
-    , optparse-applicative
     , process
+    , resourcet
     , text
     , transformers
+    , unix
   hs-source-dirs:
     bin
   main-is:
@@ -155,6 +158,7 @@ test-suite spec
     Control.Biegunka.Source.GitSpec
     BehavioursSpec
     DSLSpec
+    OptionsSpec
   ghc-options:
     -Wall
     -Werror
