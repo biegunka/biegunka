@@ -1,42 +1,41 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Control.Biegunka.OptionsSpec (spec) where
 
-import Control.Lens
-import Data.Proxy (Proxy(Proxy))
 import Data.Foldable (for_)
 import GHC.Generics
 import Options.Applicative
 import Test.Hspec.Lens
-import Text.Show.Functions ()
+import Text.Printf (printf)
 
 import Control.Biegunka.Options
 
 
-data Type = Foo | QuxQuux
-    deriving (Show, Eq, Bounded, Enum, Generic)
+data Foo = Bar | QuxQuux | Xyzzy Int
+    deriving (Show, Eq, Generic)
 
-instance Environments Type
+instance Environments Foo
 
 spec :: Spec
 spec =
   describe "parser" $ do
-    context "when asked for a single-word environment" $
-      it "returns the corresponding constructor" $
-        parse Proxy ["--foo"] `shouldHave` _Just._1.only Foo
+    it "single-word environments are selected by lowercase flags" $
+      parse ["--bar"] `shouldBe` Just Bar
 
-    context "when asked for a multi-word environment" $
-      it "returns the corresponding constructor" $
-        parse Proxy ["--qux-quux"] `shouldHave` _Just._1.only QuxQuux
+    it "multi-word environments are selected by lowercase lisp-case flags" $
+      parse ["--qux-quux"] `shouldBe` Just QuxQuux
+
+    it "environments taking an argument are selected by lowercase options" $
+      parse ["--xyzzy", "7"] `shouldBe` Just (Xyzzy 7)
 
     describe "interpreters" $
       for_ ["--diff", "--run", "--problems", "--force", "--all"] $ \i ->
-        it ("parser includes the ‘" ++ i ++ "’ interpreter") $
-          parse Proxy [i, "--foo"] `shouldHave` _Just._1.only Foo
+        it (printf "parser includes the ‘%s’ interpreter" i) $
+          parse [i, "--bar"] `shouldBe` Just Bar
 
     describe "modes" $
       for_ ["--online", "--offline"] $ \m ->
-        it ("parser includes the ‘" ++ m ++ "’ mode") $
-          parse Proxy [m, "--foo"] `shouldHave` _Just._1.only Foo
+        it (printf "parser includes the ‘%s’ mode" m) $
+          parse [m, "--bar"] `shouldBe` Just Bar
 
-parse :: Environments a => proxy a -> [String] -> Maybe (a, Runner b)
-parse proxy = getParseResult . execParserPure (prefs idm) (parser (fromEnvironments proxy))
+parse :: Environments a => [String] -> Maybe a
+parse = fmap fst . getParseResult . execParserPure (prefs idm) (parser environments)
