@@ -92,6 +92,10 @@ class GEnvironment p where
 instance GEnvironment f => GEnvironment (G.D1 c f) where
   genv = fmap G.M1 . genv
 
+-- | Record selector's metadata is ignored.
+instance GEnvironment f => GEnvironment (G.S1 c f) where
+  genv = fmap G.M1 . genv
+
 -- | Sums are translated to sums of parsers.
 instance (GEnvironment f, GEnvironment g) => GEnvironment (f G.:+: g) where
   genv x = fmap G.L1 (genv x) <|> fmap G.R1 (genv x)
@@ -103,9 +107,13 @@ instance (G.Constructor c, GEnvironment f) => GEnvironment (G.C1 c f) where
    where
     con = G.conName (G.M1 Proxy :: G.M1 t c Proxy b)
 
--- | Unary constructors are simple flags.
+-- | Constructors without arguments are flags.
 instance GEnvironment G.U1 where
   genv Option { optionName } = maybe empty (flag' G.U1 . long) optionName
+
+-- | Constants are options.
+instance Read c => GEnvironment (G.K1 i c) where
+  genv Option { optionName } = fmap G.K1 (maybe empty (option auto . long) optionName)
 
 newtype Option = Option
   { optionName :: Maybe String
