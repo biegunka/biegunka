@@ -60,7 +60,7 @@ parser p = info (helper <*> go) fullDesc
     , flag' safe  (long "run"      <> help "Run script")
     , flag' check (long "problems" <> help "Show problems")
     , flag' run   (long "force"    <> help "Run script without a confirmation")
-    , flag' all   (long "all"      <> help "A combination of --changes, --run, and --problems")
+    , flag' all   (long "all"      <> help "Show changes, run the script, and show problems")
     , pure all
     ]
 
@@ -109,7 +109,7 @@ instance (G.Constructor c, GEnvironment f) => GEnvironment (G.C1 c f) where
 
 -- | Constructors without arguments are flags.
 instance GEnvironment G.U1 where
-  genv Option { optionName } = maybe empty (flag' G.U1 . long) optionName
+  genv Option { optionName } = G.U1 <$ maybe empty (flag' () . long) optionName
 
 -- | Constants are options.
 instance Read c => GEnvironment (G.K1 i c) where
