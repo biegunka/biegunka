@@ -21,16 +21,18 @@ module Control.Biegunka.Source.Git.Internal
   , gitHash
   ) where
 
+import           Control.Lens
 import           Data.Bifunctor (Bifunctor(..))
 import           Data.Bool (bool)
 import           Data.Maybe (listToMaybe)
 import qualified Data.Text as Text
 import           System.Directory (doesDirectoryExist)
+import           System.Exit.Lens (_ExitFailure)
 import           System.FilePath ((</>))
 import qualified System.Process as P
 import           Text.Printf (printf)
 
-import           Control.Biegunka.Execute.Exception (onFailure, sourceFailure)
+import           Control.Biegunka.Execute.Exception (sourceFailure)
 import           Control.Biegunka.Language (Scope(..), Source(..))
 import           Control.Biegunka.Script (Script, sourced)
 import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
@@ -159,7 +161,7 @@ gitHash fp ref = runGit fp ["rev-parse", "--short", ref]
 runGit :: FilePath -> [String] -> IO String
 runGit cwd args = Text.unpack . Text.stripEnd <$> do
   (exitcode, out, err) <- P.readCreateProcessWithExitCode proc ""
-  exitcode `onFailure` \_ -> sourceFailure err
+  forOf_ _ExitFailure exitcode (\_ -> sourceFailure err)
   return (Text.pack out)
  where
   proc = (P.proc "git" args) { P.cwd = Just cwd }

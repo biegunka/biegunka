@@ -27,7 +27,7 @@ module Control.Biegunka.Script
   , sourceUrl
   , sourceReaction, actionReaction, activeUser, maxRetries
     -- ** Misc
-  , Url, User(..), React(..), Retries(..), defaultRetries, incr, into, peekToken
+  , Url, User(..), React(..), Retries(..), incr, into, peekToken
     -- * Namespace
   , Namespace
   , Segment
@@ -89,9 +89,6 @@ data React = Ignorant | Abortive
 -- | Retries count
 newtype Retries = Retries { unRetries :: Int }
     deriving (Show, Read, Eq, Ord)
-
-defaultRetries :: Retries
-defaultRetries = Retries 0
 
 -- | Increment retry count
 incr :: Retries -> Retries

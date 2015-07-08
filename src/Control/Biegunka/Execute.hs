@@ -33,6 +33,7 @@ import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
+import           System.Exit.Lens (_ExitFailure)
 import           System.FilePath (dropFileName, takeFileName, addExtension)
 import           System.Environment (getEnvironment)
 import qualified System.IO as IO
@@ -108,7 +109,7 @@ runDiff = optimistically go where
 execute :: Term Annotate s () -> Executor ()
 execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
   forkExecutor (execute t)
-  flip fix defaultRetries $ \loop rs ->
+  flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
       False ->
         if rs < asMaxRetries
@@ -122,7 +123,7 @@ execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
         execute b
         doneWith asToken
 execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
-  flip fix defaultRetries $ \loop rs ->
+  flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
       False ->
         if rs < aaMaxRetries
@@ -132,7 +133,7 @@ execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
             Ignorant -> execute x
       True -> execute x
 execute (Free c@(TWait _ x)) = do
-  executeIO (doGenIO defaultRetries) c
+  executeIO (doGenIO (Retries 0)) c
   execute x
 execute (Pure _) = return ()
 
@@ -304,8 +305,7 @@ genIO term = case term of
           }
       e <- P.waitForProcess ph
       IO.hClose out
-      e `onFailure` \status ->
-        Text.hGetContents err >>= throwM . ShellException status
+      forOf_ _ExitFailure e (\status -> throwM . ShellException status =<< Text.hGetContents err)
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
   TWait _ _ -> return (return (Nothing, return Nothing))
