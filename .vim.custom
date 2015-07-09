@@ -15,7 +15,7 @@ let g:syntastic_haskell_hdevtools_args = s:hdevtools_options
 	\ (
 	\ [ '-isrc'
 	\ , '-ibin'
-	\ , '-itest'
+	\ , '-itest/spec'
 	\ , '-idist/build/autogen'
 	\ , '-O0'
 	\ , '-fdefer-type-errors'

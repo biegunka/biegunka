@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 -- | Run (or check) biegunka script
 module Run
@@ -11,21 +12,21 @@ import           Control.Lens hiding ((<.>))
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Resource (MonadResource, runResourceT)
 import           Control.Monad (when, unless)
-import           Data.Conduit ((=$=), Producer, runConduit)
+import           Data.Conduit ((=$=), Producer, runConduit, awaitForever, yield)
 import qualified Data.Conduit.Filesystem as CF
 import qualified Data.Conduit.List as CL
 import           Data.Foldable (for_)
 import           Data.Function (fix)
-import           Data.List (isPrefixOf, partition)
+import qualified Data.List as List
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import           System.Directory (getCurrentDirectory)
 import           System.Exit (exitWith)
 import           System.Exit.Lens (_ExitFailure)
 import           System.FilePath.Lens (directory, filename)
-import           System.Process
 import qualified System.IO as IO
+import qualified System.Posix as Posix
+import           System.Process
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Logger (Logger)
@@ -45,7 +46,7 @@ run :: FilePath -> [String] -> IO a
 run script args =
   Logger.with $ \logger -> do
     Logger.write IO.stdout logger (printf "Running ‘%s’  " script)
-    let (scriptArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
+    let (scriptArgs, ghcArgs) = List.partition ("--" `List.isPrefixOf`) args
         biegunkaArgs = ghcArgs ++ ["-i" ++ view directory script] ++ [script] ++ scriptArgs
     stopBar <- rotateBar logger
     (inh, pid) <- runBiegunkaProcess logger stopBar biegunkaArgs
@@ -99,12 +100,23 @@ runBiegunkaProcess logger stopBar args = do
     }
 
 -- | Deeply traverse working directory to find all files named @Biegunka.hs@.
-find :: IO [FilePath]
-find =
+find :: FilePath -> IO [FilePath]
+find fp =
   runResourceT . runConduit $
-    sourceCurrentDirectoryDeep False =$= CL.filter (elemOf filename scriptName) =$= CL.consume
+    sourceDirectoryDeep fp =$= CL.filter (elemOf filename scriptName) =$= CL.consume
 
--- | Deeply traverse working directory.
-sourceCurrentDirectoryDeep :: MonadResource m => Bool -> Producer m FilePath
-sourceCurrentDirectoryDeep b =
-  CF.sourceDirectoryDeep b =<< liftIO getCurrentDirectory
+-- | Traverse directory deeply, ignoring symlinks and directories starting with a dot.
+sourceDirectoryDeep
+  :: MonadResource m => FilePath -> Producer m FilePath
+sourceDirectoryDeep =
+  traverseDirectory
+ where
+  traverseDirectory :: MonadResource m => FilePath -> Producer m FilePath
+  traverseDirectory dir = CF.sourceDirectory dir =$= awaitForever go
+
+  go :: MonadResource m => FilePath -> Producer m FilePath
+  go fp = do
+    status <- liftIO (Posix.getSymbolicLinkStatus fp)
+    if | Posix.isRegularFile status -> yield fp
+       | Posix.isDirectory status && not ("." `List.isPrefixOf` view filename fp) -> traverseDirectory fp
+       | otherwise -> return ()

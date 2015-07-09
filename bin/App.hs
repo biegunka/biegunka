@@ -5,6 +5,7 @@ module App
 
 import qualified Data.List as List
 import           Prelude hiding (init)
+import           System.Directory (getCurrentDirectory)
 import           System.Exit (die, exitWith)
 import qualified System.IO as IO
 
@@ -19,7 +20,7 @@ run = \case
   Init target -> init target askUser (Paths.getDataFileName "data/Biegunka.hs")
   Run (Just script) args -> Run.run script args
   Run Nothing args ->
-    Run.find >>= \case
+    getCurrentDirectory >>= Run.find >>= \case
       [script] -> Run.run script args
       [] -> die "No scripts were found in the tree."
       scripts -> die . List.intercalate "\n" $
