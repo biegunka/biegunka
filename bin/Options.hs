@@ -16,6 +16,8 @@ import           Control.Lens
 import qualified Data.List as List
 import           Data.Version (showVersion)
 import           Prelude hiding (init)
+import           System.Exit (ExitCode(ExitSuccess, ExitFailure))
+import qualified System.IO as IO
 import           Text.Printf (printf)
 
 import qualified Paths_biegunka as Paths
@@ -27,19 +29,19 @@ data Command
   | Run (Maybe FilePath) [String]
   | Json FilePath
   | Version String
-  | Help String
+  | Help String IO.Handle ExitCode
     deriving (Show, Eq)
 
-parseArgs :: [String] -> Either String Command
+parseArgs :: [String] -> Command
 parseArgs = \case
-  ["init", x] -> pure (Init x)
-  ("run" : "--" : xs) -> pure (Run Nothing xs)
-  ("run" : x : "--" : xs) -> pure (Run (Just x) xs)
-  ["json"] -> pure (Json defaultBiegunkaDataDirectory)
-  ["json", x] -> pure (Json x)
-  ["version"] -> pure (Version version)
-  ["help"] -> pure (Help help)
-  _ -> Left help
+  ["init", x] -> Init x
+  ("run" : "--" : xs) -> Run Nothing xs
+  ("run" : x : "--" : xs) -> Run (Just x) xs
+  ["json"] -> Json defaultBiegunkaDataDirectory
+  ["json", x] -> Json x
+  ["version"] -> Version version
+  ["help"] -> Help help IO.stdout ExitSuccess
+  _ -> Help help IO.stderr (ExitFailure 1)
  where
   help = List.intercalate "\n"
     [ "biegunka " ++ version
@@ -77,5 +79,5 @@ _Json = prism' Json (\case Json x -> Just x; _ -> Nothing)
 _Version :: Prism' Command String
 _Version = prism' Version (\case Version x -> Just x; _ -> Nothing)
 
-_Help :: Prism' Command String
-_Help = prism' Help (\case Help x -> Just x; _ -> Nothing)
+_Help :: Prism' Command (String, IO.Handle, ExitCode)
+_Help = prism' (\(x, y, z) -> Help x y z) (\case Help x y z -> Just (x, y, z); _ -> Nothing)
