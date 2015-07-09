@@ -160,6 +160,7 @@ test-suite spec
     Control.Biegunka.Source.GitSpec
     BehavioursSpec
     DSLSpec
+    InitSpec
     OptionsSpec
   ghc-options:
     -Wall

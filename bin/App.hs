@@ -8,14 +8,15 @@ import           Prelude hiding (init)
 import           System.Exit (die, exitWith)
 import qualified System.IO as IO
 
-import           Init (init)
+import           Init (init, askUser)
 import qualified Json
 import           Options (Command(..))
+import qualified Paths_biegunka as Paths
 import qualified Run
 
 run :: Command -> IO ()
 run = \case
-  Init target -> init target
+  Init target -> init target askUser (Paths.getDataFileName "data/Biegunka.hs")
   Run (Just script) args -> Run.run script args
   Run Nothing args ->
     Run.find >>= \case
