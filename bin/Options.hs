@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 -- | @biegunka@ tool options
 module Options
-  ( parse
+  ( parseArgs
   , Command(..)
   , _Init
   , _Run
@@ -30,8 +30,8 @@ data Command
   | Help String
     deriving (Show, Eq)
 
-parse :: [String] -> Either String Command
-parse = \case
+parseArgs :: [String] -> Either String Command
+parseArgs = \case
   ["init", x] -> pure (Init x)
   ("run" : "--" : xs) -> pure (Run Nothing xs)
   ("run" : x : "--" : xs) -> pure (Run (Just x) xs)

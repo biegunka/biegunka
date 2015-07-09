@@ -11,32 +11,32 @@ spec :: Spec
 spec =
   describe "parser" $ do
     it "has ’version’ subcommand" $
-      parse ["version"] `shouldHave` _Right._Version
+      parseArgs ["version"] `shouldHave` _Right._Version
 
     it "has ’help’ subcommand" $
-      parse ["help"] `shouldHave` _Right._Help
+      parseArgs ["help"] `shouldHave` _Right._Help
 
     context "‘init’ subcommand" $ do
       it "takes a filename argument" $
-        parse ["init", "."] `shouldHave` _Right._Init.only "."
+        parseArgs ["init", "."] `shouldHave` _Right._Init.only "."
 
       it "filename argument is mandatory" $
-        parse ["init"] `shouldHave` _Left
+        parseArgs ["init"] `shouldHave` _Left
 
     context "‘run’ subcommand" $ do
       it "takes a filename argument" $
-        parse ["run", "Foo.hs", "--", "foo", "--bar", "baz"]
+        parseArgs ["run", "Foo.hs", "--", "foo", "--bar", "baz"]
        `shouldHave`
         _Right._Run.only (Just "Foo.hs", ["foo", "--bar", "baz"])
 
       it "filename argument is optional" $
-        parse ["run", "--", "foo", "--bar", "baz"]
+        parseArgs ["run", "--", "foo", "--bar", "baz"]
        `shouldHave`
         _Right._Run.only (Nothing, ["foo", "--bar", "baz"])
 
     context "‘json’ subcommand" $ do
       it "takes a filename argument" $
-        parse ["json", "foo"] `shouldHave` _Right._Json.only "foo"
+        parseArgs ["json", "foo"] `shouldHave` _Right._Json.only "foo"
 
       it "filename argument is optional" $
-        parse ["json"] `shouldHave` _Right._Json.only defaultBiegunkaDataDirectory
+        parseArgs ["json"] `shouldHave` _Right._Json.only defaultBiegunkaDataDirectory

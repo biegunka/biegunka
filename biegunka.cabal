@@ -115,6 +115,8 @@ executable biegunka
   main-is:
     Main.hs
   other-modules:
+    App
+    Init
     Json
     Options
     Run

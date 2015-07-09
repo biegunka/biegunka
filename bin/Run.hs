@@ -1,8 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 -- | Run (or check) biegunka script
 module Run
-  ( findScript
-  , runScript
+  ( find
+  , run
   ) where
 
 import           Control.Concurrent (ThreadId, forkIO, forkFinally, threadDelay, killThread)
@@ -41,8 +41,8 @@ import           Options (scriptName)
 --   * Uses @cabal exec runhaskell@ to run the script in the sandbox environment.
 --
 --   * Adds script's parent directory to the paths that ghc searches for imports.
-runScript :: FilePath -> [String] -> IO a
-runScript script args =
+run :: FilePath -> [String] -> IO a
+run script args =
   Logger.with $ \logger -> do
     Logger.write IO.stdout logger (printf "Running ‘%s’  " script)
     let (scriptArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
@@ -99,8 +99,8 @@ runBiegunkaProcess logger stopBar args = do
     }
 
 -- | Deeply traverse working directory to find all files named @Biegunka.hs@.
-findScript :: IO [FilePath]
-findScript =
+find :: IO [FilePath]
+find =
   runResourceT . runConduit $
     sourceCurrentDirectoryDeep False =$= CL.filter (elemOf filename scriptName) =$= CL.consume
 
