@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module RunSpec (spec) where
 
-import Control.Lens
-import Data.List.Lens
-import System.Directory.Layout
-import Test.Hspec.Lens
+import           Control.Lens
+import qualified Data.List as List
+import           Data.List.Lens
+import           System.Directory.Layout
+import           Test.Hspec.Lens
 
-import Run (find)
-import SpecHelper (withBiegunkaTempDirectory)
+import           Run (find)
+import           SpecHelper (withBiegunkaTempDirectory)
 
 
 spec :: Spec
@@ -29,7 +30,7 @@ spec =
             & contents ?~ ""
         res <- find tmpDir
         res `shouldList` ["Biegunka.hs", "bar/baz/Biegunka.hs", "foo/Biegunka.hs"]
-            `through` traverse.prefixed tmpDir.prefixed "/"
+            `through` sorted.traverse.prefixed tmpDir.prefixed "/"
 
       it "ignores the directories whose name starts with a dot" $ \tmpDir -> do
         make tmpDir $ do
@@ -46,4 +47,6 @@ spec =
             & contents ?~ ""
         res <- find tmpDir
         res `shouldList` ["Biegunka.hs", "foo/Biegunka.hs"]
-            `through` traverse.prefixed tmpDir.prefixed "/"
+            `through` sorted.traverse.prefixed tmpDir.prefixed "/"
+ where
+  sorted = to List.sort
