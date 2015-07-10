@@ -30,7 +30,7 @@ spec =
             & contents ?~ ""
         res <- find tmpDir
         res `shouldList` ["Biegunka.hs", "bar/baz/Biegunka.hs", "foo/Biegunka.hs"]
-            `through` sorted.traverse.prefixed tmpDir.prefixed "/"
+            `through` sorted.folded.prefixed tmpDir.prefixed "/"
 
       it "ignores the directories whose name starts with a dot" $ \tmpDir -> do
         make tmpDir $ do
@@ -47,6 +47,6 @@ spec =
             & contents ?~ ""
         res <- find tmpDir
         res `shouldList` ["Biegunka.hs", "foo/Biegunka.hs"]
-            `through` sorted.traverse.prefixed tmpDir.prefixed "/"
+            `through` sorted.folded.prefixed tmpDir.prefixed "/"
  where
   sorted = to List.sort
