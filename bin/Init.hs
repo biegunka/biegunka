@@ -14,13 +14,12 @@ import qualified Data.Text.IO as Text
 import           Prelude hiding (init)
 import           System.Directory (doesFileExist, copyFile)
 import           System.FilePath (combine)
-import           System.Exit (die)
+import           System.Exit (exitFailure)
 import qualified System.IO as IO
 import qualified System.Posix as Posix
 import           Text.Printf (printf)
 
 import           Options (scriptName)
-
 
 
 init :: FilePath -> (Text -> IO Bool) -> IO FilePath -> IO ()
@@ -30,7 +29,7 @@ init dir prompt getTemplate =
       do replace script =<< getTemplate
          putStrLn (printf "Initialized biegunka script at ‘%s’" script)
     True -> prompt (Text.pack (printf "‘%s’ already exists! Overwrite?" script)) >>= \case
-      False -> die "Failed to initialize biegunka script: Already Exists"
+      False -> exitFailure
       True ->
         do replace script =<< getTemplate
            putStrLn (printf "Re-initialized biegunka script at ‘%s’" script)

@@ -34,9 +34,13 @@ data Command
 
 parseArgs :: [String] -> Command
 parseArgs = \case
+  ["init"] -> Init "."
   ["init", x] -> Init x
+  ["run"] -> Run Nothing []
   ("run" : "--" : xs) -> Run Nothing xs
+  ("run" : xs@(('-' : _) : _)) -> Run Nothing xs
   ("run" : x : "--" : xs) -> Run (Just x) xs
+  ("run" : x : xs) -> Run (Just x) xs
   ["json"] -> Json defaultBiegunkaDataDirectory
   ["json", x] -> Json x
   ["version"] -> Version version
@@ -46,9 +50,9 @@ parseArgs = \case
   help = List.intercalate "\n"
     [ "biegunka " ++ version
     , ""
-    , "biegunka init DIR"
+    , "biegunka init [DIR]"
     , "    put Biegunka.hs template in DIR"
-    , "biegunka run [SCRIPT | Biegunka.hs]"
+    , "biegunka run [SCRIPT | Biegunka.hs] [OPTIONS]"
     , "    run SCRIPT with OPTIONS"
     , "biegunka json [DIRECTORY | ~/.biegunka]"
     , "    show JSON with Biegunka data in DIR"

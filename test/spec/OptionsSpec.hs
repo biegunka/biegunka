@@ -19,21 +19,23 @@ spec =
 
     context "‘init’ subcommand" $ do
       it "takes a filename argument" $
-        parseArgs ["init", "."] `shouldHave` _Init.only "."
-
-      it "filename argument is mandatory" $
-        parseArgs ["init"] `shouldHave` _Help._3._ExitFailure
-
-    context "‘run’ subcommand" $ do
-      it "takes a filename argument" $
-        parseArgs ["run", "Foo.hs", "--", "foo", "--bar", "baz"]
-       `shouldHave`
-        _Run.only (Just "Foo.hs", ["foo", "--bar", "baz"])
+        parseArgs ["init", "foo"] `shouldHave` _Init.only "foo"
 
       it "filename argument is optional" $
-        parseArgs ["run", "--", "foo", "--bar", "baz"]
-       `shouldHave`
-        _Run.only (Nothing, ["foo", "--bar", "baz"])
+        parseArgs ["init"] `shouldHave` _Init.only "."
+
+    context "‘run’ subcommand" $ do
+      it "takes a filename argument" $ do
+        parseArgs ["run", "Foo.hs"] `shouldHave` _Run.only (Just "Foo.hs", [])
+        parseArgs ["run", "Foo.hs", "--foo"] `shouldHave` _Run.only (Just "Foo.hs", ["--foo"])
+        parseArgs ["run", "Foo.hs", "--"] `shouldHave` _Run.only (Just "Foo.hs", [])
+        parseArgs ["run", "Foo.hs", "--", "foo", "--bar"] `shouldHave` _Run.only (Just "Foo.hs", ["foo", "--bar"])
+
+      it "filename argument is optional" $ do
+        parseArgs ["run"] `shouldHave` _Run.only (Nothing, [])
+        parseArgs ["run", "--foo"] `shouldHave` _Run.only (Nothing, ["--foo"])
+        parseArgs ["run", "--"] `shouldHave` _Run.only (Nothing, [])
+        parseArgs ["run", "--", "foo", "--bar"] `shouldHave` _Run.only (Nothing, ["foo", "--bar"])
 
     context "‘json’ subcommand" $ do
       it "takes a filename argument" $

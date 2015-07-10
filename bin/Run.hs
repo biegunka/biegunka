@@ -52,7 +52,9 @@ run script args =
     (inh, pid) <- runBiegunkaProcess logger stopBar biegunkaArgs
     _ <- pipe_ (Text.hGetChunk IO.stdin) (Logger.write inh logger . Text.unpack)
     exitcode <- waitForProcess pid
-    forOf_ _ExitFailure exitcode (\status -> putStrLn ("Biegunka script exited with exit code " ++ show status))
+    forOf_ _ExitFailure
+           exitcode
+           (Logger.write IO.stderr logger . printf "‘%s’ exited with exit code %d" script)
     exitWith exitcode
 
 rotateBar :: Logger -> IO (IO ())
