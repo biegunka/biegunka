@@ -60,7 +60,7 @@ run script args =
 rotateBar :: Logger -> IO (IO ())
 rotateBar logger = do
   announceDeath <- newEmptyMVar
-  thread <- forkFinally rotation (\_ -> do Logger.write IO.stdout logger "\ESC[1D "; putMVar announceDeath ())
+  thread <- forkFinally rotation (\_ -> do Logger.write IO.stdout logger "\ESC[1G\ESC[0K"; putMVar announceDeath ())
   return (do killThread thread; readMVar announceDeath)
  where
   rotation = for_ (cycle "/-\\|") (\c -> do Logger.write IO.stdout logger ("\ESC[1D" ++ [c]); threadDelay 80000)
