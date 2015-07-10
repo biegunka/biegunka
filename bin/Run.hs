@@ -1,62 +1,69 @@
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE RankNTypes #-}
 -- | Run (or check) biegunka script
-module Run (run) where
+module Run
+  ( find
+  , run
+  ) where
 
 import           Control.Concurrent (ThreadId, forkIO, forkFinally, threadDelay, killThread)
 import           Control.Concurrent.MVar (newEmptyMVar, readMVar, putMVar)
 import           Control.Lens hiding ((<.>))
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Resource (MonadResource, runResourceT)
 import           Control.Monad (when, unless)
+import           Data.Conduit ((=$=), Producer, runConduit, awaitForever, yield)
+import qualified Data.Conduit.Filesystem as CF
+import qualified Data.Conduit.List as CL
 import           Data.Foldable (for_)
 import           Data.Function (fix)
-import           Data.List (isPrefixOf, partition)
+import qualified Data.List as List
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
-import           System.Exit (ExitCode(..), exitSuccess, exitWith)
-import           System.FilePath.Lens (directory)
-import           System.Process
+import           System.Exit (exitWith)
+import           System.Exit.Lens (_ExitFailure)
+import           System.FilePath.Lens (directory, filename)
 import qualified System.IO as IO
+import qualified System.Posix as Posix
+import           System.Process
+import           Text.Printf (printf)
 
 import           Control.Biegunka.Logger (Logger)
 import qualified Control.Biegunka.Logger as Logger
 
+import           Options (scriptName)
 
--- | Runs (or checks) biegunka script.
+
+-- | Run a script.
 --
--- Does a couple of smart things:
+-- Does a couple of clever things:
 --
---   * Uses @cabal exec@ to run @runhaskell@ inside the cabal sandbox automatically
+--   * Uses @cabal exec runhaskell@ to run the script in the sandbox environment.
 --
---   * If script path argument is a directory, then default script name is
---   automatically appended, e.g. @biegunka\/@ becomes @biegunka\/Biegunka.hs@
---
---   * Script path directory name is added to paths where ghc searches for
---   modules (@-i@ option)
-run :: [String] -> FilePath -> IO ()
-run args target =
+--   * Adds script's parent directory to the paths that ghc searches for imports.
+run :: FilePath -> [String] -> IO a
+run script args =
   Logger.with $ \logger -> do
-    let (biegunkaArgs, ghcArgs) = partition ("--" `isPrefixOf`) args
-    stopBar <- rotateBar
-    (inh, pid) <- runBiegunkaProcess
-      logger
-      stopBar
-      (ghcArgs ++ ["-i" ++ view directory target] ++ [target] ++ biegunkaArgs)
+    Logger.write IO.stdout logger (printf "Running ‘%s’  " script)
+    let (scriptArgs, ghcArgs) = List.partition ("--" `List.isPrefixOf`) args
+        biegunkaArgs = ghcArgs ++ ["-i" ++ view directory script] ++ [script] ++ scriptArgs
+    stopBar <- rotateBar logger
+    (inh, pid) <- runBiegunkaProcess logger stopBar biegunkaArgs
     _ <- pipe_ (Text.hGetChunk IO.stdin) (Logger.write inh logger . Text.unpack)
     exitcode <- waitForProcess pid
-    exit exitcode
- where
-  exit ExitSuccess =
-    exitSuccess
-  exit (ExitFailure s) = do
-    putStrLn ("Biegunka script exited with exit code " ++ show s)
-    exitWith (ExitFailure s)
+    forOf_ _ExitFailure
+           exitcode
+           (Logger.write IO.stderr logger . printf "‘%s’ exited with exit code %d" script)
+    exitWith exitcode
 
-rotateBar :: IO (IO ())
-rotateBar = do
+rotateBar :: Logger -> IO (IO ())
+rotateBar logger = do
   announceDeath <- newEmptyMVar
-  thread <- forkFinally rotation (\_ -> do putStr "\r \r"; putMVar announceDeath ())
+  thread <- forkFinally rotation (\_ -> do Logger.write IO.stdout logger "\ESC[1D "; putMVar announceDeath ())
   return (do killThread thread; readMVar announceDeath)
  where
-  rotation = for_ (cycle "/-\\|/-\\|") (\c -> do putChar '\r'; putChar c; threadDelay 80000)
+  rotation = for_ (cycle "/-\\|") (\c -> do Logger.write IO.stdout logger ("\ESC[1D" ++ [c]); threadDelay 80000)
 
 -- | Pipe one 'IO.Handle' into another.
 pipe_ :: IO Text -> (Text -> IO ()) -> IO ThreadId
@@ -93,3 +100,25 @@ runBiegunkaProcess logger stopBar args = do
     , create_group  = False
     , delegate_ctlc = True
     }
+
+-- | Deeply traverse working directory to find all files named @Biegunka.hs@.
+find :: FilePath -> IO [FilePath]
+find fp =
+  runResourceT . runConduit $
+    sourceDirectoryDeep fp =$= CL.filter (elemOf filename scriptName) =$= CL.consume
+
+-- | Traverse directory deeply, ignoring symlinks and directories starting with a dot.
+sourceDirectoryDeep
+  :: MonadResource m => FilePath -> Producer m FilePath
+sourceDirectoryDeep =
+  traverseDirectory
+ where
+  traverseDirectory :: MonadResource m => FilePath -> Producer m FilePath
+  traverseDirectory dir = CF.sourceDirectory dir =$= awaitForever go
+
+  go :: MonadResource m => FilePath -> Producer m FilePath
+  go fp = do
+    status <- liftIO (Posix.getSymbolicLinkStatus fp)
+    if | Posix.isRegularFile status -> yield fp
+       | Posix.isDirectory status && not ("." `List.isPrefixOf` view filename fp) -> traverseDirectory fp
+       | otherwise -> return ()

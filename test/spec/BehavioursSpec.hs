@@ -2,9 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module BehavioursSpec (spec) where
 
-import           Control.Biegunka
-import           Control.Biegunka.Source.Layout (layout)
-import qualified Control.Biegunka.Source.Directory as D
 import           Control.Lens
 import           Data.List.NonEmpty (NonEmpty)
 import           System.Directory.Layout
@@ -14,8 +11,12 @@ import           System.Directory.Layout
   , dir, emptydir, file, symlink, contents, exists
   )
 import           System.FilePath ((</>))
-import           System.IO.Temp (withSystemTempDirectory)
 import           Test.Hspec
+
+import           Control.Biegunka
+import           Control.Biegunka.Source.Layout (layout)
+import qualified Control.Biegunka.Source.Directory as D
+import           SpecHelper (withBiegunkaTempDirectory)
 
 {-# ANN module ("HLint: ignore Use camelCase" :: String) #-}
 
@@ -46,7 +47,7 @@ spec = do
 
   describe "Simple copying" $ do
     it "should copy the directory correctly" $
-      withBiegunkaDirectory $ \tmp -> do
+      withBiegunkaTempDirectory $ \tmp -> do
         make tmp (dir "a" simple_copying_layout_0)
         biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
           D.directory tmp $ do
@@ -69,7 +70,7 @@ fitsWith
   -> (FilePath -> Layout a)
   -> IO (Either (NonEmpty FitError) ())
 fitsWith s l =
-  withBiegunkaDirectory $ \tmp -> do
+  withBiegunkaTempDirectory $ \tmp -> do
     biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run (s tmp)
     fit tmp (l tmp)
 
@@ -129,7 +130,3 @@ simple_layout_registering tmp = do
   emptydir "foo"
   symlink "bar" (tmp </> "foo")
     & exists .~ True
-
-
-withBiegunkaDirectory :: (FilePath -> IO a) -> IO a
-withBiegunkaDirectory = withSystemTempDirectory "biegunka-"

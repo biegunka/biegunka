@@ -5,7 +5,6 @@ import           Control.Lens (set)
 import           Data.Maybe (listToMaybe)
 import           System.Directory (createDirectory)
 import           System.FilePath ((</>))
-import           System.IO.Temp (withSystemTempDirectory)
 import           Test.Hspec.Lens
 import           Text.Read (readMaybe)
 
@@ -13,13 +12,14 @@ import           Control.Biegunka
 import           Control.Biegunka.Execute.Exception (_SourceException)
 import           Control.Biegunka.Source (Url, url, path)
 import qualified Control.Biegunka.Source.Git.Internal as Git
+import           SpecHelper (withBiegunkaTempDirectory)
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 
 
 spec :: Spec
 spec =
-  around (withSystemTempDirectory "biegunka-") $ do
+  around withBiegunkaTempDirectory $ do
     describe "updateGit" $ do
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do

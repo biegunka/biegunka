@@ -98,20 +98,25 @@ executable biegunka
     , base                 >= 3 && < 5
     , biegunka             >= 0.2
     , bytestring
+    , conduit
+    , conduit-extra
     , containers
     , data-default-class
     , directory
     , filepath
     , lens
-    , optparse-applicative
     , process
+    , resourcet
     , text
     , transformers
+    , unix
   hs-source-dirs:
     bin
   main-is:
     Main.hs
   other-modules:
+    App
+    Init
     Json
     Options
     Run
@@ -128,6 +133,8 @@ test-suite spec
   build-depends:
       base                    >= 4 && < 5
     , biegunka
+    , conduit
+    , conduit-extra
     , containers
     , data-default-class
     , directory
@@ -139,6 +146,7 @@ test-suite spec
     , lens
     , optparse-applicative
     , process
+    , resourcet
     , semigroups
     , temporary
     , text
@@ -155,6 +163,10 @@ test-suite spec
     Control.Biegunka.Source.GitSpec
     BehavioursSpec
     DSLSpec
+    InitSpec
+    OptionsSpec
+    RunSpec
+    SpecHelper
   ghc-options:
     -Wall
     -Werror
