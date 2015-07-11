@@ -1,4 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- | Language primitives
 --
 -- Containts 'Actions' layer primitive and modifiers.
@@ -8,9 +11,12 @@
 module Control.Biegunka.Primitive
   ( -- * Actions layer primitives
     link
-  , register
   , copy
-  , substitute
+  , template
+  , origin
+  , path
+  , mode
+  , register
   , raw
     -- * Modifiers
   , namespace
@@ -26,9 +32,11 @@ import           Control.Monad.Reader (local)
 import qualified Data.Set as Set
 import           System.FilePath ((</>))
 import           System.Command.QQ (Eval(..))
+import qualified System.Posix as Posix
 
-import Control.Biegunka.Language
-import Control.Biegunka.Script
+import qualified Control.Biegunka.Language as Language
+import           Control.Biegunka.Language hiding (origin, path, mode)
+import           Control.Biegunka.Script
 
 
 infixr 7 `prerequisiteOf`, <~>
@@ -52,48 +60,47 @@ namespace :: String -> Script 'Sources a -> Script 'Sources a
 namespace segment (Script inner) =
   Script (local (over segments (segment :)) inner)
 
--- | Links source to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   register "somewhere"
---
--- Links @~\/git\/source@ to @~\/somewhere@.
-register :: FilePath -> Script 'Actions ()
-register dst = actioned (\rfp sfp -> Link sfp (rfp </> dst))
+copy :: (File 'Copy NoOrigin NoPath -> File 'Copy FilePath FilePath) -> Script 'Actions ()
+copy f =
+  filed (\rfp sfp -> FC (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
+ where
+  FC origin_ path_ mode_ = f (FC NoOrigin NoPath Nothing)
 
--- | Links given file to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   link "some-file" "anywhere"
---
--- Links @~\/git\/source\/some-file@ to @~\/anywhere@.
-link :: FilePath -> FilePath -> Script 'Actions ()
-link src dst = actioned (\rfp sfp -> Link (sfp </> src) (constructTargetFilePath rfp src dst))
+link :: (File 'Link NoOrigin NoPath -> File 'Link FilePath FilePath) -> Script 'Actions ()
+link f =
+  filed (\rfp sfp -> FL (sfp </> origin_) (constructTargetFilePath rfp origin_ path_))
+ where
+  FL origin_ path_ = f (FL NoOrigin NoPath)
 
--- | Copies a file to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   copy "some-file" "anywhere"
---
--- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
-copy :: FilePath -> FilePath -> Script 'Actions ()
-copy src dst =
-  actioned (\rfp sfp -> Copy (sfp </> src) (constructTargetFilePath rfp src dst))
+template :: (File 'Template NoOrigin NoPath -> File 'Template FilePath FilePath) -> Script 'Actions ()
+template f =
+  filed (\rfp sfp -> FT (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
+ where
+  FT origin_ path_ mode_ = f (FT NoOrigin NoPath Nothing)
 
--- | Substitutes templates in @HStringTemplate@ syntax
--- in given file and writes result to specified filepath
---
--- > git "https://example.com/source.git" "git/source" $
--- >   substitute "some-file.template" "anywhere"
---
--- Copies @~\/git\/source\/some-file.template@ to @~\/anywhere@.
---
--- Substitutes templates in @~\/anywhere@ with values from
--- 'templates' part of 'Controls'
-substitute :: FilePath -> FilePath -> Script 'Actions ()
-substitute src dst = actioned (\rfp sfp ->
-  Template (sfp </> src) (constructTargetFilePath rfp src dst))
+origin :: HasOrigin s t a b => b -> s -> t
+origin = set Language.origin
 
+path :: HasPath s t a b => b -> s -> t
+path = set Language.path
+
+mode :: (s ~ t, t ∈ ['Copy, 'Template]) => Posix.FileMode -> File s a b -> File t a b
+mode = set Language.mode . Just
+
+register :: (forall a. File 'Link a NoPath -> File 'Link a FilePath) -> Script 'Actions ()
+register f =
+  filed (\rfp sfp -> FL sfp (rfp </> path_))
+ where
+  FL NoOrigin path_ = f (FL NoOrigin NoPath)
+
+-- -- | Links source to specified filepath
+-- --
+-- -- > git "https://example.com/source.git" "git/source" $
+-- -- >   register "somewhere"
+-- --
+-- -- Links @~\/git\/source@ to @~\/somewhere@.
+-- register :: FilePath -> Script 'Actions ()
+-- register dst = actioned (\rfp sfp -> Link sfp (rfp </> dst))
 
 -- | Monomorphised interface to 'sh' quasiquoter for
 -- those who do not like @-XTemplateHaskell@ (or @-XQuasiQuotes@)
@@ -127,7 +134,7 @@ prerequisiteOf a b = do
   s <- Script peekToken
   a
   t <- Script peekToken
-  script (TWait (Set.fromList [s .. pred t]) ())
+  script (TW (Set.fromList [s .. pred t]) ())
   b
 
 -- | Infix alias for 'prerequisiteOf'

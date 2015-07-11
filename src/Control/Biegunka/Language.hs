@@ -1,24 +1,39 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
--- | Specifies configuration language
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Control.Biegunka.Language
   ( Scope(..)
   , Term
   , TermF(..)
-  , Action(..)
   , Source(..)
+  , File(..)
+  , FileType(..)
+  , Command(..)
   , Token(..)
   , DiffItem(..)
   , diffItemHeaderOnly
+  , HasOrigin(origin)
+  , NoOrigin(..)
+  , HasPath(path)
+  , NoPath(..)
+  , HasMode(mode)
+  , (∈)()
   ) where
 
-import Control.Monad.Free (Free(..))
-import Data.Set (Set)
-import Data.Traversable (fmapDefault, foldMapDefault)
-import System.Process (CmdSpec)
+import           Control.Lens
+import           Control.Monad.Free (Free(..))
+import           Data.Set (Set)
+import           Data.Traversable (fmapDefault, foldMapDefault)
+import           GHC.Exts (Constraint)
+import qualified System.Posix as Posix
+import           System.Process (CmdSpec)
 
 
 -- | Language terms scopes [kind]
@@ -35,12 +50,10 @@ type Term f s = Free (TermF f s)
 --
 -- Consists of 2 scopes ('Actions' and 'Sources') and also scope-agnostic modifiers.
 data TermF :: (Scope -> *) -> Scope -> * -> * where
-  TS    :: f 'Sources -> Source -> Free (TermF f 'Actions) () -> x -> TermF f 'Sources x
-  TA    :: f 'Actions -> Action -> x -> TermF f 'Actions x
-  TWait :: Set Token -> x -> TermF f s x
-
-newtype Token = Token Integer
-  deriving (Show, Eq, Enum, Ord)
+  TS :: f 'Sources -> Source -> Free (TermF f 'Actions) () -> x -> TermF f 'Sources x
+  TF :: f 'Actions -> File type_ FilePath FilePath -> x -> TermF f 'Actions x
+  TC :: f 'Actions -> Command -> x -> TermF f 'Actions x
+  TW :: Set Token -> x -> TermF f s x
 
 instance Functor (TermF f s) where
   fmap = fmapDefault
@@ -51,29 +64,18 @@ instance Foldable (TermF f s) where
   {-# INLINE foldMap #-}
 
 instance Traversable (TermF f s) where
-  traverse f (TS    a s i x) = TS    a s i <$> f x
-  traverse f (TA    a z   x) = TA    a z   <$> f x
-  traverse f (TWait   w   x) = TWait   w   <$> f x
+  traverse f (TS a s i x) = TS a s i <$> f x
+  traverse f (TF a z   x) = TF a z   <$> f x
+  traverse f (TC a z   x) = TC a z   <$> f x
+  traverse f (TW w     x) = TW w     <$> f x
   {-# INLINE traverse #-}
 
--- | 'Sources' scope terms data
 data Source = Source
   { sourceType   :: String
   , sourceFrom   :: String
   , sourceTo     :: FilePath
   , sourceUpdate :: FilePath -> IO ([DiffItem], IO [DiffItem])
   }
-
--- | A single action that can be perfomed in the 'Actions' scope.
-data Action =
-    -- | Symbolically link the file.
-    Link FilePath FilePath
-    -- | Copy the file verbatim.
-  | Copy FilePath FilePath
-    -- | Generate the file from the template.
-  | Template FilePath FilePath
-    -- | Run external command.
-  | Command FilePath CmdSpec
 
 data DiffItem = DiffItem
   { diffItemHeader :: String
@@ -83,3 +85,62 @@ data DiffItem = DiffItem
 diffItemHeaderOnly :: String -> DiffItem
 diffItemHeaderOnly header =
   DiffItem { diffItemHeader = header, diffItemBody = "" }
+
+data Command = Command
+  { commandCwd  :: FilePath
+  , commandSpec :: CmdSpec
+  }
+
+data File :: FileType -> * -> * -> * where
+  FC :: origin -> path -> Maybe Posix.FileMode -> File 'Copy origin path
+  FT :: origin -> path -> Maybe Posix.FileMode -> File 'Template origin path
+  FL :: origin -> path -> File 'Link origin path
+
+data FileType = Copy | Template | Link
+
+class HasOrigin s t a b | s -> a, t -> b, a t -> s, b s -> t where
+  origin :: Lens s t a b
+
+instance (s ~ t) => HasOrigin (File s a x) (File t b x) a b where
+  origin f (FC origin_ path_ mode_) =
+    f origin_ <&> \origin' -> FC origin' path_ mode_
+  origin f (FT origin_ path_ mode_) =
+    f origin_ <&> \origin' -> FT origin' path_ mode_
+  origin f (FL origin_ path_) =
+    f origin_ <&> \origin' -> FL origin' path_
+
+data NoOrigin = NoOrigin
+
+class HasPath s t a b | s -> a, t -> b, a t -> s, b s -> t where
+  path :: Lens s t a b
+
+instance (s ~ t, x ~ y) => HasPath (File s x a) (File t y b) a b where
+  path f (FC origin_ path_ mode_) =
+    f path_ <&> \path' -> FC origin_ path' mode_
+  path f (FT origin_ path_ mode_) =
+    f path_ <&> \path' -> FT origin_ path' mode_
+  path f (FL origin_ path_) =
+    f path_ <&> \path' -> FL origin_ path'
+
+data NoPath = NoPath
+
+class HasMode s t a b | s -> a, t -> b, a t -> s, b s -> t where
+  mode :: Lens s t a b
+
+instance (s ~ t, t ∈ ['Copy, 'Template]) => HasMode (File s origin path) (File t origin path) (Maybe Posix.FileMode) (Maybe Posix.FileMode) where
+  mode f (FC origin_ path_ mode_) =
+    f mode_ <&> \fileMode' -> FC origin_ path_ fileMode'
+  mode f (FT origin_ path_ mode_) =
+    f mode_ <&> \fileMode' -> FT origin_ path_ fileMode'
+  mode _ _ = error "Should've listened to the exhaustiveness checker."
+
+type family x ∈ xs :: Constraint where
+  x ∈ (x ': xs) = ()
+  x ∈ (y ': xs) = x ∈ xs
+
+newtype Token = Token Integer
+  deriving (Show, Eq, Ord)
+
+instance Enum Token where
+  toEnum = Token . toEnum
+  fromEnum (Token t) = fromEnum t

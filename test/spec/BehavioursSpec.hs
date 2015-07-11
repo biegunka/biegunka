@@ -51,9 +51,9 @@ spec = do
         make tmp (dir "a" simple_copying_layout_0)
         biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
           D.directory tmp $ do
-            copy "a/foo"      (tmp </> "b/foo")
-            copy "a/bar"      (tmp </> "b/bar")
-            copy "a/baz/quux" (tmp </> "b/baz/quux")
+            copy (origin "a/foo"      . path (tmp </> "b/foo"))
+            copy (origin "a/bar"      . path (tmp </> "b/bar"))
+            copy (origin "a/baz/quux" . path (tmp </> "b/baz/quux"))
         fit tmp (dir "b" simple_copying_layout_0)
      `shouldReturn`
       fromErrors []
@@ -87,7 +87,7 @@ simple_repo_0 :: FilePath -> Script 'Sources ()
 simple_repo_0 tmp =
   namespace "biegunka-simple0" $
     layout l (tmp </> "biegunka-simple0") $
-      copy "src0" (tmp </> "dst0")
+      copy (origin "src0" . path (tmp </> "dst0"))
  where
   l = file "src0" & contents ?~ "thisiscontents\n"
 
@@ -100,7 +100,7 @@ simple_layout_0 tmp =
 simple_repo_no_namespace_0 :: FilePath -> Script 'Sources ()
 simple_repo_no_namespace_0 tmp =
   layout l (tmp </> "biegunka-simple0") $
-    copy "src0" (tmp </> "dst0")
+    copy (origin "src0" . path (tmp </> "dst0"))
  where
   l = file "src0" & contents ?~ "thisiscontents\n"
 
@@ -123,7 +123,7 @@ simple_copying_layout_0 = do
 simple_repo_registering :: FilePath -> Script 'Sources ()
 simple_repo_registering tmp =
   layout (return ()) (tmp </> "foo") $
-    register "bar"
+    register (path "bar")
 
 simple_layout_registering :: FilePath -> Layout ()
 simple_layout_registering tmp = do

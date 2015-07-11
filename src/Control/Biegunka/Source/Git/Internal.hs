@@ -5,12 +5,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git.Internal
   ( Git
   , git
   , Url
   , Config(..)
+  , NoUrl(..)
+  , NoPath(..)
   , url
   , path
   , branch
@@ -35,9 +38,11 @@ import qualified System.Process as P
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (sourceFailure)
+import qualified Control.Biegunka.Language as Language
 import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly)
+import           Control.Biegunka.Primitive (path)
 import           Control.Biegunka.Script (Script, sourced)
-import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
+import           Control.Biegunka.Source (Url, url)
 
 
 
@@ -91,11 +96,11 @@ data NoUrl = NoUrl
 
 data NoPath = NoPath
 
-instance HasUrl (Config a b) (Config Url b) Url where
-  url = first . const
+instance (s ~ t, x ~ y) => Language.HasOrigin (Config x s) (Config Url t) y Url where
+  origin f config@Config { configUrl } = f configUrl <&> \url' -> config { configUrl = url' }
 
-instance HasPath (Config a b) (Config a FilePath) FilePath where
-  path = second . const
+instance (s ~ t, x ~ y) => Language.HasPath (Config s x) (Config t FilePath) y FilePath where
+  path f config@Config { configPath } = f configPath <&> \path' -> config { configPath = path' }
 
 -- | Set git branch to track.
 branch :: String -> Config a b -> Config a b

@@ -18,6 +18,7 @@ module Control.Biegunka.Settings
 
 import Control.Lens
 
+import Control.Biegunka.Language (HasMode(..))
 import Control.Biegunka.Logger (Logger, HasLogger(..))
 import Control.Biegunka.Script (HasRunRoot(..))
 import Control.Biegunka.Templates
@@ -38,15 +39,15 @@ class HasSettings t where
 
   _logger :: Lens' t (Maybe Logger)
   _logger = settings . \f x -> f (__logger x) <&> \y -> x { __logger = y }
+  {-# INLINE _logger #-}
 
   templates :: Lens' t Templates
   templates = settings . \f x -> f (_templates x) <&> \y -> x { _templates = y }
-
-  mode :: Lens' t Mode
-  mode = settings . \f x -> f (_mode x) <&> \y -> x { _mode = y }
+  {-# INLINE templates #-}
 
   biegunkaRoot :: Lens' t FilePath
   biegunkaRoot = settings . \f x -> f (_biegunkaRoot x) <&> \y -> x { _biegunkaRoot = y }
+  {-# INLINE biegunkaRoot #-}
 
 instance HasSettings Settings where
   settings = id
@@ -54,9 +55,15 @@ instance HasSettings Settings where
 
 instance HasRunRoot Settings where
   runRoot f x = f (_runRoot x) <&> \y -> x { _runRoot = y }
+  {-# INLINE runRoot #-}
 
 instance HasLogger Applicative Settings where
   logger = _logger.traverse
+  {-# INLINE logger #-}
+
+instance HasMode Settings Settings Mode Mode where
+  mode f x = f (_mode x) <&> \y -> x { _mode = y }
+  {-# INLINE mode #-}
 
 defaultSettings :: Settings
 defaultSettings = Settings

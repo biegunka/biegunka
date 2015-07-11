@@ -44,7 +44,7 @@ import           Text.Printf (printf)
 
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Settings
-  (Templates(..), templates, Mode(..), mode)
+  (Templates(..), templates, Mode(..))
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
   (prettyTerm, sourceIdentifier, prettyDiff, removal)
@@ -75,18 +75,18 @@ run = optimistically go where
             runExecutor e (forkExecutor (execute s))
       Ns.commit db db'
    where
-    remove path =
-      D.doesFileExist path >>= \case
+    remove fp =
+      D.doesFileExist fp >>= \case
         True  -> do
-          Logger.write IO.stdout settings (removal path)
-          D.removeFile path
-        False -> D.removeDirectoryRecursive path
+          Logger.write IO.stdout settings (removal fp)
+          D.removeFile fp
+        False -> D.removeDirectoryRecursive fp
 
-    removeDirectory path =
-      D.doesDirectoryExist path >>= \case
+    removeDirectory fp =
+      D.doesDirectoryExist fp >>= \case
         True  -> do
-          Logger.write IO.stdout settings (removal path)
-          D.removeDirectoryRecursive path
+          Logger.write IO.stdout settings (removal fp)
+          D.removeDirectoryRecursive fp
         False -> return ()
 
     safely doThings = IO.tryIOError . doThings
@@ -122,7 +122,7 @@ execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
       True -> do
         execute b
         doneWith asToken
-execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
+execute (Free c@(TF (AA { aaMaxRetries, aaReaction }) _ x)) =
   flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
       False ->
@@ -132,7 +132,17 @@ execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
             Abortive -> return ()
             Ignorant -> execute x
       True -> execute x
-execute (Free c@(TWait _ x)) = do
+execute (Free c@(TC (AA { aaMaxRetries, aaReaction }) _ x)) =
+  flip fix (Retries 0) $ \loop rs ->
+    executeIO (doGenIO rs) c >>= \case
+      False ->
+        if rs < aaMaxRetries
+          then loop (incr rs)
+          else case aaReaction of
+            Abortive -> return ()
+            Ignorant -> execute x
+      True -> execute x
+execute (Free c@(TW _ x)) = do
   executeIO (doGenIO (Retries 0)) c
   execute x
 execute (Pure _) = return ()
@@ -140,7 +150,7 @@ execute (Pure _) = return ()
 -- | Execute a single command.
 executeIO
   :: (TermF Annotate s a -> Executor (IO Bool)) -> TermF Annotate s a -> Executor Bool
-executeIO _ (TWait waits _) = do
+executeIO _ (TW waits _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
   return True
@@ -243,42 +253,47 @@ genIO term = case term of
              `onException`
               atomically (modifyTVar rstv (Set.delete dst))
 
-  TA _ (Link src dst) _ -> return $ do
-    msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
-      Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
-      Right src'
-        | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
-        | otherwise   -> empty
-    return
-      ( msg
-      , empty <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
-      )
-
-  TA _ (Copy src dst) _ -> return $ do
-    msg <- fmap (fmap showDiff)
-                (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
-    return
-      ( maybe empty pure msg
-      , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
-      )
-
-  TA _ (Template src dst) _ -> do
-    Templates ts <- view templates
-    td <- view tempDir
-    return $ do
-      (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
-      IO.hClose h
-      Text.writeFile tempfp . templating ts =<< Text.readFile src
+  TF _ tf _ -> case tf of
+    FC {} -> copy (view origin tf) (view path tf)
+    FT {} -> template (view origin tf) (view path tf)
+    FL {} -> link (view origin tf) (view path tf)
+   where
+    copy src dst = return $ do
       msg <- fmap (fmap showDiff)
-                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
       return
         ( maybe empty pure msg
-        , empty <$ do
-            EIO.prepareDestination dst
-            D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+        , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
         )
 
-  TA ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
+    template src dst = do
+      Templates ts <- view templates
+      td <- view tempDir
+      return $ do
+        (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
+        IO.hClose h
+        Text.writeFile tempfp . templating ts =<< Text.readFile src
+        msg <- fmap (fmap showDiff)
+                    (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+        return
+          ( maybe empty pure msg
+          , empty <$ do
+              EIO.prepareDestination dst
+              D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+          )
+
+    link src dst = return $ do
+      msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
+        Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
+        Right src'
+          | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
+          | otherwise   -> empty
+      return
+        ( maybe empty pure msg
+        , empty <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
+        )
+
+  TC ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
    where
     cmd = do
       defenv <- getEnvironment
@@ -308,7 +323,7 @@ genIO term = case term of
       forOf_ _ExitFailure e (\status -> throwM . ShellException status =<< Text.hGetContents err)
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TWait _ _ -> return (return (empty, return empty))
+  TW _ _ -> return (return (empty, return empty))
  where
   showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
   showDiff =
@@ -328,8 +343,9 @@ doneWith tok = do
 -- | Get user associated with term
 getUser :: TermF Annotate s a -> Maybe User
 getUser (TS (AS { asUser }) _ _ _) = asUser
-getUser (TA (AA { aaUser }) _ _) = aaUser
-getUser (TWait _ _) = Nothing
+getUser (TF (AA { aaUser }) _ _) = aaUser
+getUser (TC (AA { aaUser }) _ _) = aaUser
+getUser (TW _ _) = Nothing
 
 userID :: User -> IO Posix.UserID
 userID (UserID i)   = return i

@@ -21,7 +21,11 @@ module Control.Biegunka.Script
     -- * Get annotated script
   , evalScript
     -- * Script mangling
-  , script, sourced, actioned, constructTargetFilePath
+  , script
+  , sourced
+  , filed
+  , commanded
+  , constructTargetFilePath
     -- * Lenses
   , segments
   , sourceUrl
@@ -197,7 +201,7 @@ newtype Script s a = Script
 
 -- | Biegunka script shell commands
 instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
-  eval command args = actioned (\_ sr -> Command sr (RawCommand command args))
+  eval command args = commanded (\sr -> Command sr (RawCommand command args))
   {-# INLINE eval #-}
 
 
@@ -220,9 +224,10 @@ runScript s e (Script i) = let
   in
     (ast, as)
  where
-  nextTerm (TS    _ _ _ x) = x
-  nextTerm (TA    _ _   x) = x
-  nextTerm (TWait   _   x) = x
+  nextTerm (TS _ _ _ x) = x
+  nextTerm (TF _ _   x) = x
+  nextTerm (TC _ _   x) = x
+  nextTerm (TW _     x) = x
 {-# INLINE runScript #-}
 
 -- | Get annotated DSL without annotations
@@ -262,9 +267,9 @@ sourced
   :: Source
   -> Script 'Actions ()
   -> Script 'Sources ()
-sourced Source { sourceType, sourceFrom, sourceTo = path, sourceUpdate } inner = Script $ do
+sourced Source { sourceType, sourceFrom, sourceTo = fp, sourceUpdate } inner = Script $ do
   rr <- view runRoot
-  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceUrl sourceFrom) $ do
+  local (set sourceRoot (constructTargetFilePath rr sourceFrom fp) . set sourceUrl sourceFrom) $ do
     ann <- AS
       <$> nextToken
       <*> view segments
@@ -288,9 +293,8 @@ peekToken = do
   Cons t _ <- use tokens
   return t
 
--- | Get 'Actions' scope script from 'FilePath' mangling
-actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
-actioned f = Script $ do
+filed :: (FilePath -> FilePath -> File t FilePath FilePath) -> Script 'Actions ()
+filed f = Script $ do
   rr <- view runRoot
   sr <- view sourceRoot
 
@@ -303,7 +307,23 @@ actioned f = Script $ do
     <*> view maxRetries
     <*> view actionReaction
 
-  liftS (TA ann (f rr sr) ())
+  liftS (TF ann (f rr sr) ())
+
+commanded :: (FilePath -> Command) -> Script 'Actions ()
+commanded f = Script $ do
+  rr <- view runRoot
+  sr <- view sourceRoot
+
+  ann <- AA
+    <$> pure rr
+    <*> view segments
+    <*> pure sr
+    <*> view sourceUrl
+    <*> view activeUser
+    <*> view maxRetries
+    <*> view actionReaction
+
+  liftS (TC ann (f sr) ())
 
 
 -- | Construct destination 'FilePath'
@@ -329,8 +349,8 @@ actioned f = Script $ do
 -- >>> constructTargetFilePath "/root" "from" (into "/to")
 -- "/to/from"
 constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
-constructTargetFilePath r s path =
-  r </> path </> bool "" (view filename s) ("/" `isSuffixOf` path)
+constructTargetFilePath r s fp =
+  r </> fp </> bool "" (view filename s) ("/" `isSuffixOf` fp)
 
 -- | A hack to support the notion of making destination 'FilePath' inside some directory
 into :: FilePath -> FilePath

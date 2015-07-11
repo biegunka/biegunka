@@ -1,24 +1,14 @@
-{-# LANGUAGE FunctionalDependencies #-}
 -- | Generally useful 'Sources' related definitions
 module Control.Biegunka.Source
   ( Url
-  , HasUrl(..)
-  , HasPath(..)
+  , url
   ) where
 
+import Control.Lens
+
+import Control.Biegunka.Language (HasOrigin(..))
 import Control.Biegunka.Script (Url)
 
 
--- | Types that contain a URL.
---
--- Having only a setter simplifies the interface, so we omit the getter,
--- as the user is not supposed to look into the configuration.
-class HasUrl s t a | s -> a, t -> a, a s -> t where
-  url :: a -> s -> t
-
--- | Types that contain a file path.
---
--- Having only a setter simplifies the interface, so we omit the getter,
--- as the user is not supposed to look into the configuration.
-class HasPath s t a | s -> a, t -> a, a s -> t where
-  path :: a -> s -> t
+url :: HasOrigin s t a b => b -> s -> t
+url = set origin

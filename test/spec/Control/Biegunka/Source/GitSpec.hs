@@ -10,7 +10,7 @@ import           Text.Read (readMaybe)
 
 import           Control.Biegunka
 import           Control.Biegunka.Execute.Exception (_SourceException)
-import           Control.Biegunka.Source (Url, url, path)
+import           Control.Biegunka.Source (Url, url)
 import qualified Control.Biegunka.Source.Git.Internal as Git
 import           SpecHelper (withBiegunkaTempDirectory)
 
