@@ -10,7 +10,7 @@ import           Text.Read (readMaybe)
 
 import           Control.Biegunka
 import           Control.Biegunka.Execute.Exception (_SourceException)
-import           Control.Biegunka.Source (Url, url)
+import           Control.Biegunka.Script (Url)
 import qualified Control.Biegunka.Source.Git.Internal as Git
 import           SpecHelper (withBiegunkaTempDirectory)
 
@@ -24,7 +24,7 @@ spec =
       context "when local path doesn't exist" $
         it "creates new directory and sets branch correctly" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
-          fullUpdate (url repoRemote . path repoLocal)
+          fullUpdate (origin repoRemote . path repoLocal)
           currentBranch repoLocal `shouldReturn` Just "master"
           modifiedFiles repoLocal `shouldReturn` []
 
@@ -34,7 +34,7 @@ spec =
             (repoRemote, repoLocal) <- buildRemoteRepo tmp
             Git.runGit tmp ["clone", repoRemote, repoLocal]
             gitHashBefore <- Git.gitHash repoLocal "HEAD"
-            fullUpdate (url repoRemote . path repoLocal)
+            fullUpdate (origin repoRemote . path repoLocal)
             gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashBefore
             modifiedFiles repoLocal `shouldReturn` []
@@ -45,7 +45,7 @@ spec =
             Git.runGit tmp ["clone", repoRemote, repoLocal]
             gitHashOfNewCommit <- Git.gitHash repoLocal "HEAD"
             Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
-            fullUpdate (url repoRemote . path repoLocal)
+            fullUpdate (origin repoRemote . path repoLocal)
             gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []
@@ -58,7 +58,7 @@ spec =
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
               gitHashBefore <- Git.gitHash repoLocal "HEAD"
-              fullUpdate (url repoRemote . path repoLocal)
+              fullUpdate (origin repoRemote . path repoLocal)
               gitHashAfter <- Git.gitHash repoLocal "HEAD"
               gitHashAfter `shouldBe` gitHashBefore
               modifiedFiles repoLocal `shouldReturn` []
@@ -68,7 +68,7 @@ spec =
               (repoRemote, repoLocal) <- buildRemoteRepo tmp
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               addNewFile repoLocal
-              fullUpdate (url repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
+              fullUpdate (origin repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
 
         context "when remote branch has new commits" $ do
           context "when failIfAhead flag isn't set" $
@@ -78,7 +78,7 @@ spec =
               numberOfCommitsRemote <- numberOfCommits repoLocal
               Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              fullUpdate (url repoRemote . path repoLocal)
+              fullUpdate (origin repoRemote . path repoLocal)
               numberOfCommitsLocal <- numberOfCommits repoLocal
               modifiedFiles repoLocal `shouldReturn` []
               liftA2 (-) numberOfCommitsLocal numberOfCommitsRemote `shouldBe` Just 1
@@ -89,28 +89,28 @@ spec =
               Git.runGit tmp ["clone", repoRemote, repoLocal]
               Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
               addNewFile repoLocal
-              fullUpdate (url repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
+              fullUpdate (origin repoRemote . path repoLocal . Git.failIfAhead) `shouldThrow` _SourceException
 
       context "when repo has a dirty state" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["reset", "--soft", "HEAD~1"]
-          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
+          fullUpdate (origin repoRemote . path repoLocal) `shouldThrow` _SourceException
 
       context "when current branch differs from the one biegunka going to checkout" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["checkout", "-b", "another-branch"]
-          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
+          fullUpdate (origin repoRemote . path repoLocal) `shouldThrow` _SourceException
 
       context "when remote uri from a local repo differs from the one biegunka going to fetch from" $
         it "fails with exception" $ \tmp -> do
           (repoRemote, repoLocal) <- buildRemoteRepo tmp
           Git.runGit tmp ["clone", repoRemote, repoLocal]
           Git.runGit repoLocal ["remote", "set-url", "origin", "https://example.com"]
-          fullUpdate (url repoRemote . path repoLocal) `shouldThrow` _SourceException
+          fullUpdate (origin repoRemote . path repoLocal) `shouldThrow` _SourceException
 
     describe "biegunka" $
       context "when local branch has no commits ahead of remote branch" $
@@ -121,7 +121,7 @@ spec =
             gitHashOfNewCommit <- Git.gitHash repoLocal "HEAD"
             Git.runGit repoLocal ["reset", "--hard", "HEAD~1"]
             biegunka (set runRoot tmp . set biegunkaRoot (tmp </> ".biegunka")) run $
-              Git.git (url repoRemote . path repoLocal) pass
+              Git.git (origin repoRemote . path repoLocal) pass
             gitHashAfter <- Git.gitHash repoLocal "HEAD"
             gitHashAfter `shouldBe` gitHashOfNewCommit
             modifiedFiles repoLocal `shouldReturn` []

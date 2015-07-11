@@ -12,9 +12,6 @@ module Control.Biegunka.Source.Git.Internal
   , git
   , Url
   , Config(..)
-  , NoUrl(..)
-  , NoPath(..)
-  , url
   , path
   , branch
   , failIfAhead
@@ -39,10 +36,9 @@ import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (sourceFailure)
 import qualified Control.Biegunka.Language as Language
-import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly)
+import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly, NoOrigin(..), NoPath(..))
 import           Control.Biegunka.Primitive (path)
-import           Control.Biegunka.Script (Script, sourced)
-import           Control.Biegunka.Source (Url, url)
+import           Control.Biegunka.Script (Script, Url, sourced)
 
 
 
@@ -71,7 +67,7 @@ git f = sourced Source
   config@Config { configUrl, configPath } =
     f defaultConfig
 
-type Git a b = Config NoUrl NoPath -> Config a b
+type Git a b = Config NoOrigin NoPath -> Config a b
 
 data Config a b = Config
   { configUrl         :: a
@@ -84,17 +80,13 @@ instance Bifunctor Config where
   first f config = config { configUrl = f (configUrl config) }
   second = fmap
 
-defaultConfig :: Config NoUrl NoPath
+defaultConfig :: Config NoOrigin NoPath
 defaultConfig = Config
-  { configUrl         = NoUrl
+  { configUrl         = NoOrigin
   , configPath        = NoPath
   , configBranch      = "master"
   , configFailIfAhead = False
   }
-
-data NoUrl = NoUrl
-
-data NoPath = NoPath
 
 instance (s ~ t, x ~ y) => Language.HasOrigin (Config x s) (Config Url t) y Url where
   origin f config@Config { configUrl } = f configUrl <&> \url' -> config { configUrl = url' }

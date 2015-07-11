@@ -76,7 +76,6 @@ library
     Control.Biegunka.QQ
     Control.Biegunka.Script
     Control.Biegunka.Settings
-    Control.Biegunka.Source
     Control.Biegunka.Source.Directory
     Control.Biegunka.Source.Git
     Control.Biegunka.Source.Git.Internal

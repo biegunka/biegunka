@@ -96,18 +96,25 @@ data File :: FileType -> * -> * -> * where
   FT :: origin -> path -> Maybe Posix.FileMode -> File 'Template origin path
   FL :: origin -> path -> File 'Link origin path
 
+instance Functor (File t a) where
+  fmap f (FC x a y) = FC x (f a) y
+  fmap f (FT x a y) = FT x (f a) y
+  fmap f (FL x a)   = FL x (f a)
+
+instance Bifunctor (File t) where
+  bimap f g (FC a b x) = FC (f a) (g b) x
+  bimap f g (FT a b x) = FT (f a) (g b) x
+  bimap f g (FL a b)   = FL (f a) (g b)
+
 data FileType = Copy | Template | Link
 
 class HasOrigin s t a b | s -> a, t -> b, a t -> s, b s -> t where
   origin :: Lens s t a b
 
 instance (s ~ t) => HasOrigin (File s a x) (File t b x) a b where
-  origin f (FC origin_ path_ mode_) =
-    f origin_ <&> \origin' -> FC origin' path_ mode_
-  origin f (FT origin_ path_ mode_) =
-    f origin_ <&> \origin' -> FT origin' path_ mode_
-  origin f (FL origin_ path_) =
-    f origin_ <&> \origin' -> FL origin' path_
+  origin f (FC origin_ path_ mode_) = f origin_ <&> \origin' -> FC origin' path_ mode_
+  origin f (FT origin_ path_ mode_) = f origin_ <&> \origin' -> FT origin' path_ mode_
+  origin f (FL origin_ path_)       = f origin_ <&> \origin' -> FL origin' path_
 
 data NoOrigin = NoOrigin
 
@@ -115,12 +122,9 @@ class HasPath s t a b | s -> a, t -> b, a t -> s, b s -> t where
   path :: Lens s t a b
 
 instance (s ~ t, x ~ y) => HasPath (File s x a) (File t y b) a b where
-  path f (FC origin_ path_ mode_) =
-    f path_ <&> \path' -> FC origin_ path' mode_
-  path f (FT origin_ path_ mode_) =
-    f path_ <&> \path' -> FT origin_ path' mode_
-  path f (FL origin_ path_) =
-    f path_ <&> \path' -> FL origin_ path'
+  path f (FC origin_ path_ mode_) = f path_ <&> \path' -> FC origin_ path' mode_
+  path f (FT origin_ path_ mode_) = f path_ <&> \path' -> FT origin_ path' mode_
+  path f (FL origin_ path_)       = f path_ <&> \path' -> FL origin_ path'
 
 data NoPath = NoPath
 
@@ -128,15 +132,13 @@ class HasMode s t a b | s -> a, t -> b, a t -> s, b s -> t where
   mode :: Lens s t a b
 
 instance (s ~ t, t ∈ ['Copy, 'Template]) => HasMode (File s origin path) (File t origin path) (Maybe Posix.FileMode) (Maybe Posix.FileMode) where
-  mode f (FC origin_ path_ mode_) =
-    f mode_ <&> \fileMode' -> FC origin_ path_ fileMode'
-  mode f (FT origin_ path_ mode_) =
-    f mode_ <&> \fileMode' -> FT origin_ path_ fileMode'
+  mode f (FC origin_ path_ mode_) = f mode_ <&> \fileMode' -> FC origin_ path_ fileMode'
+  mode f (FT origin_ path_ mode_) = f mode_ <&> \fileMode' -> FT origin_ path_ fileMode'
   mode _ _ = error "Should've listened to the exhaustiveness checker."
 
 type family x ∈ xs :: Constraint where
-  x ∈ (x ': xs) = ()
-  x ∈ (y ': xs) = x ∈ xs
+  x ∈ x ': xs = ()
+  x ∈ y ': xs = x ∈ xs
 
 newtype Token = Token Integer
   deriving (Show, Eq, Ord)

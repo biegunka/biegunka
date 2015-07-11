@@ -16,6 +16,8 @@ module Control.Biegunka
   , origin
   , path
   , mode
+  , NoOrigin
+  , NoPath
   , raw
     -- * Script environment
   , sourceRoot
@@ -47,7 +49,7 @@ import Control.Biegunka.Settings
   )
 import Control.Biegunka.Execute (run)
 import Control.Biegunka.Interpreter (Interpreter, pause, confirm, changes)
-import Control.Biegunka.Language (Scope(..))
+import Control.Biegunka.Language (Scope(..), NoOrigin, NoPath)
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)
 import Control.Biegunka.QQ (multiline, sh, shell)
