@@ -24,6 +24,7 @@ module Control.Biegunka.Source.Git.Internal
 import           Control.Lens
 import           Data.Bifunctor (Bifunctor(..))
 import           Data.Bool (bool)
+import qualified Data.List as List
 import           Data.Maybe (listToMaybe)
 import qualified Data.Text as Text
 import           System.Directory (doesDirectoryExist)
@@ -115,8 +116,9 @@ update Config { configUrl, configBranch, configFailIfAhead } fp =
         else assertUrl configUrl fp
       runGit fp ["fetch", "origin", configBranch]
       after <- gitHash fp rbr
+      oneliners <- fmap lines (runGit fp ["log", "--pretty=      ‘%h’ %s", before ++ ".." ++ after])
       return
-        ( bool (Just (printf "‘%s’ → ‘%s’" before after)) Nothing (before == after)
+        ( bool (Just (printf "‘%s’ → ‘%s’\n" before after ++ List.intercalate "\n" oneliners)) Nothing (before == after)
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit fp ["rev-parse", "--abbrev-ref", "HEAD"])
@@ -124,7 +126,7 @@ update Config { configUrl, configBranch, configFailIfAhead } fp =
           ahead <- fmap (not . null . lines)
                         (runGit fp ["rev-list", rbr ++ ".." ++ configBranch])
           if ahead && configFailIfAhead
-            then sourceFailure "local branch is ahead of remote"
+            then sourceFailure "Failed because of the ‘failIfAhead’ flag being set.\nThere are commits ahead of the remote branch."
             else Nothing <$ runGit fp ["rebase", rbr]
         )
     False ->
@@ -140,17 +142,17 @@ assertBranch remoteBranch = \case
     Just currentBranch
       | currentBranch == remoteBranch -> return ()
       | otherwise ->
-        sourceFailure $ "The wrong branch is checked out.\nExpected: ‘" ++ remoteBranch ++ "’\n But got: ‘" ++ currentBranch ++ "’"
+        sourceFailure (printf "The wrong branch is checked out.\nExpected: ‘%s’\n But got: ‘%s’" remoteBranch currentBranch)
     Nothing ->
       sourceFailure "Unable to determine what branch is checked out."
 
 assertUrl :: Url -> FilePath -> IO ()
-assertUrl remoteURI p =
+assertUrl remoteUrl p =
   listToMaybe . lines <$> runGit p ["config", "--get", "remote.origin.url"] >>= \case
-    Just currentURI
-      | currentURI == remoteURI -> return ()
+    Just currentUrl
+      | currentUrl == remoteUrl -> return ()
       | otherwise ->
-        sourceFailure $ "The ‘origin’ remote points to the wrong repository.\nExpected: ‘" ++ remoteURI ++ "’\n But got: ‘" ++ currentURI ++ "’"
+        sourceFailure (printf "The ‘origin’ remote points to the wrong repository.\nExpected: ‘%s’\n But got: ‘%s’" remoteUrl currentUrl)
     Nothing ->
       sourceFailure "Unable to determine what repository the ‘origin’ remote points to."
 

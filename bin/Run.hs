@@ -54,7 +54,7 @@ run script args =
     exitcode <- waitForProcess pid
     forOf_ _ExitFailure
            exitcode
-           (Logger.write IO.stderr logger . printf "‘%s’ exited with exit code %d" script)
+           (Logger.write IO.stderr logger . printf "‘%s’ exited with exit code %d\n" script)
     exitWith exitcode
 
 rotateBar :: Logger -> IO (IO ())
