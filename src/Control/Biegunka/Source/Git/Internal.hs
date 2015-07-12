@@ -118,7 +118,7 @@ update Config { configUrl, configBranch, configFailIfAhead } fp =
       after <- gitHash fp rbr
       oneliners <- fmap lines (runGit fp ["log", "--pretty=      ‘%h’ %s", before ++ ".." ++ after])
       return
-        ( bool (Just (printf "‘%s’ → ‘%s’\n" before after ++ List.intercalate "\n" oneliners)) Nothing (before == after)
+        ( bool (Just (List.intercalate "\n" (printf "‘%s’ → ‘%s’" before after : oneliners))) Nothing (before == after)
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit fp ["rev-parse", "--abbrev-ref", "HEAD"])
