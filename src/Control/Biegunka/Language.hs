@@ -11,6 +11,8 @@ module Control.Biegunka.Language
   , Action(..)
   , Source(..)
   , Token(..)
+  , DiffItem(..)
+  , diffItemHeaderOnly
   ) where
 
 import Control.Monad.Free (Free(..))
@@ -59,7 +61,7 @@ data Source = Source
   { sourceType   :: String
   , sourceFrom   :: String
   , sourceTo     :: FilePath
-  , sourceUpdate :: FilePath -> IO (Maybe String, IO (Maybe String))
+  , sourceUpdate :: FilePath -> IO ([DiffItem], IO [DiffItem])
   }
 
 -- | A single action that can be perfomed in the 'Actions' scope.
@@ -72,3 +74,12 @@ data Action =
   | Template FilePath FilePath
     -- | Run external command.
   | Command FilePath CmdSpec
+
+data DiffItem = DiffItem
+  { diffItemHeader :: String
+  , diffItemBody   :: String
+  } deriving (Show, Eq)
+
+diffItemHeaderOnly :: String -> DiffItem
+diffItemHeaderOnly header =
+  DiffItem { diffItemHeader = header, diffItemBody = "" }

@@ -3,7 +3,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 -- | Describe execution I/O actions
 module Control.Biegunka.Execute.Describe
-  ( describeTerm, removal
+  ( prettyTerm, removal
   , sourceIdentifier
   , prettyDiff
   ) where
@@ -23,33 +23,29 @@ import           Control.Biegunka.Language
 import           Control.Biegunka.Script
 import           Control.Biegunka.Patience (Hunk(..), Judgement(..), judgement)
 
--- | Describe an action and its outcome.
-describeTerm
+
+prettyTerm
   :: Retries
-  -> Either SomeException (Maybe String)
+  -> Either SomeException [DiffItem]
   -> Bool
   -> TermF Annotate s a
   -> String
-describeTerm (Retries n) mout withSource ta =
-  case mout of
-    Left e -> unlines .
-      (if withSource then (prefixf ta :) else id) $
-        ("  * " ++ doc
-                ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
-                ++ printf " [%sexception%s]" red reset)
-        : map (\l -> printf "    %s%s%s" red l reset) (lines (show e))
-    Right Nothing -> unlines $
-      (if withSource then (prefixf ta :) else id)
-        [ "  * " ++ doc
-                 ++ " (up-to-date)"
-                 ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
-        ]
-    Right (Just out) -> unlines $
-      (if withSource then (prefixf ta :) else id)
-        [ "  * " ++ doc
-                 ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
-                 ++ printf "\n    %s- %s%s" green out reset
-        ]
+prettyTerm (Retries n) mout withSource ta =
+   unlines . (if withSource then (prefixf ta :) else id) $ case mout of
+    Left e ->
+      ("  * " ++ doc
+              ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
+              ++ printf " [%sexception%s]" red reset)
+      : map (\l -> printf "    %s%s%s" red l reset) (lines (show e))
+    Right [] ->
+      [ "  * " ++ doc
+               ++ " (up-to-date)"
+               ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0)
+      ]
+    Right diffItems ->
+      ("  * " ++ doc
+              ++ bool "" (printf " [%sretry %d%s]" yellow n reset) (n > 0))
+      : concatMap prettyDiffItem diffItems
  where
   prefixf :: TermF Annotate s a -> String
   prefixf t = case sourceIdentifier t of
@@ -74,6 +70,10 @@ describeTerm (Retries n) mout withSource ta =
           printf "execute[%s] (from [%s])" (unwords (c : as)) p
     _ -> ""
 
+prettyDiffItem :: DiffItem -> [String]
+prettyDiffItem DiffItem { diffItemHeader, diffItemBody } =
+  printf "    %s- %s%s" green diffItemHeader reset : map (mappend "      ") (lines diffItemBody)
+
 -- | Note that the components are in the reverse order.
 sourceIdentifier :: TermF Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
@@ -92,13 +92,11 @@ nonempty _ f xs = f xs
 prettyHunk :: Hunk Builder -> Builder
 prettyHunk (Hunk n i m j ls) = unline (prettyHeader : map prettyLine ls)
  where
-  prettyHeader = Builder.fromString (printf "      %s@@ -%d,%d +%d,%d @@" reset n i m j)
+  prettyHeader = Builder.fromString (printf "%s@@ -%d,%d +%d,%d @@" reset n i m j)
 
 prettyLine :: Judgement Builder -> Builder
-prettyLine j = mconcat
-  [ Builder.fromString "      "
-  , judgement (decorate red '-') (decorate green '+') (decorate reset ' ') j
-  ]
+prettyLine =
+  judgement (decorate red '-') (decorate green '+') (decorate reset ' ')
  where
   decorate col ch x = mconcat [Builder.fromString col, Builder.singleton ch, x]
 

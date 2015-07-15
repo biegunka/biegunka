@@ -21,6 +21,7 @@ module Control.Biegunka.Source.Git.Internal
   , gitHash
   ) where
 
+import           Control.Applicative (empty)
 import           Control.Lens
 import           Data.Bifunctor (Bifunctor(..))
 import           Data.Bool (bool)
@@ -34,7 +35,7 @@ import qualified System.Process as P
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (sourceFailure)
-import           Control.Biegunka.Language (Scope(..), Source(..))
+import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly)
 import           Control.Biegunka.Script (Script, sourced)
 import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
 
@@ -104,7 +105,7 @@ branch b config = config { configBranch = b }
 failIfAhead :: Config a b -> Config a b
 failIfAhead config = config { configFailIfAhead = True }
 
-update :: Config Url a -> FilePath -> IO (Maybe String, IO (Maybe String))
+update :: Config Url a -> FilePath -> IO ([DiffItem], IO [DiffItem])
 update Config { configUrl, configBranch, configFailIfAhead } fp =
   doesDirectoryExist fp >>= \case
     True -> do
@@ -116,9 +117,13 @@ update Config { configUrl, configBranch, configFailIfAhead } fp =
         else assertUrl configUrl fp
       runGit fp ["fetch", "origin", configBranch]
       after <- gitHash fp rbr
-      oneliners <- fmap lines (runGit fp ["log", "--pretty=      ‘%h’ %s", before ++ ".." ++ after])
+      oneliners <- fmap lines (runGit fp ["log", "--pretty=‘%h’ %s", before ++ ".." ++ after])
+      let gitDiff = DiffItem
+            { diffItemHeader = printf "‘%s’ → ‘%s’" before after
+            , diffItemBody   = List.intercalate "\n" oneliners
+            }
       return
-        ( bool (Just (List.intercalate "\n" (printf "‘%s’ → ‘%s’" before after : oneliners))) Nothing (before == after || null oneliners)
+        ( bool (pure gitDiff) empty (before == after || null oneliners)
         , do
           currentBranch <- fmap (listToMaybe . lines)
                                 (runGit fp ["rev-parse", "--abbrev-ref", "HEAD"])
@@ -127,14 +132,14 @@ update Config { configUrl, configBranch, configFailIfAhead } fp =
                         (runGit fp ["rev-list", rbr ++ ".." ++ configBranch])
           if ahead && configFailIfAhead
             then sourceFailure "Failed because of the ‘failIfAhead’ flag being set.\nThere are commits ahead of the remote branch."
-            else Nothing <$ runGit fp ["rebase", rbr]
+            else empty <$ runGit fp ["rebase", rbr]
         )
     False ->
       return
-        ( Just "first checkout"
+        ( pure (diffItemHeaderOnly "first checkout")
         , do runGit "/" ["clone", configUrl, fp, "-b", configBranch]
              after <- gitHash fp "HEAD"
-             return (Just (printf "‘none’ → ‘%s’" after))
+             return (pure (diffItemHeaderOnly (printf "‘none’ → ‘%s’" after)))
         )
 
 assertBranch :: String -> Maybe String -> IO ()

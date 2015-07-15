@@ -5,6 +5,7 @@ module Control.Biegunka.Source.Layout
   , layout
   ) where
 
+import Control.Applicative (empty)
 import Control.Lens
 import System.FilePath (takeDirectory, takeFileName)
 import System.Directory.Layout (Layout, dir, make)
@@ -28,8 +29,8 @@ layout dirlayout relpath = sourced Source
  where
   update abspath =
     return
-      ( Nothing
-      , Nothing <$ do
+      ( empty
+      , empty <$ do
           l <- make (takeDirectory abspath) (dir (takeFileName abspath) dirlayout)
           traverseOf_ _Left print l
       )

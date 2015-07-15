@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- | Very simple 'Source' using some existing directory
 module Control.Biegunka.Source.Directory (directory) where
 
+import Control.Applicative (empty)
 import Control.Monad (unless)
 import System.Directory (doesDirectoryExist)
 
@@ -27,4 +27,4 @@ directory relpath = sourced Source
     exists <- doesDirectoryExist abspath
     unless exists
            (sourceFailure "No directory found!")
-    return (Nothing, return Nothing)
+    return (empty, return empty)

@@ -47,7 +47,7 @@ import           Control.Biegunka.Settings
   (Templates(..), templates, Mode(..), mode)
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
-  (describeTerm, sourceIdentifier, prettyDiff, removal)
+  (prettyTerm, sourceIdentifier, prettyDiff, removal)
 import           Control.Biegunka.Execute.Exception
 import qualified Control.Biegunka.Execute.IO as EIO
 import           Control.Biegunka.Execute.Settings
@@ -207,7 +207,7 @@ doGenIO retries t = do
         ms <- readTVar (view activeSource e)
         Logger.writeSTM stream
                         e
-                        (describeTerm retries diff (maybe True (/= i) ms) t)
+                        (prettyTerm retries diff (maybe True (/= i) ms) t)
         writeTVar (view activeSource e) (Just i)
 {-# ANN doGenIO "HLint: ignore Avoid lambda" #-}
 {-# ANN doGenIO "HLint: ignore Use >=>" #-}
@@ -220,11 +220,11 @@ trySynchronous =
       Just (SomeAsyncException _) -> Nothing
       _ -> Just e)
 
-genIO :: TermF Annotate s a -> Executor (IO (Maybe String, IO (Maybe String)))
+genIO :: TermF Annotate s a -> Executor (IO ([DiffItem], IO [DiffItem]))
 genIO term = case term of
   TS _ (Source _ _ dst update) _ _ ->
     view mode >>= \case
-      Offline -> return (return (Nothing, return Nothing))
+      Offline -> return (return (empty, return empty))
       Online  -> do
         rstv <- view repos
         return $ do
@@ -236,7 +236,7 @@ genIO term = case term of
                 writeTVar rstv (Set.insert dst rs)
                 return False
           if updated
-            then return (Nothing, return Nothing)
+            then return (empty, return empty)
             else do
               D.createDirectoryIfMissing True (dropFileName dst)
               update dst
@@ -245,21 +245,21 @@ genIO term = case term of
 
   TA _ (Link src dst) _ -> return $ do
     msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
-      Left _ -> Just (printf "linked to ‘%s’" src)
+      Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
       Right src'
-        | src /= src' -> Just (printf "relinked from ‘%s’ to ‘%s’" src' src)
-        | otherwise   -> Nothing
+        | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
+        | otherwise   -> empty
     return
       ( msg
-      , Nothing <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
+      , empty <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
       )
 
   TA _ (Copy src dst) _ -> return $ do
     msg <- fmap (fmap showDiff)
                 (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
     return
-      ( msg
-      , Nothing <$ do EIO.prepareDestination dst; D.copyFile src dst
+      ( maybe empty pure msg
+      , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
       )
 
   TA _ (Template src dst) _ -> do
@@ -272,13 +272,13 @@ genIO term = case term of
       msg <- fmap (fmap showDiff)
                   (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
       return
-        ( msg
-        , Nothing <$ do
+        ( maybe empty pure msg
+        , empty <$ do
             EIO.prepareDestination dst
             D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
         )
 
-  TA ann (Command p spec) _ -> return (return (Nothing, Nothing <$ cmd))
+  TA ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
    where
     cmd = do
       defenv <- getEnvironment
@@ -308,14 +308,15 @@ genIO term = case term of
       forOf_ _ExitFailure e (\status -> throwM . ShellException status =<< Text.hGetContents err)
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TWait _ _ -> return (return (Nothing, return Nothing))
+  TWait _ _ -> return (return (empty, return empty))
  where
-  showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> String
+  showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
   showDiff =
-    either (printf "contents changed from ‘none’ to ‘%s’" . showHash)
-           (\(x, y, d) ->
-             printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
-             ++ prettyDiff d)
+    either (diffItemHeaderOnly . printf "contents changed from ‘none’ to ‘%s’" . showHash)
+           (\(x, y, d) -> DiffItem
+             { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
+             , diffItemBody   = prettyDiff d
+             })
   showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
 
 -- | Tell execution process that you're done with task
