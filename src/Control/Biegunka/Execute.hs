@@ -31,6 +31,7 @@ import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
 import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
+import           Numeric (showOct)
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.Exit.Lens (_ExitFailure)
@@ -201,9 +202,10 @@ doGenIO retries t = do
         logMessage e IO.stderr (Left exc)
         return False
       Right (diff, finish)
-        | view onlyDiff e -> do
-          for_ diff (logMessage e IO.stdout . pure . pure)
-          return True
+        | view onlyDiff e ->
+          True <$ case diff of
+            [] -> return ()
+            _  -> logMessage e IO.stdout (Right diff)
         | otherwise -> do
           res <- trySynchronous finish
           logMessage e
@@ -254,32 +256,40 @@ genIO term = case term of
               atomically (modifyTVar rstv (Set.delete dst))
 
   TF _ tf _ -> case tf of
-    FC {} -> copy (view origin tf) (view path tf)
-    FT {} -> template (view origin tf) (view path tf)
+    FC {} -> copy (view origin tf) (view path tf) (view mode tf)
+    FT {} -> template (view origin tf) (view path tf) (view mode tf)
     FL {} -> link (view origin tf) (view path tf)
    where
-    copy src dst = return $ do
-      msg <- fmap (fmap showDiff)
-                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
+    copy src dst fileMode = return $ do
+      contentsDiff <- fmap (fmap showContentsDiff)
+                           (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
+      modeDiff <- fmap (fmap showModeDiff)
+                       (EIO.compareFileMode dst fileMode)
       return
-        ( maybe empty pure msg
-        , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
+        ( maybe empty pure contentsDiff ++ maybe empty pure modeDiff
+        , empty <$ do
+            EIO.prepareDestination dst
+            D.copyFile src dst
+            Posix.setFileMode dst (fileMode `mod` 0o1000)
         )
 
-    template src dst = do
+    template src dst fileMode = do
       Templates ts <- view templates
       td <- view tempDir
       return $ do
         (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
         IO.hClose h
         Text.writeFile tempfp . templating ts =<< Text.readFile src
-        msg <- fmap (fmap showDiff)
-                    (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+        contentsDiff <- fmap (fmap showContentsDiff)
+                             (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+        modeDiff <- fmap (fmap showModeDiff)
+                         (EIO.compareFileMode dst fileMode)
         return
-          ( maybe empty pure msg
+          ( maybe empty pure contentsDiff ++ maybe empty pure modeDiff
           , empty <$ do
               EIO.prepareDestination dst
               D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+              Posix.setFileMode dst (fileMode `mod` 0o1000)
           )
 
     link src dst = return $ do
@@ -325,14 +335,20 @@ genIO term = case term of
 
   TW _ _ -> return (return (empty, return empty))
  where
-  showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
-  showDiff =
+  showContentsDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
+  showContentsDiff =
     either (diffItemHeaderOnly . printf "contents changed from ‘none’ to ‘%s’" . showHash)
            (\(x, y, d) -> DiffItem
              { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
              , diffItemBody   = prettyDiff d
              })
   showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
+
+  showModeDiff :: Either Posix.FileMode (Posix.FileMode, Posix.FileMode) -> DiffItem
+  showModeDiff =
+    either (diffItemHeaderOnly . printf "file mode changed from ‘none’ to ‘%s’" . showMode)
+           (\(x, y) -> diffItemHeaderOnly (printf "file mode changed from ‘%s' to ‘%s’" (showMode x) (showMode y)))
+  showMode oct = showOct (oct `mod` 0o1000) ""
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()

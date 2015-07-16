@@ -29,6 +29,7 @@ module Control.Biegunka.Primitive
 
 import           Control.Lens
 import           Control.Monad.Reader (local)
+import qualified Data.List as List
 import qualified Data.Set as Set
 import           System.FilePath ((</>))
 import           System.Command.QQ (Eval(..))
@@ -64,7 +65,7 @@ copy :: (File 'Copy NoOrigin NoPath -> File 'Copy FilePath FilePath) -> Script '
 copy f =
   filed (\rfp sfp -> FC (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
  where
-  FC origin_ path_ mode_ = f (FC NoOrigin NoPath Nothing)
+  FC origin_ path_ mode_ = f (FC NoOrigin NoPath defaultFileMode)
 
 link :: (File 'Link NoOrigin NoPath -> File 'Link FilePath FilePath) -> Script 'Actions ()
 link f =
@@ -76,7 +77,13 @@ template :: (File 'Template NoOrigin NoPath -> File 'Template FilePath FilePath)
 template f =
   filed (\rfp sfp -> FT (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
  where
-  FT origin_ path_ mode_ = f (FT NoOrigin NoPath Nothing)
+  FT origin_ path_ mode_ = f (FT NoOrigin NoPath defaultFileMode)
+
+defaultFileMode :: Posix.FileMode
+defaultFileMode =
+  List.foldl' Posix.unionFileModes
+              Posix.nullFileMode
+              [Posix.ownerReadMode, Posix.ownerWriteMode, Posix.groupReadMode, Posix.otherReadMode]
 
 origin :: HasOrigin s t a b => b -> s -> t
 origin = set Language.origin
@@ -85,7 +92,7 @@ path :: HasPath s t a b => b -> s -> t
 path = set Language.path
 
 mode :: (s ~ t, t ∈ ['Copy, 'Template]) => Posix.FileMode -> File s a b -> File t a b
-mode = set Language.mode . Just
+mode = set Language.mode
 
 register :: (forall a. File 'Link a NoPath -> File 'Link a FilePath) -> Script 'Actions ()
 register f =

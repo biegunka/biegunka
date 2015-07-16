@@ -92,8 +92,8 @@ data Command = Command
   }
 
 data File :: FileType -> * -> * -> * where
-  FC :: origin -> path -> Maybe Posix.FileMode -> File 'Copy origin path
-  FT :: origin -> path -> Maybe Posix.FileMode -> File 'Template origin path
+  FC :: origin -> path -> Posix.FileMode -> File 'Copy origin path
+  FT :: origin -> path -> Posix.FileMode -> File 'Template origin path
   FL :: origin -> path -> File 'Link origin path
 
 instance Functor (File t a) where
@@ -131,7 +131,7 @@ data NoPath = NoPath
 class HasMode s t a b | s -> a, t -> b, a t -> s, b s -> t where
   mode :: Lens s t a b
 
-instance (s ~ t, t ∈ ['Copy, 'Template]) => HasMode (File s origin path) (File t origin path) (Maybe Posix.FileMode) (Maybe Posix.FileMode) where
+instance (s ~ t, t ∈ ['Copy, 'Template]) => HasMode (File s origin path) (File t origin path) Posix.FileMode Posix.FileMode where
   mode f (FC origin_ path_ mode_) = f mode_ <&> \fileMode' -> FC origin_ path_ fileMode'
   mode f (FT origin_ path_ mode_) = f mode_ <&> \fileMode' -> FT origin_ path_ fileMode'
   mode _ _ = error "Should've listened to the exhaustiveness checker."

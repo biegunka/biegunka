@@ -1,5 +1,6 @@
 module Control.Biegunka.Execute.IO
   ( compareContents
+  , compareFileMode
   , hash
   , prepareDestination
   ) where
@@ -41,6 +42,16 @@ compareContents _ src dst = do
         d <- Patience.fileDiff dst src -- `src` is a new `dst`
         return (Just (Right (x, y, d)))
       | otherwise -> return Nothing
+
+compareFileMode :: FilePath -> Posix.FileMode -> IO (Maybe (Either Posix.FileMode (Posix.FileMode, Posix.FileMode)))
+compareFileMode src dstMode = do
+  srcMode_ <- handleDoesNotExist (return Nothing)
+                                 (fmap (Just . Posix.fileMode) (Posix.getFileStatus src))
+  return $ case srcMode_ of
+    Nothing -> Just (Left dstMode)
+    Just srcMode
+      | srcMode /= dstMode -> Just (Right (srcMode, dstMode))
+      | otherwise -> Nothing
 
 -- | Create a directory for a file with a given filepath to reside in and
 -- unlink the filepath if there's a resident already.
