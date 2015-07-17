@@ -119,10 +119,10 @@ register f =
 raw :: FilePath -> [String] -> Script 'Actions ()
 raw = eval
 
--- | Change effective user id for wrapped commands
-sudo :: User -> Script s a -> Script s a
-sudo user (Script inner) = Script $
-  (activeUser ?~ user) `local` inner
+-- | Run the inner commands as root..
+sudo :: Script s a -> Script s a
+sudo (Script inner) = Script $
+  local (set sudoActive True) inner
 
 -- | Change maximum retries count
 retries :: Int -> Script s a -> Script s a

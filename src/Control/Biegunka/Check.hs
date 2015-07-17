@@ -50,12 +50,12 @@ withFd fd = bracket (Posix.fdToHandle fd) IO.hClose
 
 term :: FilePath -> Term Annotate s () -> Layout ()
 term p = iter go . fmap return where
-  go (TS AS { asUser } Source { sourceTo } innards spec) = do
+  go (TS _ Source { sourceTo } innards spec) = do
     Layout.emptydir (rel sourceTo)
-      & Layout.user .~ asUser
+      -- & Layout.user .~ asUser
     term p innards
     spec
-  go (TF AA { aaUser } tf spec) = do
+  go (TF _ tf spec) = do
       node tf
       spec
    where
@@ -69,17 +69,19 @@ term p = iter go . fmap return where
                 Layout.dirs ds $
                   Layout.file f
                     & Layout.contents ?~ Layout.copyOf origin_
-                    & Layout.user .~ aaUser
+                    -- & Layout.user .~ aaUser
+                    -- mode?
           FT {} -> case split (rel path_) of
               ~(ds, f) ->
                 Layout.dirs ds $
                   Layout.file f
-                    & Layout.user .~ aaUser
+                    -- & Layout.user .~ aaUser
+                    -- mode?
           FL {} -> case split (rel path_) of
               ~(ds, f) ->
                 Layout.dirs ds $
                   Layout.symlink f origin_
-                    & Layout.user .~ aaUser
+                    -- & Layout.user .~ aaUser
                     & Layout.exists .~ True
   go (TC _ _ spec) = spec
   go (TW _ spec) = spec

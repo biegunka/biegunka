@@ -29,7 +29,7 @@ module Control.Biegunka.Script
     -- * Lenses
   , segments
   , sourceUrl
-  , sourceReaction, actionReaction, activeUser, maxRetries
+  , sourceReaction, actionReaction, sudoActive, maxRetries
     -- ** Misc
   , Url, User(..), React(..), Retries(..), incr, into, peekToken
     -- * Namespace
@@ -66,7 +66,7 @@ data family Annotate (sc :: Scope) :: *
 data instance Annotate 'Sources = AS
   { asToken      :: Token
   , asSegments   :: [Segment]
-  , asUser       :: Maybe User
+  , asSudoActive :: Bool
   , asMaxRetries :: Retries
   , asReaction   :: React
   }
@@ -75,7 +75,7 @@ data instance Annotate 'Actions = AA
   , aaSegments   :: [Segment]
   , aaSourceRoot :: FilePath
   , aaUrl        :: Url
-  , aaUser       :: Maybe User
+  , aaSudoActive :: Bool
   , aaMaxRetries :: Retries
   , aaReaction   :: React
   }
@@ -105,7 +105,7 @@ data Annotations = Annotations
   , _segments       :: [Segment]  -- ^ Namespace segments
   , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
   , _sourceUrl      :: Url        -- ^ Current source non-url
-  , _activeUser     :: Maybe User -- ^ Maximum action order in current source
+  , _sudoActive     :: Bool       -- ^ ‘sudo’ is active
   , _maxRetries     :: Retries    -- ^ Maximum retries count
   , _sourceReaction :: React      -- ^ How to react on source failure
   , _actionReaction :: React      -- ^ How to react on action failure
@@ -117,7 +117,7 @@ defaultAnnotations = Annotations
   , _segments       = []
   , __sourceRoot    = mempty
   , _sourceUrl      = mempty
-  , _activeUser     = Nothing
+  , _sudoActive     = False
   , _maxRetries     = Retries 1
   , _sourceReaction = Abortive
   , _actionReaction = Ignorant
@@ -174,9 +174,9 @@ _sourceRoot f x = f (__sourceRoot x) <&> \y -> x { __sourceRoot = y }
 sourceUrl :: Lens' Annotations Url
 sourceUrl f x = f (_sourceUrl x) <&> \y -> x { _sourceUrl = y }
 
--- | Current user
-activeUser :: Lens' Annotations (Maybe User)
-activeUser f x = f (_activeUser x) <&> \y -> x { _activeUser = y }
+-- | Check if ‘sudo’ is active.
+sudoActive :: Lens' Annotations Bool
+sudoActive f x = f (_sudoActive x) <&> \y -> x { _sudoActive = y }
 
 -- | Maximum retries count
 maxRetries :: Lens' Annotations Retries
@@ -273,7 +273,7 @@ sourced Source { sourceType, sourceFrom, sourceTo = fp, sourceUpdate } inner = S
     ann <- AS
       <$> nextToken
       <*> view segments
-      <*> view activeUser
+      <*> view sudoActive
       <*> view maxRetries
       <*> view sourceReaction
 
@@ -303,7 +303,7 @@ filed f = Script $ do
     <*> view segments
     <*> pure sr
     <*> view sourceUrl
-    <*> view activeUser
+    <*> view sudoActive
     <*> view maxRetries
     <*> view actionReaction
 
@@ -319,7 +319,7 @@ commanded f = Script $ do
     <*> view segments
     <*> pure sr
     <*> view sourceUrl
-    <*> view activeUser
+    <*> view sudoActive
     <*> view maxRetries
     <*> view actionReaction
 

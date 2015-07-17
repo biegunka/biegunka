@@ -47,7 +47,7 @@ import           System.FilePath.Lens hiding (extension)
 
 import           Control.Biegunka.Settings (Settings, biegunkaRoot)
 import           Control.Biegunka.Language (Scope(..), Term, TermF(..), Source(Source), File(..), origin, path)
-import           Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
+import           Control.Biegunka.Script (Annotate(..), segmented)
 
 
 data SourceRecord_v0 = SR_v0 String FilePath FilePath
@@ -229,8 +229,8 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
  where
   construct :: TermF Annotate 'Sources (State Namespaces a) -> State Namespaces a
   construct term = case term of
-    TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
-      let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
+    TS (AS { asSegments }) (Source sourceType fromLocation sourcePath _) i next -> do
+      let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = Nothing }
           namespace = view (from segmented) asSegments
       at namespace . non mempty <>= NR (M.singleton record mempty)
       iterM (populate namespace record) i
@@ -243,8 +243,8 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     -> TermF Annotate 'Actions (State Namespaces a) -- ^ Current script term
     -> State Namespaces a
   populate ns source term = case term of
-    TF (AA { aaUser }) action next -> do
-      assign (ix ns.ix source.contains (record action (fmap user aaUser))) True
+    TF _ action next -> do
+      assign (ix ns.ix source.contains (record action Nothing)) True
       next
     TC _ _ next -> next
     TW _ next -> next
@@ -259,7 +259,3 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
           FL {} -> "link"
       in
         FR { fileType, fromSource, filePath, fileOwner }
-
-user :: User -> Either String Int
-user (Username s) = Left s
-user (UserID n) = Right (fromIntegral n)

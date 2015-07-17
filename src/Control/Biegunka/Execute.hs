@@ -158,18 +158,12 @@ executeIO _ (TW waits _) = do
 executeIO getIO term = do
   users <- view user
   io    <- getIO term
-  liftIO $ case getUser term of
-    Nothing ->
+  liftIO $ if isSudo term then
+    bracket_ (acquire users 0) (release users 0) $ do
+      Posix.setEffectiveGroupID 0
+      Posix.setEffectiveUserID 0
       io
-    Just u -> do
-      -- I really hope that stuff does not change
-      -- while biegunka run is in progress
-      gid <- userGroupID u
-      uid <- userID u
-      bracket_ (acquire users uid) (release users uid) $ do
-        Posix.setEffectiveGroupID gid
-        Posix.setEffectiveUserID uid
-        io
+  else io
  where
   acquire users uid = atomically $ do
     -- So, first get current user/count
@@ -356,17 +350,17 @@ doneWith tok = do
   watcher <- view watch
   Watcher.done watcher tok
 
--- | Get user associated with term
-getUser :: TermF Annotate s a -> Maybe User
-getUser (TS (AS { asUser }) _ _ _) = asUser
-getUser (TF (AA { aaUser }) _ _) = aaUser
-getUser (TC (AA { aaUser }) _ _) = aaUser
-getUser (TW _ _) = Nothing
+-- | Is ‘sudo’ active?
+isSudo :: TermF Annotate s a -> Bool
+isSudo (TS (AS { asSudoActive }) _ _ _) = asSudoActive
+isSudo (TF (AA { aaSudoActive }) _ _) = aaSudoActive
+isSudo (TC (AA { aaSudoActive }) _ _) = aaSudoActive
+isSudo (TW _ _) = False
 
-userID :: User -> IO Posix.UserID
-userID (UserID i)   = return i
-userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
+-- userID :: User -> IO Posix.UserID
+-- userID (UserID i)   = return i
+-- userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
 
-userGroupID :: User -> IO Posix.GroupID
-userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
-userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
+-- userGroupID :: User -> IO Posix.GroupID
+-- userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
+-- userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
