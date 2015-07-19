@@ -262,6 +262,8 @@ genIO term = case term of
             EIO.prepareDestination dst
             D.copyFile src dst
             for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+            for_ owner_ (EIO.getUserId >=> \o -> Posix.setOwnerAndGroup dst o (-1))
+            for_ group_ (EIO.getGroupId >=> \g -> Posix.setOwnerAndGroup dst (-1) g)
         )
 
     template src dst mode_ owner_ group_ = do
@@ -281,6 +283,8 @@ genIO term = case term of
               EIO.prepareDestination dst
               D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
               for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+              for_ owner_ (EIO.getUserId >=> \o -> Posix.setOwnerAndGroup dst o (-1))
+              for_ group_ (EIO.getGroupId >=> \g -> Posix.setOwnerAndGroup dst (-1) g)
           )
 
     link src dst owner_ group_ = return $ do
@@ -296,6 +300,8 @@ genIO term = case term of
         , empty <$ do
             EIO.prepareDestination dst
             Posix.createSymbolicLink src dst
+            for_ owner_ (EIO.getUserId >=> \o -> Posix.setOwnerAndGroup dst o (-1))
+            for_ group_ (EIO.getGroupId >=> \g -> Posix.setOwnerAndGroup dst (-1) g)
         )
 
   TC ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
@@ -342,11 +348,3 @@ isSudo (TS (AS { asSudoActive }) _ _ _) = asSudoActive
 isSudo (TF (AA { aaSudoActive }) _ _) = aaSudoActive
 isSudo (TC (AA { aaSudoActive }) _ _) = aaSudoActive
 isSudo (TW _ _) = False
-
--- userID :: User -> IO Posix.UserID
--- userID (UserID i)   = return i
--- userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
-
--- userGroupID :: User -> IO Posix.GroupID
--- userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
--- userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n

@@ -15,6 +15,8 @@ module Control.Biegunka
   , register
   , origin
   , path
+  , owner
+  , group
   , mode
   , NoOrigin
   , NoPath

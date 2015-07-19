@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
 module Control.Biegunka.Execute.IO
   ( ContentsDiff
   , diffContents
@@ -12,8 +11,10 @@ module Control.Biegunka.Execute.IO
   , GroupDiff
   , diffGroup
   , showGroupDiff
-  , hash
   , prepareDestination
+  , hash
+  , getUserId
+  , getGroupId
   ) where
 
 import           Control.Exception (handleJust)
@@ -23,6 +24,7 @@ import qualified Crypto.Hash as Hash
 import qualified Data.ByteString.Char8 as ByteString
 import           Data.Conduit
 import           Data.Conduit.Binary (sourceFile)
+import           Data.Bifunctor (bimap)
 import           Numeric (showOct)
 import           System.FilePath (dropFileName)
 import qualified System.Directory as D
@@ -64,11 +66,12 @@ showContentsDiff :: ContentsDiff -> Maybe DiffItem
 showContentsDiff (ContentsDiff diff) = fmap go diff
  where
   go =
-    either (diffItemHeaderOnly . printf "contents changed from ‘none’ to ‘%s’" . showHash)
+    either (diffItemHeaderOnly . showHeader "none" . showHash)
            (\(x, y, d) -> DiffItem
-             { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
+             { diffItemHeader = showHeader (showHash x) (showHash y)
              , diffItemBody   = prettyDiff d
              })
+  showHeader = printf "contents changed from ‘%s’ to ‘%s’"
   showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
 
 newtype FileModeDiff = FileModeDiff (Maybe (Either Posix.FileMode (Posix.FileMode, Posix.FileMode)))
@@ -87,28 +90,68 @@ diffFileMode src dstMode = do
 showFileModeDiff :: FileModeDiff -> Maybe DiffItem
 showFileModeDiff (FileModeDiff diff) = fmap go diff
  where
-  go =
-    either (diffItemHeaderOnly . printf "file mode changed from ‘none’ to ‘%s’" . showMode)
-           (\(x, y) -> diffItemHeaderOnly (printf "file mode changed from ‘%s' to ‘%s’" (showMode x) (showMode y)))
+  go = diffItemHeaderOnly
+    . uncurry (printf "file mode changed from ‘%s’ to ‘%s’")
+    . either (\x -> ("none", showMode x)) (bimap showMode showMode)
   showMode oct = showOct (oct `mod` 0o1000) ""
 
-newtype OwnerDiff = OwnerDiff ()
+newtype OwnerDiff = OwnerDiff (Maybe (Either Layout.User (Layout.User, Layout.User)))
     deriving (Show, Eq)
 
 diffOwner :: FilePath -> Layout.User -> IO OwnerDiff
-diffOwner = undefined
+diffOwner src owner = do
+  ownerId_ <- handleDoesNotExist (return Nothing)
+                                 (fmap (Just . Posix.fileOwner) (Posix.getFileStatus src))
+  case ownerId_ of
+    Nothing -> return (OwnerDiff (Just (Left owner)))
+    Just ownerId -> case owner of
+      Layout.UserID uId
+        | ownerId /= uId -> return (OwnerDiff (Just (Right (Layout.UserID ownerId, owner))))
+        | otherwise -> return (OwnerDiff Nothing)
+      Layout.Username uName -> do
+        ownerName <- fmap Posix.userName (Posix.getUserEntryForID ownerId)
+        return . OwnerDiff $ if ownerName /= uName then
+          Just (Right (Layout.Username ownerName, owner))
+        else
+          Nothing
 
 showOwnerDiff :: OwnerDiff -> Maybe DiffItem
-showOwnerDiff = undefined
+showOwnerDiff (OwnerDiff diff) = fmap go diff
+ where
+  go = diffItemHeaderOnly
+    . uncurry (printf "owner changed from ‘%s’ to ‘%s’")
+    . either (\x -> ("none", showUser x)) (bimap showUser showUser)
+  showUser (Layout.UserID u) = show u
+  showUser (Layout.Username u) = u
 
-newtype GroupDiff = GroupDiff ()
+newtype GroupDiff = GroupDiff (Maybe (Either Layout.Group (Layout.Group, Layout.Group)))
     deriving (Show, Eq)
 
 diffGroup :: FilePath -> Layout.Group -> IO GroupDiff
-diffGroup = undefined
+diffGroup src group = do
+  groupId_ <- handleDoesNotExist (return Nothing)
+                                 (fmap (Just . Posix.fileGroup) (Posix.getFileStatus src))
+  case groupId_ of
+    Nothing -> return (GroupDiff (Just (Left group)))
+    Just groupId -> case group of
+      Layout.GroupID gId
+        | groupId /= gId -> return (GroupDiff (Just (Right (Layout.GroupID groupId, group))))
+        | otherwise -> return (GroupDiff Nothing)
+      Layout.Groupname gName -> do
+        groupName <- fmap Posix.groupName (Posix.getGroupEntryForID groupId)
+        return . GroupDiff $ if groupName /= gName then
+          Just (Right (Layout.Groupname groupName, group))
+        else
+          Nothing
 
 showGroupDiff :: GroupDiff -> Maybe DiffItem
-showGroupDiff = undefined
+showGroupDiff (GroupDiff diff) = fmap go diff
+ where
+  go = diffItemHeaderOnly
+    . uncurry (printf "group changed from ‘%s’ to ‘%s’")
+    . either (\x -> ("none", showGroup x)) (bimap showGroup showGroup)
+  showGroup (Layout.GroupID g) = show g
+  showGroup (Layout.Groupname g) = g
 
 -- | Create a directory for a file with a given filepath to reside in and
 -- unlink the filepath if there's a resident already.
@@ -130,3 +173,11 @@ hash fp =
     maybe (return $! Hash.hashFinalize x)
           (\bs -> go $! Hash.hashUpdate x bs)
       =<< await
+
+getUserId :: Layout.User -> IO Posix.UserID
+getUserId (Layout.UserID i)   = return i
+getUserId (Layout.Username n) = fmap Posix.userID (Posix.getUserEntryForName n)
+
+getGroupId :: Layout.Group -> IO Posix.GroupID
+getGroupId (Layout.GroupID i)   = return i
+getGroupId (Layout.Groupname n) = fmap Posix.groupID (Posix.getGroupEntryForName n)
