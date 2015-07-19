@@ -261,9 +261,9 @@ genIO term = case term of
         , empty <$ do
             EIO.prepareDestination dst
             D.copyFile src dst
-            for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
-            for_ owner_ (EIO.setOwner dst)
-            for_ group_ (EIO.setGroup dst)
+            for_ (modeDiff *> mode_) (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+            for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+            for_ (groupDiff *> group_) (EIO.setGroup dst)
         )
 
     template src dst mode_ owner_ group_ = do
@@ -282,9 +282,9 @@ genIO term = case term of
           , empty <$ do
               EIO.prepareDestination dst
               D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
-              for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
-              for_ owner_ (EIO.setOwner dst)
-              for_ group_ (EIO.setGroup dst)
+              for_ (modeDiff *> mode_) (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+              for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+              for_ (groupDiff *> group_) (EIO.setGroup dst)
           )
 
     link src dst owner_ group_ = return $ do
@@ -300,8 +300,8 @@ genIO term = case term of
         , empty <$ do
             EIO.prepareDestination dst
             Posix.createSymbolicLink src dst
-            for_ owner_ (EIO.setOwner dst)
-            for_ group_ (EIO.setGroup dst)
+            for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+            for_ (groupDiff *> group_) (EIO.setGroup dst)
         )
 
   TC ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
