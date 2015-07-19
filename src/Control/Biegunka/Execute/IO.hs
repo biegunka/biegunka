@@ -13,8 +13,8 @@ module Control.Biegunka.Execute.IO
   , showGroupDiff
   , prepareDestination
   , hash
-  , getUserId
-  , getGroupId
+  , setOwner
+  , setGroup
   ) where
 
 import           Control.Exception (handleJust)
@@ -109,7 +109,7 @@ diffOwner src owner = do
         | ownerId /= uId -> return (OwnerDiff (Just (Right (Layout.UserID ownerId, owner))))
         | otherwise -> return (OwnerDiff Nothing)
       Layout.Username uName -> do
-        ownerName <- fmap Posix.userName (Posix.getUserEntryForID ownerId)
+        ownerName <- getUserNameForId ownerId
         return . OwnerDiff $ if ownerName /= uName then
           Just (Right (Layout.Username ownerName, owner))
         else
@@ -138,7 +138,7 @@ diffGroup src group = do
         | groupId /= gId -> return (GroupDiff (Just (Right (Layout.GroupID groupId, group))))
         | otherwise -> return (GroupDiff Nothing)
       Layout.Groupname gName -> do
-        groupName <- fmap Posix.groupName (Posix.getGroupEntryForID groupId)
+        groupName <- getGroupNameForId groupId
         return . GroupDiff $ if groupName /= gName then
           Just (Right (Layout.Groupname groupName, group))
         else
@@ -174,10 +174,26 @@ hash fp =
           (\bs -> go $! Hash.hashUpdate x bs)
       =<< await
 
-getUserId :: Layout.User -> IO Posix.UserID
-getUserId (Layout.UserID i)   = return i
-getUserId (Layout.Username n) = fmap Posix.userID (Posix.getUserEntryForName n)
+setOwner :: FilePath -> Layout.User -> IO ()
+setOwner fp (Layout.UserID uid) = Posix.setOwnerAndGroup fp uid (-1)
+setOwner fp (Layout.Username name) = getUserIdForName name >>= \uid -> Posix.setOwnerAndGroup fp uid (-1)
 
-getGroupId :: Layout.Group -> IO Posix.GroupID
-getGroupId (Layout.GroupID i)   = return i
-getGroupId (Layout.Groupname n) = fmap Posix.groupID (Posix.getGroupEntryForName n)
+setGroup :: FilePath -> Layout.Group -> IO ()
+setGroup fp (Layout.GroupID gid) = Posix.setOwnerAndGroup fp (-1) gid
+setGroup fp (Layout.Groupname name) = getGroupIdForName name >>= \gid -> Posix.setOwnerAndGroup fp (-1) gid
+
+getUserNameForId :: Posix.UserID -> IO String
+getUserNameForId =
+  fmap Posix.userName . Posix.getUserEntryForID
+
+getGroupNameForId :: Posix.GroupID -> IO String
+getGroupNameForId =
+  fmap Posix.groupName . Posix.getGroupEntryForID
+
+getUserIdForName :: String -> IO Posix.UserID
+getUserIdForName =
+  fmap Posix.userID . Posix.getUserEntryForName
+
+getGroupIdForName :: String -> IO Posix.GroupID
+getGroupIdForName =
+  fmap Posix.groupID . Posix.getGroupEntryForName
