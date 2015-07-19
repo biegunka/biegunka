@@ -9,11 +9,11 @@ import Control.Biegunka
 import Control.Biegunka.Source.Directory
 
 
-a_script :: Script Sources ()
-a_script = do
+script :: Script 'Sources ()
+script = do
   namespace "main" $
     directory "/home/user/playground" $
-      link "vimrc" ".vimrc"
+      link (origin "vimrc" . path ".vimrc")
   namespace "sudoed" $
-    sudo "root" $ directory "/home/user/playground" $
-      link "xmonad.hs" ".xmonad/xmonad.hs"
+    sudo $ directory "/home/user/playground" $
+      link (origin "xmonad.hs" . path ".xmonad/xmonad.hs")

@@ -7,7 +7,7 @@ import Control.Biegunka
 
 
 main :: IO ()
-main = void (biegunka id run (link ".xmonad/xmonad.hs" ".xmonad/xmonad.hs.bak"))
+main = void (biegunka id run (link (origin ".xmonad/xmonad.hs" . path ".xmonad/xmonad.hs.bak")))
 
 -- STDERR
 --     Couldn't match type ‘'Actions’ with ‘'Sources’

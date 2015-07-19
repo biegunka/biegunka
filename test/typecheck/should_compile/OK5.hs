@@ -11,5 +11,5 @@ import Control.Biegunka.Source.Git
 main :: IO ()
 main = do
   biegunka id run $
-    git (url "git@github.com:ghc/ghc" . path "ghc") pass
+    git (origin "git@github.com:ghc/ghc" . path "ghc") pass
   pass

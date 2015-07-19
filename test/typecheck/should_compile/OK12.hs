@@ -3,11 +3,10 @@
 module OverloadedStrings where
 
 import Control.Biegunka
-import Control.Lens
 import System.Exit (ExitCode)
 
 
 main :: IO ExitCode
-main = biegunka (set mode Offline . set mode Online) mempty script
+main = biegunka (offline . online) mempty script
  where
   script = return ()

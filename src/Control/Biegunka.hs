@@ -32,7 +32,9 @@ module Control.Biegunka
   , multiline, sh, shell
     -- * Settings
     -- ** Mode
-  , Mode(..)
+  , Mode
+  , online
+  , offline
     -- * Little helpers
   , (~>)
   , pass
@@ -45,7 +47,7 @@ import Control.Biegunka.Biegunka (biegunka)
 import Control.Biegunka.Settings
   ( Settings, defaultSettings, biegunkaRoot
   , Templates(..), templates
-  , Mode(..)
+  , Mode, online, offline
   )
 import Control.Biegunka.Execute (run)
 import Control.Biegunka.Interpreter (Interpreter, pause, confirm, changes)

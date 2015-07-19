@@ -12,10 +12,10 @@ main = pass
 
 sources :: Script 'Sources ()
 sources =
-  sudo (username "nobody") $
-    git (url "https://example.com/dotfiles.git" . path "/") pass
+  sudo $
+    git (origin "https://example.com/dotfiles.git" . path "/") pass
 
 actions :: Script 'Actions ()
 actions =
-  sudo (uid 0) $
-    link "source" "destination"
+  sudo $
+    link (origin "source" . path "destination")

@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 -- | Controlling biegunka interpreters and their composition
 module Control.Biegunka.Settings
   ( -- * Settings common for all interpreters
@@ -12,6 +13,8 @@ module Control.Biegunka.Settings
     -- ** Biegunka mode
   , Mode(..)
   , defaultMode
+  , online
+  , offline
   , _Online
   , _Offline
   ) where
@@ -84,6 +87,12 @@ _Offline = prism' (\_ -> Offline) (\case Offline -> Just (); Online -> Nothing)
 _Online :: Prism' Mode ()
 _Online = prism' (\_ -> Online) (\case Online -> Just (); Offline -> Nothing)
 {-# ANN _Online "HLint: ignore Use const" #-}
+
+online :: (s ~ t, a ~ b, a ~ Mode) => HasMode s t a b => s -> t
+online = set mode Online
+
+offline :: (s ~ t, a ~ b, a ~ Mode) => HasMode s t a b => s -> t
+offline = set mode Offline
 
 defaultMode :: Mode
 defaultMode = Online
