@@ -16,6 +16,8 @@ module Control.Biegunka.Primitive
   , origin
   , path
   , mode
+  , owner
+  , group
   , register
   , raw
     -- * Modifiers
@@ -29,14 +31,14 @@ module Control.Biegunka.Primitive
 
 import           Control.Lens
 import           Control.Monad.Reader (local)
-import qualified Data.List as List
 import qualified Data.Set as Set
-import           System.FilePath ((</>))
 import           System.Command.QQ (Eval(..))
+import qualified System.Directory.Layout as Layout
+import           System.FilePath ((</>))
 import qualified System.Posix as Posix
 
 import qualified Control.Biegunka.Language as Language
-import           Control.Biegunka.Language hiding (origin, path, mode)
+import           Control.Biegunka.Language hiding (origin, path, mode, owner, group)
 import           Control.Biegunka.Script
 
 
@@ -63,27 +65,21 @@ namespace segment (Script inner) =
 
 copy :: (File 'Copy NoOrigin NoPath -> File 'Copy FilePath FilePath) -> Script 'Actions ()
 copy f =
-  filed (\rfp sfp -> FC (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
+  filed (\rfp sfp -> FC (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_ owner_ group_)
  where
-  FC origin_ path_ mode_ = f (FC NoOrigin NoPath defaultFileMode)
+  FC origin_ path_ mode_ owner_ group_ = f (FC NoOrigin NoPath Nothing Nothing Nothing)
 
 link :: (File 'Link NoOrigin NoPath -> File 'Link FilePath FilePath) -> Script 'Actions ()
 link f =
-  filed (\rfp sfp -> FL (sfp </> origin_) (constructTargetFilePath rfp origin_ path_))
+  filed (\rfp sfp -> FL (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) owner_ group_)
  where
-  FL origin_ path_ = f (FL NoOrigin NoPath)
+  FL origin_ path_ owner_ group_ = f (FL NoOrigin NoPath Nothing Nothing)
 
 template :: (File 'Template NoOrigin NoPath -> File 'Template FilePath FilePath) -> Script 'Actions ()
 template f =
-  filed (\rfp sfp -> FT (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_)
+  filed (\rfp sfp -> FT (sfp </> origin_) (constructTargetFilePath rfp origin_ path_) mode_ owner_ group_)
  where
-  FT origin_ path_ mode_ = f (FT NoOrigin NoPath defaultFileMode)
-
-defaultFileMode :: Posix.FileMode
-defaultFileMode =
-  List.foldl' Posix.unionFileModes
-              Posix.nullFileMode
-              [Posix.ownerReadMode, Posix.ownerWriteMode, Posix.groupReadMode, Posix.otherReadMode]
+  FT origin_ path_ mode_ owner_ group_ = f (FT NoOrigin NoPath Nothing Nothing Nothing)
 
 origin :: HasOrigin s t a b => b -> s -> t
 origin = set Language.origin
@@ -92,13 +88,19 @@ path :: HasPath s t a b => b -> s -> t
 path = set Language.path
 
 mode :: (s ~ t, t ∈ ['Copy, 'Template]) => Posix.FileMode -> File s a b -> File t a b
-mode = set Language.mode
+mode = set Language.mode . Just
+
+owner :: (s ~ t) => Layout.User -> File s a b -> File t a b
+owner = set Language.owner . Just
+
+group :: (s ~ t) => Layout.Group -> File s a b -> File t a b
+group = set Language.group . Just
 
 register :: (forall a. File 'Link a NoPath -> File 'Link a FilePath) -> Script 'Actions ()
 register f =
-  filed (\rfp sfp -> FL sfp (rfp </> path_))
+  filed (\rfp sfp -> FL sfp (rfp </> path_) owner_ group_)
  where
-  FL NoOrigin path_ = f (FL NoOrigin NoPath)
+  FL NoOrigin path_ owner_ group_ = f (FL NoOrigin NoPath Nothing Nothing)
 
 -- -- | Links source to specified filepath
 -- --

@@ -4,7 +4,6 @@ module OverloadedStrings where
 
 import Control.Biegunka
 import Control.Lens
-import Data.Monoid (mempty)
 import System.Exit (ExitCode)
 
 

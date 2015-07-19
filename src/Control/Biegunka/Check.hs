@@ -52,7 +52,6 @@ term :: FilePath -> Term Annotate s () -> Layout ()
 term p = iter go . fmap return where
   go (TS _ Source { sourceTo } innards spec) = do
     Layout.emptydir (rel sourceTo)
-      -- & Layout.user .~ asUser
     term p innards
     spec
   go (TF _ tf spec) = do
@@ -69,19 +68,22 @@ term p = iter go . fmap return where
                 Layout.dirs ds $
                   Layout.file f
                     & Layout.contents ?~ Layout.copyOf origin_
-                    -- & Layout.user .~ aaUser
-                    -- mode?
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
+                    & Layout.mode .~ view mode file
           FT {} -> case split (rel path_) of
               ~(ds, f) ->
                 Layout.dirs ds $
                   Layout.file f
-                    -- & Layout.user .~ aaUser
-                    -- mode?
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
+                    & Layout.mode .~ view mode file
           FL {} -> case split (rel path_) of
               ~(ds, f) ->
                 Layout.dirs ds $
                   Layout.symlink f origin_
-                    -- & Layout.user .~ aaUser
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
                     & Layout.exists .~ True
   go (TC _ _ spec) = spec
   go (TW _ spec) = spec

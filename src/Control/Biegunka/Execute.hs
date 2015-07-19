@@ -24,14 +24,11 @@ import           Control.Monad.Catch
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
-import qualified Crypto.Hash as Hash
-import qualified Data.ByteString.Char8 as ByteString
 import           Data.Foldable (for_)
 import           Data.Function (fix)
-import           Data.Proxy (Proxy(Proxy))
+import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
-import           Numeric (showOct)
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.Exit.Lens (_ExitFailure)
@@ -48,18 +45,18 @@ import           Control.Biegunka.Settings
   (Templates(..), templates, Mode(..))
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
-  (prettyTerm, sourceIdentifier, prettyDiff, removal)
+  (prettyTerm, sourceIdentifier, removal)
 import           Control.Biegunka.Execute.Exception
 import qualified Control.Biegunka.Execute.IO as EIO
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Language
 import           Control.Biegunka.Interpreter (Interpreter, optimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
-import qualified Control.Biegunka.Patience as Patience
 import           Control.Biegunka.Script
 import           Control.Biegunka.Templates (templating)
 
 {-# ANN module "HLint: ignore Use const" #-}
+{-# ANN module "HLint: ignore Reduce duplication" #-}
 
 
 -- | Real run interpreter
@@ -250,51 +247,55 @@ genIO term = case term of
               atomically (modifyTVar rstv (Set.delete dst))
 
   TF _ tf _ -> case tf of
-    FC {} -> copy (view origin tf) (view path tf) (view mode tf)
-    FT {} -> template (view origin tf) (view path tf) (view mode tf)
-    FL {} -> link (view origin tf) (view path tf)
+    FC {} -> copy (view origin tf) (view path tf) (view mode tf) (view owner tf) (view group tf)
+    FT {} -> template (view origin tf) (view path tf) (view mode tf) (view owner tf) (view group tf)
+    FL {} -> link (view origin tf) (view path tf) (view owner tf) (view group tf)
    where
-    copy src dst fileMode = return $ do
-      contentsDiff <- fmap (fmap showContentsDiff)
-                           (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
-      modeDiff <- fmap (fmap showModeDiff)
-                       (EIO.compareFileMode dst fileMode)
+    copy src dst mode_ owner_ group_ = return $ do
+      contentsDiff <- fmap EIO.showContentsDiff (EIO.diffContents src dst)
+      modeDiff <- maybe (return Nothing) (fmap EIO.showFileModeDiff . EIO.diffFileMode dst) mode_
+      ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+      groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
       return
-        ( maybe empty pure contentsDiff ++ maybe empty pure modeDiff
+        ( catMaybes [contentsDiff, modeDiff, ownerDiff, groupDiff]
         , empty <$ do
             EIO.prepareDestination dst
             D.copyFile src dst
-            Posix.setFileMode dst (fileMode `mod` 0o1000)
+            for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
         )
 
-    template src dst fileMode = do
+    template src dst mode_ owner_ group_ = do
       Templates ts <- view templates
       td <- view tempDir
       return $ do
         (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
         IO.hClose h
         Text.writeFile tempfp . templating ts =<< Text.readFile src
-        contentsDiff <- fmap (fmap showContentsDiff)
-                             (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
-        modeDiff <- fmap (fmap showModeDiff)
-                         (EIO.compareFileMode dst fileMode)
+        contentsDiff <- fmap EIO.showContentsDiff (EIO.diffContents tempfp dst)
+        modeDiff <- maybe (return Nothing) (fmap EIO.showFileModeDiff . EIO.diffFileMode dst) mode_
+        ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+        groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
         return
-          ( maybe empty pure contentsDiff ++ maybe empty pure modeDiff
+          ( catMaybes [contentsDiff, modeDiff, ownerDiff, groupDiff]
           , empty <$ do
               EIO.prepareDestination dst
               D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
-              Posix.setFileMode dst (fileMode `mod` 0o1000)
+              for_ mode_ (\m -> Posix.setFileMode dst (m `mod` 0o1000))
           )
 
-    link src dst = return $ do
-      msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
+    link src dst owner_ group_ = return $ do
+      sourceDiff <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
         Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
         Right src'
           | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
           | otherwise   -> empty
+      ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+      groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
       return
-        ( maybe empty pure msg
-        , empty <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
+        ( catMaybes [sourceDiff, ownerDiff, groupDiff]
+        , empty <$ do
+            EIO.prepareDestination dst
+            Posix.createSymbolicLink src dst
         )
 
   TC ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
@@ -328,21 +329,6 @@ genIO term = case term of
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
   TW _ _ -> return (return (empty, return empty))
- where
-  showContentsDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
-  showContentsDiff =
-    either (diffItemHeaderOnly . printf "contents changed from ‘none’ to ‘%s’" . showHash)
-           (\(x, y, d) -> DiffItem
-             { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
-             , diffItemBody   = prettyDiff d
-             })
-  showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
-
-  showModeDiff :: Either Posix.FileMode (Posix.FileMode, Posix.FileMode) -> DiffItem
-  showModeDiff =
-    either (diffItemHeaderOnly . printf "file mode changed from ‘none’ to ‘%s’" . showMode)
-           (\(x, y) -> diffItemHeaderOnly (printf "file mode changed from ‘%s' to ‘%s’" (showMode x) (showMode y)))
-  showMode oct = showOct (oct `mod` 0o1000) ""
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()

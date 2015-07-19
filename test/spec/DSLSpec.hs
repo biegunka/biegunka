@@ -45,7 +45,7 @@ spec = describe "Biegunka DSL" $ do
     it "mangles relative paths for Actions" $
       let ast = evalScript defaultMAnnotations (defaultAnnotations & set runRoot "app" & set sourceRoot "source") (link (origin "from" . path "to"))
       in case ast of
-        Free (TF _ (FL "source/from" "app/to") (Pure ())) -> True
+        Free (TF _ (FL "source/from" "app/to" Nothing Nothing) (Pure ())) -> True
         _ -> False
 
     it "mangles relative paths for Sources" $
@@ -58,7 +58,7 @@ spec = describe "Biegunka DSL" $ do
     it "does not mangle absolute paths for Actions" $
       let ast = evalScript defaultMAnnotations (defaultAnnotations & set runRoot "app" & set sourceRoot "source") (link (origin "from" . path "/to"))
       in case ast of
-        Free (TF _ (FL "source/from" "/to") (Pure ())) -> True
+        Free (TF _ (FL "source/from" "/to" Nothing Nothing) (Pure ())) -> True
         _ -> False
 
     it "does not mangle absolute paths for Sources" $
