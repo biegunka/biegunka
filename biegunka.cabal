@@ -48,7 +48,7 @@ library
     , process
     , resourcet            >= 1.1    && < 1.2
     , semigroups           >= 0.8.4  && < 1
-    , safecopy             >= 0.8    && < 0.9
+    , safecopy             >= 0.8    && < 0.10
     , stm                  >= 2.4    && < 3
     , template-haskell
     , temporary            >= 1.2    && < 1.3
