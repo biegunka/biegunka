@@ -28,10 +28,11 @@ import           Prelude hiding (lookup, null)
 import qualified System.IO.Temp as IO
 import qualified System.Posix as Posix
 
+import           Control.Biegunka.Language (HasMode(..))
 import           Control.Biegunka.Logger (HasLogger(logger))
 import           Control.Biegunka.Execute.Watcher (Watcher)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
-import           Control.Biegunka.Settings (HasSettings(settings), Settings)
+import           Control.Biegunka.Settings (HasSettings(settings), Settings, Mode)
 
 
 -- | Convenient type alias for task-local-state-ful IO
@@ -104,6 +105,10 @@ instance HasSettings Execution where
 instance HasLogger Applicative Execution where
   logger = settings.logger
   {-# INLINE logger #-}
+
+instance HasMode Execution Execution Mode Mode where
+  mode = settings.mode
+  {-# INLINE mode #-}
 
 -- | Set up an 'Execution' to be used by 'Executor'.
 withExecution :: Settings -> (Execution -> IO a) -> IO a

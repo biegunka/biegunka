@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Describe execution I/O actions
 module Control.Biegunka.Execute.Describe
   ( prettyTerm, removal
@@ -9,6 +10,7 @@ module Control.Biegunka.Execute.Describe
   ) where
 
 import           Control.Exception (SomeException)
+import           Control.Lens
 import           Data.Bool (bool)
 import qualified Data.List as List
 import           Data.List.NonEmpty (NonEmpty((:|)))
@@ -56,18 +58,17 @@ prettyTerm (Retries n) mout withSource ta =
   doc = case ta of
     TS _ (Source t _ d _) _ _  ->
       printf "%s source[%s] update" t d
-    TA _ a _ ->
+    TF _ tf _ -> let
+        origin_ = view origin tf
+        path_ = view path tf
+      in case tf of
+        FT {} -> printf "file[%s] update (from template [%s])" path_ origin_
+        FC {} -> printf "file[%s] update (copy [%s])" path_ origin_
+        FL {} -> printf "symlink[%s] update (point to [%s])" path_ origin_
+    TC _ (Command p a) _ ->
       case a of
-        Link s d ->
-          printf "symlink[%s] update (point to [%s])" d s
-        Copy s d ->
-          printf "file[%s] update (copy [%s])" d s
-        Template s d ->
-          printf "file[%s] update (from template [%s])" d s
-        Command p (ShellCommand c) ->
-          printf "execute[%s] (from [%s])" c p
-        Command p (RawCommand c as) ->
-          printf "execute[%s] (from [%s])" (unwords (c : as)) p
+        ShellCommand c -> printf "execute[%s] (from [%s])" c p
+        RawCommand c as -> printf "execute[%s] (from [%s])" (unwords (c : as)) p
     _ -> ""
 
 prettyDiffItem :: DiffItem -> [String]
@@ -78,8 +79,9 @@ prettyDiffItem DiffItem { diffItemHeader, diffItemBody } =
 sourceIdentifier :: TermF Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
   TS (AS { asSegments }) (Source _ url _ _) _ _ -> Just (url :| asSegments)
-  TA (AA { aaSegments, aaUrl }) _ _ -> Just (aaUrl :| aaSegments)
-  TWait _ _ -> Nothing
+  TF (AA { aaSegments, aaUrl }) _ _ -> Just (aaUrl :| aaSegments)
+  TC (AA { aaSegments, aaUrl }) _ _ -> Just (aaUrl :| aaSegments)
+  TW _ _ -> Nothing
 
 prettyDiff :: [Hunk Text] -> String
 prettyDiff =

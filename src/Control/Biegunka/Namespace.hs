@@ -34,7 +34,6 @@ import           Control.Monad.Reader (asks)
 import           Control.Monad.State (State, execState, modify)
 import           Data.Acid
 import           Data.Acid.Local
-import           Data.Foldable (for_)
 import           Data.Function (on)
 import           Data.List ((\\))
 import           Data.Map (Map)
@@ -47,8 +46,8 @@ import           Prelude hiding (any, elem)
 import           System.FilePath.Lens hiding (extension)
 
 import           Control.Biegunka.Settings (Settings, biegunkaRoot)
-import           Control.Biegunka.Language (Scope(..), Term, TermF(..), Source(Source), Action(..))
-import           Control.Biegunka.Script (Annotate(..), segmented, User(..), User(..))
+import           Control.Biegunka.Language (Scope(..), Term, TermF(..), Source(Source), File(..), origin, path)
+import           Control.Biegunka.Script (Annotate(..), segmented)
 
 
 data SourceRecord_v0 = SR_v0 String FilePath FilePath
@@ -188,8 +187,8 @@ withDb s = bracket (open s) close
 -- if nothing is found
 open :: Settings -> IO Db
 open settings = do
-  let (path, _) = settings & biegunkaRoot <</>~ "groups"
-  acid <- openLocalStateFrom path mempty
+  let (fp, _) = settings & biegunkaRoot <</>~ "groups"
+  acid <- openLocalStateFrom fp mempty
   gs   <- query acid GetMapping
   return Db
     { _commit = \db -> update acid (PutMapping (_unNamespaces db))
@@ -230,13 +229,13 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
  where
   construct :: TermF Annotate 'Sources (State Namespaces a) -> State Namespaces a
   construct term = case term of
-    TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
-      let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
+    TS (AS { asSegments }) (Source sourceType fromLocation sourcePath _) i next -> do
+      let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = Nothing }
           namespace = view (from segmented) asSegments
       at namespace . non mempty <>= NR (M.singleton record mempty)
       iterM (populate namespace record) i
       next
-    TWait _ next -> next
+    TW _ next -> next
 
   populate
     :: String                                       -- ^ Namespace
@@ -244,20 +243,19 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     -> TermF Annotate 'Actions (State Namespaces a) -- ^ Current script term
     -> State Namespaces a
   populate ns source term = case term of
-    TA (AA { aaUser }) action next -> do
-      for_ (toRecord action (fmap user aaUser)) $ \record ->
-        assign (ix ns.ix source.contains record) True
+    TF _ action next -> do
+      assign (ix ns.ix source.contains (record action Nothing)) True
       next
-    TWait _ next -> next
+    TC _ _ next -> next
+    TW _ next -> next
    where
-    toRecord (Link src dst)     = toFileRecord "link" src dst
-    toRecord (Copy src dst)     = toFileRecord "copy" src dst
-    toRecord (Template src dst) = toFileRecord "template" src dst
-    toRecord (Command {})       = const Nothing
-
-    toFileRecord fileType fromSource filePath fileOwner =
-      Just FR { fileType, fromSource, filePath, fileOwner }
-
-user :: User -> Either String Int
-user (Username s) = Left s
-user (UserID n) = Right (fromIntegral n)
+    record :: File t FilePath FilePath -> Maybe (Either String Int) -> FileRecord
+    record a fileOwner = let
+        fromSource = view origin a
+        filePath = view path a
+        fileType = case a of
+          FC {} -> "copy"
+          FT {} -> "template"
+          FL {} -> "link"
+      in
+        FR { fileType, fromSource, filePath, fileOwner }

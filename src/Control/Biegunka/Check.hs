@@ -39,7 +39,7 @@ check = I $ \settings terms k -> do
           , configColorMode  = ColorAlways
           , configOutputFile = Left outh
           }
-          (Layout.examples rr (termsLayout rr terms))
+          (Layout.examples rr (term rr terms))
     waitCatch a
     case summaryFailures s of
       0 -> k
@@ -48,42 +48,48 @@ check = I $ \settings terms k -> do
 withFd :: Posix.Fd -> (IO.Handle -> IO a) -> IO a
 withFd fd = bracket (Posix.fdToHandle fd) IO.hClose
 
-termsLayout :: FilePath -> Term Annotate s () -> Layout ()
-termsLayout p = iter go . fmap return where
-  go (TS AS { asUser } Source { sourceTo } innards spec) = do
+term :: FilePath -> Term Annotate s () -> Layout ()
+term p = iter go . fmap return where
+  go (TS _ Source { sourceTo } innards spec) = do
     Layout.emptydir (rel sourceTo)
-      & Layout.user .~ asUser
-    termsLayout p innards
+    term p innards
     spec
-  go (TA AA { aaUser } action spec) = do
-    case action of
-      Link file target ->
-        case split (rel target) of
-          ~(ds, f) ->
-            Layout.dirs ds $
-              Layout.symlink f file
-                & Layout.user .~ aaUser
-                & Layout.exists .~ True
-      Copy file target ->
-        case split (rel target) of
-          ~(ds, f) ->
-            Layout.dirs ds $
-              Layout.file f
-                & Layout.contents ?~ Layout.copyOf file
-                & Layout.user .~ aaUser
-      Template _ target ->
-        case split (rel target) of
-          ~(ds, f) ->
-            Layout.dirs ds $
-              Layout.file f
-                & Layout.user .~ aaUser
-      Command {} ->
-        return ()
-    spec
-  go (TWait _ spec) = spec
+  go (TF _ tf spec) = do
+      node tf
+      spec
+   where
+    node :: File t FilePath FilePath -> Layout ()
+    node file = let
+        origin_ = view origin file
+        path_ = view path file
+      in case file of
+          FC {} -> case split (rel path_) of
+              ~(ds, f) ->
+                Layout.dirs ds $
+                  Layout.file f
+                    & Layout.contents ?~ Layout.copyOf origin_
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
+                    & Layout.mode .~ view mode file
+          FT {} -> case split (rel path_) of
+              ~(ds, f) ->
+                Layout.dirs ds $
+                  Layout.file f
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
+                    & Layout.mode .~ view mode file
+          FL {} -> case split (rel path_) of
+              ~(ds, f) ->
+                Layout.dirs ds $
+                  Layout.symlink f origin_
+                    & Layout.user .~ view owner file
+                    & Layout.group .~ view group file
+                    & Layout.exists .~ True
+  go (TC _ _ spec) = spec
+  go (TW _ spec) = spec
 
   rel = makeRelative p
 
 -- | Split the filepath into the list of directories and the filename
 split :: FilePath -> ([FilePath], FilePath)
-split path = let ~(ds, f) = splitFileName path in (splitDirectories ds, f)
+split fp = let ~(ds, f) = splitFileName fp in (splitDirectories ds, f)

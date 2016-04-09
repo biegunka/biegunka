@@ -21,11 +21,15 @@ module Control.Biegunka.Script
     -- * Get annotated script
   , evalScript
     -- * Script mangling
-  , script, sourced, actioned, constructTargetFilePath
+  , script
+  , sourced
+  , filed
+  , commanded
+  , constructTargetFilePath
     -- * Lenses
   , segments
   , sourceUrl
-  , sourceReaction, actionReaction, activeUser, maxRetries
+  , sourceReaction, actionReaction, sudoActive, maxRetries
     -- ** Misc
   , Url, User(..), React(..), Retries(..), incr, into, peekToken
     -- * Namespace
@@ -62,7 +66,7 @@ data family Annotate (sc :: Scope) :: *
 data instance Annotate 'Sources = AS
   { asToken      :: Token
   , asSegments   :: [Segment]
-  , asUser       :: Maybe User
+  , asSudoActive :: Bool
   , asMaxRetries :: Retries
   , asReaction   :: React
   }
@@ -71,7 +75,7 @@ data instance Annotate 'Actions = AA
   , aaSegments   :: [Segment]
   , aaSourceRoot :: FilePath
   , aaUrl        :: Url
-  , aaUser       :: Maybe User
+  , aaSudoActive :: Bool
   , aaMaxRetries :: Retries
   , aaReaction   :: React
   }
@@ -101,7 +105,7 @@ data Annotations = Annotations
   , _segments       :: [Segment]  -- ^ Namespace segments
   , __sourceRoot    :: FilePath   -- ^ Absolute path of the Action layer root
   , _sourceUrl      :: Url        -- ^ Current source non-url
-  , _activeUser     :: Maybe User -- ^ Maximum action order in current source
+  , _sudoActive     :: Bool       -- ^ ‘sudo’ is active
   , _maxRetries     :: Retries    -- ^ Maximum retries count
   , _sourceReaction :: React      -- ^ How to react on source failure
   , _actionReaction :: React      -- ^ How to react on action failure
@@ -113,7 +117,7 @@ defaultAnnotations = Annotations
   , _segments       = []
   , __sourceRoot    = mempty
   , _sourceUrl      = mempty
-  , _activeUser     = Nothing
+  , _sudoActive     = False
   , _maxRetries     = Retries 1
   , _sourceReaction = Abortive
   , _actionReaction = Ignorant
@@ -170,9 +174,9 @@ _sourceRoot f x = f (__sourceRoot x) <&> \y -> x { __sourceRoot = y }
 sourceUrl :: Lens' Annotations Url
 sourceUrl f x = f (_sourceUrl x) <&> \y -> x { _sourceUrl = y }
 
--- | Current user
-activeUser :: Lens' Annotations (Maybe User)
-activeUser f x = f (_activeUser x) <&> \y -> x { _activeUser = y }
+-- | Check if ‘sudo’ is active.
+sudoActive :: Lens' Annotations Bool
+sudoActive f x = f (_sudoActive x) <&> \y -> x { _sudoActive = y }
 
 -- | Maximum retries count
 maxRetries :: Lens' Annotations Retries
@@ -197,7 +201,7 @@ newtype Script s a = Script
 
 -- | Biegunka script shell commands
 instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
-  eval command args = actioned (\_ sr -> Command sr (RawCommand command args))
+  eval command args = commanded (\sr -> Command sr (RawCommand command args))
   {-# INLINE eval #-}
 
 
@@ -220,9 +224,10 @@ runScript s e (Script i) = let
   in
     (ast, as)
  where
-  nextTerm (TS    _ _ _ x) = x
-  nextTerm (TA    _ _   x) = x
-  nextTerm (TWait   _   x) = x
+  nextTerm (TS _ _ _ x) = x
+  nextTerm (TF _ _   x) = x
+  nextTerm (TC _ _   x) = x
+  nextTerm (TW _     x) = x
 {-# INLINE runScript #-}
 
 -- | Get annotated DSL without annotations
@@ -262,13 +267,13 @@ sourced
   :: Source
   -> Script 'Actions ()
   -> Script 'Sources ()
-sourced Source { sourceType, sourceFrom, sourceTo = path, sourceUpdate } inner = Script $ do
+sourced Source { sourceType, sourceFrom, sourceTo = fp, sourceUpdate } inner = Script $ do
   rr <- view runRoot
-  local (set sourceRoot (constructTargetFilePath rr sourceFrom path) . set sourceUrl sourceFrom) $ do
+  local (set sourceRoot (constructTargetFilePath rr sourceFrom fp) . set sourceUrl sourceFrom) $ do
     ann <- AS
       <$> nextToken
       <*> view segments
-      <*> view activeUser
+      <*> view sudoActive
       <*> view maxRetries
       <*> view sourceReaction
 
@@ -288,9 +293,8 @@ peekToken = do
   Cons t _ <- use tokens
   return t
 
--- | Get 'Actions' scope script from 'FilePath' mangling
-actioned :: (FilePath -> FilePath -> Action) -> Script 'Actions ()
-actioned f = Script $ do
+filed :: (FilePath -> FilePath -> File t FilePath FilePath) -> Script 'Actions ()
+filed f = Script $ do
   rr <- view runRoot
   sr <- view sourceRoot
 
@@ -299,11 +303,27 @@ actioned f = Script $ do
     <*> view segments
     <*> pure sr
     <*> view sourceUrl
-    <*> view activeUser
+    <*> view sudoActive
     <*> view maxRetries
     <*> view actionReaction
 
-  liftS (TA ann (f rr sr) ())
+  liftS (TF ann (f rr sr) ())
+
+commanded :: (FilePath -> Command) -> Script 'Actions ()
+commanded f = Script $ do
+  rr <- view runRoot
+  sr <- view sourceRoot
+
+  ann <- AA
+    <$> pure rr
+    <*> view segments
+    <*> pure sr
+    <*> view sourceUrl
+    <*> view sudoActive
+    <*> view maxRetries
+    <*> view actionReaction
+
+  liftS (TC ann (f sr) ())
 
 
 -- | Construct destination 'FilePath'
@@ -329,8 +349,8 @@ actioned f = Script $ do
 -- >>> constructTargetFilePath "/root" "from" (into "/to")
 -- "/to/from"
 constructTargetFilePath :: FilePath -> FilePath -> FilePath -> FilePath
-constructTargetFilePath r s path =
-  r </> path </> bool "" (view filename s) ("/" `isSuffixOf` path)
+constructTargetFilePath r s fp =
+  r </> fp </> bool "" (view filename s) ("/" `isSuffixOf` fp)
 
 -- | A hack to support the notion of making destination 'FilePath' inside some directory
 into :: FilePath -> FilePath

@@ -13,9 +13,9 @@ main = pass
 sources :: Script 'Sources ()
 sources =
   reacting Ignorant $
-    git (url "https://example.com/dotfiles.git" . path "/") pass
+    git (origin "https://example.com/dotfiles.git" . path "/") pass
 
 actions :: Script 'Actions ()
 actions =
   reacting Abortive $
-    link "source" "destination"
+    link (origin "source" . path "destination")

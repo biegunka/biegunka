@@ -4,7 +4,6 @@ module Control.Biegunka.Source.Git
   , git
   , Url
   , Config
-  , url
   , path
   , branch
   , failIfAhead

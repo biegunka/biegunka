@@ -24,11 +24,9 @@ import           Control.Monad.Catch
 import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
-import qualified Crypto.Hash as Hash
-import qualified Data.ByteString.Char8 as ByteString
 import           Data.Foldable (for_)
 import           Data.Function (fix)
-import           Data.Proxy (Proxy(Proxy))
+import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
 import           Prelude hiding (log, null)
@@ -44,21 +42,21 @@ import           Text.Printf (printf)
 
 import qualified Control.Biegunka.Logger as Logger
 import           Control.Biegunka.Settings
-  (Templates(..), templates, Mode(..), mode)
+  (Templates(..), templates, Mode(..))
 import qualified Control.Biegunka.Namespace as Ns
 import           Control.Biegunka.Execute.Describe
-  (prettyTerm, sourceIdentifier, prettyDiff, removal)
+  (prettyTerm, sourceIdentifier, removal)
 import           Control.Biegunka.Execute.Exception
 import qualified Control.Biegunka.Execute.IO as EIO
 import           Control.Biegunka.Execute.Settings
 import           Control.Biegunka.Language
 import           Control.Biegunka.Interpreter (Interpreter, optimistically)
 import qualified Control.Biegunka.Execute.Watcher as Watcher
-import qualified Control.Biegunka.Patience as Patience
 import           Control.Biegunka.Script
 import           Control.Biegunka.Templates (templating)
 
 {-# ANN module "HLint: ignore Use const" #-}
+{-# ANN module "HLint: ignore Reduce duplication" #-}
 
 
 -- | Real run interpreter
@@ -75,18 +73,18 @@ run = optimistically go where
             runExecutor e (forkExecutor (execute s))
       Ns.commit db db'
    where
-    remove path =
-      D.doesFileExist path >>= \case
+    remove fp =
+      D.doesFileExist fp >>= \case
         True  -> do
-          Logger.write IO.stdout settings (removal path)
-          D.removeFile path
-        False -> D.removeDirectoryRecursive path
+          Logger.write IO.stdout settings (removal fp)
+          D.removeFile fp
+        False -> D.removeDirectoryRecursive fp
 
-    removeDirectory path =
-      D.doesDirectoryExist path >>= \case
+    removeDirectory fp =
+      D.doesDirectoryExist fp >>= \case
         True  -> do
-          Logger.write IO.stdout settings (removal path)
-          D.removeDirectoryRecursive path
+          Logger.write IO.stdout settings (removal fp)
+          D.removeDirectoryRecursive fp
         False -> return ()
 
     safely doThings = IO.tryIOError . doThings
@@ -122,7 +120,7 @@ execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
       True -> do
         execute b
         doneWith asToken
-execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
+execute (Free c@(TF (AA { aaMaxRetries, aaReaction }) _ x)) =
   flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
       False ->
@@ -132,7 +130,17 @@ execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
             Abortive -> return ()
             Ignorant -> execute x
       True -> execute x
-execute (Free c@(TWait _ x)) = do
+execute (Free c@(TC (AA { aaMaxRetries, aaReaction }) _ x)) =
+  flip fix (Retries 0) $ \loop rs ->
+    executeIO (doGenIO rs) c >>= \case
+      False ->
+        if rs < aaMaxRetries
+          then loop (incr rs)
+          else case aaReaction of
+            Abortive -> return ()
+            Ignorant -> execute x
+      True -> execute x
+execute (Free c@(TW _ x)) = do
   executeIO (doGenIO (Retries 0)) c
   execute x
 execute (Pure _) = return ()
@@ -140,25 +148,19 @@ execute (Pure _) = return ()
 -- | Execute a single command.
 executeIO
   :: (TermF Annotate s a -> Executor (IO Bool)) -> TermF Annotate s a -> Executor Bool
-executeIO _ (TWait waits _) = do
+executeIO _ (TW waits _) = do
   watcher <- view watch
   Watcher.waitDone watcher waits
   return True
 executeIO getIO term = do
   users <- view user
   io    <- getIO term
-  liftIO $ case getUser term of
-    Nothing ->
+  liftIO $ if isSudo term then
+    bracket_ (acquire users 0) (release users 0) $ do
+      Posix.setEffectiveGroupID 0
+      Posix.setEffectiveUserID 0
       io
-    Just u -> do
-      -- I really hope that stuff does not change
-      -- while biegunka run is in progress
-      gid <- userGroupID u
-      uid <- userID u
-      bracket_ (acquire users uid) (release users uid) $ do
-        Posix.setEffectiveGroupID gid
-        Posix.setEffectiveUserID uid
-        io
+  else io
  where
   acquire users uid = atomically $ do
     -- So, first get current user/count
@@ -191,9 +193,10 @@ doGenIO retries t = do
         logMessage e IO.stderr (Left exc)
         return False
       Right (diff, finish)
-        | view onlyDiff e -> do
-          for_ diff (logMessage e IO.stdout . pure . pure)
-          return True
+        | view onlyDiff e ->
+          True <$ case diff of
+            [] -> return ()
+            _  -> logMessage e IO.stdout (Right diff)
         | otherwise -> do
           res <- trySynchronous finish
           logMessage e
@@ -243,42 +246,65 @@ genIO term = case term of
              `onException`
               atomically (modifyTVar rstv (Set.delete dst))
 
-  TA _ (Link src dst) _ -> return $ do
-    msg <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
-      Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
-      Right src'
-        | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
-        | otherwise   -> empty
-    return
-      ( msg
-      , empty <$ do EIO.prepareDestination dst; Posix.createSymbolicLink src dst
-      )
-
-  TA _ (Copy src dst) _ -> return $ do
-    msg <- fmap (fmap showDiff)
-                (EIO.compareContents (Proxy :: Proxy Hash.SHA1) src dst)
-    return
-      ( maybe empty pure msg
-      , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
-      )
-
-  TA _ (Template src dst) _ -> do
-    Templates ts <- view templates
-    td <- view tempDir
-    return $ do
-      (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
-      IO.hClose h
-      Text.writeFile tempfp . templating ts =<< Text.readFile src
-      msg <- fmap (fmap showDiff)
-                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+  TF _ tf _ -> case tf of
+    FC {} -> copy (view origin tf) (view path tf) (view mode tf) (view owner tf) (view group tf)
+    FT {} -> template (view origin tf) (view path tf) (view mode tf) (view owner tf) (view group tf)
+    FL {} -> link (view origin tf) (view path tf) (view owner tf) (view group tf)
+   where
+    copy src dst mode_ owner_ group_ = return $ do
+      contentsDiff <- fmap EIO.showContentsDiff (EIO.diffContents src dst)
+      modeDiff <- maybe (return Nothing) (fmap EIO.showFileModeDiff . EIO.diffFileMode dst) mode_
+      ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+      groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
       return
-        ( maybe empty pure msg
+        ( catMaybes [contentsDiff, modeDiff, ownerDiff, groupDiff]
         , empty <$ do
             EIO.prepareDestination dst
-            D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+            D.copyFile src dst
+            for_ (modeDiff *> mode_) (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+            for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+            for_ (groupDiff *> group_) (EIO.setGroup dst)
         )
 
-  TA ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
+    template src dst mode_ owner_ group_ = do
+      Templates ts <- view templates
+      td <- view tempDir
+      return $ do
+        (tempfp, h) <- IO.openTempFile td (addExtension (takeFileName src) "tmp")
+        IO.hClose h
+        Text.writeFile tempfp . templating ts =<< Text.readFile src
+        contentsDiff <- fmap EIO.showContentsDiff (EIO.diffContents tempfp dst)
+        modeDiff <- maybe (return Nothing) (fmap EIO.showFileModeDiff . EIO.diffFileMode dst) mode_
+        ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+        groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
+        return
+          ( catMaybes [contentsDiff, modeDiff, ownerDiff, groupDiff]
+          , empty <$ do
+              EIO.prepareDestination dst
+              D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+              for_ (modeDiff *> mode_) (\m -> Posix.setFileMode dst (m `mod` 0o1000))
+              for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+              for_ (groupDiff *> group_) (EIO.setGroup dst)
+          )
+
+    link src dst owner_ group_ = return $ do
+      sourceDiff <- IO.tryIOError (Posix.readSymbolicLink dst) <&> \case
+        Left _ -> pure (diffItemHeaderOnly (printf "linked to ‘%s’" src))
+        Right src'
+          | src /= src' -> pure (diffItemHeaderOnly (printf "relinked from ‘%s’ to ‘%s’" src' src))
+          | otherwise   -> empty
+      ownerDiff <- maybe (return Nothing) (fmap EIO.showOwnerDiff . EIO.diffOwner dst) owner_
+      groupDiff <- maybe (return Nothing) (fmap EIO.showGroupDiff . EIO.diffGroup dst) group_
+      return
+        ( catMaybes [sourceDiff, ownerDiff, groupDiff]
+        , empty <$ do
+            EIO.prepareDestination dst
+            Posix.createSymbolicLink src dst
+            for_ (ownerDiff *> owner_) (EIO.setOwner dst)
+            for_ (groupDiff *> group_) (EIO.setGroup dst)
+        )
+
+  TC ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
    where
     cmd = do
       defenv <- getEnvironment
@@ -308,16 +334,7 @@ genIO term = case term of
       forOf_ _ExitFailure e (\status -> throwM . ShellException status =<< Text.hGetContents err)
     xs `except` ys = filter (\x -> fst x `notElem` ys) xs
 
-  TWait _ _ -> return (return (empty, return empty))
- where
-  showDiff :: Either (Hash.Digest a) (Hash.Digest a, Hash.Digest a, Patience.FileDiff) -> DiffItem
-  showDiff =
-    either (diffItemHeaderOnly . printf "contents changed from ‘none’ to ‘%s’" . showHash)
-           (\(x, y, d) -> DiffItem
-             { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
-             , diffItemBody   = prettyDiff d
-             })
-  showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
+  TW _ _ -> return (return (empty, return empty))
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()
@@ -325,16 +342,9 @@ doneWith tok = do
   watcher <- view watch
   Watcher.done watcher tok
 
--- | Get user associated with term
-getUser :: TermF Annotate s a -> Maybe User
-getUser (TS (AS { asUser }) _ _ _) = asUser
-getUser (TA (AA { aaUser }) _ _) = aaUser
-getUser (TWait _ _) = Nothing
-
-userID :: User -> IO Posix.UserID
-userID (UserID i)   = return i
-userID (Username n) = Posix.userID <$> Posix.getUserEntryForName n
-
-userGroupID :: User -> IO Posix.GroupID
-userGroupID (UserID i)   = Posix.userGroupID <$> Posix.getUserEntryForID i
-userGroupID (Username n) = Posix.userGroupID <$> Posix.getUserEntryForName n
+-- | Is ‘sudo’ active?
+isSudo :: TermF Annotate s a -> Bool
+isSudo (TS (AS { asSudoActive }) _ _ _) = asSudoActive
+isSudo (TF (AA { aaSudoActive }) _ _) = aaSudoActive
+isSudo (TC (AA { aaSudoActive }) _ _) = aaSudoActive
+isSudo (TW _ _) = False

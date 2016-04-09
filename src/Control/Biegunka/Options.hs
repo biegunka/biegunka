@@ -26,9 +26,9 @@ import           System.Exit (exitWith)
 
 import           Control.Biegunka.Biegunka (biegunka)
 import           Control.Biegunka.Interpreter (confirm, changes)
-import           Control.Biegunka.Settings (Settings, Mode(..), mode, defaultMode)
+import           Control.Biegunka.Settings (Settings, defaultMode, online, offline)
 import           Control.Biegunka.Execute (run, runDiff)
-import           Control.Biegunka.Language (Scope(Sources))
+import           Control.Biegunka.Language (Scope(Sources), mode)
 import           Control.Biegunka.Check (check)
 import           Control.Biegunka.Script (Script)
 
@@ -73,9 +73,6 @@ parser p = info (helper <*> go) fullDesc
     , flag' online  (long "online"  <> help "Run script online")
     , pure (set mode defaultMode)
     ]
-
-  offline = set mode Offline
-  online  = set mode Online
 
 -- | List of possible environments.
 --

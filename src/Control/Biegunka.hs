@@ -9,7 +9,18 @@ module Control.Biegunka
     -- * Types
   , Script, Scope(..)
     -- * Actions layer primitives
-  , link, register, copy, substitute, raw
+  , copy
+  , template
+  , link
+  , register
+  , origin
+  , path
+  , owner
+  , group
+  , mode
+  , NoOrigin
+  , NoPath
+  , raw
     -- * Script environment
   , sourceRoot
     -- * Modifiers
@@ -23,7 +34,9 @@ module Control.Biegunka
   , multiline, sh, shell
     -- * Settings
     -- ** Mode
-  , mode, Mode(..)
+  , Mode
+  , online
+  , offline
     -- * Little helpers
   , (~>)
   , pass
@@ -36,11 +49,11 @@ import Control.Biegunka.Biegunka (biegunka)
 import Control.Biegunka.Settings
   ( Settings, defaultSettings, biegunkaRoot
   , Templates(..), templates
-  , mode, Mode(..)
+  , Mode, online, offline
   )
 import Control.Biegunka.Execute (run)
 import Control.Biegunka.Interpreter (Interpreter, pause, confirm, changes)
-import Control.Biegunka.Language (Scope(..))
+import Control.Biegunka.Language (Scope(..), NoOrigin, NoPath)
 import Control.Biegunka.Primitive
 import Control.Biegunka.Script (runRoot, sourceRoot, Script, User(..), React(..), into)
 import Control.Biegunka.QQ (multiline, sh, shell)

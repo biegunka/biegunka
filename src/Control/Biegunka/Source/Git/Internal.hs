@@ -5,13 +5,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | Support for git repositories as 'Sources'
 module Control.Biegunka.Source.Git.Internal
   ( Git
   , git
   , Url
   , Config(..)
-  , url
   , path
   , branch
   , failIfAhead
@@ -35,9 +35,10 @@ import qualified System.Process as P
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Execute.Exception (sourceFailure)
-import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly)
-import           Control.Biegunka.Script (Script, sourced)
-import           Control.Biegunka.Source (Url, HasPath(..), HasUrl(..))
+import qualified Control.Biegunka.Language as Language
+import           Control.Biegunka.Language (Scope(..), Source(..), DiffItem(..), diffItemHeaderOnly, NoOrigin(..), NoPath(..))
+import           Control.Biegunka.Primitive (path)
+import           Control.Biegunka.Script (Script, Url, sourced)
 
 
 
@@ -66,7 +67,7 @@ git f = sourced Source
   config@Config { configUrl, configPath } =
     f defaultConfig
 
-type Git a b = Config NoUrl NoPath -> Config a b
+type Git a b = Config NoOrigin NoPath -> Config a b
 
 data Config a b = Config
   { configUrl         :: a
@@ -79,23 +80,19 @@ instance Bifunctor Config where
   first f config = config { configUrl = f (configUrl config) }
   second = fmap
 
-defaultConfig :: Config NoUrl NoPath
+defaultConfig :: Config NoOrigin NoPath
 defaultConfig = Config
-  { configUrl         = NoUrl
+  { configUrl         = NoOrigin
   , configPath        = NoPath
   , configBranch      = "master"
   , configFailIfAhead = False
   }
 
-data NoUrl = NoUrl
+instance (s ~ t, x ~ y) => Language.HasOrigin (Config x s) (Config Url t) y Url where
+  origin f config@Config { configUrl } = f configUrl <&> \url' -> config { configUrl = url' }
 
-data NoPath = NoPath
-
-instance HasUrl (Config a b) (Config Url b) Url where
-  url = first . const
-
-instance HasPath (Config a b) (Config a FilePath) FilePath where
-  path = second . const
+instance (s ~ t, x ~ y) => Language.HasPath (Config s x) (Config t FilePath) y FilePath where
+  path f config@Config { configPath } = f configPath <&> \path' -> config { configPath = path' }
 
 -- | Set git branch to track.
 branch :: String -> Config a b -> Config a b
