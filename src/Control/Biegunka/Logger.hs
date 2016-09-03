@@ -19,8 +19,7 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar
 import           Control.Concurrent.STM (STM, atomically)
 import           Control.Concurrent.STM.TQueue
-import           Control.Lens (LensLike', forOf_, to)
-import           Control.Lens (Traversed)
+import           Control.Lens (LensLike', Traversed, forOf_, to)
 import           Control.Monad.Catch (MonadMask, bracket)
 import           Control.Monad.IO.Class (MonadIO(liftIO))
 import           Data.Function (fix)

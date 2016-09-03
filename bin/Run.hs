@@ -89,15 +89,11 @@ runBiegunkaProcess logger stopBar args = do
   _ <- pipe stopBar (Text.hGetChunk errh) (Logger.write IO.stderr logger . Text.unpack)
   return (inh, ph)
  where
-  process = CreateProcess
-    { cmdspec       = RawCommand "cabal" (["--no-require-sandbox", "exec", "runhaskell", "--"] ++ args)
-    , cwd           = Nothing
-    , env           = Nothing
-    , std_in        = CreatePipe
+  process = (proc "cabal" (["--no-require-sandbox", "exec", "runhaskell", "--"] ++ args))
+    { std_in        = CreatePipe
     , std_out       = CreatePipe
     , std_err       = CreatePipe
     , close_fds     = True
-    , create_group  = False
     , delegate_ctlc = True
     }
 

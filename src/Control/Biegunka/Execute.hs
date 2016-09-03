@@ -25,7 +25,6 @@ import           Control.Monad.Free (Free(..))
 import           Control.Monad.Reader (ask)
 import           Control.Monad.Trans (liftIO)
 import qualified Crypto.Hash as Hash
-import qualified Data.ByteString.Char8 as ByteString
 import           Data.Foldable (for_)
 import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
@@ -107,7 +106,7 @@ runDiff = optimistically go where
 -- Every action may retry the specified amount of times, and retries do not accumulate
 -- across actions.
 execute :: Term Annotate s () -> Executor ()
-execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
+execute (Free c@(TS AS { asToken, asMaxRetries, asReaction } _ b t)) = do
   forkExecutor (execute t)
   flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
@@ -122,7 +121,7 @@ execute (Free c@(TS (AS { asToken, asMaxRetries, asReaction }) _ b t)) = do
       True -> do
         execute b
         doneWith asToken
-execute (Free c@(TA (AA { aaMaxRetries, aaReaction }) _ x)) =
+execute (Free c@(TA AA { aaMaxRetries, aaReaction } _ x)) =
   flip fix (Retries 0) $ \loop rs ->
     executeIO (doGenIO rs) c >>= \case
       False ->
@@ -278,14 +277,13 @@ genIO term = case term of
             D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
         )
 
-  TA ann (Command p spec) _ -> return (return (empty, empty <$ cmd))
+  TA ann (Command p c as) _ -> return (return (empty, empty <$ cmd))
    where
     cmd = do
       defenv <- getEnvironment
       (_, Just out, Just err, ph) <- P.createProcess
-        P.CreateProcess
-          { P.cmdspec       = spec
-          , P.cwd           = Just p
+        (P.proc c as)
+          { P.cwd           = Just p
           , P.env =
               Just ( ("RUN_ROOT",    view runRoot    ann)
                    : ("SOURCE_ROOT", view sourceRoot ann)
@@ -296,12 +294,8 @@ genIO term = case term of
                        , "RUN_ROOT"
                        , "SOURCE_ROOT"
                        ])
-          , P.std_in        = P.Inherit
           , P.std_out       = P.CreatePipe
           , P.std_err       = P.CreatePipe
-          , P.close_fds     = False
-          , P.create_group  = False
-          , P.delegate_ctlc = False
           }
       e <- P.waitForProcess ph
       IO.hClose out
@@ -317,7 +311,8 @@ genIO term = case term of
              { diffItemHeader = printf "contents changed from ‘%s' to ‘%s’" (showHash x) (showHash y)
              , diffItemBody   = prettyDiff d
              })
-  showHash = take 8 . ByteString.unpack . Hash.digestToHexByteString
+  showHash :: Hash.Digest a -> String
+  showHash = take 8 . show
 
 -- | Tell execution process that you're done with task
 doneWith :: Token -> Executor ()
@@ -327,8 +322,8 @@ doneWith tok = do
 
 -- | Get user associated with term
 getUser :: TermF Annotate s a -> Maybe User
-getUser (TS (AS { asUser }) _ _ _) = asUser
-getUser (TA (AA { aaUser }) _ _) = aaUser
+getUser (TS AS { asUser } _ _ _) = asUser
+getUser (TA AA { aaUser } _ _) = aaUser
 getUser (TWait _ _) = Nothing
 
 userID :: User -> IO Posix.UserID

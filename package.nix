@@ -1,5 +1,5 @@
 { mkDerivation, acid-state, aeson, async, base, bytestring
-, command-qq, conduit, conduit-extra, containers, cryptohash
+, command-qq, conduit, conduit-extra, containers, cryptonite
 , data-default-class, directory, directory-layout, exceptions
 , filepath, free, hspec, hspec-expectations-lens, HStringTemplate
 , lens, meep, mtl, optparse-applicative, process, resourcet
@@ -14,7 +14,7 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     acid-state async base bytestring command-qq conduit conduit-extra
-    containers cryptohash directory directory-layout exceptions
+    containers cryptonite directory directory-layout exceptions
     filepath free hspec HStringTemplate lens meep mtl
     optparse-applicative process resourcet safecopy semigroups stm
     template-haskell temporary text transformers unix

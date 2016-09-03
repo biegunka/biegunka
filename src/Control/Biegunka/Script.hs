@@ -45,7 +45,6 @@ import System.Command.QQ (Eval(..))
 import System.Directory.Layout (User(..))
 import System.FilePath ((</>))
 import System.FilePath.Lens
-import System.Process (CmdSpec(..))
 
 import Control.Biegunka.Language
 
@@ -197,7 +196,7 @@ newtype Script s a = Script
 
 -- | Biegunka script shell commands
 instance (scope ~ 'Actions, a ~ ()) => Eval (Script scope a) where
-  eval command args = actioned (\_ sr -> Command sr (RawCommand command args))
+  eval command args = actioned (\_ sr -> Command sr command args)
   {-# INLINE eval #-}
 
 

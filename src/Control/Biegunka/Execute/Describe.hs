@@ -16,7 +16,6 @@ import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as Text
 import           Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as Builder
-import           System.Process (CmdSpec(..))
 import           Text.Printf (printf)
 
 import           Control.Biegunka.Language
@@ -64,9 +63,7 @@ prettyTerm (Retries n) mout withSource ta =
           printf "file[%s] update (copy [%s])" d s
         Template s d ->
           printf "file[%s] update (from template [%s])" d s
-        Command p (ShellCommand c) ->
-          printf "execute[%s] (from [%s])" c p
-        Command p (RawCommand c as) ->
+        Command p c as ->
           printf "execute[%s] (from [%s])" (unwords (c : as)) p
     _ -> ""
 
@@ -77,8 +74,8 @@ prettyDiffItem DiffItem { diffItemHeader, diffItemBody } =
 -- | Note that the components are in the reverse order.
 sourceIdentifier :: TermF Annotate s a -> Maybe (NonEmpty String)
 sourceIdentifier = \case
-  TS (AS { asSegments }) (Source _ url _ _) _ _ -> Just (url :| asSegments)
-  TA (AA { aaSegments, aaUrl }) _ _ -> Just (aaUrl :| aaSegments)
+  TS AS { asSegments } (Source _ url _ _) _ _ -> Just (url :| asSegments)
+  TA AA { aaSegments, aaUrl } _ _ -> Just (aaUrl :| aaSegments)
   TWait _ _ -> Nothing
 
 prettyDiff :: [Hunk Text] -> String

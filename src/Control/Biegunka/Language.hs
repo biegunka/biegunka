@@ -18,7 +18,6 @@ module Control.Biegunka.Language
 import Control.Monad.Free (Free(..))
 import Data.Set (Set)
 import Data.Traversable (fmapDefault, foldMapDefault)
-import System.Process (CmdSpec)
 
 
 -- | Language terms scopes [kind]
@@ -73,7 +72,7 @@ data Action =
     -- | Generate the file from the template.
   | Template FilePath FilePath
     -- | Run external command.
-  | Command FilePath CmdSpec
+  | Command FilePath FilePath [String]
 
 data DiffItem = DiffItem
   { diffItemHeader :: String

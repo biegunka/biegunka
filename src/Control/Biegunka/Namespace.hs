@@ -230,7 +230,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
  where
   construct :: TermF Annotate 'Sources (State Namespaces a) -> State Namespaces a
   construct term = case term of
-    TS (AS { asSegments, asUser }) (Source sourceType fromLocation sourcePath _) i next -> do
+    TS AS { asSegments, asUser } (Source sourceType fromLocation sourcePath _) i next -> do
       let record = SR { sourceType, fromLocation, sourcePath, sourceOwner = fmap user asUser }
           namespace = view (from segmented) asSegments
       at namespace . non mempty <>= NR (M.singleton record mempty)
@@ -244,7 +244,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     -> TermF Annotate 'Actions (State Namespaces a) -- ^ Current script term
     -> State Namespaces a
   populate ns source term = case term of
-    TA (AA { aaUser }) action next -> do
+    TA AA { aaUser } action next -> do
       for_ (toRecord action (fmap user aaUser)) $ \record ->
         assign (ix ns.ix source.contains record) True
       next
@@ -253,7 +253,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
     toRecord (Link src dst)     = toFileRecord "link" src dst
     toRecord (Copy src dst)     = toFileRecord "copy" src dst
     toRecord (Template src dst) = toFileRecord "template" src dst
-    toRecord (Command {})       = const Nothing
+    toRecord Command {}         = const Nothing
 
     toFileRecord fileType fromSource filePath fileOwner =
       Just FR { fileType, fromSource, filePath, fileOwner }
