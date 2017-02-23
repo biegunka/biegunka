@@ -18,6 +18,7 @@ import           Control.Lens
 import           Control.Monad ((>=>))
 import           Data.Char (isUpper, toLower)
 import           Data.Foldable (asum)
+import           Data.Monoid ((<>))
 import           Data.Proxy (Proxy(Proxy))
 import qualified GHC.Generics as G
 import           Options.Applicative

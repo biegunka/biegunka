@@ -7,7 +7,7 @@ module Json
 
 import           Control.Lens
 import qualified Data.Aeson as Aeson
-import qualified Data.Aeson.Encode as Aeson
+import qualified Data.Aeson.Text as Aeson
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
