@@ -1,3 +1,4 @@
+{-# Language CPP #-}
 module Main (main) where
 
 import qualified Data.Char as Char
@@ -10,6 +11,10 @@ import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath ((</>), (<.>))
 import           System.IO.Error (catchIOError)
 import           System.Process (readProcess)
+
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Simple.BuildPaths (autogenPackageModulesDir)
+#endif
 
 main :: IO ()
 main = defaultMainWithHooks simpleUserHooks
@@ -28,7 +33,11 @@ generateGit_biegunka lbi =
        , "hash = " ++ show hash
        ])
  where
+#if MIN_VERSION_Cabal(1,25,0)
+  autogen = autogenPackageModulesDir lbi
+#else
   autogen = autogenModulesDir lbi
+#endif
   git_biegunka = autogen </> "Git_biegunka" <.> "hs"
 {-# ANN generateGit_biegunka "HLint: ignore Use camelCase" #-}
 

@@ -93,6 +93,9 @@ library
     Control.Biegunka.Templates.HStringTemplate
     Git_biegunka
     Paths_biegunka
+  autogen-modules:
+    Git_biegunka
+    Paths_biegunka
   ghc-options:
     -Wall
     -Werror
@@ -128,6 +131,11 @@ executable biegunka
     Json
     Options
     Run
+    Git_biegunka
+    Paths_biegunka
+  autogen-modules:
+    Git_biegunka
+    Paths_biegunka
   ghc-options:
     -threaded
     -Wall
