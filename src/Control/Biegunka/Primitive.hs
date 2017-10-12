@@ -10,6 +10,7 @@ module Control.Biegunka.Primitive
     link
   , register
   , copy
+  , decrypt
   , substitute
   , raw
     -- * Modifiers
@@ -83,6 +84,19 @@ copy :: FilePath -> FilePath -> Script 'Actions ()
 copy src dst =
   actioned (\rfp sfp -> Copy (sfp </> src) (constructTargetFilePath rfp src dst))
 {-# INLINE copy #-}
+
+-- | Decrypt encrypted file in 'E.Template' syntax.
+--
+-- > git "https://example.com/source.git" "git/source" $
+-- >   decrypt "some-file" "some-file.meta" "anywhere"
+--
+-- Copies @~\/git\/source\/some-file@ to @~\/anywhere@.
+--
+-- Decrypt encrypted values in @~\/anywhere@
+decrypt :: FilePath -> FilePath -> FilePath -> Script 'Actions ()
+decrypt src meta dst = actioned (\rfp sfp ->
+  Decrypt (sfp </> src) (sfp </> meta) (constructTargetFilePath rfp src dst))
+{-# INLINE decrypt #-}
 
 -- | Substitutes templates in @HStringTemplate@ syntax
 -- in given file and writes result to specified filepath

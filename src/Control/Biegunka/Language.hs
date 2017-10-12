@@ -69,6 +69,8 @@ data Action =
     Link FilePath FilePath
     -- | Copy the file verbatim.
   | Copy FilePath FilePath
+    -- | Decrypt the file from the source and metadata.
+  | Decrypt FilePath FilePath FilePath
     -- | Generate the file from the template.
   | Template FilePath FilePath
     -- | Run external command.
