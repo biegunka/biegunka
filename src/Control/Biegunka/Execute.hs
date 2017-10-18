@@ -263,7 +263,7 @@ genIO term = case term of
       , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
       )
 
-  TA _ (Decrypt src srcMeta dst) _ -> do
+  TA _ (UnE src srcMeta dst) _ -> do
     td <- view tempDir
     return $ do
       let tempfp = td </> (takeFileName dst) `addExtension` "tmp"

@@ -9,7 +9,7 @@ module Control.Biegunka
     -- * Types
   , Script, Scope(..)
     -- * Actions layer primitives
-  , link, register, copy, decrypt, substitute, raw
+  , link, register, copy, unE, substitute, raw
     -- * Script environment
   , sourceRoot
     -- * Modifiers

@@ -71,7 +71,7 @@ termsLayout p = iter go . fmap return where
               Layout.file f
                 & Layout.contents ?~ Layout.copyOf file
                 & Layout.user .~ aaUser
-      Decrypt _ _ target ->
+      UnE _ _ target ->
         case split (rel target) of
           ~(ds, f) ->
             Layout.dirs ds $
