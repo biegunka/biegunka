@@ -252,6 +252,7 @@ fromScript script = execState (iterM construct script) (Namespaces mempty)
    where
     toRecord (Link src dst)     = toFileRecord "link" src dst
     toRecord (Copy src dst)     = toFileRecord "copy" src dst
+    toRecord (UnE src _ dst)    = toFileRecord "decrypt" src dst
     toRecord (Template src dst) = toFileRecord "template" src dst
     toRecord Command {}         = const Nothing
 

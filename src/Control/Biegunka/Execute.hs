@@ -30,10 +30,12 @@ import           Data.Function (fix)
 import           Data.Proxy (Proxy(Proxy))
 import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
+import           E.IO
+import           E.Algorithm.Gpgme
 import           Prelude hiding (log, null)
 import qualified System.Directory as D
 import           System.Exit.Lens (_ExitFailure)
-import           System.FilePath (dropFileName, takeFileName, addExtension)
+import           System.FilePath (dropFileName, takeFileName, addExtension, (</>))
 import           System.Environment (getEnvironment)
 import qualified System.IO as IO
 import qualified System.IO.Error as IO
@@ -260,6 +262,20 @@ genIO term = case term of
       ( maybe empty pure msg
       , empty <$ do EIO.prepareDestination dst; D.copyFile src dst
       )
+
+  TA _ (UnE src srcMeta dst) _ -> do
+    td <- view tempDir
+    return $ do
+      let tempfp = td </> (takeFileName dst) `addExtension` "tmp"
+      decIO gpgme src srcMeta tempfp
+      msg <- fmap (fmap showDiff)
+                  (EIO.compareContents (Proxy :: Proxy Hash.SHA1) tempfp dst)
+      return
+        ( maybe empty pure msg
+        , empty <$ do
+            EIO.prepareDestination dst
+            D.renameFile tempfp dst `IO.catchIOError` \_ -> D.copyFile tempfp dst
+        )
 
   TA _ (Template src dst) _ -> do
     Templates ts <- view templates

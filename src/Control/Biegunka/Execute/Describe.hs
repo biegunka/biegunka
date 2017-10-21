@@ -61,6 +61,8 @@ prettyTerm (Retries n) mout withSource ta =
           printf "symlink[%s] update (point to [%s])" d s
         Copy s d ->
           printf "file[%s] update (copy [%s])" d s
+        UnE s m d ->
+          printf "file[%s] update (decrypting from [%s] with meta from [%s])" d s m
         Template s d ->
           printf "file[%s] update (from template [%s])" d s
         Command p c as ->
