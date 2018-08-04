@@ -7,3 +7,6 @@ cabal.config
 cabal.config
 result
 env.nix
+.stack-work
+.ghc.environment*
+cabal.project*

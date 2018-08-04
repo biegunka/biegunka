@@ -12,7 +12,7 @@ import           Control.Lens hiding ((<.>))
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Resource (MonadResource, runResourceT)
 import           Control.Monad (when, unless)
-import           Data.Conduit ((=$=), Producer, runConduit, awaitForever, yield)
+import           Data.Conduit ((.|), ConduitM, runConduit, awaitForever, yield)
 import qualified Data.Conduit.Filesystem as CF
 import qualified Data.Conduit.List as CL
 import           Data.Foldable (for_)
@@ -101,18 +101,18 @@ runBiegunkaProcess logger stopBar args = do
 find :: FilePath -> IO [FilePath]
 find fp =
   runResourceT . runConduit $
-    sourceDirectoryDeep fp =$= CL.filter (elemOf filename scriptName) =$= CL.consume
+    sourceDirectoryDeep fp .| CL.filter (elemOf filename scriptName) .| CL.consume
 
 -- | Traverse directory deeply, ignoring symlinks and directories starting with a dot.
 sourceDirectoryDeep
-  :: MonadResource m => FilePath -> Producer m FilePath
+  :: MonadResource m => FilePath -> ConduitM i FilePath m ()
 sourceDirectoryDeep =
   traverseDirectory
  where
-  traverseDirectory :: MonadResource m => FilePath -> Producer m FilePath
-  traverseDirectory dir = CF.sourceDirectory dir =$= awaitForever go
+  traverseDirectory :: MonadResource m => FilePath -> ConduitM i FilePath m ()
+  traverseDirectory dir = CF.sourceDirectory dir .| awaitForever go
 
-  go :: MonadResource m => FilePath -> Producer m FilePath
+  go :: MonadResource m => FilePath -> ConduitM i FilePath m ()
   go fp = do
     status <- liftIO (Posix.getSymbolicLinkStatus fp)
     if | Posix.isRegularFile status -> yield fp

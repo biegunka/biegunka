@@ -1,0 +1,21 @@
+resolver: lts-11.19
+packages:
+  - '.'
+  - location:
+      git: https://github.com/dmalikov/e.git
+      commit: 9a110fd138ce180a321b968a4da05ca4cae9fa04
+    subdirs:
+      - e
+      - e-gpgme
+    extra-dep: true
+allow-newer: true
+extra-deps:
+  - acid-state-0.14.3
+  - bindings-gpgme-0.1.7
+  - command-qq-0.3.0.0
+  - directory-layout-0.7.4.1
+  - h-gpgme-0.5.0.0
+  - hspec-expectations-lens-0.4.0
+  - meep-0.1.2.2
+ghc-options:
+  "$locals": -fhide-source-paths

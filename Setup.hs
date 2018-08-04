@@ -6,14 +6,17 @@ import qualified Data.List as List
 import           Distribution.Simple (defaultMainWithHooks, simpleUserHooks, buildHook)
 import           Distribution.Simple.BuildPaths (autogenModulesDir)
 import           Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
-import           Distribution.Simple.Utils (rewriteFile)
 import           System.Directory (createDirectoryIfMissing)
 import           System.FilePath ((</>), (<.>))
 import           System.IO.Error (catchIOError)
 import           System.Process (readProcess)
 
 #if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Simple.BuildPaths (autogenPackageModulesDir)
+import           Distribution.Simple.BuildPaths (autogenPackageModulesDir)
+import           Distribution.Verbosity
+import           Distribution.Simple.Utils (rewriteFileEx)
+#else
+import           Distribution.Simple.Utils (rewriteFile)
 #endif
 
 main :: IO ()
@@ -26,14 +29,18 @@ generateGit_biegunka lbi =
   do putStrLn ("Generating " ++ git_biegunka ++ " ...")
      createDirectoryIfMissing True autogen
      hash <- gitHash
+#if MIN_VERSION_Cabal(2,0,0)
+     rewriteFileEx silent git_biegunka (unlines
+#else
      rewriteFile git_biegunka (unlines
+#endif
        [ "module Git_biegunka (hash) where"
        , ""
        , "hash :: String"
        , "hash = " ++ show hash
        ])
  where
-#if MIN_VERSION_Cabal(1,25,0)
+#if MIN_VERSION_Cabal(2,0,0)
   autogen = autogenPackageModulesDir lbi
 #else
   autogen = autogenModulesDir lbi

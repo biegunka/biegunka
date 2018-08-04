@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -39,7 +40,11 @@ import           Data.Function (on)
 import           Data.List ((\\))
 import           Data.Map (Map)
 import qualified Data.Map as M
+import           Data.Monoid (Monoid(..))
 import           Data.SafeCopy (deriveSafeCopy, base, extension, Migrate(..))
+#if MIN_VERSION_base(4,9,0)
+import           Data.Semigroup (Semigroup(..))
+#endif
 import           Data.Set (Set)
 import qualified Data.Set as S
 import           Data.Typeable (Typeable)
@@ -107,9 +112,19 @@ newtype NamespaceRecord = NR
   { unGR :: Map SourceRecord (Set FileRecord)
   } deriving (Show, Eq, Typeable)
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup NamespaceRecord where
+  NR a <> NR b = NR (a <> b)
+#endif
+
 instance Monoid NamespaceRecord where
   mempty = NR mempty
+#if MIN_VERSION_base(4,11,0)
+#elif MIN_VERSION_base(4,9,0)
+  mappend = (<>)
+#else
   NR a `mappend` NR b = NR (a `mappend` b)
+#endif
 
 type instance Index NamespaceRecord = SourceRecord
 type instance IxValue NamespaceRecord = Set FileRecord
@@ -137,9 +152,19 @@ instance At Namespaces where
   at k = namespacing.at k
   {-# INLINE at #-}
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup Namespaces where
+  Namespaces xs <> Namespaces ys = Namespaces (xs <> ys)
+#endif
+
 instance Monoid Namespaces where
   mempty = Namespaces mempty
+#if MIN_VERSION_base(4,11,0)
+#elif MIN_VERSION_base(4,9,0)
+  mappend = (<>)
+#else
   Namespaces xs `mappend` Namespaces ys = Namespaces (xs `mappend` ys)
+#endif
 
 class HasNamespaces a where
   namespaces :: Lens' a Namespaces

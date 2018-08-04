@@ -56,7 +56,7 @@ handleDoesNotExist h =
 -- | Take a hashing algorithm and a filepath and produce a digest.
 hash :: Hash.HashAlgorithm a => FilePath -> IO (Hash.Digest a)
 hash fp =
-  runResourceT (sourceFile fp $$ go Hash.hashInit)
+  runResourceT (runConduit (sourceFile fp .| go Hash.hashInit))
  where
   go x =
     maybe (return $! Hash.hashFinalize x)
